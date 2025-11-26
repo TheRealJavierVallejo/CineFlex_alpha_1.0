@@ -92,8 +92,3 @@ export const FountainEditor: React.FC<EditorProps> = ({
         </div>
     );
 };
-</dyad-file>
-
-<dyad-write path="src/modules/fountain/index.ts" description="Exporting the module components">
-export * from './FountainEditor';
-export * from './types';
