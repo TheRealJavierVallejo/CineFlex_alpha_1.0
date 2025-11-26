@@ -138,6 +138,43 @@ const App: React.FC = () => {
     handleUpdateProject({ ...project, shots: newShots });
   };
 
+  const handleDeleteShot = (shotId: string) => {
+    if (!project) return;
+    const shotToDelete = project.shots.find(s => s.id === shotId);
+    if (!shotToDelete) return;
+
+    // Filter out the shot
+    const updatedShots = project.shots.filter(s => s.id !== shotId);
+    
+    // Cleanup script element associations
+    const updatedElements = project.scriptElements?.map(el => ({
+      ...el,
+      associatedShotIds: el.associatedShotIds?.filter(id => id !== shotId)
+    }));
+
+    const updatedProject = {
+      ...project,
+      shots: updatedShots,
+      scriptElements: updatedElements || project.scriptElements
+    };
+
+    handleUpdateProject(updatedProject);
+
+    showToast("Shot deleted", 'info', {
+      label: "Undo",
+      onClick: () => {
+        // Restore
+        const restoredProject = {
+          ...updatedProject,
+          shots: [...updatedShots, shotToDelete].sort((a, b) => a.sequence - b.sequence),
+          scriptElements: project.scriptElements
+        };
+        handleUpdateProject(restoredProject);
+        showToast("Shot restored", 'success');
+      }
+    });
+  };
+
   if (isInLibrary || !project) {
     return (
       <>
@@ -187,7 +224,13 @@ const App: React.FC = () => {
         <main className="flex-1 bg-[#18181B] relative overflow-hidden">
           {view === ViewState.DASHBOARD && (
             <div className="absolute inset-0 overflow-y-auto p-6">
-              <ShotList project={project} onAddShot={handleAddShot} onEditShot={(s) => { setEditingShot(s); setIsEditorOpen(true); }} showToast={showToast} />
+              <ShotList 
+                project={project} 
+                onAddShot={handleAddShot} 
+                onEditShot={(s) => { setEditingShot(s); setIsEditorOpen(true); }} 
+                onDeleteShot={handleDeleteShot}
+                showToast={showToast} 
+              />
             </div>
           )}
           {view === ViewState.TIMELINE && (

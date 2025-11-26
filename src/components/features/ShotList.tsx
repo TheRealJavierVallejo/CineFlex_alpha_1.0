@@ -1,4 +1,3 @@
-
 /*
  * 🎬 COMPONENT: SHOT LIST (Dashboard)
  * Premium Desktop UI - Dense Grid
@@ -6,16 +5,17 @@
 
 import React from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
-import { Film, Camera, Layers, Users } from 'lucide-react';
+import { Film, Camera, Layers, Trash2 } from 'lucide-react';
 
 interface ShotListProps {
   project: Project;
   onAddShot: () => void;
   onEditShot: (shot: Shot) => void;
+  onDeleteShot: (shotId: string) => void;
   showToast: ShowToastFn;
 }
 
-export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditShot, showToast }) => {
+export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditShot, onDeleteShot, showToast }) => {
   return (
     <div className="h-full">
       {project.shots.length === 0 ? (
@@ -31,7 +31,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
             <div
               key={shot.id}
               onClick={() => onEditShot(shot)}
-              className="bg-[#252526] border border-[#333] rounded-[3px] overflow-hidden hover:border-[#007ACC] cursor-pointer transition-all group"
+              className="bg-[#252526] border border-[#333] rounded-[3px] overflow-hidden hover:border-[#007ACC] cursor-pointer transition-all group relative"
             >
               {/* Thumbnail */}
               <div className="aspect-video bg-[#121212] relative">
@@ -49,9 +49,24 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
                   #{shot.sequence}
                 </div>
 
-                {/* Stack Indicator */}
+                {/* Actions overlay */}
+                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                   <button 
+                      onClick={(e) => {
+                         e.stopPropagation();
+                         onDeleteShot(shot.id);
+                      }}
+                      className="bg-black/80 hover:bg-red-900/80 text-white p-1 rounded-[2px] transition-colors"
+                      title="Delete Shot"
+                   >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                   </button>
+                </div>
+
+                {/* Stack Indicator - moved to bottom right if needed, or keep next to actions if space allows. 
+                    Putting it bottom right to avoid conflict. */}
                 {shot.generationCandidates && shot.generationCandidates.length > 1 && (
-                  <div className="absolute top-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] text-[#A0A0A0] flex items-center gap-1">
+                  <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] text-[#A0A0A0] flex items-center gap-1">
                     <Layers className="w-2.5 h-2.5" />
                     <span>{shot.generationCandidates.length}</span>
                   </div>
