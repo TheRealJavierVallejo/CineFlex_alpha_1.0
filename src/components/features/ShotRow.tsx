@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shot, ScriptElement } from '../../types';
-import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser, MoreHorizontal, AlertTriangle, Wand2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
@@ -154,6 +154,8 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                                         {el.character && <span className="font-bold uppercase block mb-1">{el.character}</span>}
                                         <div className="whitespace-pre-wrap">{el.content}</div>
                                     </div>
+                                    
+                                    {/* Unlink Button */}
                                     <button
                                         onClick={() => onUnlinkElement(shot.id, el.id)}
                                         className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-error text-white opacity-0 group-hover/element:opacity-100 transition-opacity flex items-center justify-center hover:bg-error/80"
@@ -161,6 +163,17 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                                     >
                                         <X className="w-3 h-3" />
                                     </button>
+
+                                    {/* Magic Visualize Button (If no image) */}
+                                    {!shot.generatedImage && (
+                                        <button
+                                            onClick={() => onEditShot(shot)}
+                                            className="absolute top-1/2 -right-8 -translate-y-1/2 p-2 bg-primary text-white rounded-full opacity-0 group-hover/element:opacity-100 transition-all hover:scale-110 shadow-lg"
+                                            title="Visualize this line"
+                                        >
+                                            <Wand2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             ))
                         )}

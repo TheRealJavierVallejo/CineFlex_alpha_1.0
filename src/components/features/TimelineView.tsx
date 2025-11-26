@@ -247,16 +247,40 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         const currentIds = s.linkedElementIds || [];
         if (currentIds.includes(element.id)) return s;
 
+        // SMART DESCRIPTION LOGIC
+        // If the shot description is empty, auto-fill it from the script
+        let newDesc = s.description || '';
+        if (!newDesc.trim()) {
+            if (element.type === 'dialogue') {
+                newDesc = `(Character ${element.character} speaking): ${element.content}`;
+            } else {
+                newDesc = element.content;
+            }
+        } else {
+            // Optional: Append if it already exists, or just leave it. 
+            // For now, let's append if it's vastly different, otherwise trust the user.
+            // Actually, simply setting it if empty is the safest UX.
+        }
+
+        // Also Auto-Detect Characters
+        let newCharIds = [...s.characterIds];
+        if (element.character) {
+            // Try to match character name to project characters
+            // This assumes we have access to characters, but TimelineView doesn't manage characters state directly here
+            // We'll skip complex char matching for now to avoid prop drilling hell
+        }
+
         return {
           ...s,
           linkedElementIds: [...currentIds, element.id],
-          description: s.description || element.content
+          description: newDesc
         };
       }
       return s;
     });
 
     onUpdateProject({ ...project, shots: updatedShots });
+    showToast("Script linked & description updated", 'success');
   };
 
   const handleUnlinkElement = (shotId: string, elementId: string) => {
