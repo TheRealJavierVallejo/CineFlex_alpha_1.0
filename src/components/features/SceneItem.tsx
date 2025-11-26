@@ -1,6 +1,6 @@
 import React from 'react';
-import { ArrowUp, ArrowDown, Trash2, Plus, Type } from 'lucide-react';
-import { Scene, Shot, ScriptElement, Project } from '../../types';
+import { ArrowUp, ArrowDown, Trash2, Plus } from 'lucide-react';
+import { Scene, Shot, Project } from '../../types';
 import Button from '../ui/Button';
 import { ShotRow } from './ShotRow';
 
@@ -9,7 +9,6 @@ interface SceneItemProps {
     index: number;
     totalScenes: number;
     shots: Shot[];
-    scriptElements: ScriptElement[];
     projectSettings: Project['settings'];
     onUpdateScene: (id: string, updates: Partial<Scene>) => void;
     onDeleteScene: (id: string) => void;
@@ -17,11 +16,8 @@ interface SceneItemProps {
     onAddShot: (sceneId: string) => void;
     onUpdateShot: (id: string, updates: Partial<Shot>) => void;
     onDeleteShot: (id: string) => void;
-    onLinkElement: (shotId: string, type: 'action' | 'dialogue' | 'script') => void;
-    onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
-    onCreateAndLinkShot: (sceneId: string) => void;
-    onAddVisual: (shotId: string) => void; // NEW
+    onAddVisual: (shotId: string) => void;
 }
 
 export const SceneItem: React.FC<SceneItemProps> = ({
@@ -29,7 +25,6 @@ export const SceneItem: React.FC<SceneItemProps> = ({
     index,
     totalScenes,
     shots,
-    scriptElements,
     projectSettings,
     onUpdateScene,
     onDeleteScene,
@@ -37,10 +32,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
     onAddShot,
     onUpdateShot,
     onDeleteShot,
-    onLinkElement,
-    onUnlinkElement,
     onEditShot,
-    onCreateAndLinkShot,
     onAddVisual
 }) => {
     return (
@@ -85,11 +77,8 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                             <ShotRow
                                 key={shot.id}
                                 shot={shot}
-                                linkedElements={scriptElements.filter(el => shot.linkedElementIds?.includes(el.id))}
                                 onUpdateShot={onUpdateShot}
                                 onDeleteShot={onDeleteShot}
-                                onLinkElement={onLinkElement}
-                                onUnlinkElement={onUnlinkElement}
                                 onEditShot={onEditShot}
                                 onAddVisual={onAddVisual}
                             />
@@ -108,37 +97,16 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                         </div>
                     </div>
                 ) : (
-                    // Empty Scene - Show default shot box with Link Script
-                    <div className="grid grid-cols-2 border-b border-border/10">
-                        {/* LEFT: Visual Box with Add Shot on Hover */}
-                        <div className="p-4 border-r border-border/10 flex flex-col gap-3">
-                            <span className="text-[10px] font-mono text-text-tertiary opacity-0">SHOT #1</span>
-                            <div className="w-full aspect-video bg-background border border-border/10 rounded-sm flex flex-col items-center justify-center gap-2 relative group/visual">
-                                {/* Add Shot Button - Shows on Hover */}
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={<Plus className="w-3 h-3" />}
-                                    onClick={() => onAddShot(scene.id)}
-                                    className="opacity-0 group-hover/visual:opacity-100 transition-opacity"
-                                >
-                                    Add Shot
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* RIGHT: Link Script Button */}
-                        <div className="p-4 flex flex-col gap-3">
-                            <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                                <p className="text-[10px] uppercase tracking-widest text-text-tertiary">Link Script</p>
-                                <button
-                                    onClick={() => onCreateAndLinkShot(scene.id)}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-secondary border border-border/50 text-xs text-text-secondary hover:border-primary hover:text-primary transition-colors"
-                                >
-                                    <Type className="w-3 h-3" /> Link Script
-                                </button>
-                            </div>
-                        </div>
+                    // Empty Scene - Show default shot box
+                    <div className="p-8 flex flex-col items-center justify-center gap-4">
+                        <p className="text-sm text-text-tertiary">No shots in this scene yet.</p>
+                        <Button
+                            variant="primary"
+                            icon={<Plus className="w-4 h-4" />}
+                            onClick={() => onAddShot(scene.id)}
+                        >
+                            Add First Shot
+                        </Button>
                     </div>
                 )}
             </div>

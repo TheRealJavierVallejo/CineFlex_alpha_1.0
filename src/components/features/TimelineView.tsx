@@ -3,15 +3,12 @@
  * Commercial Quality Update: Teal Theme & Studio Classes
  */
 
-import React, { useState, useEffect } from 'react';
-import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem } from '../../types';
-import { parseScript } from '../../services/scriptParser';
+import React, { useState } from 'react';
+import { Project, Shot, Scene, ShowToastFn, ImageLibraryItem } from '../../types';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
-import { ScriptPicker } from './ScriptPicker';
 import { ImageSelectorModal } from './ImageSelectorModal';
-import { ScriptViewerModal } from './ScriptViewerModal';
 
 interface TimelineViewProps {
   project: Project;
@@ -21,10 +18,7 @@ interface TimelineViewProps {
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
-  const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
-  const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
-  const [isScriptViewerOpen, setIsScriptViewerOpen] = useState(false);
 
   // Unified Modal State
   const [imageModalState, setImageModalState] = useState<{
@@ -37,58 +31,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     updateShotId: null
   });
 
-  // State for the "Lego Picker"
-  const [pickerState, setPickerState] = useState<{
-    isOpen: boolean;
-    shotId: string | null;
-    type: 'action' | 'dialogue' | 'script' | null;
-    sceneId: string | null;
-    heading: string | undefined; // Added heading for fuzzy matching
-  }>({ isOpen: false, shotId: null, type: null, sceneId: null, heading: undefined });
-
-  useEffect(() => {
-    if (project.scriptElements) {
-      setScriptElements(project.scriptElements);
-    }
-  }, [project]);
-
   // --- HANDLERS ---
-
-  const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingScript(true);
-
-    try {
-      const parsed = await parseScript(file);
-
-      const updatedProject = {
-        ...project,
-        scenes: parsed.scenes,
-        scriptElements: parsed.elements,
-        scriptFile: {
-          name: file.name,
-          uploadedAt: Date.now(),
-          format: file.name.endsWith('.fountain') ? 'fountain' as const : 'txt' as const
-        }
-      };
-
-      onUpdateProject(updatedProject);
-      setScriptElements(parsed.elements);
-
-      showToast(
-        `Script imported: ${parsed.scenes.length} scenes, ${parsed.elements.length} elements`,
-        'success'
-      );
-
-    } catch (error: any) {
-      console.error(error);
-      showToast('Failed to parse script: ' + (error.message || 'Unknown error'), 'error');
-    } finally {
-      setIsUploadingScript(false);
-    }
-  };
 
   const handleAddScene = () => {
     const newScene: Scene = { id: crypto.randomUUID(), sequence: project.scenes.length + 1, heading: 'INT. NEW SCENE - DAY', actionNotes: '' };
@@ -197,116 +140,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     if (!shotToDelete) return;
 
     const updatedShots = project.shots.filter(s => s.id !== shotId);
-    const updatedElements = scriptElements.map(el => ({
-      ...el,
-      associatedShotIds: el.associatedShotIds?.filter(id => id !== shotId)
-    }));
 
-    onUpdateProject({ ...project, shots: updatedShots, scriptElements: updatedElements });
-    setScriptElements(updatedElements);
+    onUpdateProject({ ...project, shots: updatedShots });
 
     showToast("Shot deleted", 'info', {
       label: "Undo",
       onClick: () => {
-        onUpdateProject({ ...project, shots: [...updatedShots, shotToDelete], scriptElements: project.scriptElements });
-        setScriptElements(project.scriptElements || []);
+        onUpdateProject({ ...project, shots: [...updatedShots, shotToDelete] });
         showToast("Shot restored", 'success');
       }
     });
-  };
-
-  // --- PICKER LOGIC ---
-
-  const handleOpenPicker = (shotId: string, type: 'action' | 'dialogue' | 'script') => {
-    const shot = project.shots.find(s => s.id === shotId);
-    if (!shot) return;
-    const sceneId = shot.sceneId || project.scenes[0]?.id;
-    if (!sceneId) return;
-
-    // FIND THE SCENE HEADING
-    const scene = project.scenes.find(s => s.id === sceneId);
-
-    setPickerState({ 
-        isOpen: true, 
-        shotId, 
-        type, 
-        sceneId,
-        heading: scene?.heading 
-    });
-  };
-
-  const handleClosePicker = () => {
-    setPickerState({ isOpen: false, shotId: null, type: null, sceneId: null, heading: undefined });
-  };
-
-  const handleSelectScriptElement = (element: ScriptElement) => {
-    if (!pickerState.shotId) return;
-
-    const updatedShots = project.shots.map(s => {
-      if (s.id === pickerState.shotId) {
-        const currentIds = s.linkedElementIds || [];
-        if (currentIds.includes(element.id)) return s;
-
-        // SMART DESCRIPTION LOGIC
-        // If the shot description is empty, auto-fill it from the script
-        let newDesc = s.description || '';
-        if (!newDesc.trim()) {
-            if (element.type === 'dialogue') {
-                newDesc = `(Character ${element.character} speaking): ${element.content}`;
-            } else {
-                newDesc = element.content;
-            }
-        } else {
-            // Optional: Append if it already exists, or just leave it. 
-            // For now, let's append if it's vastly different, otherwise trust the user.
-            // Actually, simply setting it if empty is the safest UX.
-        }
-
-        // Also Auto-Detect Characters
-        let newCharIds = [...s.characterIds];
-        if (element.character) {
-            // Try to match character name to project characters
-            // This assumes we have access to characters, but TimelineView doesn't manage characters state directly here
-            // We'll skip complex char matching for now to avoid prop drilling hell
-        }
-
-        return {
-          ...s,
-          linkedElementIds: [...currentIds, element.id],
-          description: newDesc
-        };
-      }
-      return s;
-    });
-
-    onUpdateProject({ ...project, shots: updatedShots });
-    showToast("Script linked & description updated", 'success');
-  };
-
-  const handleUnlinkElement = (shotId: string, elementId: string) => {
-    const updatedShots = project.shots.map(s =>
-      s.id === shotId
-        ? { ...s, linkedElementIds: s.linkedElementIds?.filter(id => id !== elementId) || [] }
-        : s
-    );
-    onUpdateProject({ ...project, shots: updatedShots });
-  };
-
-  const handleCreateAndLinkShot = async (sceneId: string) => {
-    const newShot: Shot = {
-      id: crypto.randomUUID(),
-      sceneId: sceneId,
-      sequence: project.shots.length + 1,
-      description: '',
-      notes: '',
-      characterIds: [],
-      shotType: 'Wide Shot',
-      aspectRatio: project.settings.aspectRatio,
-      dialogue: ''
-    };
-
-    onUpdateProject({ ...project, shots: [...project.shots, newShot] });
-    setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
   };
 
   return (
@@ -314,17 +157,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       <div className="max-w-[1600px] mx-auto pb-20">
 
         <TimelineHeader
-          isUploadingScript={isUploadingScript}
-          onImportScript={handleScriptUpload}
           onAddScene={handleAddScene}
-          scriptName={project.scriptFile?.name}
-          onViewScript={() => setIsScriptViewerOpen(true)}
         />
 
         <SceneList
           scenes={project.scenes}
           shots={project.shots}
-          scriptElements={scriptElements}
           projectSettings={project.settings}
           onUpdateScene={handleUpdateScene}
           onDeleteScene={handleDeleteScene}
@@ -332,10 +170,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onAddShot={handleTriggerAddShot}
           onUpdateShot={handleUpdateShot}
           onDeleteShot={handleDeleteShot}
-          onLinkElement={handleOpenPicker}
-          onUnlinkElement={handleUnlinkElement}
           onEditShot={onEditShot}
-          onCreateAndLinkShot={handleCreateAndLinkShot}
           onAddVisual={handleTriggerAddVisual}
         />
 
@@ -346,23 +181,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         onClose={() => setImageModalState({ isOpen: false, sceneId: null, updateShotId: null })}
         onSelect={handleConfirmImageSelection}
         projectId={project.id}
-      />
-
-      <ScriptPicker
-        isOpen={pickerState.isOpen}
-        onClose={handleClosePicker}
-        sceneId={pickerState.sceneId}
-        currentSceneHeading={pickerState.heading}
-        scriptElements={scriptElements}
-        usedElementIds={new Set(project.shots.flatMap(s => s.linkedElementIds || []))}
-        onSelect={handleSelectScriptElement}
-      />
-
-      <ScriptViewerModal
-        isOpen={isScriptViewerOpen}
-        onClose={() => setIsScriptViewerOpen(false)}
-        scriptElements={scriptElements}
-        filename={project.scriptFile?.name}
       />
 
       {confirmDeleteScene && (

@@ -13,9 +13,6 @@ export const TimelineView = lazy(() => import('./TimelineView').then(m => ({ def
 export const ProjectLibrary = lazy(() => import('./ProjectLibrary').then(m => ({ default: m.ProjectLibrary })));
 export const ProjectSettings = lazy(() => import('./ProjectSettings').then(m => ({ default: m.ProjectSettings })));
 
-// New Script Editor
-export const ScriptEditor = lazy(() => import('./ScriptEditorWrapper').then(m => ({ default: m.ScriptEditorWrapper })));
-
 /**
  * Loading fallback wrapper for lazy-loaded components
  */

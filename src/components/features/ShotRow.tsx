@@ -1,45 +1,26 @@
 import React, { useState } from 'react';
-import { Shot, ScriptElement } from '../../types';
-import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser, MoreHorizontal, AlertTriangle, Wand2 } from 'lucide-react';
+import { Shot } from '../../types';
+import { Trash2, Plus, X, Image as ImageIcon } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
 interface ShotRowProps {
     shot: Shot;
-    linkedElements: ScriptElement[];
     onUpdateShot: (id: string, updates: Partial<Shot>) => void;
     onDeleteShot: (id: string) => void;
-    onLinkElement: (shotId: string, type: 'action' | 'dialogue' | 'script') => void;
-    onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
     onAddVisual: (shotId: string) => void;
 }
 
 export const ShotRow: React.FC<ShotRowProps> = ({
     shot,
-    linkedElements,
     onUpdateShot,
     onDeleteShot,
-    onLinkElement,
-    onUnlinkElement,
     onEditShot,
     onAddVisual
 }) => {
     const [isHovered, setIsHovered] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-    // Helper to get script style based on type
-    const getScriptStyle = (type: ScriptElement['type']) => {
-        const base = "font-[family-name:var(--font-family-screenplay)] text-base leading-relaxed text-text-primary";
-        switch (type) {
-            case 'scene_heading': return `${base} font-bold uppercase tracking-wider`;
-            case 'character': return `${base} font-bold uppercase text-center`;
-            case 'dialogue': return `${base} text-center max-w-[350px] mx-auto whitespace-pre-wrap`;
-            case 'parenthetical': return `${base} italic text-sm text-center`;
-            case 'transition': return `${base} font-bold uppercase text-right`;
-            default: return `${base} whitespace-pre-wrap`; // Action
-        }
-    };
 
     const handleDeleteStill = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -143,54 +124,16 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     </div>
                 </div>
 
-                {/* RIGHT SIDE: LINKED SCRIPT ELEMENTS */}
-                <div className="p-4 flex flex-col justify-center gap-3">
-                    {/* Script Elements Container - Grows with content */}
-                    <div className="flex flex-col gap-4">
-                        {linkedElements.length > 0 && (
-                            linkedElements.map(el => (
-                                <div key={el.id} className="relative group/element">
-                                    <div className={`pl-2 border-l-2 border-transparent hover:border-primary/50 transition-colors ${getScriptStyle(el.type)}`}>
-                                        {el.character && <span className="font-bold uppercase block mb-1">{el.character}</span>}
-                                        <div className="whitespace-pre-wrap">{el.content}</div>
-                                    </div>
-                                    
-                                    {/* Unlink Button */}
-                                    <button
-                                        onClick={() => onUnlinkElement(shot.id, el.id)}
-                                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-error text-white opacity-0 group-hover/element:opacity-100 transition-opacity flex items-center justify-center hover:bg-error/80"
-                                        title="Remove element"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-
-                                    {/* Magic Visualize Button (If no image) */}
-                                    {!shot.generatedImage && (
-                                        <button
-                                            onClick={() => onEditShot(shot)}
-                                            className="absolute top-1/2 -right-8 -translate-y-1/2 p-2 bg-primary text-white rounded-full opacity-0 group-hover/element:opacity-100 transition-all hover:scale-110 shadow-lg"
-                                            title="Visualize this line"
-                                        >
-                                            <Wand2 className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))
-                        )}
-
-                        {/* Link Script Button - Always visible, but subtle if elements exist */}
-                        <div className={`flex flex-col items-center justify-center gap-3 text-text-tertiary ${linkedElements.length > 0 ? 'mt-2 pt-2 border-t border-border/10 opacity-0 group-hover/row:opacity-100 transition-opacity' : 'flex-1'}`}>
-                            {linkedElements.length === 0 && <p className="text-[10px] uppercase tracking-widest">Link Script</p>}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                icon={<Type className="w-3 h-3" />}
-                                onClick={() => onLinkElement(shot.id, 'script')}
-                            >
-                                {linkedElements.length > 0 ? 'Link More' : 'Link Script'}
-                            </Button>
-                        </div>
-                    </div>
+                {/* RIGHT SIDE: DESCRIPTION */}
+                <div className="p-4 flex flex-col justify-center">
+                   <div className="text-text-primary text-sm whitespace-pre-wrap">
+                      {shot.description || <span className="text-text-tertiary italic">No description. Open editor to add details.</span>}
+                   </div>
+                   {shot.dialogue && (
+                      <div className="mt-2 text-xs text-text-secondary italic">
+                         "{shot.dialogue}"
+                      </div>
+                   )}
                 </div>
             </div>
 
@@ -203,11 +146,8 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                 >
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 p-4 bg-status-error/10 rounded-lg border border-status-error/20">
-                            <AlertTriangle className="w-5 h-5 text-status-error shrink-0" />
                             <p className="text-sm text-text-primary">
                                 Are you sure you want to delete <strong>Shot #{shot.sequence}</strong>?
-                                <br/>
-                                <span className="text-xs text-text-secondary">This will remove the visual and unlink any script elements.</span>
                             </p>
                         </div>
                         <div className="flex gap-2 justify-end">
