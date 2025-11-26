@@ -11,6 +11,7 @@ import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ScriptPicker } from './ScriptPicker';
 import { ImageSelectorModal } from './ImageSelectorModal';
+import { ScriptViewerModal } from './ScriptViewerModal';
 
 interface TimelineViewProps {
   project: Project;
@@ -23,6 +24,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
+  const [isScriptViewerOpen, setIsScriptViewerOpen] = useState(false); // NEW STATE
 
   // Unified Modal State for Adding OR Updating Shots
   const [imageModalState, setImageModalState] = useState<{
@@ -289,6 +291,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           isUploadingScript={isUploadingScript}
           onImportScript={handleScriptUpload}
           onAddScene={handleAddScene}
+          scriptName={project.scriptFile?.name}
+          onViewScript={() => setIsScriptViewerOpen(true)} // Connected
         />
 
         <SceneList
@@ -306,7 +310,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onUnlinkElement={handleUnlinkElement}
           onEditShot={onEditShot}
           onCreateAndLinkShot={handleCreateAndLinkShot}
-          onAddVisual={handleTriggerAddVisual} // NEW PROP
+          onAddVisual={handleTriggerAddVisual}
         />
 
       </div>
@@ -326,6 +330,14 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         scriptElements={scriptElements}
         usedElementIds={new Set(project.shots.flatMap(s => s.linkedElementIds || []))}
         onSelect={handleSelectScriptElement}
+      />
+
+      {/* SCRIPT VIEWER MODAL */}
+      <ScriptViewerModal
+        isOpen={isScriptViewerOpen}
+        onClose={() => setIsScriptViewerOpen(false)}
+        scriptElements={scriptElements}
+        filename={project.scriptFile?.name}
       />
 
       {/* Delete Scene Confirmation Modal */}

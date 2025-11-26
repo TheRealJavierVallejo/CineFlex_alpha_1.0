@@ -1,17 +1,21 @@
 import React, { useRef } from 'react';
-import { Clapperboard, Upload, Plus } from 'lucide-react';
+import { Clapperboard, Upload, Plus, FileText, Eye } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface TimelineHeaderProps {
     isUploadingScript: boolean;
     onImportScript: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onAddScene: () => void;
+    scriptName?: string;
+    onViewScript?: () => void; // New Prop
 }
 
 export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
     isUploadingScript,
     onImportScript,
-    onAddScene
+    onAddScene,
+    scriptName,
+    onViewScript
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,6 +29,26 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             </h2>
 
             <div className="flex items-center gap-3">
+                {/* Script Loaded Indicator */}
+                {scriptName && (
+                    <div className="flex items-center gap-1 bg-surface-secondary border border-border rounded-md pl-3 pr-1 py-1 mr-2 group transition-colors hover:border-primary/50">
+                        <FileText className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-medium text-text-secondary max-w-[150px] truncate mr-2">
+                            {scriptName}
+                        </span>
+                        
+                        {onViewScript && (
+                            <button 
+                                onClick={onViewScript}
+                                className="p-1 hover:bg-background rounded text-text-tertiary hover:text-white transition-colors"
+                                title="Read Script"
+                            >
+                                <Eye className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -41,7 +65,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                     loading={isUploadingScript}
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    {isUploadingScript ? 'Parsing Script...' : 'Import Script'}
+                    {isUploadingScript ? 'Parsing...' : (scriptName ? 'Update Script' : 'Import Script')}
                 </Button>
 
                 <Button
