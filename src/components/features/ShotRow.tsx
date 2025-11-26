@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shot, ScriptElement } from '../../types';
-import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon } from 'lucide-react';
+import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface ShotRowProps {
@@ -35,6 +35,14 @@ export const ShotRow: React.FC<ShotRowProps> = ({
             case 'transition': return `${base} font-bold uppercase text-right`;
             default: return `${base} whitespace-pre-wrap`; // Action
         }
+    };
+
+    const handleClearImage = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onUpdateShot(shot.id, { 
+            generatedImage: undefined,
+            generationCandidates: []
+        });
     };
 
     return (
@@ -78,6 +86,20 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                         >
                             Open
                         </Button>
+
+                        {/* Clear Image Button - Only if image exists */}
+                        {shot.generatedImage && (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<Eraser className="w-3 h-3" />}
+                                onClick={handleClearImage}
+                                title="Clear Image Only"
+                            >
+                                Clear
+                            </Button>
+                        )}
+
                         <Button
                             variant="secondary"
                             size="sm"
@@ -87,8 +109,9 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                                 e.stopPropagation();
                                 onDeleteShot(shot.id);
                             }}
+                            title="Delete Entire Shot"
                         >
-                            Remove
+                            Delete
                         </Button>
                     </div>
                 </div>
