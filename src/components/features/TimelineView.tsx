@@ -11,6 +11,7 @@ import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ImageSelectorModal } from './ImageSelectorModal';
 import { ScriptImporter } from './ScriptImporter';
+import { getAtomsForScene, generateShotsFromAtoms } from '../../services/scriptEngine';
 
 interface TimelineViewProps {
   project: Project;
@@ -44,13 +45,35 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   // --- HANDLERS ---
 
   const handleAckSync = () => {
-     // Acknowledge all pending scenes -> set to 'synced'
-     // For orphaned, we leave them as is until user deletes them manually to prevent data loss
      const updatedScenes = project.scenes.map(s => 
         s.syncStatus === 'pending' ? { ...s, syncStatus: 'synced' as const } : s
      );
      onUpdateProject({ ...project, scenes: updatedScenes });
      showToast("All new scenes accepted", 'success');
+  };
+
+  const handleAutoDraft = (sceneId: string) => {
+    const scene = project.scenes.find(s => s.id === sceneId);
+    if (!scene || !scene.scriptSceneId || !project.script) return;
+
+    // 1. Get Atoms
+    const atoms = getAtomsForScene(project.script, scene.scriptSceneId);
+    
+    if (atoms.length === 0) {
+        showToast("No content found in script for this scene", 'warning');
+        return;
+    }
+
+    // 2. Generate Shots
+    // Calculate sequence start (though usually this is for empty scenes)
+    const existingShots = project.shots.filter(s => s.sceneId === sceneId);
+    const maxSeq = existingShots.length > 0 ? Math.max(...existingShots.map(s => s.sequence)) : 0;
+    
+    const newShots = generateShotsFromAtoms(sceneId, atoms, maxSeq + 1, project.settings.aspectRatio);
+    
+    // 3. Save
+    onUpdateProject({ ...project, shots: [...project.shots, ...newShots] });
+    showToast(`Drafted ${newShots.length} shots from script`, 'success');
   };
 
   const handleAddScene = () => {
@@ -216,6 +239,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onDeleteShot={handleDeleteShot}
           onEditShot={onEditShot}
           onAddVisual={handleTriggerAddVisual}
+          onAutoDraft={handleAutoDraft}
         />
 
       </div>

@@ -6,7 +6,7 @@
  * with the Visual Engine (Scenes/Shots).
  */
 
-import { Project, ScriptDocument, ScriptAtom, ScriptAtomType, Scene, SyncStatus } from '../types';
+import { Project, ScriptDocument, ScriptAtom, ScriptAtomType, Scene, Shot, SyncStatus } from '../types';
 
 // --- PARSING LOGIC (FDX / XML) ---
 
@@ -177,4 +177,81 @@ export const syncScriptToProject = (
         },
         stats
     };
+};
+
+// --- CONTENT ATOMIZATION (Phase 4) ---
+
+/**
+ * Gets all atoms belonging to a specific scene
+ */
+export const getAtomsForScene = (script: ScriptDocument, scriptSceneId: string): ScriptAtom[] => {
+    // Filter atoms that belong to this scene scope
+    // (In our parser, atoms.sceneId is the ID of the slugline that started the scene)
+    return script.atoms
+        .filter(a => a.sceneId === scriptSceneId && a.type !== 'slugline')
+        .sort((a, b) => a.sequence - b.sequence);
+};
+
+/**
+ * Auto-Generates Shot objects from script atoms
+ */
+export const generateShotsFromAtoms = (
+    sceneId: string, 
+    atoms: ScriptAtom[], 
+    startSequence: number,
+    defaultAspectRatio: string
+): Shot[] => {
+    const shots: Shot[] = [];
+    let currentSequence = startSequence;
+    let lastCharacterName: string | null = null;
+
+    for (let i = 0; i < atoms.length; i++) {
+        const atom = atoms[i];
+        
+        // Basic Logic: 1 Action Block = 1 Shot
+        if (atom.type === 'action') {
+            shots.push({
+                id: crypto.randomUUID(),
+                sceneId: sceneId,
+                sequence: currentSequence++,
+                description: atom.text,
+                notes: 'Auto-drafted from action',
+                characterIds: [], // To be populated in Phase 5
+                shotType: 'Medium Shot', // Default for action
+                aspectRatio: defaultAspectRatio,
+                sourceAtomIds: [atom.id],
+                syncStatus: 'synced'
+            });
+        }
+        
+        // Basic Logic: Character + Dialogue = 1 Close Up Shot
+        else if (atom.type === 'character') {
+            lastCharacterName = atom.text; // Store for next dialogue atom
+        }
+        else if (atom.type === 'dialogue') {
+            const charName = lastCharacterName || "Unknown";
+            
+            // Check if there was a parenthetical before this
+            let parenthetical = "";
+            if (i > 0 && atoms[i-1].type === 'parenthetical') {
+                parenthetical = ` ${atoms[i-1].text}`;
+            }
+
+            shots.push({
+                id: crypto.randomUUID(),
+                sceneId: sceneId,
+                sequence: currentSequence++,
+                description: `${charName} says: "${atom.text}"${parenthetical}`,
+                dialogue: atom.text,
+                notes: 'Auto-drafted from dialogue',
+                characterIds: [], // To be populated in Phase 5
+                shotType: 'Close-Up', // Default for dialogue
+                aspectRatio: defaultAspectRatio,
+                sourceAtomIds: [atom.id], // We should ideally link character atom too
+                syncStatus: 'synced'
+            });
+        }
+    }
+
+    return shots;
 };

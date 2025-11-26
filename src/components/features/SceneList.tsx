@@ -14,6 +14,7 @@ interface SceneListProps {
     onDeleteShot: (id: string) => void;
     onEditShot: (shot: Shot) => void;
     onAddVisual: (shotId: string) => void;
+    onAutoDraft?: (sceneId: string) => void;
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
@@ -27,7 +28,8 @@ export const SceneList: React.FC<SceneListProps> = ({
     onUpdateShot,
     onDeleteShot,
     onEditShot,
-    onAddVisual
+    onAddVisual,
+    onAutoDraft
 }) => {
     return (
         <div className="space-y-8 px-8">
@@ -52,6 +54,7 @@ export const SceneList: React.FC<SceneListProps> = ({
                         onDeleteShot={onDeleteShot}
                         onEditShot={onEditShot}
                         onAddVisual={onAddVisual}
+                        onAutoDraft={onAutoDraft}
                     />
                 );
             })}
