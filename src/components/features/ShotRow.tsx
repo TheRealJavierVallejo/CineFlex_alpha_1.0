@@ -78,6 +78,18 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                         >
                             Open
                         </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50"
+                            icon={<Trash2 className="w-3 h-3" />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteShot(shot.id);
+                            }}
+                        >
+                            Remove
+                        </Button>
                     </div>
                 </div>
 
