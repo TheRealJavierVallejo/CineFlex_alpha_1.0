@@ -1,36 +1,43 @@
-
 /*
  * 📂 COMPONENT: PROJECT LIBRARY (Data Table)
  * Premium Desktop UI - High Density Table
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ProjectMetadata, ShowToastFn } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
 import { Plus, Trash2, Download, Upload, Search, FileText, Film, Users, Clock, MoreHorizontal } from 'lucide-react';
+import { ToastContainer } from '../features/Toast';
 
-interface ProjectLibraryProps {
-   onOpenProject: (projectId: string) => void;
-   showToast: ShowToastFn;
-}
-
-export const ProjectLibrary: React.FC<ProjectLibraryProps> = ({ onOpenProject, showToast }) => {
+export const ProjectLibrary: React.FC = () => {
+   const navigate = useNavigate();
    const [projects, setProjects] = useState<ProjectMetadata[]>([]);
    const [isCreating, setIsCreating] = useState(false);
    const [newProjectName, setNewProjectName] = useState('');
-   const [isLoading, setIsLoading] = useState(true);
    const [selection, setSelection] = useState<string | null>(null);
    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+   const [toasts, setToasts] = useState<ToastNotification[]>([]);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
    useEffect(() => {
       loadProjects();
    }, []);
 
+   // --- Toast Helper for Library ---
+   const showToast: ShowToastFn = (message, type = 'info', action) => {
+       const id = Date.now();
+       setToasts(prev => [...prev, { id, message, type, action }]);
+   };
+   const closeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
+
    const loadProjects = () => {
       const list = getProjectsList();
       setProjects(list);
-      setIsLoading(false);
+   };
+
+   const openProject = (id: string) => {
+       navigate(`/project/${id}`);
    };
 
    const handleCreate = async (e: React.FormEvent) => {
@@ -40,7 +47,7 @@ export const ProjectLibrary: React.FC<ProjectLibraryProps> = ({ onOpenProject, s
       try {
          const id = await createNewProject(newProjectName);
          setNewProjectName('');
-         onOpenProject(id);
+         openProject(id);
       } catch (error) {
          showToast("Failed to create project", 'error');
       } finally {
@@ -101,6 +108,7 @@ export const ProjectLibrary: React.FC<ProjectLibraryProps> = ({ onOpenProject, s
 
    return (
       <div className="h-screen w-screen bg-[#1E1E1E] text-[#CCCCCC] flex flex-col font-sans">
+         <ToastContainer toasts={toasts} onClose={closeToast} />
 
          {/* Toolbar */}
          <div className="h-12 border-b border-[#333] flex items-center justify-between px-4 bg-[#252526]">
@@ -152,7 +160,7 @@ export const ProjectLibrary: React.FC<ProjectLibraryProps> = ({ onOpenProject, s
                      <div
                         key={proj.id}
                         onClick={() => setSelection(proj.id)}
-                        onDoubleClick={() => onOpenProject(proj.id)}
+                        onDoubleClick={() => openProject(proj.id)}
                         className={`
                        group flex items-center px-4 h-9 border-b border-[#252526] cursor-default text-[13px] transition-colors
                        ${selection === proj.id ? 'bg-[#094771] text-white' : 'hover:bg-[#2A2D2E] text-[#CCCCCC]'}
