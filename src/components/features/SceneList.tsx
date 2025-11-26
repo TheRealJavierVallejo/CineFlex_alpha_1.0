@@ -17,6 +17,7 @@ interface SceneListProps {
     onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
     onCreateAndLinkShot: (sceneId: string) => void;
+    onAddVisual: (shotId: string) => void; // NEW
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
@@ -33,7 +34,8 @@ export const SceneList: React.FC<SceneListProps> = ({
     onLinkElement,
     onUnlinkElement,
     onEditShot,
-    onCreateAndLinkShot
+    onCreateAndLinkShot,
+    onAddVisual
 }) => {
     return (
         <div className="space-y-8 px-8">
@@ -61,6 +63,7 @@ export const SceneList: React.FC<SceneListProps> = ({
                         onUnlinkElement={onUnlinkElement}
                         onEditShot={onEditShot}
                         onCreateAndLinkShot={onCreateAndLinkShot}
+                        onAddVisual={onAddVisual}
                     />
                 );
             })}

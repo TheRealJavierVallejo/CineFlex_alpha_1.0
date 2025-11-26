@@ -11,6 +11,7 @@ interface ShotRowProps {
     onLinkElement: (shotId: string, type: 'action' | 'dialogue' | 'script') => void;
     onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
+    onAddVisual: (shotId: string) => void; // NEW
 }
 
 export const ShotRow: React.FC<ShotRowProps> = ({
@@ -20,7 +21,8 @@ export const ShotRow: React.FC<ShotRowProps> = ({
     onDeleteShot,
     onLinkElement,
     onUnlinkElement,
-    onEditShot
+    onEditShot,
+    onAddVisual
 }) => {
     const [isHovered, setIsHovered] = useState(false);
 
@@ -71,7 +73,13 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                 {/* Main Visual Box */}
                 <div
                     className="flex-1 w-full aspect-video bg-background border-2 border-border/20 rounded-sm overflow-hidden relative group/visual cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => onEditShot(shot)}
+                    onClick={() => {
+                        if (shot.generatedImage) {
+                            onEditShot(shot);
+                        } else {
+                            onAddVisual(shot.id);
+                        }
+                    }}
                 >
                     {shot.generatedImage ? (
                         <>
@@ -105,9 +113,18 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                         </>
                     ) : (
                         // Empty State / Add Visual
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-text-tertiary hover:text-primary transition-colors">
-                            <Plus className="w-6 h-6 opacity-50" />
-                            <span className="text-[10px] uppercase tracking-widest opacity-80 font-bold">Add Visual</span>
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<Plus className="w-3 h-3" />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAddVisual(shot.id);
+                                }}
+                            >
+                                Add Shot
+                            </Button>
                         </div>
                     )}
                 </div>

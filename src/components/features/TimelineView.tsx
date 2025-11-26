@@ -24,10 +24,15 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
 
-  // New State for Add Shot Modal
-  const [addShotModal, setAddShotModal] = useState<{ isOpen: boolean; sceneId: string | null }>({
+  // Unified Modal State for Adding OR Updating Shots
+  const [imageModalState, setImageModalState] = useState<{
+    isOpen: boolean;
+    sceneId: string | null;
+    updateShotId: string | null; // If present, we are updating this shot's visual
+  }>({
     isOpen: false,
-    sceneId: null
+    sceneId: null,
+    updateShotId: null
   });
 
   // State for the "Lego Picker"
@@ -117,50 +122,75 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     onUpdateProject({ ...project, scenes: newScenes });
   };
 
-  // 1. TRIGGER MODAL
+  // 1. TRIGGER MODAL (ADD NEW)
   const handleTriggerAddShot = (sceneId: string) => {
-    setAddShotModal({ isOpen: true, sceneId });
+    setImageModalState({ isOpen: true, sceneId, updateShotId: null });
   };
 
-  // 2. CONFIRM SELECTION (Callback from Modal)
-  const handleConfirmAddShot = (selectedImage: ImageLibraryItem | null) => {
-    const sceneId = addShotModal.sceneId;
-    if (!sceneId) return;
+  // 2. TRIGGER MODAL (UPDATE EXISTING)
+  const handleTriggerAddVisual = (shotId: string) => {
+    const shot = project.shots.find(s => s.id === shotId);
+    if (!shot) return;
+    setImageModalState({ isOpen: true, sceneId: shot.sceneId || null, updateShotId: shotId });
+  };
 
-    // Calculate next sequence number for this scene
-    // (Optional: simple append is fine, reordering handles the rest)
-    const sceneShots = project.shots.filter(s => s.sceneId === sceneId);
-    const maxSeq = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.sequence)) : 0;
+  // 3. CONFIRM SELECTION (Callback from Modal)
+  const handleConfirmImageSelection = (selectedImage: ImageLibraryItem | null) => {
+    const { sceneId, updateShotId } = imageModalState;
     
-    // Create Base Shot
-    const newShot: Shot = {
-      id: crypto.randomUUID(),
-      sceneId: sceneId,
-      sequence: maxSeq + 1,
-      description: selectedImage ? (selectedImage.prompt || '') : '',
-      notes: '',
-      characterIds: [],
-      shotType: 'Wide Shot',
-      aspectRatio: selectedImage?.aspectRatio || project.settings.aspectRatio,
-      dialogue: '',
-      // If image selected, attach it
-      generatedImage: selectedImage ? selectedImage.url : undefined,
-      generationCandidates: selectedImage ? [selectedImage.url] : [],
-      // Use model from image if available
-      model: selectedImage?.model
-    };
+    // CASE A: UPDATE EXISTING SHOT
+    if (updateShotId) {
+      if (selectedImage) {
+        // Apply image to existing shot
+        const updatedShots = project.shots.map(s => s.id === updateShotId ? {
+           ...s,
+           generatedImage: selectedImage.url,
+           generationCandidates: [selectedImage.url],
+           description: selectedImage.prompt || s.description, // Update prompt if available
+           model: selectedImage.model || s.model,
+           aspectRatio: selectedImage.aspectRatio || s.aspectRatio
+        } : s);
+        onUpdateProject({ ...project, shots: updatedShots });
+        showToast("Shot visual updated", 'success');
+      } else {
+        // User chose "Blank" for existing shot -> Open Editor
+        const shot = project.shots.find(s => s.id === updateShotId);
+        if (shot) onEditShot(shot);
+      }
+    } 
+    // CASE B: ADD NEW SHOT
+    else if (sceneId) {
+      // Calculate next sequence
+      const sceneShots = project.shots.filter(s => s.sceneId === sceneId);
+      const maxSeq = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.sequence)) : 0;
+      
+      const newShot: Shot = {
+        id: crypto.randomUUID(),
+        sceneId: sceneId,
+        sequence: maxSeq + 1,
+        description: selectedImage ? (selectedImage.prompt || '') : '',
+        notes: '',
+        characterIds: [],
+        shotType: 'Wide Shot',
+        aspectRatio: selectedImage?.aspectRatio || project.settings.aspectRatio,
+        dialogue: '',
+        generatedImage: selectedImage ? selectedImage.url : undefined,
+        generationCandidates: selectedImage ? [selectedImage.url] : [],
+        model: selectedImage?.model
+      };
 
-    onUpdateProject({ ...project, shots: [...project.shots, newShot] });
-    
-    setAddShotModal({ isOpen: false, sceneId: null });
-    
-    if (selectedImage) {
-      showToast("Shot added from library", 'success');
-    } else {
-      showToast("New shot created", 'success');
-      // Auto-open editor only for blank shots
-      onEditShot(newShot);
+      onUpdateProject({ ...project, shots: [...project.shots, newShot] });
+      
+      if (selectedImage) {
+        showToast("Shot added from library", 'success');
+      } else {
+        showToast("New shot created", 'success');
+        onEditShot(newShot);
+      }
     }
+
+    // Reset Modal
+    setImageModalState({ isOpen: false, sceneId: null, updateShotId: null });
   };
 
   const handleUpdateShot = (id: string, updates: Partial<Shot>) => {
@@ -235,8 +265,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   };
 
   const handleCreateAndLinkShot = async (sceneId: string) => {
-    // For "Link Script" flow, we probably still want a blank shot immediately
-    // or we could open the modal. For now, keeping it quick (blank) is usually better for script breakdown.
     const newShot: Shot = {
       id: crypto.randomUUID(),
       sceneId: sceneId,
@@ -250,8 +278,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     };
 
     onUpdateProject({ ...project, shots: [...project.shots, newShot] });
-
-    // Small delay to ensure state updates before opening picker
     setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
   };
 
@@ -273,22 +299,23 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onUpdateScene={handleUpdateScene}
           onDeleteScene={handleDeleteScene}
           onMoveScene={handleMoveScene}
-          onAddShot={handleTriggerAddShot} // CHANGED: Now opens modal
+          onAddShot={handleTriggerAddShot}
           onUpdateShot={handleUpdateShot}
           onDeleteShot={handleDeleteShot}
           onLinkElement={handleOpenPicker}
           onUnlinkElement={handleUnlinkElement}
           onEditShot={onEditShot}
           onCreateAndLinkShot={handleCreateAndLinkShot}
+          onAddVisual={handleTriggerAddVisual} // NEW PROP
         />
 
       </div>
 
-      {/* NEW: ADD SHOT MODAL */}
+      {/* SHARED IMAGE SELECTOR MODAL */}
       <ImageSelectorModal 
-        isOpen={addShotModal.isOpen}
-        onClose={() => setAddShotModal({ isOpen: false, sceneId: null })}
-        onSelect={handleConfirmAddShot}
+        isOpen={imageModalState.isOpen}
+        onClose={() => setImageModalState({ isOpen: false, sceneId: null, updateShotId: null })}
+        onSelect={handleConfirmImageSelection}
         projectId={project.id}
       />
 

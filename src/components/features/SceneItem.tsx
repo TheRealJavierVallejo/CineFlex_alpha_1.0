@@ -21,6 +21,7 @@ interface SceneItemProps {
     onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
     onCreateAndLinkShot: (sceneId: string) => void;
+    onAddVisual: (shotId: string) => void; // NEW
 }
 
 export const SceneItem: React.FC<SceneItemProps> = ({
@@ -39,7 +40,8 @@ export const SceneItem: React.FC<SceneItemProps> = ({
     onLinkElement,
     onUnlinkElement,
     onEditShot,
-    onCreateAndLinkShot
+    onCreateAndLinkShot,
+    onAddVisual
 }) => {
     return (
         <div className="studio-card overflow-hidden group/scene mb-12">
@@ -89,6 +91,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                                 onLinkElement={onLinkElement}
                                 onUnlinkElement={onUnlinkElement}
                                 onEditShot={onEditShot}
+                                onAddVisual={onAddVisual}
                             />
                         ))}
 
