@@ -48,13 +48,6 @@ export interface ScriptAtom {
   sceneId: string;         // The ID of the Script Scene this belongs to
   sequence: number;        // Order in the script
   originalId?: string;     // If imported, the ID from the source file
-  
-  // Extended Metadata (New)
-  metadata?: {
-      synopsis?: string;   // Scene summary (only for sluglines)
-      notes?: string;      // User notes
-      [key: string]: any;
-  };
 }
 
 // The Container for the "Left Brain" script data
