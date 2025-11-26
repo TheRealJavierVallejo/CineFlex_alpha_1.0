@@ -3,15 +3,13 @@
  * Commercial Quality Update: Teal Theme & Studio Classes
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Project, Shot, Scene, ShowToastFn, ImageLibraryItem } from '../../types';
-import { AlertTriangle, Check } from 'lucide-react';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ImageSelectorModal } from './ImageSelectorModal';
-import { ScriptImporter } from './ScriptImporter';
-import { getAtomsForScene, generateShotsFromAtoms } from '../../services/scriptEngine';
+import { constructPrompt } from '../../services/gemini';
 
 interface TimelineViewProps {
   project: Project;
@@ -22,8 +20,7 @@ interface TimelineViewProps {
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
-  const [isImporterOpen, setIsImporterOpen] = useState(false);
-
+  
   // Unified Modal State
   const [imageModalState, setImageModalState] = useState<{
     isOpen: boolean;
@@ -35,49 +32,10 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     updateShotId: null
   });
 
-  // Derived Stats
-  const syncStats = useMemo(() => {
-     const pending = project.scenes.filter(s => s.syncStatus === 'pending').length;
-     const orphaned = project.scenes.filter(s => s.syncStatus === 'orphaned').length;
-     return { pending, orphaned };
-  }, [project.scenes]);
-
   // --- HANDLERS ---
 
-  const handleAckSync = () => {
-     const updatedScenes = project.scenes.map(s => 
-        s.syncStatus === 'pending' ? { ...s, syncStatus: 'synced' as const } : s
-     );
-     onUpdateProject({ ...project, scenes: updatedScenes });
-     showToast("All new scenes accepted", 'success');
-  };
-
-  const handleAutoDraft = (sceneId: string) => {
-    const scene = project.scenes.find(s => s.id === sceneId);
-    if (!scene || !scene.scriptSceneId || !project.script) return;
-
-    // 1. Get Atoms
-    const atoms = getAtomsForScene(project.script, scene.scriptSceneId);
-    
-    if (atoms.length === 0) {
-        showToast("No content found in script for this scene", 'warning');
-        return;
-    }
-
-    // 2. Generate Shots
-    // Calculate sequence start (though usually this is for empty scenes)
-    const existingShots = project.shots.filter(s => s.sceneId === sceneId);
-    const maxSeq = existingShots.length > 0 ? Math.max(...existingShots.map(s => s.sequence)) : 0;
-    
-    const newShots = generateShotsFromAtoms(sceneId, atoms, maxSeq + 1, project.settings.aspectRatio);
-    
-    // 3. Save
-    onUpdateProject({ ...project, shots: [...project.shots, ...newShots] });
-    showToast(`Drafted ${newShots.length} shots from script`, 'success');
-  };
-
   const handleAddScene = () => {
-    const newScene: Scene = { id: crypto.randomUUID(), sequence: project.scenes.length + 1, heading: 'INT. NEW SCENE - DAY', actionNotes: '', syncStatus: 'visual_only' };
+    const newScene: Scene = { id: crypto.randomUUID(), sequence: project.scenes.length + 1, heading: 'INT. NEW SCENE - DAY', actionNotes: '' };
     onUpdateProject({ ...project, scenes: [...project.scenes, newScene] });
     showToast("Scene added", 'success');
   };
@@ -201,31 +159,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
 
         <TimelineHeader
           onAddScene={handleAddScene}
-          onImportScript={() => setIsImporterOpen(true)}
         />
-
-        {/* SYNC NOTIFICATION BANNER */}
-        {(syncStats.pending > 0 || syncStats.orphaned > 0) && (
-            <div className="mx-8 mb-6 p-4 bg-surface border border-border rounded-lg shadow-lg flex items-center justify-between animate-in slide-in-from-top-2">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
-                        <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-text-primary text-sm">Script Updates Detected</h4>
-                        <div className="text-xs text-text-secondary flex gap-3 mt-1">
-                            {syncStats.pending > 0 && <span className="text-warning font-medium">{syncStats.pending} New Scenes</span>}
-                            {syncStats.orphaned > 0 && <span className="text-error font-medium">{syncStats.orphaned} Orphaned Scenes</span>}
-                        </div>
-                    </div>
-                </div>
-                {syncStats.pending > 0 && (
-                    <Button variant="primary" size="sm" onClick={handleAckSync} icon={<Check className="w-4 h-4" />}>
-                        Accept Changes
-                    </Button>
-                )}
-            </div>
-        )}
 
         <SceneList
           scenes={project.scenes}
@@ -239,7 +173,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onDeleteShot={handleDeleteShot}
           onEditShot={onEditShot}
           onAddVisual={handleTriggerAddVisual}
-          onAutoDraft={handleAutoDraft}
         />
 
       </div>
@@ -249,14 +182,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         onClose={() => setImageModalState({ isOpen: false, sceneId: null, updateShotId: null })}
         onSelect={handleConfirmImageSelection}
         projectId={project.id}
-      />
-
-      <ScriptImporter 
-        isOpen={isImporterOpen}
-        onClose={() => setIsImporterOpen(false)}
-        project={project}
-        onUpdateProject={onUpdateProject}
-        showToast={showToast}
       />
 
       {confirmDeleteScene && (

@@ -9,7 +9,6 @@ export enum ViewState {
   DASHBOARD = 'DASHBOARD', // The Grid View of images
   TIMELINE = 'TIMELINE',   // The Linear View
   ASSETS = 'ASSETS',       // The Cast & Wardrobe View
-  SCRIPT = 'SCRIPT',       // The Screenplay Editor View
   SETTINGS = 'SETTINGS'    // The Project Configuration View
 }
 
@@ -31,39 +30,6 @@ export type ShowToastFn = (
 ) => void;
 
 // ------------------------------------------------------------------
-// 🧠 TWIN-ENGINE CORE: SCRIPT ENGINE (Left Brain)
-// ------------------------------------------------------------------
-
-// The status of the link between Text and Visuals
-export type SyncStatus = 'synced' | 'dirty' | 'orphaned' | 'visual_only' | 'pending';
-
-// The types of text blocks found in a screenplay (Scrite/Final Draft)
-export type ScriptAtomType = 'slugline' | 'action' | 'character' | 'dialogue' | 'parenthetical' | 'transition' | 'general';
-
-// A single unit of the script (e.g., one paragraph of action, or one line of dialogue)
-export interface ScriptAtom {
-  id: string;              // Unique ID from Scrite or generated on import
-  type: ScriptAtomType;
-  text: string;            // The raw text content
-  sceneId: string;         // The ID of the Script Scene this belongs to
-  sequence: number;        // Order in the script
-  originalId?: string;     // If imported, the ID from the source file
-}
-
-// The Container for the "Left Brain" script data
-export interface ScriptDocument {
-  metadata: {
-    title: string;
-    author: string;
-    sourceApp: 'scrite' | 'finaldraft' | 'cinesketch' | 'unknown';
-    lastSync: number;
-    version: number;
-  };
-  atoms: ScriptAtom[];     // The flat list of all script elements
-}
-
-
-// ------------------------------------------------------------------
 // 🎨 TWIN-ENGINE CORE: VISUAL ENGINE (Right Brain)
 // ------------------------------------------------------------------
 
@@ -73,7 +39,6 @@ export interface Character {
   name: string;
   description: string;
   referencePhotos?: string[];
-  scriptName?: string;     // The exact name used in the script (for auto-linking)
 }
 
 // 👕 OUTFIT
@@ -122,10 +87,6 @@ export interface Scene {
   sequence: number;
   heading: string;
   actionNotes: string;
-  
-  // Twin-Engine Links
-  scriptSceneId?: string;  // Link to the 'slugline' atom in the ScriptDocument
-  syncStatus?: SyncStatus;
 }
 
 // 📸 SHOT (The Visual Unit)
@@ -161,11 +122,6 @@ export interface Shot {
   referenceImage?: string;
   controlType?: 'depth' | 'canny';
   referenceStrength?: number;
-
-  // Twin-Engine Links
-  sourceAtomIds?: string[]; // Which ScriptAtoms (action/dialogue) does this shot visualize?
-  syncStatus?: SyncStatus;  // Is the text description matching the script?
-  isVisualOnly?: boolean;   // True if this shot doesn't exist in the script (Director's add)
 }
 
 // 📂 PROJECT METADATA
@@ -183,10 +139,7 @@ export interface Project {
   id: string;
   name: string;
   
-  // Engine 1: The Script
-  script?: ScriptDocument; // Optional for legacy support, but new projects will have it
-  
-  // Engine 2: The Visuals
+  // Visuals
   settings: WorldSettings;
   scenes: Scene[];
   shots: Shot[];

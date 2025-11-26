@@ -11,7 +11,7 @@
  * 3. Exporting them to files you can download
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, ScriptDocument } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
 
@@ -54,7 +54,6 @@ const dbGet = async <T>(key: string): Promise<T | null> => {
         reject(request.error);
       };
       request.onsuccess = () => {
-        // console.log(`📖 DB Read: ${key} ${request.result ? '(Found)' : '(Null)'}`);
         resolve(request.result as T);
       };
     });
@@ -76,7 +75,6 @@ const dbSet = async (key: string, value: any): Promise<void> => {
         reject(request.error);
       };
       request.onsuccess = () => {
-        console.log(`💾 DB Write: ${key} (Success)`);
         resolve();
       };
     });
@@ -114,7 +112,6 @@ const getStorageKey = (projectId: string, suffix: string) => {
 export const getProjectsList = (): ProjectMetadata[] => {
   try {
     const raw = localStorage.getItem(KEYS.PROJECTS_LIST);
-    console.log("📋 LocalStorage Reading Projects List:", raw);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     console.error("Failed to parse project list", e);
@@ -124,24 +121,19 @@ export const getProjectsList = (): ProjectMetadata[] => {
 
 const saveProjectsList = (list: ProjectMetadata[]) => {
   localStorage.setItem(KEYS.PROJECTS_LIST, JSON.stringify(list));
-  console.log(`📋 Project list updated. Total projects: ${list.length}`);
 };
 
 // --- Active Session Management ---
 
 export const getActiveProjectId = (): string | null => {
-  const id = localStorage.getItem(KEYS.ACTIVE_PROJECT_ID);
-  console.log(`🔵 Startup Check: Active Project ID is ${id ? id : 'NULL'}`);
-  return id;
+  return localStorage.getItem(KEYS.ACTIVE_PROJECT_ID);
 };
 
 export const setActiveProjectId = (id: string | null) => {
   if (id) {
     localStorage.setItem(KEYS.ACTIVE_PROJECT_ID, id);
-    console.log(`🟢 Session Set: ${id}`);
   } else {
     localStorage.removeItem(KEYS.ACTIVE_PROJECT_ID);
-    console.log(`⚪ Session Cleared`);
   }
 };
 
@@ -164,24 +156,12 @@ export const createNewProject = async (name: string): Promise<string> => {
       customLighting: [],
       customLocations: []
     },
-    // Initialize Script Engine (Empty)
-    script: {
-      metadata: {
-        title: name,
-        author: 'Unknown',
-        sourceApp: 'cinesketch',
-        lastSync: now,
-        version: 1
-      },
-      atoms: [] // Empty script initially
-    },
     // Initialize with one default scene
     scenes: [{
       id: sceneId,
       sequence: 1,
       heading: 'INT. UNTITLED SCENE - DAY',
-      actionNotes: '',
-      syncStatus: 'visual_only' // It has no script source yet
+      actionNotes: ''
     }],
     shots: [],
     createdAt: now,
@@ -215,7 +195,6 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(getStorageKey(projectId, 'settings'));
   await dbDelete(getStorageKey(projectId, 'shots'));
   await dbDelete(getStorageKey(projectId, 'scenes')); 
-  await dbDelete(getStorageKey(projectId, 'script')); // Delete Script Key
   await dbDelete(getStorageKey(projectId, 'characters'));
   await dbDelete(getStorageKey(projectId, 'outfits'));
   await dbDelete(getStorageKey(projectId, 'metadata'));
@@ -282,22 +261,8 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
     // Ensure scenes exist for backward compatibility
     if (!data.project.scenes || data.project.scenes.length === 0) {
       const defId = crypto.randomUUID();
-      data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '', syncStatus: 'visual_only' }];
+      data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
       data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
-    }
-
-    // Ensure script container exists (Migration)
-    if (!data.project.script) {
-        data.project.script = {
-            metadata: {
-                title: data.project.name,
-                author: 'Imported',
-                sourceApp: 'unknown',
-                lastSync: Date.now(),
-                version: 1
-            },
-            atoms: []
-        };
     }
 
     // Save all components
@@ -378,16 +343,14 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes'); 
-  const scriptKey = getStorageKey(projectId, 'script'); // New Script Key
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   console.log(`📥 Loading Project Data for: ${projectId}`);
 
-  const [settings, shots, scenes, script, metadata] = await Promise.all([
+  const [settings, shots, scenes, metadata] = await Promise.all([
     dbGet<WorldSettings>(settingsKey),
     dbGet<Shot[]>(shotsKey),
     dbGet<Scene[]>(scenesKey),
-    dbGet<ScriptDocument>(scriptKey),
     dbGet<any>(metadataKey)
   ]);
 
@@ -403,7 +366,6 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     settings: settings || { ...DEFAULT_WORLD_SETTINGS },
     shots: shots || [],
     scenes: scenes || [],
-    script: script || undefined, // Bind Script
     createdAt: metadata?.createdAt || Date.now(),
     lastModified: metadata?.lastModified || Date.now()
   };
@@ -418,27 +380,10 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
       id: defaultSceneId,
       sequence: 1,
       heading: 'INT. UNTITLED SCENE - DAY',
-      actionNotes: 'Scene created during migration.',
-      syncStatus: 'visual_only'
+      actionNotes: 'Scene created during migration.'
     }];
     // Assign orphan shots to default scene
     project.shots = project.shots.map(s => ({ ...s, sceneId: s.sceneId || defaultSceneId }));
-    needsSave = true;
-  }
-
-  // Initialize empty script for legacy projects
-  if (!project.script) {
-    console.log("🛠️ Initializing Script Engine for legacy project...");
-    project.script = {
-        metadata: {
-            title: project.name,
-            author: 'Unknown',
-            sourceApp: 'cinesketch',
-            lastSync: Date.now(),
-            version: 1
-        },
-        atoms: []
-    };
     needsSave = true;
   }
 
@@ -453,7 +398,6 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
       await saveProjectData(projectId, project);
   }
 
-  console.log(`✅ Loaded Project: ${project.name} (${project.shots.length} shots, ${project.scenes.length} scenes)`);
   return project;
 };
 
@@ -462,7 +406,6 @@ export const saveProjectData = async (projectId: string, project: Project) => {
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
-  const scriptKey = getStorageKey(projectId, 'script');
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   const metadata = {
@@ -480,11 +423,6 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     dbSet(scenesKey, project.scenes),
     dbSet(metadataKey, metadata)
   ];
-
-  // Only save script if it exists
-  if (project.script) {
-      promises.push(dbSet(scriptKey, project.script));
-  }
 
   await Promise.all(promises);
 

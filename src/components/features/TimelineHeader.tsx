@@ -1,15 +1,13 @@
 import React from 'react';
-import { Clapperboard, Plus, Upload } from 'lucide-react';
+import { Clapperboard, Plus } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface TimelineHeaderProps {
     onAddScene: () => void;
-    onImportScript: () => void;
 }
 
 export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
-    onAddScene,
-    onImportScript
+    onAddScene
 }) => {
     return (
         <div className="flex items-center justify-between mb-8 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b border-border">
@@ -21,15 +19,6 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             </h2>
 
             <div className="flex items-center gap-3">
-                <Button
-                    variant="secondary"
-                    size="md"
-                    icon={<Upload className="w-4 h-4" />}
-                    onClick={onImportScript}
-                >
-                    Import Script
-                </Button>
-                
                 <Button
                     variant="primary"
                     size="md"

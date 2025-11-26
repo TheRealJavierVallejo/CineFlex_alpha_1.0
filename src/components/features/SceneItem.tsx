@@ -1,6 +1,6 @@
 import React from 'react';
-import { ArrowUp, ArrowDown, Trash2, Plus, Link, Link2Off, AlertCircle, FileText } from 'lucide-react';
-import { Scene, Shot, Project, SyncStatus } from '../../types';
+import { ArrowUp, ArrowDown, Trash2, Plus, FileText } from 'lucide-react';
+import { Scene, Shot, Project } from '../../types';
 import Button from '../ui/Button';
 import { ShotRow } from './ShotRow';
 
@@ -34,59 +34,16 @@ export const SceneItem: React.FC<SceneItemProps> = ({
     onUpdateShot,
     onDeleteShot,
     onEditShot,
-    onAddVisual,
-    onAutoDraft
+    onAddVisual
 }) => {
-    
-    const getStatusColor = (status?: SyncStatus) => {
-        switch (status) {
-            case 'synced': return 'border-l-4 border-l-success';
-            case 'orphaned': return 'border-l-4 border-l-error bg-error/5';
-            case 'pending': return 'border-l-4 border-l-warning bg-warning/5';
-            case 'visual_only': return 'border-l-4 border-l-accent';
-            default: return 'border-l-4 border-l-transparent';
-        }
-    };
-
-    const StatusBadge = ({ status }: { status?: SyncStatus }) => {
-        if (!status || status === 'visual_only') return null;
-        
-        if (status === 'synced') {
-            return (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-success/10 text-success rounded text-[10px] font-medium border border-success/20" title="Synced with Script">
-                    <Link className="w-3 h-3" />
-                    <span>Synced</span>
-                </div>
-            );
-        }
-        if (status === 'orphaned') {
-            return (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-error/10 text-error rounded text-[10px] font-medium border border-error/20" title="Scene deleted in script">
-                    <Link2Off className="w-3 h-3" />
-                    <span>Orphaned</span>
-                </div>
-            );
-        }
-        if (status === 'pending') {
-            return (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-warning/10 text-warning rounded text-[10px] font-medium border border-warning/20" title="New from script">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>New Scene</span>
-                </div>
-            );
-        }
-        return null;
-    };
-
     return (
-        <div className={`studio-card overflow-hidden group/scene mb-12 transition-colors ${getStatusColor(scene.syncStatus)}`}>
+        <div className="studio-card overflow-hidden group/scene mb-12 transition-colors border-l-4 border-l-transparent">
             {/* SCENE HEADER */}
             <div className="bg-surface-secondary p-4 flex flex-col border-b border-border/50">
 
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <span className="font-mono text-xs text-text-tertiary font-bold">SCENE {index + 1}</span>
-                        <StatusBadge status={scene.syncStatus} />
                     </div>
 
                     <div className="flex items-center gap-1 opacity-0 group-hover/scene:opacity-100 transition-opacity">
@@ -100,19 +57,11 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                 <div className="flex items-center gap-3">
                     {/* Scene Heading */}
                     <div className="flex-1 relative">
-                        {scene.syncStatus === 'synced' && (
-                            <FileText className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary opacity-50" />
-                        )}
                         <input
                             value={scene.heading}
                             onChange={(e) => onUpdateScene(scene.id, { heading: e.target.value.toUpperCase() })}
-                            readOnly={scene.syncStatus === 'synced'}
-                            className={`
-                                bg-transparent text-text-primary font-bold text-lg font-mono outline-none w-full tracking-wide
-                                ${scene.syncStatus === 'synced' ? 'pl-6 cursor-default text-text-secondary' : 'placeholder-text-tertiary'}
-                            `}
+                            className="bg-transparent text-text-primary font-bold text-lg font-mono outline-none w-full tracking-wide placeholder-text-tertiary"
                             placeholder="INT. SCENE HEADING - DAY"
-                            title={scene.syncStatus === 'synced' ? "Managed by Script Sync" : "Editable Heading"}
                         />
                     </div>
                 </div>
