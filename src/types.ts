@@ -1,4 +1,3 @@
-
 /*
  * 📘 PLAIN ENGLISH GUIDE: TYPES (The Blueprints)
  * 
@@ -9,6 +8,7 @@
 export enum ViewState {
   DASHBOARD = 'DASHBOARD', // The Grid View of images
   TIMELINE = 'TIMELINE',   // The Script View
+  SCRIPT = 'SCRIPT',       // The Fountain Text Editor
   ASSETS = 'ASSETS',       // The Cast & Wardrobe View
   EDITOR = 'EDITOR',       // The Image Generator Popup
   SETTINGS = 'SETTINGS'    // The Project Configuration View
@@ -158,6 +158,7 @@ export interface Project {
     uploadedAt: number;
     format: 'fountain' | 'fdx' | 'pdf' | 'txt'
   };
+  scriptContent?: string;   // The raw text of the screenplay
   scriptElements?: ScriptElement[]; // The full list of script lines
 }
 
