@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shot, ScriptElement } from '../../types';
-import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser } from 'lucide-react';
+import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser, MoreHorizontal } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface ShotRowProps {
@@ -37,7 +37,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
         }
     };
 
-    const handleClearImage = (e: React.MouseEvent) => {
+    const handleDeleteStill = (e: React.MouseEvent) => {
         e.stopPropagation();
         onUpdateShot(shot.id, { 
             generatedImage: undefined,
@@ -47,12 +47,21 @@ export const ShotRow: React.FC<ShotRowProps> = ({
 
     return (
         <div
-            className="grid grid-cols-2 border-b border-border/10 hover:bg-surface/20 transition-colors"
+            className="grid grid-cols-2 border-b border-border/10 hover:bg-surface/20 transition-colors group/row"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             {/* LEFT SIDE: VISUAL + DETAILS */}
-            <div className="p-4 border-r border-border/10 flex flex-col gap-3 items-center justify-center">
+            <div className="p-4 border-r border-border/10 flex flex-col gap-3 items-center justify-center relative">
+
+                {/* DELETE SHOT BUTTON (Corner) */}
+                <button 
+                    onClick={() => onDeleteShot(shot.id)}
+                    className="absolute top-2 right-2 p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-sm opacity-0 group-hover/row:opacity-100 transition-opacity"
+                    title="Delete entire shot row"
+                >
+                    <X className="w-3.5 h-3.5" />
+                </button>
 
                 {/* SHOT # Tag */}
                 <span className="text-[10px] font-mono text-text-tertiary bg-surface-secondary px-1.5 py-0.5 rounded w-fit self-start">
@@ -65,55 +74,42 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     onClick={() => onEditShot(shot)}
                 >
                     {shot.generatedImage ? (
-                        <img src={shot.generatedImage} className="w-full h-full object-contain" alt={`Shot ${shot.sequence}`} />
+                        <>
+                            <img src={shot.generatedImage} className="w-full h-full object-contain" alt={`Shot ${shot.sequence}`} />
+                            
+                            {/* Overlay Actions (Only if image exists) */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={<ImageIcon className="w-3 h-3" />}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditShot(shot);
+                                    }}
+                                >
+                                    Open
+                                </Button>
+
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={<Trash2 className="w-3 h-3" />}
+                                    onClick={handleDeleteStill}
+                                    className="hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50"
+                                    title="Delete Still Image"
+                                >
+                                    Delete Still
+                                </Button>
+                            </div>
+                        </>
                     ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-text-tertiary">
-                            <Film className="w-6 h-6 opacity-50" />
-                            <span className="text-[10px] uppercase tracking-widest opacity-50">Visual</span>
+                        // Empty State / Add Visual
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-text-tertiary hover:text-primary transition-colors">
+                            <Plus className="w-6 h-6 opacity-50" />
+                            <span className="text-[10px] uppercase tracking-widest opacity-80 font-bold">Add Visual</span>
                         </div>
                     )}
-
-                    {/* Overlay Actions */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={<ImageIcon className="w-3 h-3" />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onEditShot(shot);
-                            }}
-                        >
-                            Open
-                        </Button>
-
-                        {/* Clear Image Button - Only if image exists */}
-                        {shot.generatedImage && (
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                icon={<Eraser className="w-3 h-3" />}
-                                onClick={handleClearImage}
-                                title="Clear Image Only"
-                            >
-                                Clear
-                            </Button>
-                        )}
-
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50"
-                            icon={<Trash2 className="w-3 h-3" />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteShot(shot.id);
-                            }}
-                            title="Delete Entire Shot"
-                        >
-                            Delete
-                        </Button>
-                    </div>
                 </div>
 
                 {/* Shot Details (Bottom) */}
