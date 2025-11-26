@@ -1,6 +1,5 @@
-
 import { describe, it, expect } from 'vitest';
-import { constructPrompt } from './gemini';
+import { constructPrompt } from './promptBuilder';
 import { Shot, Project, Character, Outfit } from '../types';
 
 // Mock Data

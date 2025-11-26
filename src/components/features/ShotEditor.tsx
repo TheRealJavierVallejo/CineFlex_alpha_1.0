@@ -5,7 +5,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Shot, Project, Character, Outfit, ShowToastFn } from '../../types';
-import { generateShotImage, generateBatchShotImages, analyzeSketch, constructPrompt } from '../../services/gemini';
+import { generateShotImage, generateBatchShotImages, analyzeSketch } from '../../services/gemini';
+import { constructPrompt } from '../../services/promptBuilder';
 import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, VARIATION_COUNTS, TIMES_OF_DAY } from '../../constants';
 import { X, Wand2, Film, RefreshCw, Download, Copy, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize2, Minimize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, HelpCircle, Eye, FileText, Camera, Users, Settings, ArrowLeft } from 'lucide-react';
 import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary } from '../../services/storage';
