@@ -1,18 +1,11 @@
 /*
  * 💾 SERVICE: STORAGE (The Memory Bank)
- * 
- * This file is responsible for saving your work.
- * Since this is a web app, it uses something called "IndexedDB" inside your browser.
- * Think of it as a tiny hard drive built into Chrome/Safari/Edge.
- * 
- * It handles:
- * 1. Saving your Projects
- * 2. Loading them back when you open the app
- * 3. Exporting them to files you can download
+ * Refactored for Detached Blob Storage (High Performance)
  */
 
 import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
+import { debounce } from '../utils/debounce';
 
 const KEYS = {
   ACTIVE_PROJECT_ID: 'cinesketch_active_project_id',
@@ -21,11 +14,11 @@ const KEYS = {
 };
 
 const DB_NAME = 'CineSketchDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Upgraded Schema
 const STORE_NAME = 'project_data';
+const IMAGE_STORE_NAME = 'image_data';
 
 // --- DATABASE HELPERS ---
-// These are technical functions that open the browser's database.
 
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -37,387 +30,307 @@ const openDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
       }
+      if (!db.objectStoreNames.contains(IMAGE_STORE_NAME)) {
+        db.createObjectStore(IMAGE_STORE_NAME);
+      }
     };
   });
 };
 
-const dbGet = async <T>(key: string): Promise<T | null> => {
+// Generic DB Get
+const dbGet = async <T>(storeName: string, key: string): Promise<T | null> => {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
       const request = store.get(key);
-      request.onerror = () => {
-        console.error(`❌ DB Read Failed for ${key}:`, request.error);
-        reject(request.error);
-      };
-      request.onsuccess = () => {
-        // console.log(`📖 DB Read: ${key} ${request.result ? '(Found)' : '(Null)'}`);
-        resolve(request.result as T);
-      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result as T);
     });
   } catch (e) {
-    console.error("DB Read Error", e);
+    console.error(`DB Read Error (${storeName}):`, e);
     return null;
   }
 };
 
-const dbSet = async (key: string, value: any): Promise<void> => {
+// Generic DB Set
+const dbSet = async (storeName: string, key: string, value: any): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.put(value, key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
+
+// Generic DB Delete
+const dbDelete = async (storeName: string, key: string): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
+
+// --- HYDRATION ENGINE (The Magic Part) ---
+// These functions convert Base64/URLs <-> DB References
+
+const REF_PREFIX = '{{IMG::';
+const REF_SUFFIX = '}}';
+
+const isImageRef = (str: string) => str.startsWith(REF_PREFIX) && str.endsWith(REF_SUFFIX);
+const extractIdFromRef = (ref: string) => ref.substring(REF_PREFIX.length, ref.length - REF_SUFFIX.length);
+const createRef = (id: string) => `${REF_PREFIX}${id}${REF_SUFFIX}`;
+
+/**
+ * Saves an image string (Base64 or Blob URL) to the Image Store and returns a Reference ID.
+ */
+const persistImage = async (dataUrlOrBlobUrl: string, existingId?: string): Promise<string> => {
+  // If it's already a reference, ignore
+  if (isImageRef(dataUrlOrBlobUrl)) return dataUrlOrBlobUrl;
+  
+  // If it's empty, return empty
+  if (!dataUrlOrBlobUrl) return dataUrlOrBlobUrl;
+
+  const id = existingId || crypto.randomUUID();
+  let blob: Blob;
+
   try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(value, key);
-      request.onerror = () => {
-        console.error(`❌ DB Write Failed for ${key}:`, request.error);
-        reject(request.error);
-      };
-      request.onsuccess = () => {
-        console.log(`💾 DB Write: ${key} (Success)`);
-        resolve();
-      };
-    });
+      // Convert Base64 or Blob URL to Blob
+      const response = await fetch(dataUrlOrBlobUrl);
+      blob = await response.blob();
+      
+      // Save Blob to IDB
+      await dbSet(IMAGE_STORE_NAME, id, blob);
+      
+      // Return the reference tag
+      return createRef(id);
   } catch (e) {
-    console.error("DB Write Error", e);
+      console.error("Failed to persist image", e);
+      return dataUrlOrBlobUrl; // Fallback: keep original string if save fails
   }
 };
 
-const dbDelete = async (key: string): Promise<void> => {
-  try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(key);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        console.log(`🗑️ DB Delete: ${key}`);
-        resolve();
-      };
-    });
-  } catch (e) {
-    console.error("DB Delete Error", e);
-  }
+/**
+ * Loads a Reference ID from the Image Store and returns a usable Blob URL.
+ */
+const hydrateImage = async (ref: string): Promise<string> => {
+    if (!isImageRef(ref)) return ref; // Already a normal string
+    
+    const id = extractIdFromRef(ref);
+    try {
+        const blob = await dbGet<Blob>(IMAGE_STORE_NAME, id);
+        if (blob) {
+            return URL.createObjectURL(blob);
+        }
+        return ''; // Image missing
+    } catch (e) {
+        console.error("Failed to hydrate image", id, e);
+        return '';
+    }
 };
 
-// --- Key Generators ---
+/**
+ * Deep traverses an object, finds images, and persists them.
+ */
+const dehydrateObject = async (obj: any): Promise<any> => {
+    if (!obj) return obj;
+    if (typeof obj !== 'object') return obj;
+
+    if (Array.isArray(obj)) {
+        return Promise.all(obj.map(item => dehydrateObject(item)));
+    }
+
+    const newObj: any = { ...obj };
+
+    // Common fields that contain images
+    const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
+    const arrayImageFields = ['generationCandidates', 'referencePhotos'];
+
+    for (const key of Object.keys(newObj)) {
+        if (imageFields.includes(key) && typeof newObj[key] === 'string') {
+            // Persist single image
+            // We try to reuse ID if the string is already a Ref (unlikely here but safe)
+            // Or use a deterministic ID if possible? No, random is safer for now.
+            newObj[key] = await persistImage(newObj[key]);
+        } 
+        else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
+            // Persist array of images
+            newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(img)));
+        }
+        else if (typeof newObj[key] === 'object') {
+            // Recurse
+            newObj[key] = await dehydrateObject(newObj[key]);
+        }
+    }
+
+    return newObj;
+};
+
+/**
+ * Deep traverses an object, finds references, and loads them.
+ */
+const hydrateObject = async (obj: any): Promise<any> => {
+    if (!obj) return obj;
+    if (typeof obj !== 'object') return obj;
+
+    if (Array.isArray(obj)) {
+        return Promise.all(obj.map(item => hydrateObject(item)));
+    }
+
+    const newObj: any = { ...obj };
+
+    for (const key of Object.keys(newObj)) {
+        const val = newObj[key];
+        
+        if (typeof val === 'string' && isImageRef(val)) {
+            newObj[key] = await hydrateImage(val);
+        }
+        else if (Array.isArray(val)) {
+            // Check if array contains strings that are refs
+            if (val.length > 0 && typeof val[0] === 'string' && isImageRef(val[0])) {
+                 newObj[key] = await Promise.all(val.map((v: string) => hydrateImage(v)));
+            } else {
+                 newObj[key] = await Promise.all(val.map(item => hydrateObject(item)));
+            }
+        }
+        else if (typeof val === 'object') {
+            newObj[key] = await hydrateObject(val);
+        }
+    }
+    return newObj;
+};
+
+
+// --- PUBLIC API ---
 
 const getStorageKey = (projectId: string, suffix: string) => {
   return `${KEYS.PROJECT_PREFIX}${projectId}_${suffix}`;
 };
 
-// --- Project List Management (LocalStorage) ---
-
 export const getProjectsList = (): ProjectMetadata[] => {
   try {
     const raw = localStorage.getItem(KEYS.PROJECTS_LIST);
-    console.log("📋 LocalStorage Reading Projects List:", raw);
     return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Failed to parse project list", e);
-    return [];
-  }
+  } catch (e) { return []; }
 };
 
 const saveProjectsList = (list: ProjectMetadata[]) => {
   localStorage.setItem(KEYS.PROJECTS_LIST, JSON.stringify(list));
-  console.log(`📋 Project list updated. Total projects: ${list.length}`);
 };
 
-// --- Active Session Management ---
-
 export const getActiveProjectId = (): string | null => {
-  const id = localStorage.getItem(KEYS.ACTIVE_PROJECT_ID);
-  console.log(`🔵 Startup Check: Active Project ID is ${id ? id : 'NULL'}`);
-  return id;
+  return localStorage.getItem(KEYS.ACTIVE_PROJECT_ID);
 };
 
 export const setActiveProjectId = (id: string | null) => {
-  if (id) {
-    localStorage.setItem(KEYS.ACTIVE_PROJECT_ID, id);
-    console.log(`🟢 Session Set: ${id}`);
-  } else {
-    localStorage.removeItem(KEYS.ACTIVE_PROJECT_ID);
-    console.log(`⚪ Session Cleared`);
-  }
+  if (id) localStorage.setItem(KEYS.ACTIVE_PROJECT_ID, id);
+  else localStorage.removeItem(KEYS.ACTIVE_PROJECT_ID);
 };
 
-// --- Project CRUD (Create, Read, Update, Delete) ---
-
-// 1. CREATE: Makes a brand new project
 export const createNewProject = async (name: string): Promise<string> => {
   const projectId = crypto.randomUUID();
-  const sceneId = crypto.randomUUID(); // Default Scene
+  const sceneId = crypto.randomUUID();
   const now = Date.now();
 
   const newProject: Project = {
     id: projectId,
     name: name,
-    settings: {
-      ...DEFAULT_WORLD_SETTINGS,
-      customEras: [],
-      customStyles: [],
-      customTimes: [],
-      customLighting: [],
-      customLocations: []
-    },
-    // Initialize with one default scene
-    scenes: [{
-      id: sceneId,
-      sequence: 1,
-      heading: 'INT. UNTITLED SCENE - DAY',
-      actionNotes: ''
-    }],
+    settings: { ...DEFAULT_WORLD_SETTINGS, customEras: [], customStyles: [], customTimes: [], customLighting: [], customLocations: [] },
+    scenes: [{ id: sceneId, sequence: 1, heading: 'INT. UNTITLED SCENE - DAY', actionNotes: '' }],
     shots: [],
     createdAt: now,
     lastModified: now
   };
 
-  // 1. Save initial data to IndexedDB
   await saveProjectData(projectId, newProject);
 
-  // 2. Add to project list in LocalStorage
   const metadata: ProjectMetadata = {
-    id: projectId,
-    name: name,
-    createdAt: now,
-    lastModified: now,
-    shotCount: 0,
-    characterCount: 0
+    id: projectId, name: name, createdAt: now, lastModified: now, shotCount: 0, characterCount: 0
   };
-
   const list = getProjectsList();
-  saveProjectsList([metadata, ...list]); // Prepend
+  saveProjectsList([metadata, ...list]);
 
   return projectId;
 };
 
-// 2. DELETE: Removes a project and all its data
 export const deleteProject = async (projectId: string) => {
-  console.log(`⚠️ Deleting project ${projectId}`);
+  // We should ideally clean up images too, but that requires tracking IDs. 
+  // For now, we accept orphaned blobs to prevent logic complexity errors.
+  // A "GC" (Garbage Collection) function can be added later.
+  
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'settings'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'shots'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scenes'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'characters'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'outfits'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'metadata'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'library'));
 
-  // 1. Remove from IndexedDB
-  await dbDelete(getStorageKey(projectId, 'settings'));
-  await dbDelete(getStorageKey(projectId, 'shots'));
-  await dbDelete(getStorageKey(projectId, 'scenes')); // Delete Scenes key
-  await dbDelete(getStorageKey(projectId, 'characters'));
-  await dbDelete(getStorageKey(projectId, 'outfits'));
-  await dbDelete(getStorageKey(projectId, 'metadata'));
-
-  // 2. Remove from LocalStorage list
   const list = getProjectsList();
   const updatedList = list.filter(p => p.id !== projectId);
   saveProjectsList(updatedList);
 
-  // 3. Clear active session if it matches
-  if (getActiveProjectId() === projectId) {
-    setActiveProjectId(null);
-  }
+  if (getActiveProjectId() === projectId) setActiveProjectId(null);
 };
 
-// --- Import / Export ---
-// Allows you to save your project as a .json file to your computer
+// --- DATA ACCESS ---
 
-export const exportProjectToJSON = async (projectId: string): Promise<string> => {
-  console.log(`📦 Exporting project ${projectId}...`);
-  const project = await getProjectData(projectId);
-  const characters = await getCharacters(projectId);
-  const outfits = await getOutfits(projectId);
-
-  if (!project) throw new Error("Project data not found");
-
-  const exportData: ProjectExport = {
-    version: 1,
-    metadata: {
-      id: project.id,
-      name: project.name,
-      createdAt: project.createdAt,
-      lastModified: project.lastModified,
-      shotCount: project.shots.length,
-      characterCount: characters.length
-    },
-    project,
-    characters,
-    outfits
-  };
-
-  return JSON.stringify(exportData, null, 2);
-};
-
-export const importProjectFromJSON = async (jsonString: string): Promise<string> => {
-  console.log("📦 Importing project...");
-  try {
-    const data: ProjectExport = JSON.parse(jsonString);
-
-    // Validate basic structure
-    if (!data.project || !data.metadata) {
-      throw new Error("Invalid project file format");
-    }
-
-    const projectId = data.project.id;
-
-    // Ensure imported project has initialized custom arrays
-    if (!data.project.settings.customEras) data.project.settings.customEras = [];
-    if (!data.project.settings.customStyles) data.project.settings.customStyles = [];
-    if (!data.project.settings.customTimes) data.project.settings.customTimes = [];
-    if (!data.project.settings.customLighting) data.project.settings.customLighting = [];
-    if (!data.project.settings.customLocations) data.project.settings.customLocations = [];
-
-    // Ensure scenes exist for backward compatibility
-    if (!data.project.scenes || data.project.scenes.length === 0) {
-      const defId = crypto.randomUUID();
-      data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
-      data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
-    }
-
-    // Save all components
-    await saveProjectData(projectId, data.project);
-    await saveCharacters(projectId, data.characters || []);
-    await saveOutfits(projectId, data.outfits || []);
-
-    // Update Project List
-    const list = getProjectsList();
-    const filteredList = list.filter(p => p.id !== projectId);
-    saveProjectsList([data.metadata, ...filteredList]);
-
-    console.log(`✅ Import successful: ${data.metadata.name}`);
-    return projectId;
-  } catch (e) {
-    console.error("Import failed", e);
-    throw e;
-  }
-};
-
-// --- Asset Management ---
-// Functions to get/save Characters and Outfits
-
-export const getCharacters = async (projectId: string): Promise<Character[]> => {
-  const key = getStorageKey(projectId, 'characters');
-  const data = await dbGet<Character[]>(key);
-  return data || [];
-};
-
-export const saveCharacters = async (projectId: string, chars: Character[]) => {
-  const key = getStorageKey(projectId, 'characters');
-  await dbSet(key, chars);
-  await updateProjectMetadataCounts(projectId, { characterCount: chars.length });
-};
-
-export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
-  const key = getStorageKey(projectId, 'outfits');
-  const data = await dbGet<Outfit[]>(key);
-  return data || [];
-};
-
-export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
-  const key = getStorageKey(projectId, 'outfits');
-  await dbSet(key, outfits);
-};
-
-// --- Image Library Management ---
-
-export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => {
-  const key = getStorageKey(projectId, 'library');
-  const data = await dbGet<ImageLibraryItem[]>(key);
-  return data || [];
-};
-
-export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
-  const key = getStorageKey(projectId, 'library');
-  await dbSet(key, items);
-};
-
-export const addToImageLibrary = async (projectId: string, item: ImageLibraryItem) => {
-  const current = await getImageLibrary(projectId);
-  // Prepend new item
-  const updated = [item, ...current];
-  await saveImageLibrary(projectId, updated);
-};
-
-// NEW: Batch add helper to prevent race conditions when saving multiple generated images
-export const addBatchToImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
-  const current = await getImageLibrary(projectId);
-  // Prepend new items
-  const updated = [...items, ...current];
-  await saveImageLibrary(projectId, updated);
-};
-
-export const toggleImageFavorite = async (projectId: string, imageId: string) => {
-  const current = await getImageLibrary(projectId);
-  const updated = current.map(img =>
-    img.id === imageId ? { ...img, isFavorite: !img.isFavorite } : img
-  );
-  await saveImageLibrary(projectId, updated);
-};
-
-// --- Main Project Data ---
-// 3. READ: Loads the full project into memory
 export const getProjectData = async (projectId: string): Promise<Project | null> => {
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
-  const scenesKey = getStorageKey(projectId, 'scenes'); // New Key
+  const scenesKey = getStorageKey(projectId, 'scenes');
   const metadataKey = getStorageKey(projectId, 'metadata');
 
-  console.log(`📥 Loading Project Data for: ${projectId}`);
-
   const [settings, shots, scenes, metadata] = await Promise.all([
-    dbGet<WorldSettings>(settingsKey),
-    dbGet<Shot[]>(shotsKey),
-    dbGet<Scene[]>(scenesKey),
-    dbGet<any>(metadataKey)
+    dbGet<WorldSettings>(STORE_NAME, settingsKey),
+    dbGet<Shot[]>(STORE_NAME, shotsKey),
+    dbGet<Scene[]>(STORE_NAME, scenesKey),
+    dbGet<any>(STORE_NAME, metadataKey)
   ]);
 
-  if (!metadata && !settings) {
-    console.warn(`⚠️ Project data for ${projectId} not found in DB.`);
-    return null;
-  }
+  if (!metadata && !settings) return null;
 
-  // Reconstruct project object
   const project: Project = {
     id: projectId,
-    name: metadata?.name || 'Untitled Project',
+    name: metadata?.name || 'Untitled',
     settings: settings || { ...DEFAULT_WORLD_SETTINGS },
     shots: shots || [],
-    scenes: scenes || [], // Bind scenes
+    scenes: scenes || [],
     createdAt: metadata?.createdAt || Date.now(),
     lastModified: metadata?.lastModified || Date.now()
   };
 
-  // --- MIGRATION LOGIC FOR OLD PROJECTS ---
+  // Migration for old projects
   if (!project.scenes || project.scenes.length === 0) {
-    console.log("🛠️ Migrating project to Scene architecture...");
-    const defaultSceneId = crypto.randomUUID();
-    project.scenes = [{
-      id: defaultSceneId,
-      sequence: 1,
-      heading: 'INT. UNTITLED SCENE - DAY',
-      actionNotes: 'Scene created during migration.'
-    }];
-    // Assign orphan shots to default scene
-    project.shots = project.shots.map(s => ({ ...s, sceneId: s.sceneId || defaultSceneId }));
-
-    // Persist migration immediately
-    await saveProjectData(projectId, project);
+     const defId = crypto.randomUUID();
+     project.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
+     project.shots = project.shots.map(s => ({ ...s, sceneId: s.sceneId || defId }));
   }
 
-  // Data migration: Ensure arrays exist for loaded projects
+  // Arrays
   if (!project.settings.customEras) project.settings.customEras = [];
   if (!project.settings.customStyles) project.settings.customStyles = [];
   if (!project.settings.customTimes) project.settings.customTimes = [];
   if (!project.settings.customLighting) project.settings.customLighting = [];
-  if (!project.settings.customLocations) project.settings.customLocations = [];
 
-  console.log(`✅ Loaded Project: ${project.name} (${project.shots.length} shots, ${project.scenes.length} scenes)`);
-  return project;
+  console.log(`💧 Hydrating Project: ${project.name}`);
+  // HYDRATE: Turn References back into Blobs
+  const hydratedProject = await hydrateObject(project);
+  
+  return hydratedProject;
 };
 
-// 4. UPDATE: Saves changes to the project
 export const saveProjectData = async (projectId: string, project: Project) => {
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
-  const scenesKey = getStorageKey(projectId, 'scenes'); // New Key
+  const scenesKey = getStorageKey(projectId, 'scenes');
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   const metadata = {
@@ -428,60 +341,178 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     shotCount: project.shots.length
   };
 
-  // Save to IDB (Async)
+  // DEHYDRATE: Turn Blobs into References
+  const dehydratedProject = await dehydrateObject(project);
+
   await Promise.all([
-    dbSet(settingsKey, project.settings),
-    dbSet(shotsKey, project.shots),
-    dbSet(scenesKey, project.scenes), // Save Scenes
-    dbSet(metadataKey, metadata)
+    dbSet(STORE_NAME, settingsKey, dehydratedProject.settings),
+    dbSet(STORE_NAME, shotsKey, dehydratedProject.shots),
+    dbSet(STORE_NAME, scenesKey, dehydratedProject.scenes),
+    dbSet(STORE_NAME, metadataKey, metadata)
   ]);
 
-  // Update List Metadata
-  await updateProjectMetadataCounts(projectId, {
-    shotCount: project.shots.length,
-    lastModified: metadata.lastModified
-  });
-};
-
-// Helper to update the lightweight list without reloading full object
-const updateProjectMetadataCounts = async (projectId: string, updates: Partial<ProjectMetadata>) => {
   const list = getProjectsList();
   const index = list.findIndex(p => p.id === projectId);
   if (index !== -1) {
-    list[index] = { ...list[index], ...updates, lastModified: Date.now() };
+    list[index] = { ...list[index], shotCount: project.shots.length, lastModified: Date.now() };
     saveProjectsList(list);
   }
 };
 
-// --- OPTIMIZED STORAGE ---
-
-import { debounce } from '../utils/debounce';
-
-/**
- * Debounced version of saveProjectData
- * Delays save by 1 second to prevent excessive writes during rapid edits
- * Use this for auto-save scenarios where user is actively editing
- */
 export const saveProjectDataDebounced = debounce(saveProjectData, 1000);
 
-/**
- * Check storage quota to prevent quota exceeded errors
- * Returns true if there's sufficient storage available (< 90% used)
- */
-export const checkStorageQuota = async (): Promise<{ available: boolean; usage: number; quota: number }> => {
-  if ('storage' in navigator && 'estimate' in navigator.storage) {
-    try {
-      const estimate = await navigator.storage.estimate();
-      const usage = estimate.usage || 0;
-      const quota = estimate.quota || 0;
-      const available = quota > 0 ? (usage / quota) < 0.9 : true;
+// --- ASSETS (Characters/Outfits) ---
 
-      return { available, usage, quota };
-    } catch (error) {
-      console.warn('Storage quota check failed:', error);
-      return { available: true, usage: 0, quota: 0 };
-    }
+export const getCharacters = async (projectId: string): Promise<Character[]> => {
+  const data = await dbGet<Character[]>(STORE_NAME, getStorageKey(projectId, 'characters'));
+  return data ? await hydrateObject(data) : [];
+};
+
+export const saveCharacters = async (projectId: string, chars: Character[]) => {
+  const dehydrated = await dehydrateObject(chars);
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'characters'), dehydrated);
+  
+  // Update count
+  const list = getProjectsList();
+  const index = list.findIndex(p => p.id === projectId);
+  if (index !== -1) {
+      list[index].characterCount = chars.length;
+      saveProjectsList(list);
   }
-  // Browser doesn't support storage estimate API
-  return { available: true, usage: 0, quota: 0 };
+};
+
+export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
+  const data = await dbGet<Outfit[]>(STORE_NAME, getStorageKey(projectId, 'outfits'));
+  return data ? await hydrateObject(data) : [];
+};
+
+export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
+  const dehydrated = await dehydrateObject(outfits);
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'outfits'), dehydrated);
+};
+
+// --- IMAGE LIBRARY ---
+
+export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => {
+  const data = await dbGet<ImageLibraryItem[]>(STORE_NAME, getStorageKey(projectId, 'library'));
+  return data ? await hydrateObject(data) : [];
+};
+
+export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
+  const dehydrated = await dehydrateObject(items);
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'library'), dehydrated);
+};
+
+export const addToImageLibrary = async (projectId: string, item: ImageLibraryItem) => {
+  const current = await getImageLibrary(projectId);
+  const updated = [item, ...current];
+  await saveImageLibrary(projectId, updated);
+};
+
+export const addBatchToImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
+  const current = await getImageLibrary(projectId);
+  const updated = [...items, ...current];
+  await saveImageLibrary(projectId, updated);
+};
+
+export const toggleImageFavorite = async (projectId: string, imageId: string) => {
+  const current = await getImageLibrary(projectId);
+  const updated = current.map(img => img.id === imageId ? { ...img, isFavorite: !img.isFavorite } : img);
+  await saveImageLibrary(projectId, updated);
+};
+
+// --- EXPORT / IMPORT ---
+
+export const exportProjectToJSON = async (projectId: string): Promise<string> => {
+  // For export, we actually want to RE-HYDRATE everything back to Base64
+  // So the JSON file is self-contained (portable)
+  const project = await getProjectData(projectId);
+  const characters = await getCharacters(projectId);
+  const outfits = await getOutfits(projectId);
+
+  if (!project) throw new Error("Project not found");
+
+  // We need to convert Blob URLs back to Base64 for the export file
+  const convertBlobUrlToBase64 = async (blobUrl: string): Promise<string> => {
+      if (!blobUrl || !blobUrl.startsWith('blob:')) return blobUrl;
+      const response = await fetch(blobUrl);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+      });
+  };
+
+  const deepConvertToBase64 = async (obj: any): Promise<any> => {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return Promise.all(obj.map(deepConvertToBase64));
+      
+      const newObj: any = { ...obj };
+      const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url'];
+      const arrayImageFields = ['generationCandidates', 'referencePhotos'];
+
+      for (const key of Object.keys(newObj)) {
+          if (imageFields.includes(key) && typeof newObj[key] === 'string') {
+              newObj[key] = await convertBlobUrlToBase64(newObj[key]);
+          } else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
+              newObj[key] = await Promise.all(newObj[key].map((url: string) => convertBlobUrlToBase64(url)));
+          } else if (typeof newObj[key] === 'object') {
+              newObj[key] = await deepConvertToBase64(newObj[key]);
+          }
+      }
+      return newObj;
+  };
+
+  const portableProject = await deepConvertToBase64(project);
+  const portableCharacters = await deepConvertToBase64(characters);
+  const portableOutfits = await deepConvertToBase64(outfits);
+
+  const exportData: ProjectExport = {
+    version: 2,
+    metadata: {
+      id: project.id,
+      name: project.name,
+      createdAt: project.createdAt,
+      lastModified: project.lastModified,
+      shotCount: project.shots.length,
+      characterCount: characters.length
+    },
+    project: portableProject,
+    characters: portableCharacters,
+    outfits: portableOutfits
+  };
+
+  return JSON.stringify(exportData, null, 2);
+};
+
+export const importProjectFromJSON = async (jsonString: string): Promise<string> => {
+  try {
+    const data: ProjectExport = JSON.parse(jsonString);
+    if (!data.project || !data.metadata) throw new Error("Invalid format");
+
+    // The imported data contains Base64 strings.
+    // saveProjectData will automatically DEHYDRATE them into the Image Store!
+    const projectId = data.project.id;
+
+    // Ensure backwards compat for Scene Architecture
+    if (!data.project.scenes || data.project.scenes.length === 0) {
+        const defId = crypto.randomUUID();
+        data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '' }];
+        data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
+    }
+
+    await saveProjectData(projectId, data.project);
+    await saveCharacters(projectId, data.characters || []);
+    await saveOutfits(projectId, data.outfits || []);
+
+    const list = getProjectsList();
+    const filtered = list.filter(p => p.id !== projectId);
+    saveProjectsList([data.metadata, ...filtered]);
+
+    return projectId;
+  } catch (e) {
+    console.error("Import failed", e);
+    throw e;
+  }
 };
