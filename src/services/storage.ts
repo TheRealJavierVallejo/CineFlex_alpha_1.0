@@ -1,11 +1,13 @@
 /*
  * 💾 SERVICE: STORAGE (The Memory Bank)
- * Refactored for Detached Blob Storage (High Performance)
+ * Refactored for Detached Blob Storage (High Performance) & Zod Validation
  */
 
 import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
+import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema } from './schemas';
+import { z } from 'zod';
 
 const KEYS = {
   ACTIVE_PROJECT_ID: 'cinesketch_active_project_id',
@@ -156,8 +158,6 @@ const dehydrateObject = async (obj: any): Promise<any> => {
     for (const key of Object.keys(newObj)) {
         if (imageFields.includes(key) && typeof newObj[key] === 'string') {
             // Persist single image
-            // We try to reuse ID if the string is already a Ref (unlikely here but safe)
-            // Or use a deterministic ID if possible? No, random is safer for now.
             newObj[key] = await persistImage(newObj[key]);
         } 
         else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
@@ -261,10 +261,6 @@ export const createNewProject = async (name: string): Promise<string> => {
 };
 
 export const deleteProject = async (projectId: string) => {
-  // We should ideally clean up images too, but that requires tracking IDs. 
-  // For now, we accept orphaned blobs to prevent logic complexity errors.
-  // A "GC" (Garbage Collection) function can be added later.
-  
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'settings'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'shots'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'scenes'));
@@ -297,34 +293,42 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
 
   if (!metadata && !settings) return null;
 
-  const project: Project = {
+  // 1. Construct Raw Object
+  const rawProject = {
     id: projectId,
     name: metadata?.name || 'Untitled',
     settings: settings || { ...DEFAULT_WORLD_SETTINGS },
     shots: shots || [],
     scenes: scenes || [],
     createdAt: metadata?.createdAt || Date.now(),
-    lastModified: metadata?.lastModified || Date.now()
+    lastModified: metadata?.lastModified || Date.now(),
+    scriptElements: [] // Default for now, usually empty on simple load unless hydrated elsewhere
   };
 
-  // Migration for old projects
-  if (!project.scenes || project.scenes.length === 0) {
+  // 2. VALIDATE & HEAL (Zod)
+  // This step fills in default values for any missing fields from old schema versions
+  const parseResult = ProjectSchema.safeParse(rawProject);
+  
+  if (!parseResult.success) {
+      console.warn(`Project ${projectId} schema validation failed. Auto-healing enabled.`, parseResult.error);
+      // We continue with the raw project if Zod completely fails, but safeParse + defaults usually fixes it.
+      // However, creating a new "Healed" object from the parsed output is better if successful.
+  }
+  
+  const healedProject = parseResult.success ? parseResult.data : rawProject;
+
+  // 3. LEGACY MIGRATION (Manual)
+  if (!healedProject.scenes || healedProject.scenes.length === 0) {
      const defId = crypto.randomUUID();
-     project.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
-     project.shots = project.shots.map(s => ({ ...s, sceneId: s.sceneId || defId }));
+     healedProject.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
+     healedProject.shots = healedProject.shots.map(s => ({ ...s, sceneId: s.sceneId || defId }));
   }
 
-  // Arrays
-  if (!project.settings.customEras) project.settings.customEras = [];
-  if (!project.settings.customStyles) project.settings.customStyles = [];
-  if (!project.settings.customTimes) project.settings.customTimes = [];
-  if (!project.settings.customLighting) project.settings.customLighting = [];
-
-  console.log(`💧 Hydrating Project: ${project.name}`);
-  // HYDRATE: Turn References back into Blobs
-  const hydratedProject = await hydrateObject(project);
+  // 4. HYDRATE (Blobs)
+  console.log(`💧 Hydrating Project: ${healedProject.name}`);
+  const hydratedProject = await hydrateObject(healedProject);
   
-  return hydratedProject;
+  return hydratedProject as Project;
 };
 
 export const saveProjectData = async (projectId: string, project: Project) => {
@@ -365,7 +369,13 @@ export const saveProjectDataDebounced = debounce(saveProjectData, 1000);
 
 export const getCharacters = async (projectId: string): Promise<Character[]> => {
   const data = await dbGet<Character[]>(STORE_NAME, getStorageKey(projectId, 'characters'));
-  return data ? await hydrateObject(data) : [];
+  const raw = data || [];
+  
+  // Validate and Heal
+  const parsed = z.array(CharacterSchema).safeParse(raw);
+  const healed = parsed.success ? parsed.data : raw;
+
+  return await hydrateObject(healed);
 };
 
 export const saveCharacters = async (projectId: string, chars: Character[]) => {
@@ -383,7 +393,10 @@ export const saveCharacters = async (projectId: string, chars: Character[]) => {
 
 export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
   const data = await dbGet<Outfit[]>(STORE_NAME, getStorageKey(projectId, 'outfits'));
-  return data ? await hydrateObject(data) : [];
+  const raw = data || [];
+  const parsed = z.array(OutfitSchema).safeParse(raw);
+  const healed = parsed.success ? parsed.data : raw;
+  return await hydrateObject(healed);
 };
 
 export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
@@ -395,7 +408,10 @@ export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
 
 export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => {
   const data = await dbGet<ImageLibraryItem[]>(STORE_NAME, getStorageKey(projectId, 'library'));
-  return data ? await hydrateObject(data) : [];
+  const raw = data || [];
+  const parsed = z.array(ImageLibraryItemSchema).safeParse(raw);
+  const healed = parsed.success ? parsed.data : raw;
+  return await hydrateObject(healed);
 };
 
 export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
@@ -468,7 +484,8 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const portableCharacters = await deepConvertToBase64(characters);
   const portableOutfits = await deepConvertToBase64(outfits);
 
-  const exportData: ProjectExport = {
+  // Validate on Export to ensure we aren't creating broken files
+  const exportData = {
     version: 2,
     metadata: {
       id: project.id,
@@ -483,28 +500,42 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
     outfits: portableOutfits
   };
 
+  // We could strictly validate export here, but sometimes we want to allow 
+  // users to export broken projects to fix them elsewhere.
   return JSON.stringify(exportData, null, 2);
 };
 
 export const importProjectFromJSON = async (jsonString: string): Promise<string> => {
   try {
-    const data: ProjectExport = JSON.parse(jsonString);
-    if (!data.project || !data.metadata) throw new Error("Invalid format");
+    const rawData = JSON.parse(jsonString);
+    
+    // 1. VALIDATE IMPORTED DATA
+    // This is the most critical step. We check if the uploaded JSON matches our Schema.
+    // If fields are missing, Zod fills them with defaults.
+    const parseResult = ProjectExportSchema.safeParse(rawData);
+    
+    if (!parseResult.success) {
+       console.error("Import Validation Failed:", parseResult.error);
+       // We throw specifically so the UI knows it's a format issue
+       throw new Error("Invalid Project File. Data is corrupted or outdated.");
+    }
+    
+    const data = parseResult.data;
 
     // The imported data contains Base64 strings.
     // saveProjectData will automatically DEHYDRATE them into the Image Store!
     const projectId = data.project.id;
 
-    // Ensure backwards compat for Scene Architecture
+    // Ensure backwards compat for Scene Architecture (extra safety check)
     if (!data.project.scenes || data.project.scenes.length === 0) {
         const defId = crypto.randomUUID();
         data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '' }];
         data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
     }
 
-    await saveProjectData(projectId, data.project);
-    await saveCharacters(projectId, data.characters || []);
-    await saveOutfits(projectId, data.outfits || []);
+    await saveProjectData(projectId, data.project as Project);
+    await saveCharacters(projectId, data.characters as Character[] || []);
+    await saveOutfits(projectId, data.outfits as Outfit[] || []);
 
     const list = getProjectsList();
     const filtered = list.filter(p => p.id !== projectId);
