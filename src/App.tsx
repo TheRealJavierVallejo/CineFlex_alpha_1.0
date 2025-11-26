@@ -20,7 +20,7 @@ import { ToastContainer } from './components/features/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import KeyboardShortcutsPanel from './components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
-import { Plus, ChevronRight, Loader2, Command, Box } from 'lucide-react';
+import { Plus, ChevronRight, Folder, Loader2, Save, Command, Box } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
@@ -143,11 +143,19 @@ const App: React.FC = () => {
     const shotToDelete = project.shots.find(s => s.id === shotId);
     if (!shotToDelete) return;
 
+    // Filter out the shot
     const updatedShots = project.shots.filter(s => s.id !== shotId);
     
+    // Cleanup script element associations
+    const updatedElements = project.scriptElements?.map(el => ({
+      ...el,
+      associatedShotIds: el.associatedShotIds?.filter(id => id !== shotId)
+    }));
+
     const updatedProject = {
       ...project,
       shots: updatedShots,
+      scriptElements: updatedElements || project.scriptElements
     };
 
     handleUpdateProject(updatedProject);
@@ -159,6 +167,7 @@ const App: React.FC = () => {
         const restoredProject = {
           ...updatedProject,
           shots: [...updatedShots, shotToDelete].sort((a, b) => a.sequence - b.sequence),
+          scriptElements: project.scriptElements
         };
         handleUpdateProject(restoredProject);
         showToast("Shot restored", 'success');

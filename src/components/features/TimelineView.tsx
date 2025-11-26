@@ -3,13 +3,14 @@
  * Commercial Quality Update: Teal Theme & Studio Classes
  */
 
-import React, { useState } from 'react';
-import { Project, Shot, Scene, ShowToastFn, ImageLibraryItem } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem } from '../../types';
+import { parseScript } from '../../services/scriptParser';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
+import { ScriptPicker } from './ScriptPicker';
 import { ImageSelectorModal } from './ImageSelectorModal';
-import { constructPrompt } from '../../services/gemini';
 
 interface TimelineViewProps {
   project: Project;
@@ -19,20 +20,72 @@ interface TimelineViewProps {
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
+  const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
+  const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
-  
-  // Unified Modal State
+
+  // Unified Modal State for Adding OR Updating Shots
   const [imageModalState, setImageModalState] = useState<{
     isOpen: boolean;
     sceneId: string | null;
-    updateShotId: string | null;
+    updateShotId: string | null; // If present, we are updating this shot's visual
   }>({
     isOpen: false,
     sceneId: null,
     updateShotId: null
   });
 
+  // State for the "Lego Picker"
+  const [pickerState, setPickerState] = useState<{
+    isOpen: boolean;
+    shotId: string | null;
+    type: 'action' | 'dialogue' | 'script' | null;
+    sceneId: string | null;
+  }>({ isOpen: false, shotId: null, type: null, sceneId: null });
+
+  useEffect(() => {
+    if (project.scriptElements) {
+      setScriptElements(project.scriptElements);
+    }
+  }, [project]);
+
   // --- HANDLERS ---
+
+  const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingScript(true);
+
+    try {
+      const parsed = await parseScript(file);
+
+      const updatedProject = {
+        ...project,
+        scenes: parsed.scenes,
+        scriptElements: parsed.elements,
+        scriptFile: {
+          name: file.name,
+          uploadedAt: Date.now(),
+          format: file.name.endsWith('.fountain') ? 'fountain' as const : 'txt' as const
+        }
+      };
+
+      onUpdateProject(updatedProject);
+      setScriptElements(parsed.elements);
+
+      showToast(
+        `Script imported: ${parsed.scenes.length} scenes, ${parsed.elements.length} elements`,
+        'success'
+      );
+
+    } catch (error: any) {
+      console.error(error);
+      showToast('Failed to parse script: ' + (error.message || 'Unknown error'), 'error');
+    } finally {
+      setIsUploadingScript(false);
+    }
+  };
 
   const handleAddScene = () => {
     const newScene: Scene = { id: crypto.randomUUID(), sequence: project.scenes.length + 1, heading: 'INT. NEW SCENE - DAY', actionNotes: '' };
@@ -69,37 +122,45 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     onUpdateProject({ ...project, scenes: newScenes });
   };
 
+  // 1. TRIGGER MODAL (ADD NEW)
   const handleTriggerAddShot = (sceneId: string) => {
     setImageModalState({ isOpen: true, sceneId, updateShotId: null });
   };
 
+  // 2. TRIGGER MODAL (UPDATE EXISTING)
   const handleTriggerAddVisual = (shotId: string) => {
     const shot = project.shots.find(s => s.id === shotId);
     if (!shot) return;
     setImageModalState({ isOpen: true, sceneId: shot.sceneId || null, updateShotId: shotId });
   };
 
+  // 3. CONFIRM SELECTION (Callback from Modal)
   const handleConfirmImageSelection = (selectedImage: ImageLibraryItem | null) => {
     const { sceneId, updateShotId } = imageModalState;
     
+    // CASE A: UPDATE EXISTING SHOT
     if (updateShotId) {
       if (selectedImage) {
+        // Apply image to existing shot
         const updatedShots = project.shots.map(s => s.id === updateShotId ? {
            ...s,
            generatedImage: selectedImage.url,
            generationCandidates: [selectedImage.url],
-           description: selectedImage.prompt || s.description,
+           description: selectedImage.prompt || s.description, // Update prompt if available
            model: selectedImage.model || s.model,
            aspectRatio: selectedImage.aspectRatio || s.aspectRatio
         } : s);
         onUpdateProject({ ...project, shots: updatedShots });
         showToast("Shot visual updated", 'success');
       } else {
+        // User chose "Blank" for existing shot -> Open Editor
         const shot = project.shots.find(s => s.id === updateShotId);
         if (shot) onEditShot(shot);
       }
     } 
+    // CASE B: ADD NEW SHOT
     else if (sceneId) {
+      // Calculate next sequence
       const sceneShots = project.shots.filter(s => s.sceneId === sceneId);
       const maxSeq = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.sequence)) : 0;
       
@@ -128,6 +189,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       }
     }
 
+    // Reset Modal
     setImageModalState({ isOpen: false, sceneId: null, updateShotId: null });
   };
 
@@ -141,16 +203,82 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     if (!shotToDelete) return;
 
     const updatedShots = project.shots.filter(s => s.id !== shotId);
+    const updatedElements = scriptElements.map(el => ({
+      ...el,
+      associatedShotIds: el.associatedShotIds?.filter(id => id !== shotId)
+    }));
 
-    onUpdateProject({ ...project, shots: updatedShots });
+    onUpdateProject({ ...project, shots: updatedShots, scriptElements: updatedElements });
+    setScriptElements(updatedElements);
 
     showToast("Shot deleted", 'info', {
       label: "Undo",
       onClick: () => {
-        onUpdateProject({ ...project, shots: [...updatedShots, shotToDelete] });
+        onUpdateProject({ ...project, shots: [...updatedShots, shotToDelete], scriptElements: project.scriptElements });
+        setScriptElements(project.scriptElements || []);
         showToast("Shot restored", 'success');
       }
     });
+  };
+
+  // --- PICKER LOGIC ---
+
+  const handleOpenPicker = (shotId: string, type: 'action' | 'dialogue' | 'script') => {
+    const shot = project.shots.find(s => s.id === shotId);
+    if (!shot) return;
+    const sceneId = shot.sceneId || project.scenes[0]?.id;
+    if (!sceneId) return;
+    setPickerState({ isOpen: true, shotId, type, sceneId });
+  };
+
+  const handleClosePicker = () => {
+    setPickerState({ isOpen: false, shotId: null, type: null, sceneId: null });
+  };
+
+  const handleSelectScriptElement = (element: ScriptElement) => {
+    if (!pickerState.shotId) return;
+
+    const updatedShots = project.shots.map(s => {
+      if (s.id === pickerState.shotId) {
+        const currentIds = s.linkedElementIds || [];
+        if (currentIds.includes(element.id)) return s;
+
+        return {
+          ...s,
+          linkedElementIds: [...currentIds, element.id],
+          description: s.description || element.content
+        };
+      }
+      return s;
+    });
+
+    onUpdateProject({ ...project, shots: updatedShots });
+  };
+
+  const handleUnlinkElement = (shotId: string, elementId: string) => {
+    const updatedShots = project.shots.map(s =>
+      s.id === shotId
+        ? { ...s, linkedElementIds: s.linkedElementIds?.filter(id => id !== elementId) || [] }
+        : s
+    );
+    onUpdateProject({ ...project, shots: updatedShots });
+  };
+
+  const handleCreateAndLinkShot = async (sceneId: string) => {
+    const newShot: Shot = {
+      id: crypto.randomUUID(),
+      sceneId: sceneId,
+      sequence: project.shots.length + 1,
+      description: '',
+      notes: '',
+      characterIds: [],
+      shotType: 'Wide Shot',
+      aspectRatio: project.settings.aspectRatio,
+      dialogue: ''
+    };
+
+    onUpdateProject({ ...project, shots: [...project.shots, newShot] });
+    setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
   };
 
   return (
@@ -158,12 +286,15 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       <div className="max-w-[1600px] mx-auto pb-20">
 
         <TimelineHeader
+          isUploadingScript={isUploadingScript}
+          onImportScript={handleScriptUpload}
           onAddScene={handleAddScene}
         />
 
         <SceneList
           scenes={project.scenes}
           shots={project.shots}
+          scriptElements={scriptElements}
           projectSettings={project.settings}
           onUpdateScene={handleUpdateScene}
           onDeleteScene={handleDeleteScene}
@@ -171,12 +302,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onAddShot={handleTriggerAddShot}
           onUpdateShot={handleUpdateShot}
           onDeleteShot={handleDeleteShot}
+          onLinkElement={handleOpenPicker}
+          onUnlinkElement={handleUnlinkElement}
           onEditShot={onEditShot}
-          onAddVisual={handleTriggerAddVisual}
+          onCreateAndLinkShot={handleCreateAndLinkShot}
+          onAddVisual={handleTriggerAddVisual} // NEW PROP
         />
 
       </div>
 
+      {/* SHARED IMAGE SELECTOR MODAL */}
       <ImageSelectorModal 
         isOpen={imageModalState.isOpen}
         onClose={() => setImageModalState({ isOpen: false, sceneId: null, updateShotId: null })}
@@ -184,6 +319,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         projectId={project.id}
       />
 
+      <ScriptPicker
+        isOpen={pickerState.isOpen}
+        onClose={handleClosePicker}
+        sceneId={pickerState.sceneId}
+        scriptElements={scriptElements}
+        usedElementIds={new Set(project.shots.flatMap(s => s.linkedElementIds || []))}
+        onSelect={handleSelectScriptElement}
+      />
+
+      {/* Delete Scene Confirmation Modal */}
       {confirmDeleteScene && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in" onClick={() => setConfirmDeleteScene(null)}>
           <div className="bg-surface border border-border rounded-lg p-6 w-96 shadow-xl" onClick={e => e.stopPropagation()}>

@@ -1,11 +1,12 @@
+
 /*
- * compass COMPONENT: SIDEBAR (Command Rail)
+ * 🧭 COMPONENT: SIDEBAR (Command Rail)
  * Premium Desktop UI
  */
 
 import React, { useState } from 'react';
 import { ViewState, Project } from '../../types';
-import { LayoutGrid, Clapperboard, Users, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutGrid, Clapperboard, Users, Settings, ChevronLeft, ChevronRight, Command, Folder } from 'lucide-react';
 
 interface SidebarProps {
   view: ViewState;

@@ -1,10 +1,11 @@
 import React from 'react';
-import { Scene, Shot, Project } from '../../types';
+import { Scene, Shot, ScriptElement, Project } from '../../types';
 import { SceneItem } from './SceneItem';
 
 interface SceneListProps {
     scenes: Scene[];
     shots: Shot[];
+    scriptElements: ScriptElement[];
     projectSettings: Project['settings'];
     onUpdateScene: (id: string, updates: Partial<Scene>) => void;
     onDeleteScene: (id: string) => void;
@@ -12,14 +13,17 @@ interface SceneListProps {
     onAddShot: (sceneId: string) => void;
     onUpdateShot: (id: string, updates: Partial<Shot>) => void;
     onDeleteShot: (id: string) => void;
+    onLinkElement: (shotId: string, type: 'action' | 'dialogue' | 'script') => void;
+    onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
-    onAddVisual: (shotId: string) => void;
-    onAutoDraft?: (sceneId: string) => void;
+    onCreateAndLinkShot: (sceneId: string) => void;
+    onAddVisual: (shotId: string) => void; // NEW
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
     scenes,
     shots,
+    scriptElements,
     projectSettings,
     onUpdateScene,
     onDeleteScene,
@@ -27,9 +31,11 @@ export const SceneList: React.FC<SceneListProps> = ({
     onAddShot,
     onUpdateShot,
     onDeleteShot,
+    onLinkElement,
+    onUnlinkElement,
     onEditShot,
-    onAddVisual,
-    onAutoDraft
+    onCreateAndLinkShot,
+    onAddVisual
 }) => {
     return (
         <div className="space-y-8 px-8">
@@ -45,6 +51,7 @@ export const SceneList: React.FC<SceneListProps> = ({
                         index={index}
                         totalScenes={scenes.length}
                         shots={sceneShots}
+                        scriptElements={scriptElements}
                         projectSettings={projectSettings}
                         onUpdateScene={onUpdateScene}
                         onDeleteScene={onDeleteScene}
@@ -52,9 +59,11 @@ export const SceneList: React.FC<SceneListProps> = ({
                         onAddShot={onAddShot}
                         onUpdateShot={onUpdateShot}
                         onDeleteShot={onDeleteShot}
+                        onLinkElement={onLinkElement}
+                        onUnlinkElement={onUnlinkElement}
                         onEditShot={onEditShot}
+                        onCreateAndLinkShot={onCreateAndLinkShot}
                         onAddVisual={onAddVisual}
-                        onAutoDraft={onAutoDraft}
                     />
                 );
             })}

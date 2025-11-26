@@ -1,3 +1,4 @@
+
 /*
  * 📘 PLAIN ENGLISH GUIDE: TYPES (The Blueprints)
  * 
@@ -7,12 +8,13 @@
 
 export enum ViewState {
   DASHBOARD = 'DASHBOARD', // The Grid View of images
-  TIMELINE = 'TIMELINE',   // The Linear View
+  TIMELINE = 'TIMELINE',   // The Script View
   ASSETS = 'ASSETS',       // The Cast & Wardrobe View
+  EDITOR = 'EDITOR',       // The Image Generator Popup
   SETTINGS = 'SETTINGS'    // The Project Configuration View
 }
 
-// 🔔 TOAST
+// 🔔 TOAST: Updated for Stacking and Undo Actions
 export interface ToastNotification {
   id: number;
   message: string;
@@ -29,51 +31,49 @@ export type ShowToastFn = (
   action?: { label: string; onClick: () => void }
 ) => void;
 
-// ------------------------------------------------------------------
-// 🎨 TWIN-ENGINE CORE: VISUAL ENGINE (Right Brain)
-// ------------------------------------------------------------------
-
-// 👤 CHARACTER
+// 👤 CHARACTER: Defines a person in your movie
 export interface Character {
-  id: string;
-  name: string;
-  description: string;
-  referencePhotos?: string[];
+  id: string;              // A unique ID (like a barcode) so the computer doesn't get confused
+  name: string;            // The character's name
+  description: string;     // Who they are
+  imageUrl?: string;       // (Old field, mostly unused now)
+  referencePhotos?: string[]; // A list of photos you uploaded for this person
 }
 
-// 👕 OUTFIT
+// 👕 OUTFIT: Defines clothes for a character
 export interface Outfit {
   id: string;
-  characterId: string;
-  name: string;
-  description: string;
-  referencePhotos?: string[];
+  characterId: string;     // Links this outfit to a specific Character ID
+  name: string;            // e.g., "Space Suit"
+  description: string;     // e.g., "Orange jumpsuit with NASA patches"
+  referencePhotos?: string[]; // Photos of what the clothes look like
 }
 
-// 🖼️ IMAGE LIBRARY
+// 🖼️ IMAGE LIBRARY: A collection of all generated images for the project
 export interface ImageLibraryItem {
   id: string;
   projectId: string;
-  url: string;
+  url: string; // Base64 or URL
   createdAt: number;
   shotId?: string;
   prompt?: string;
   model?: string;
   aspectRatio?: string;
-  isFavorite?: boolean;
+  isFavorite?: boolean; // Whether this image has been marked as a favorite
 }
 
-// 🌍 WORLD SETTINGS
+// 🌍 WORLD SETTINGS: The general "Vibe" of the movie
 export interface WorldSettings {
-  era: string;
-  location: string;
-  timeOfDay: string;
-  lighting: string;
-  cinematicStyle: string;
-  aspectRatio: string;
-  variationCount?: number;
-  imageResolution?: string;
+  era: string;             // e.g., "1980s"
+  location: string;        // (Deprecated)
+  timeOfDay: string;       // (Deprecated)
+  lighting: string;        // e.g., "Neon"
+  cinematicStyle: string;  // e.g., "Noir"
+  aspectRatio: string;     // Screen shape (16:9, 4:3)
+  variationCount?: number; // How many images to generate at once (1, 2, or 4)
+  imageResolution?: string; // Quality (2K, 4K)
 
+  // These lists store the "Custom" options you typed in
   customEras?: string[];
   customStyles?: string[];
   customTimes?: string[];
@@ -81,74 +81,87 @@ export interface WorldSettings {
   customLocations?: string[];
 }
 
-// 🎬 SCENE (The Visual Container)
-export interface Scene {
+// 📝 SCRIPT ELEMENT: A single line from a screenplay
+export interface ScriptElement {
   id: string;
-  sequence: number;
-  heading: string;
-  actionNotes: string;
+  type: 'scene_heading' | 'action' | 'dialogue' | 'character' | 'parenthetical' | 'transition';
+  content: string;
+  sceneId?: string;        // The scene this line belongs to
+  sequence: number;        // Order in the script
+  character?: string;      // Name of the character speaking (if dialogue)
+  associatedShotIds?: string[]; // Shots generated from this specific line
 }
 
-// 📸 SHOT (The Visual Unit)
+// 🎬 SCENE: A group of shots in one location
+export interface Scene {
+  id: string;
+  sequence: number;        // Order in the movie (1, 2, 3...)
+  heading: string;         // e.g., "INT. COFFEE SHOP - DAY"
+  actionNotes: string;     // General description of what happens
+  scriptElements?: ScriptElement[]; // The raw script lines for this scene
+}
+
+// 📸 SHOT: A single camera angle or image
 export interface Shot {
   id: string;
-  sceneId?: string;
-  sequence: number;
-  
-  // Visuals
-  sketchImage?: string;
-  generatedImage?: string;
-  generationCandidates?: string[];
-  generationInProgress?: boolean;
-  
-  // Content
-  description: string;
-  dialogue?: string;
-  notes: string;
-  
-  // Metadata
-  characterIds: string[];
-  shotType: string;
+  sceneId?: string;        // Which scene this belongs to
+  sequence: number;        // Order number
+  sketchImage?: string;    // The rough sketch you uploaded
+  generatedImage?: string; // The final AI image
+  generationCandidates?: string[]; // History of images (if you made 4, they live here)
+  generationInProgress?: boolean; // Is the AI thinking right now?
+  description: string;     // What the AI should draw
+  dialogue?: string;       // What characters say
+  notes: string;           // Technical notes for the camera crew
+  characterIds: string[];  // List of people in this shot
+  shotType: string;        // e.g., "Close-Up"
   aspectRatio?: string;
-  model?: string;
+  model?: string;          // Which AI brain used (Gemini vs Imagen)
   imageSize?: string;
+  linkedElementIds?: string[]; // IDs of the script elements this shot visualizes
+
 
   // Creative Overrides
-  timeOfDay?: string;
-  negativePrompt?: string;
-  styleStrength?: number;
+  timeOfDay?: string;      // Override global time setting
+  negativePrompt?: string; // What NOT to include
+  styleStrength?: number;  // 0-100, how much global style applies
 
-  // Control Net stuff
+  // Control Net stuff (Advanced features for matching shapes)
   referenceImage?: string;
   controlType?: 'depth' | 'canny';
   referenceStrength?: number;
 }
 
-// 📂 PROJECT METADATA
+// 📂 PROJECT METADATA: Basic info shown on the "Welcome Screen" cards
 export interface ProjectMetadata {
   id: string;
   name: string;
-  createdAt: number;
-  lastModified: number;
+  createdAt: number;       // Date created
+  lastModified: number;    // Date last edited
   shotCount: number;
   characterCount: number;
 }
 
-// 📦 PROJECT (The Master Container)
+// 📦 PROJECT: The big container for EVERYTHING
 export interface Project {
   id: string;
   name: string;
-  
-  // Visuals
-  settings: WorldSettings;
-  scenes: Scene[];
-  shots: Shot[];
-  
+  settings: WorldSettings; // The era, style, etc.
+  scenes: Scene[];         // List of all scenes
+  shots: Shot[];           // List of all shots
   createdAt: number;
   lastModified: number;
+
+  // Screenplay Data
+  scriptFile?: {
+    name: string;
+    uploadedAt: number;
+    format: 'fountain' | 'fdx' | 'pdf' | 'txt'
+  };
+  scriptElements?: ScriptElement[]; // The full list of script lines
 }
 
-// 📤 EXPORT
+// 📤 EXPORT: The format used when you save a file to your computer
 export interface ProjectExport {
   version: number;
   metadata: ProjectMetadata;
