@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Character, Outfit, ShowToastFn, ImageLibraryItem, Shot } from '../../types';
 import { getCharacters, saveCharacters, getOutfits, saveOutfits, getImageLibrary } from '../../services/storage';
 import { compressImage } from '../../services/image';
-import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Grid, Layout, Edit2, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Grid, Layout, Edit2, CheckCircle, FolderPlus } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
@@ -145,23 +145,53 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
    };
 
    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !uploadTarget) return;
+      const files = e.target.files;
+      if (!files || files.length === 0 || !uploadTarget) return;
+      
       setIsUploading(true);
+      showToast(`Processing ${files.length} photos...`, 'info');
+
       try {
-         const compressedBase64 = await compressImage(file);
+         const newPhotos: string[] = [];
+         
+         // Process files sequentially to avoid freezing UI
+         for (let i = 0; i < files.length; i++) {
+             try {
+                const compressed = await compressImage(files[i]);
+                newPhotos.push(compressed);
+             } catch (err) {
+                 console.error("Failed to compress image", files[i].name, err);
+             }
+         }
+
+         if (newPhotos.length === 0) throw new Error("No valid images processed");
+
          if (uploadTarget.type === 'character') {
-            const updated = characters.map(c => c.id === uploadTarget.id ? { ...c, referencePhotos: [...(c.referencePhotos || []), compressedBase64] } : c);
+            const updated = characters.map(c => 
+                c.id === uploadTarget.id 
+                ? { ...c, referencePhotos: [...(c.referencePhotos || []), ...newPhotos] } 
+                : c
+            );
             setCharacters(updated);
             await saveCharacters(projectId, updated);
          } else {
-            const updated = outfits.map(o => o.id === uploadTarget.id ? { ...o, referencePhotos: [...(o.referencePhotos || []), compressedBase64] } : o);
+            const updated = outfits.map(o => 
+                o.id === uploadTarget.id 
+                ? { ...o, referencePhotos: [...(o.referencePhotos || []), ...newPhotos] } 
+                : o
+            );
             setOutfits(updated);
             await saveOutfits(projectId, updated);
          }
-         showToast("Photo uploaded", 'success');
-      } catch (e) { showToast("Upload failed", 'error'); }
-      finally { setIsUploading(false); setUploadTarget(null); if (fileInputRef.current) fileInputRef.current.value = ''; }
+         showToast(`${newPhotos.length} photo(s) uploaded`, 'success');
+      } catch (e) { 
+          showToast("Upload failed", 'error'); 
+          console.error(e);
+      } finally { 
+          setIsUploading(false); 
+          setUploadTarget(null); 
+          if (fileInputRef.current) fileInputRef.current.value = ''; 
+      }
    };
 
    const handleDeletePhoto = async (type: 'character' | 'outfit', id: string, idx: number) => {
@@ -179,7 +209,8 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
 
    return (
       <div className="flex flex-col h-full bg-background overflow-hidden">
-         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+         {/* Updated input with 'multiple' attribute */}
+         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
 
          {/* Edit Modal */}
          {editingItem && (
@@ -445,6 +476,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                                     <button
                                        onClick={(e) => { e.stopPropagation(); triggerImageUpload('character', char.id); }}
                                        className="w-10 h-10 border border-dashed border-border rounded-md flex items-center justify-center text-text-tertiary hover:text-primary hover:border-primary shrink-0 transition-colors"
+                                       title="Upload photos (multiple allowed)"
                                     >
                                        {isUploading && uploadTarget?.id === char.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                                     </button>
@@ -528,7 +560,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                                        </div>
                                     </div>
                                     <div className="flex gap-2 mt-2 pt-2 border-t border-border">
-                                       <button onClick={() => triggerImageUpload('outfit', outfit.id)} className="w-12 h-12 border border-dashed border-border rounded-lg flex items-center justify-center hover:bg-surface-secondary transition-colors">
+                                       <button onClick={() => triggerImageUpload('outfit', outfit.id)} className="w-12 h-12 border border-dashed border-border rounded-lg flex items-center justify-center hover:bg-surface-secondary transition-colors" title="Upload photos (multiple allowed)">
                                           {isUploading && uploadTarget?.id === outfit.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 text-text-tertiary" />}
                                        </button>
                                        {outfit.referencePhotos?.map((p, i) => (
