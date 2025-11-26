@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUp, ArrowDown, Trash2, Plus, Link, Link2Off, AlertCircle, FileText, Wand2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Trash2, Plus, Link, Link2Off, AlertCircle, FileText } from 'lucide-react';
 import { Scene, Shot, Project, SyncStatus } from '../../types';
 import Button from '../ui/Button';
 import { ShotRow } from './ShotRow';
@@ -146,33 +146,11 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                         </div>
                     </div>
                 ) : (
-                    // Empty Scene - Show default shot box OR Auto-Draft
+                    // Empty Scene - Standard UI
                     <div className="p-8 flex flex-col items-center justify-center gap-4 border-t border-border/10">
-                        {onAutoDraft && scene.syncStatus === 'synced' && (
-                             <div className="mb-4 text-center animate-in fade-in slide-in-from-bottom-2">
-                                <p className="text-sm text-text-primary mb-3">Script content available.</p>
-                                <Button
-                                    variant="primary"
-                                    icon={<Wand2 className="w-4 h-4" />}
-                                    onClick={() => onAutoDraft(scene.id)}
-                                    className="shadow-lg shadow-primary/20"
-                                >
-                                    Auto-Draft Shots from Script
-                                </Button>
-                                <div className="text-[10px] text-text-tertiary mt-2">
-                                    Generates separate shots for Action and Dialogue blocks.
-                                </div>
-                             </div>
-                        )}
-                        
-                        {!onAutoDraft || scene.syncStatus !== 'synced' ? (
-                             <p className="text-sm text-text-tertiary">No shots in this scene yet.</p>
-                        ) : (
-                            <div className="w-full border-t border-border/20 my-2" />
-                        )}
-
+                        <p className="text-sm text-text-tertiary">No shots in this scene yet.</p>
                         <Button
-                            variant={onAutoDraft && scene.syncStatus === 'synced' ? "secondary" : "primary"}
+                            variant="primary"
                             icon={<Plus className="w-4 h-4" />}
                             onClick={() => onAddShot(scene.id)}
                         >

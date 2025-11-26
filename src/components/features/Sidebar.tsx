@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { ViewState, Project } from '../../types';
-import { LayoutGrid, Clapperboard, Users, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutGrid, Clapperboard, Users, Settings, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 interface SidebarProps {
   view: ViewState;
@@ -51,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ view, setView, project }) => {
       {/* Activity Bar Top */}
       <div className="flex flex-col gap-1 p-2">
         <NavItem target={ViewState.DASHBOARD} icon={LayoutGrid} label="Dashboard" />
+        <NavItem target={ViewState.SCRIPT} icon={FileText} label="Script" />
         <NavItem target={ViewState.TIMELINE} icon={Clapperboard} label="Timeline" />
         <NavItem target={ViewState.ASSETS} icon={Users} label="Assets" />
       </div>

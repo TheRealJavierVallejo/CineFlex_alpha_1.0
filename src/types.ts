@@ -9,6 +9,7 @@ export enum ViewState {
   DASHBOARD = 'DASHBOARD', // The Grid View of images
   TIMELINE = 'TIMELINE',   // The Linear View
   ASSETS = 'ASSETS',       // The Cast & Wardrobe View
+  SCRIPT = 'SCRIPT',       // The Screenplay Editor View
   SETTINGS = 'SETTINGS'    // The Project Configuration View
 }
 

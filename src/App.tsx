@@ -12,6 +12,7 @@ import {
   TimelineView,
   ProjectLibrary,
   ProjectSettings,
+  ScriptEditor,
   LazyWrapper
 } from './components/features/LazyComponents';
 import { Sidebar } from './components/features/Sidebar';
@@ -223,6 +224,15 @@ const App: React.FC = () => {
                 showToast={showToast} 
               />
             </div>
+          )}
+          {view === ViewState.SCRIPT && (
+            <LazyWrapper>
+               <ScriptEditor 
+                  project={project}
+                  onUpdateProject={handleUpdateProject}
+                  showToast={showToast}
+               />
+            </LazyWrapper>
           )}
           {view === ViewState.TIMELINE && (
             <LazyWrapper>
