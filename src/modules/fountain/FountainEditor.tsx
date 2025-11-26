@@ -12,6 +12,13 @@ export const FountainEditor: React.FC<EditorProps> = ({
     const [stats, setStats] = useState<EditorStats>({ sceneCount: 0, wordCount: 0, pageCountEstimate: 0 });
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Sync external changes
+    useEffect(() => {
+        if (initialContent !== content) {
+            setContent(initialContent);
+        }
+    }, [initialContent]);
+
     // Basic Stats Calculation
     useEffect(() => {
         const scenes = (content.match(/^(INT\.|EXT\.)/gm) || []).length;
@@ -36,23 +43,27 @@ export const FountainEditor: React.FC<EditorProps> = ({
     const handleInsert = (textToInsert: string) => {
         if (!textareaRef.current) return;
         
-        const start = textareaRef.current.selectionStart;
-        const end = textareaRef.current.selectionEnd;
-        const text = content;
+        const textarea = textareaRef.current;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentText = content;
         
-        // Insert text at cursor
-        const newText = text.substring(0, start) + textToInsert + text.substring(end);
+        // Insert text at cursor position
+        const newText = currentText.substring(0, start) + textToInsert + currentText.substring(end);
         
+        // Update state
         setContent(newText);
         if (onChange) onChange(newText);
         
-        // Restore focus
-        setTimeout(() => {
+        // Move cursor to end of inserted text
+        // We use a micro-task to ensure React has rendered the new value
+        requestAnimationFrame(() => {
             if (textareaRef.current) {
                 textareaRef.current.focus();
-                textareaRef.current.setSelectionRange(start + textToInsert.length, start + textToInsert.length);
+                const newCursorPos = start + textToInsert.length;
+                textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
             }
-        }, 0);
+        });
     };
 
     return (
@@ -60,8 +71,8 @@ export const FountainEditor: React.FC<EditorProps> = ({
             {!readOnly && <EditorToolbar onInsert={handleInsert} />}
             
             <div className="flex-1 relative overflow-hidden flex bg-[#121212]">
-                {/* Gutter / Line Numbers (Optional placeholder) */}
-                <div className="w-12 bg-[#1E1E1E] border-r border-[#333] hidden md:block"></div>
+                {/* Gutter / Line Numbers Placeholder */}
+                <div className="w-12 bg-[#1E1E1E] border-r border-[#333] hidden md:block shrink-0"></div>
 
                 {/* The Editor Canvas */}
                 <div className="flex-1 relative overflow-y-auto custom-scrollbar flex justify-center p-8">
@@ -80,7 +91,7 @@ export const FountainEditor: React.FC<EditorProps> = ({
             </div>
 
             {/* Status Bar */}
-            <div className="h-6 bg-[#007ACC] text-white flex items-center justify-between px-3 text-[11px] select-none">
+            <div className="h-6 bg-[#007ACC] text-white flex items-center justify-between px-3 text-[11px] select-none shrink-0">
                 <div className="flex gap-4">
                     <span>{stats.pageCountEstimate} PAGES (Est)</span>
                     <span>{stats.wordCount} WORDS</span>
