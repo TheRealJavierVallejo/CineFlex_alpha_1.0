@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Project, Shot, Scene, ShowToastFn, ScriptElement } from '../../types';
+import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem } from '../../types';
 import { parseScript } from '../../services/scriptParser';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ScriptPicker } from './ScriptPicker';
+import { ImageSelectorModal } from './ImageSelectorModal';
 
 interface TimelineViewProps {
   project: Project;
@@ -22,6 +23,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
+
+  // New State for Add Shot Modal
+  const [addShotModal, setAddShotModal] = useState<{ isOpen: boolean; sceneId: string | null }>({
+    isOpen: false,
+    sceneId: null
+  });
 
   // State for the "Lego Picker"
   const [pickerState, setPickerState] = useState<{
@@ -110,13 +117,50 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     onUpdateProject({ ...project, scenes: newScenes });
   };
 
-  const handleAddShotToScene = (sceneId: string) => {
+  // 1. TRIGGER MODAL
+  const handleTriggerAddShot = (sceneId: string) => {
+    setAddShotModal({ isOpen: true, sceneId });
+  };
+
+  // 2. CONFIRM SELECTION (Callback from Modal)
+  const handleConfirmAddShot = (selectedImage: ImageLibraryItem | null) => {
+    const sceneId = addShotModal.sceneId;
+    if (!sceneId) return;
+
+    // Calculate next sequence number for this scene
+    // (Optional: simple append is fine, reordering handles the rest)
+    const sceneShots = project.shots.filter(s => s.sceneId === sceneId);
+    const maxSeq = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.sequence)) : 0;
+    
+    // Create Base Shot
     const newShot: Shot = {
-      id: crypto.randomUUID(), sceneId: sceneId, sequence: project.shots.length + 1, description: '', notes: '',
-      characterIds: [], shotType: 'Wide Shot', aspectRatio: project.settings.aspectRatio, dialogue: ''
+      id: crypto.randomUUID(),
+      sceneId: sceneId,
+      sequence: maxSeq + 1,
+      description: selectedImage ? (selectedImage.prompt || '') : '',
+      notes: '',
+      characterIds: [],
+      shotType: 'Wide Shot',
+      aspectRatio: selectedImage?.aspectRatio || project.settings.aspectRatio,
+      dialogue: '',
+      // If image selected, attach it
+      generatedImage: selectedImage ? selectedImage.url : undefined,
+      generationCandidates: selectedImage ? [selectedImage.url] : [],
+      // Use model from image if available
+      model: selectedImage?.model
     };
+
     onUpdateProject({ ...project, shots: [...project.shots, newShot] });
-    onEditShot(newShot);
+    
+    setAddShotModal({ isOpen: false, sceneId: null });
+    
+    if (selectedImage) {
+      showToast("Shot added from library", 'success');
+    } else {
+      showToast("New shot created", 'success');
+      // Auto-open editor only for blank shots
+      onEditShot(newShot);
+    }
   };
 
   const handleUpdateShot = (id: string, updates: Partial<Shot>) => {
@@ -191,6 +235,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   };
 
   const handleCreateAndLinkShot = async (sceneId: string) => {
+    // For "Link Script" flow, we probably still want a blank shot immediately
+    // or we could open the modal. For now, keeping it quick (blank) is usually better for script breakdown.
     const newShot: Shot = {
       id: crypto.randomUUID(),
       sceneId: sceneId,
@@ -227,7 +273,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onUpdateScene={handleUpdateScene}
           onDeleteScene={handleDeleteScene}
           onMoveScene={handleMoveScene}
-          onAddShot={handleAddShotToScene}
+          onAddShot={handleTriggerAddShot} // CHANGED: Now opens modal
           onUpdateShot={handleUpdateShot}
           onDeleteShot={handleDeleteShot}
           onLinkElement={handleOpenPicker}
@@ -237,6 +283,14 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         />
 
       </div>
+
+      {/* NEW: ADD SHOT MODAL */}
+      <ImageSelectorModal 
+        isOpen={addShotModal.isOpen}
+        onClose={() => setAddShotModal({ isOpen: false, sceneId: null })}
+        onSelect={handleConfirmAddShot}
+        projectId={project.id}
+      />
 
       <ScriptPicker
         isOpen={pickerState.isOpen}
