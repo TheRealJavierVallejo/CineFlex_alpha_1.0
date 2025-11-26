@@ -1,4 +1,3 @@
-
 /*
  * 🧠 APP CONTROLLER
  * Premium Desktop Layout Shell
@@ -199,7 +198,7 @@ const App: React.FC = () => {
           {view === ViewState.ASSETS && (
             <div className="absolute inset-0">
               <LazyWrapper>
-                <AssetManager projectId={project.id} showToast={showToast} />
+                <AssetManager projectId={project.id} projectShots={project.shots} showToast={showToast} />
               </LazyWrapper>
             </div>
           )}

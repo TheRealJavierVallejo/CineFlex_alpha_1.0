@@ -1,11 +1,10 @@
-
 /*
  * 👥 COMPONENT: ASSET MANAGER
  * Commercial Quality Update: Teal Theme & Gallery Grid
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Character, Outfit, ShowToastFn, ImageLibraryItem } from '../../types';
+import { Character, Outfit, ShowToastFn, ImageLibraryItem, Shot } from '../../types';
 import { getCharacters, saveCharacters, getOutfits, saveOutfits, getImageLibrary } from '../../services/storage';
 import { compressImage } from '../../services/image';
 import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Grid, Layout, Edit2, CheckCircle } from 'lucide-react';
@@ -14,10 +13,11 @@ import Modal from '../ui/Modal';
 
 interface AssetManagerProps {
    projectId: string;
+   projectShots: Shot[];
    showToast: ShowToastFn;
 }
 
-export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, showToast }) => {
+export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectShots, showToast }) => {
    const [characters, setCharacters] = useState<Character[]>([]);
    const [outfits, setOutfits] = useState<Outfit[]>([]);
    const [library, setLibrary] = useState<ImageLibraryItem[]>([]);
@@ -62,6 +62,14 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, showToast
       };
       loadAssets();
    }, [projectId, activeTab]);
+
+   // Helper to check if an image from the library is currently used in the timeline
+   const isImageUsed = (imageUrl: string) => {
+      return projectShots.some(shot => shot.generatedImage === imageUrl);
+   };
+
+   // Calculate derived stats
+   const usedImagesCount = library.filter(img => isImageUsed(img.url)).length;
 
    const handleUpdateAsset = async () => {
       if (!editingItem || !editName.trim()) return;
@@ -289,7 +297,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, showToast
                               }`}
                         >
                            <CheckCircle className="w-4 h-4" />
-                           Selected Shots ({library.filter(img => img.isFavorite).length})
+                           Selected Shots ({usedImagesCount})
                         </button>
                      </div>
                      <Button variant="secondary" size="sm" onClick={() => { setIsLoading(true); getImageLibrary(projectId).then(lib => { setLibrary(lib); setIsLoading(false); }); }} icon={<Loader2 className="w-3 h-3" />}>
@@ -301,7 +309,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, showToast
                   <div className="flex-1 overflow-y-auto p-6">
                      {(() => {
                         const filteredLibrary = gallerySection === 'selected'
-                           ? library.filter(img => img.isFavorite)
+                           ? library.filter(img => isImageUsed(img.url))
                            : library;
 
                         if (filteredLibrary.length === 0) {
@@ -311,7 +319,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, showToast
                                     <>
                                        <CheckCircle className="w-16 h-16 mb-4 opacity-20" />
                                        <h3 className="text-text-primary font-semibold mb-2">No Selected Shots</h3>
-                                       <p className="text-sm">Images used in shots will appear here automatically</p>
+                                       <p className="text-sm">Images used in the Timeline will appear here automatically.</p>
                                     </>
                                  ) : (
                                     <>
@@ -335,6 +343,13 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, showToast
                                        <div className="text-xs text-white/80 line-clamp-2">{item.prompt}</div>
                                        <div className="text-[10px] text-white/50 mt-1">{new Date(item.createdAt).toLocaleDateString()}</div>
                                     </div>
+                                    
+                                    {/* Usage Indicator if we are in 'All' view */}
+                                    {gallerySection === 'all' && isImageUsed(item.url) && (
+                                       <div className="absolute top-2 right-2 bg-primary text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg">
+                                          In Timeline
+                                       </div>
+                                    )}
                                  </div>
                               ))}
                            </div>
