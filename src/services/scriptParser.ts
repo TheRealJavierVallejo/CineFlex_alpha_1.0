@@ -1,4 +1,3 @@
-
 /*
  * 📜 SERVICE: SCRIPT PARSER
  * 
@@ -18,13 +17,13 @@ export interface ParsedScript {
   };
 }
 
-// Main entry point
+// Main entry point for FILES
 export async function parseScript(file: File): Promise<ParsedScript> {
   const text = await file.text();
   const filename = file.name.toLowerCase();
 
   if (filename.endsWith('.fountain') || filename.endsWith('.txt')) {
-    return parseFountain(text);
+    return parseFountainString(text);
   } else {
     throw new Error(`Unsupported format: ${filename}. Only .fountain and .txt are currently supported.`);
   }
@@ -50,22 +49,8 @@ const isTransition = (line: string): boolean => {
   return s.endsWith('TO:') || s.startsWith('>');
 };
 
-// Helper: Extract metadata from scene heading
-const extractLocation = (heading: string): string => {
-  // Remove INT./EXT. prefix and time suffix
-  let clean = heading.trim().replace(/^\.?\s*(INT\.|EXT\.|INT\/EXT\.|I\/E\.|INT\/EXT)\s*/i, '');
-  clean = clean.split(/\s+-\s+/)[0]; // Remove " - DAY"
-  return clean;
-};
-
-const extractTimeOfDay = (heading: string): string => {
-  const parts = heading.trim().split(/\s+-\s+/);
-  return parts.length > 1 ? parts[parts.length - 1] : '';
-};
-
-// 🖋️ FOUNTAIN PARSER IMPLEMENTATION
-// 🖋️ FOUNTAIN PARSER IMPLEMENTATION
-function parseFountain(text: string): ParsedScript {
+// 🖋️ FOUNTAIN PARSER IMPLEMENTATION (Now Exported!)
+export function parseFountainString(text: string): ParsedScript {
   const lines = text.split(/\r?\n/);
   const elements: ScriptElement[] = [];
   const scenes: Scene[] = [];
@@ -145,9 +130,6 @@ function parseFountain(text: string): ParsedScript {
       let dialogueContent = '';
       let j = i + 1;
 
-      // Skip parentheticals for now or include them? 
-      // User wants "Name of character speaking and actual dialogue saved as one asset"
-      // We will loop until we hit a blank line or another element type
       while (j < lines.length) {
         const nextLine = lines[j].trim();
         if (!nextLine) break; // End of dialogue block
@@ -179,23 +161,18 @@ function parseFountain(text: string): ParsedScript {
     }
 
     // 4. ACTION (Grouped by Block)
-    // If it's none of the above, it's action/description
-    // We want to group contiguous action lines into one block
     let actionContent = line;
     let k = i + 1;
 
     while (k < lines.length) {
       const nextLine = lines[k].trim();
       if (!nextLine) break; // Blank line ends the block
-
-      // Check if next line is start of something else
       if (isSceneHeading(nextLine) || isCharacter(nextLine) || isTransition(nextLine)) break;
 
       actionContent += '\n' + nextLine;
       k++;
     }
 
-    // Advance main loop index
     i = k - 1;
 
     const el: ScriptElement = {
@@ -207,7 +184,6 @@ function parseFountain(text: string): ParsedScript {
     };
     elements.push(el);
 
-    // Append to scene action notes for quick reference
     if (currentScene) {
       currentScene.actionNotes += (currentScene.actionNotes ? '\n\n' : '') + actionContent;
     }
