@@ -8,6 +8,7 @@ import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { Command, ChevronRight, Plus, Box, Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 // Context type for child routes (Dashboard, Timeline, etc.) to access project data
 export interface WorkspaceContextType {
@@ -211,7 +212,9 @@ export const WorkspaceLayout: React.FC = () => {
             <div className="flex-1 flex overflow-hidden">
                 <Sidebar />
                 <main className="flex-1 bg-[#18181B] relative overflow-hidden">
-                   <Outlet context={contextValue} />
+                    <ErrorBoundary key={location.pathname}>
+                        <Outlet context={contextValue} />
+                    </ErrorBoundary>
                 </main>
             </div>
 

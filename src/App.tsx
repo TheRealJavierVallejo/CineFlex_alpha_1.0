@@ -12,9 +12,9 @@ import {
   TimelineView,
   AssetManager,
   ProjectSettings,
+  ShotList,
   LazyWrapper
 } from './components/features/LazyComponents';
-import { ShotList } from './components/features/ShotList';
 
 // --- ADAPTER COMPONENTS ---
 // These wrappers extract data from the WorkspaceContext and pass it to the legacy feature components.
@@ -24,13 +24,15 @@ const DashboardPage = () => {
     const { project, handleAddShot, handleEditShot, handleDeleteShot, showToast } = useWorkspace();
     return (
         <div className="absolute inset-0 overflow-y-auto p-6">
-            <ShotList
-                project={project}
-                onAddShot={handleAddShot}
-                onEditShot={handleEditShot}
-                onDeleteShot={handleDeleteShot}
-                showToast={showToast}
-            />
+            <LazyWrapper>
+                <ShotList
+                    project={project}
+                    onAddShot={handleAddShot}
+                    onEditShot={handleEditShot}
+                    onDeleteShot={handleDeleteShot}
+                    showToast={showToast}
+                />
+            </LazyWrapper>
         </div>
     );
 };

@@ -12,6 +12,7 @@ export const AssetManager = lazy(() => import('./AssetManager').then(m => ({ def
 export const TimelineView = lazy(() => import('./TimelineView').then(m => ({ default: m.TimelineView })));
 export const ProjectLibrary = lazy(() => import('./ProjectLibrary').then(m => ({ default: m.ProjectLibrary })));
 export const ProjectSettings = lazy(() => import('./ProjectSettings').then(m => ({ default: m.ProjectSettings })));
+export const ShotList = lazy(() => import('./ShotList').then(m => ({ default: m.ShotList })));
 
 /**
  * Loading fallback wrapper for lazy-loaded components
