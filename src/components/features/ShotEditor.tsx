@@ -1,4 +1,3 @@
-
 /*
  * 🎨 COMPONENT: SHOT EDITOR (Studio Layout)
  * Commercial Quality Update: Teal Theme & Studio Classes
@@ -65,6 +64,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   const activeChars = characters.filter(c => shot.characterIds.includes(c.id));
+  
+  // Find parent scene for context
+  const parentScene = project.scenes.find(s => s.id === shot.sceneId);
 
   // --- KEYBOARD & FOCUS ---
   useEffect(() => {
@@ -137,6 +139,30 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       setDetectedReferenceRatio(null);
     }
   }, [shot.referenceImage, selectedAspectRatio]);
+  
+  // --- INTELLIGENT AUTO-DETECT ---
+  // When description changes, check for character names
+  useEffect(() => {
+      if (!shot.description || noCharacters) return;
+      
+      const descLower = shot.description.toLowerCase();
+      const detectedIds = new Set(shot.characterIds);
+      let hasChange = false;
+
+      characters.forEach(char => {
+          // Check if name appears in text
+          if (descLower.includes(char.name.toLowerCase())) {
+              if (!detectedIds.has(char.id)) {
+                  detectedIds.add(char.id);
+                  hasChange = true;
+              }
+          }
+      });
+
+      if (hasChange) {
+          setShot(prev => ({ ...prev, characterIds: Array.from(detectedIds) }));
+      }
+  }, [shot.description, characters, noCharacters]);
 
   // --- HANDLERS ---
   const handleSketchUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -425,7 +451,13 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-surface">
             <div>
               <h2 className="text-text-primary font-bold text-base">Shot #{shot.sequence}</h2>
-              <div className="text-text-tertiary text-xs font-mono">ID: {shot.id.substring(0, 6)}</div>
+              <div className="flex items-center gap-2 text-xs text-text-secondary">
+                 {parentScene ? (
+                     <span className="font-mono bg-surface-secondary px-1.5 py-0.5 rounded border border-border">{parentScene.heading}</span>
+                 ) : (
+                     <span className="text-text-tertiary">No Scene Context</span>
+                 )}
+              </div>
             </div>
           </div>
 

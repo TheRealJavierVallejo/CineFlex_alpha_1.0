@@ -41,8 +41,6 @@ const SHOT_TYPE_PROMPTS: Record<string, string> = {
 
 // --- PROMPT CONSTRUCTOR ---
 // Used for both generation and preview
-// --- PROMPT CONSTRUCTOR ---
-// Used for both generation and preview
 export const constructPrompt = (
   shot: Shot,
   project: Project,
@@ -53,6 +51,10 @@ export const constructPrompt = (
 ): string => {
   const isPro = model.includes('pro') || model.includes('ultra');
   const sections: string[] = [];
+
+  // Find Parent Scene for Context
+  const parentScene = project.scenes.find(s => s.id === shot.sceneId);
+  const sceneHeading = parentScene ? parentScene.heading : "CINEMATIC SCENE";
 
   // 1. ROLE & CONTEXT
   sections.push("ROLE: You are an expert cinematic concept artist and cinematographer. Your goal is to generate a photorealistic, high-fidelity movie frame.");
@@ -69,7 +71,9 @@ export const constructPrompt = (
   sections.push(`TECHNICAL SPECS:\n- ${techSpecs.join('\n- ')}`);
 
   // 3. SCENE & ACTION (The Core)
-  let sceneDesc = shot.description || "A cinematic shot matching the style.";
+  let sceneDesc = `LOCATION/CONTEXT: ${sceneHeading}\n`;
+  sceneDesc += `ACTION: ${shot.description || "A cinematic shot matching the style."}`;
+  
   if (shot.dialogue) {
     sceneDesc += `\n(CONTEXT: Characters are saying: "${shot.dialogue}". Capture the implied emotion and expression.)`;
   }
