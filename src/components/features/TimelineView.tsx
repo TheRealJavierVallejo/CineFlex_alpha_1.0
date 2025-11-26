@@ -9,6 +9,7 @@ import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ImageSelectorModal } from './ImageSelectorModal';
+import { ScriptImporter } from './ScriptImporter';
 
 interface TimelineViewProps {
   project: Project;
@@ -19,6 +20,7 @@ interface TimelineViewProps {
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
 
   // Unified Modal State
   const [imageModalState, setImageModalState] = useState<{
@@ -158,6 +160,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
 
         <TimelineHeader
           onAddScene={handleAddScene}
+          onImportScript={() => setIsImporterOpen(true)}
         />
 
         <SceneList
@@ -181,6 +184,14 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         onClose={() => setImageModalState({ isOpen: false, sceneId: null, updateShotId: null })}
         onSelect={handleConfirmImageSelection}
         projectId={project.id}
+      />
+
+      <ScriptImporter 
+        isOpen={isImporterOpen}
+        onClose={() => setIsImporterOpen(false)}
+        project={project}
+        onUpdateProject={onUpdateProject}
+        showToast={showToast}
       />
 
       {confirmDeleteScene && (
