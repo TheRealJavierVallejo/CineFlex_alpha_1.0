@@ -1,4 +1,3 @@
-
 /*
  * 💾 SERVICE: STORAGE (The Memory Bank)
  * 
@@ -334,6 +333,14 @@ export const addToImageLibrary = async (projectId: string, item: ImageLibraryIte
   const current = await getImageLibrary(projectId);
   // Prepend new item
   const updated = [item, ...current];
+  await saveImageLibrary(projectId, updated);
+};
+
+// NEW: Batch add helper to prevent race conditions when saving multiple generated images
+export const addBatchToImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
+  const current = await getImageLibrary(projectId);
+  // Prepend new items
+  const updated = [...items, ...current];
   await saveImageLibrary(projectId, updated);
 };
 

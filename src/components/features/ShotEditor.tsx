@@ -1,4 +1,3 @@
-
 /*
  * 🎨 COMPONENT: SHOT EDITOR (Studio Layout)
  * Commercial Quality Update: Teal Theme & Studio Classes
@@ -9,7 +8,7 @@ import { Shot, Project, Character, Outfit, ShowToastFn } from '../../types';
 import { generateShotImage, generateBatchShotImages, analyzeSketch, constructPrompt } from '../../services/gemini';
 import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, VARIATION_COUNTS, TIMES_OF_DAY } from '../../constants';
 import { X, Wand2, Film, RefreshCw, Download, Copy, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize2, Minimize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, HelpCircle, Eye, FileText, Camera, Users, Settings, ArrowLeft } from 'lucide-react';
-import { getCharacters, getOutfits, addToImageLibrary, toggleImageFavorite, getImageLibrary } from '../../services/storage';
+import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary } from '../../services/storage';
 import Button from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { VariationPicker } from '../features/VariationPicker';
@@ -214,9 +213,8 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           variationCount
         );
 
-        // Save all candidates to library
-        images.forEach(img => {
-          addToImageLibrary(project.id, {
+        // Save all candidates to library in a batch to avoid race conditions
+        const newItems = images.map(img => ({
             id: crypto.randomUUID(),
             projectId: project.id,
             url: img,
@@ -225,8 +223,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             prompt: constructPrompt(shot, project, noCharacters ? [] : activeChars, outfits, selectedAspectRatio),
             model: selectedModel,
             aspectRatio: selectedAspectRatio
-          });
-        });
+        }));
+        
+        await addBatchToImageLibrary(project.id, newItems);
 
         setCurrentCandidates(images);
         setShowVariationPicker(true);
