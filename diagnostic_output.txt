@@ -1,0 +1,93 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.14 [39m[90m/Users/valja/Desktop/CineSketch_Versions/cinesketch-ai_1.23 (revert)[39m
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould generate a basic prompt with defaults
+[22m[39m
+--- Basic Prompt ---
+ Cinematic movie frame. Visual Style: Film Noir (Apply project style strictly.). Time Period/Era: 1940s. Ensure all costumes, props, architecture, and environmental details are historically accurate to this period. Lighting Setup: Chiaroscuro. Time of Day: Night. Medium Shot: Frame subject from waist up, showing upper body and facial expressions.. ACTION/SUBJECT: A detective smoking a cigarette in the rain.. 
+RENDER SETTINGS: Render in 8K quality with cinematic color grading, professional cinematography, sharp focus, film grain, and volumetric lighting.
+NEGATIVE PROMPT: Do not include: text overlays, watermarks, UI elements, logos, subtitles, or low-quality artifacts. CRITICAL ASPECT RATIO ENFORCEMENT: Generate image in STRICT 16:9 aspect ratio format.
+ This is Standard HD format (16:9). Width MUST be 1.78 times the height. Common resolutions: 1920×1080, 3840×2160. Maintain exact 16:9 proportions.
+ Do not crop, letterbox, pillarbox, or alter the 16:9 frame dimensions in any way. The entire image must conform to 16:9 exactly.
+
+ FINAL LIGHTING CHECK: Ensure Chiaroscuro is applied consistently throughout the image. Maintain proper light direction and shadow consistency.
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould handle style strength correctly
+[22m[39m
+--- Style Strength Variations ---
+Strength 0: Visual Style: Film Noir (Minimal Film Noir influence.
+Strength 25: Visual Style: Film Noir (Apply Film Noir subtly.
+Strength 50: Visual Style: Film Noir (Apply Film Noir with moderate influence.
+Strength 75: Visual Style: Film Noir (Apply Film Noir with strong influence.
+Strength 100: Visual Style: Film Noir (Apply project style strictly.
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould enforce aspect ratios strictly
+[22m[39m
+--- Aspect Ratio Enforcement ---
+Ratio 16:9: Verified
+Ratio 2.35:1: Verified
+Ratio 9:16: Verified
+Ratio 1:1: Verified
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould include character details and positioning
+[22m[39m
+--- Character Prompt ---
+ Cinematic movie frame. Visual Style: Film Noir (Apply project style strictly.). Time Period/Era: 1940s. Ensure all costumes, props, architecture, and environmental details are historically accurate to this period. Lighting Setup: Chiaroscuro. Time of Day: Night. Medium Shot: Frame subject from waist up, showing upper body and facial expressions.. ACTION/SUBJECT: A detective smoking a cigarette in the rain.. CHARACTERS: [Detective Jack: A weary private investigator with a trench coat. wearing Fedora and trench coat].  Position character in the center of the frame.
+RENDER SETTINGS: Render in 8K quality with cinematic color grading, professional cinematography, sharp focus, film grain, and volumetric lighting.
+NEGATIVE PROMPT: Do not include: text overlays, watermarks, UI elements, logos, subtitles, or low-quality artifacts. CRITICAL ASPECT RATIO ENFORCEMENT: Generate image in STRICT 16:9 aspect ratio format.
+ This is Standard HD format (16:9). Width MUST be 1.78 times the height. Common resolutions: 1920×1080, 3840×2160. Maintain exact 16:9 proportions.
+ Do not crop, letterbox, pillarbox, or alter the 16:9 frame dimensions in any way. The entire image must conform to 16:9 exactly.
+
+ FINAL LIGHTING CHECK: Ensure Chiaroscuro is applied consistently throughout the image. Maintain proper light direction and shadow consistency.
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould handle multiple characters positioning
+[22m[39m
+--- Two Characters Prompt ---
+ Cinematic movie frame. Visual Style: Film Noir (Apply project style strictly.). Time Period/Era: 1940s. Ensure all costumes, props, architecture, and environmental details are historically accurate to this period. Lighting Setup: Chiaroscuro. Time of Day: Night. Medium Shot: Frame subject from waist up, showing upper body and facial expressions.. ACTION/SUBJECT: A detective smoking a cigarette in the rain.. CHARACTERS: [Detective Jack: A weary private investigator with a trench coat. wearing Fedora and trench coat]. [Femme Fatale: A weary private investigator with a trench coat. (wearing era-appropriate attire)].  Position characters with balanced spacing across the frame (left and right).
+RENDER SETTINGS: Render in 8K quality with cinematic color grading, professional cinematography, sharp focus, film grain, and volumetric lighting.
+NEGATIVE PROMPT: Do not include: text overlays, watermarks, UI elements, logos, subtitles, or low-quality artifacts. CRITICAL ASPECT RATIO ENFORCEMENT: Generate image in STRICT 16:9 aspect ratio format.
+ This is Standard HD format (16:9). Width MUST be 1.78 times the height. Common resolutions: 1920×1080, 3840×2160. Maintain exact 16:9 proportions.
+ Do not crop, letterbox, pillarbox, or alter the 16:9 frame dimensions in any way. The entire image must conform to 16:9 exactly.
+
+ FINAL LIGHTING CHECK: Ensure Chiaroscuro is applied consistently throughout the image. Maintain proper light direction and shadow consistency.
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould include negative prompts
+[22m[39m
+--- Negative Prompt ---
+ Cinematic movie frame. Visual Style: Film Noir (Apply project style strictly.). Time Period/Era: 1940s. Ensure all costumes, props, architecture, and environmental details are historically accurate to this period. Lighting Setup: Chiaroscuro. Time of Day: Night. Medium Shot: Frame subject from waist up, showing upper body and facial expressions.. ACTION/SUBJECT: A detective smoking a cigarette in the rain.. 
+RENDER SETTINGS: Render in 8K quality with cinematic color grading, professional cinematography, sharp focus, film grain, and volumetric lighting.
+NEGATIVE PROMPT: Do not include: text overlays, watermarks, UI elements, logos, subtitles, or low-quality artifacts. blur, distortion CRITICAL ASPECT RATIO ENFORCEMENT: Generate image in STRICT 16:9 aspect ratio format.
+ This is Standard HD format (16:9). Width MUST be 1.78 times the height. Common resolutions: 1920×1080, 3840×2160. Maintain exact 16:9 proportions.
+ Do not crop, letterbox, pillarbox, or alter the 16:9 frame dimensions in any way. The entire image must conform to 16:9 exactly.
+
+ FINAL LIGHTING CHECK: Ensure Chiaroscuro is applied consistently throughout the image. Maintain proper light direction and shadow consistency.
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould handle sketch reference
+[22m[39m
+--- Sketch Prompt ---
+ Cinematic movie frame. Visual Style: Film Noir (Apply project style strictly.). Time Period/Era: 1940s. Ensure all costumes, props, architecture, and environmental details are historically accurate to this period. Lighting Setup: Chiaroscuro. Time of Day: Night. Medium Shot: Frame subject from waist up, showing upper body and facial expressions.. ACTION/SUBJECT: A detective smoking a cigarette in the rain.. 
+RENDER SETTINGS: Render in 8K quality with cinematic color grading, professional cinematography, sharp focus, film grain, and volumetric lighting.
+NEGATIVE PROMPT: Do not include: text overlays, watermarks, UI elements, logos, subtitles, or low-quality artifacts. CRITICAL ASPECT RATIO ENFORCEMENT: Generate image in STRICT 16:9 aspect ratio format.
+ This is Standard HD format (16:9). Width MUST be 1.78 times the height. Common resolutions: 1920×1080, 3840×2160. Maintain exact 16:9 proportions.
+ Do not crop, letterbox, pillarbox, or alter the 16:9 frame dimensions in any way. The entire image must conform to 16:9 exactly.
+
+ FINAL LIGHTING CHECK: Ensure Chiaroscuro is applied consistently throughout the image. Maintain proper light direction and shadow consistency. (SKETCH COMPOSITION REFERENCE: The uploaded sketch indicates desired camera angle, subject positioning, and overall composition layout. Match this composition exactly while rendering in photorealistic quality with proper lighting, detail, and textures. The sketch is a blueprint for framing only—render final output as a real photograph.)
+
+[90mstdout[2m | src/services/gemini.diagnostic.test.ts[2m > [22m[2mImage Prompt Logic Diagnostic[2m > [22m[2mshould handle reference image control types
+[22m[39m
+--- Canny Reference Prompt ---
+ Cinematic movie frame. Visual Style: Film Noir (Apply project style strictly.). Time Period/Era: 1940s. Ensure all costumes, props, architecture, and environmental details are historically accurate to this period. Lighting Setup: Chiaroscuro. Time of Day: Night. Medium Shot: Frame subject from waist up, showing upper body and facial expressions.. ACTION/SUBJECT: A detective smoking a cigarette in the rain.. 
+RENDER SETTINGS: Render in 8K quality with cinematic color grading, professional cinematography, sharp focus, film grain, and volumetric lighting.
+NEGATIVE PROMPT: Do not include: text overlays, watermarks, UI elements, logos, subtitles, or low-quality artifacts. CRITICAL ASPECT RATIO ENFORCEMENT: Generate image in STRICT 16:9 aspect ratio format.
+ This is Standard HD format (16:9). Width MUST be 1.78 times the height. Common resolutions: 1920×1080, 3840×2160. Maintain exact 16:9 proportions.
+ Do not crop, letterbox, pillarbox, or alter the 16:9 frame dimensions in any way. The entire image must conform to 16:9 exactly.
+
+ FINAL LIGHTING CHECK: Ensure Chiaroscuro is applied consistently throughout the image. Maintain proper light direction and shadow consistency. (REFERENCE INSTRUCTION: Closely follow reference composition and layout. Use the provided reference image as a Canny edge map guide for structure.)
+
+ [32m✓[39m src/services/gemini.diagnostic.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m   Start at [22m 00:08:31
+[2m   Duration [22m 718ms[2m (transform 52ms, setup 176ms, import 88ms, tests 5ms, environment 311ms)[22m
+

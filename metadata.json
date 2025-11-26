@@ -1,0 +1,5 @@
+{
+  "name": "CineSketch AI",
+  "description": "A professional storyboard and shot list generator that transforms sketches into consistent, high-fidelity cinematic frames using Gemini 3 Pro.",
+  "requestFramePermissions": []
+}
