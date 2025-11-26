@@ -41,8 +41,6 @@ const SHOT_TYPE_PROMPTS: Record<string, string> = {
 
 // --- PROMPT CONSTRUCTOR ---
 // Used for both generation and preview
-// --- PROMPT CONSTRUCTOR ---
-// Used for both generation and preview
 export const constructPrompt = (
   shot: Shot,
   project: Project,
@@ -83,15 +81,24 @@ export const constructPrompt = (
     const charDetails = activeCharacters.map(char => {
       const outfit = activeOutfits.find(o => o.characterId === char.id);
       let desc = `• ${char.name}: ${char.description}`;
+      
+      // Clothing Logic
       if (outfit) {
         desc += `\n  - WEARING: ${outfit.description}`;
       } else {
         desc += `\n  - WEARING: Era-appropriate attire`;
       }
-      // Add reference photo enforcement if they exist
-      if (char.referencePhotos?.length || outfit?.referencePhotos?.length) {
-        desc += `\n  - VISUAL REFERENCE: Match facial features and clothing EXACTLY to the provided reference images.`;
+
+      // Identity specific instruction - DISSOCIATE STYLE FROM REFERENCE
+      if (char.referencePhotos?.length) {
+        desc += `\n  - [FACE SOURCE]: Use the attached character images for FACIAL LIKENESS ONLY. Ignore lighting, style, and clothing of these photos.`;
       }
+      
+      // Outfit specific instruction
+      if (outfit?.referencePhotos?.length) {
+         desc += `\n  - [CLOTHING SOURCE]: Use the attached outfit images for clothing design ONLY.`;
+      }
+
       return desc;
     });
     sections.push(`CHARACTERS:\n${charDetails.join('\n')}`);
@@ -128,7 +135,20 @@ export const constructPrompt = (
   if (shot.negativePrompt) negative += `, ${shot.negativePrompt}`;
   sections.push(`NEGATIVE PROMPT: ${negative}`);
 
-  // 8. MODEL SPECIFIC INSTRUCTION
+  // 8. REFERENCE PROTOCOL (The Guardrails)
+  // This section explicitly prevents "Style Bleeding" from uploaded selfies/refs
+  const hasCharRefs = activeCharacters.some(c => c.referencePhotos?.length);
+  const hasOutfitRefs = activeOutfits.some(o => o.referencePhotos?.length);
+
+  if (hasCharRefs || hasOutfitRefs) {
+      sections.push(`REFERENCE IMAGE PROTOCOL (STRICT COMPLIANCE):
+1. **IDENTITY ISOLATION**: Treat Character Reference Images as anatomical diagrams. Extract ONLY facial features (bone structure, eyes, nose, mouth).
+2. **STYLE BLOCKING**: DO NOT copy the lighting, color grading, background, resolution, or camera quality from the reference photos. The generated image MUST match the cinematic style described in "TECHNICAL SPECS" (${project.settings.cinematicStyle}, ${project.settings.lighting}).
+3. **LIGHTING DOMINANCE**: Completely ignore the lighting in the reference photos. Re-light the character's 3D facial structure using the "${project.settings.lighting}" lighting defined in the prompt.
+4. **CLOTHING**: Ignore clothing in Character Reference Images. Use the text description or Outfit Reference Images instead.`);
+  }
+
+  // 9. MODEL SPECIFIC INSTRUCTION
   if (isPro) {
     sections.push("INSTRUCTION: Focus on subtle details, texture, and emotional depth. Create a rich, atmospheric composition.");
   } else {
