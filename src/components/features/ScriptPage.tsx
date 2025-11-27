@@ -8,14 +8,16 @@ import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Plus, Download, Sparkles } from 'lucide-react';
+import { FileText, Plus, Download, Sparkles, RefreshCw } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
+import { syncScriptToScenes } from '../../services/scriptUtils';
 
 export const ScriptPage: React.FC = () => {
   const { project, handleUpdateProject, showToast } = useWorkspace();
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Helper to update the main project state
   const updateElements = (newElements: ScriptElement[]) => {
@@ -147,6 +149,19 @@ export const ScriptPage: React.FC = () => {
      setTimeout(() => setActiveElementId(newId), 0);
   };
 
+  const handleSync = () => {
+     setIsSyncing(true);
+     try {
+        const syncedProject = syncScriptToScenes(project);
+        handleUpdateProject(syncedProject);
+        showToast(`Synced ${syncedProject.scenes.length} Scenes to Timeline`, 'success');
+     } catch (e) {
+        showToast("Sync failed", 'error');
+     } finally {
+        setIsSyncing(false);
+     }
+  };
+
   const hasElements = project.scriptElements && project.scriptElements.length > 0;
 
   return (
@@ -161,6 +176,19 @@ export const ScriptPage: React.FC = () => {
              <div className="text-xs text-text-tertiary">
                  {hasElements ? `${project.scriptElements?.length} Blocks` : 'Empty'}
              </div>
+
+             <div className="h-4 w-[1px] bg-border" />
+
+             {/* Sync Button */}
+             <Button
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />}
+                onClick={handleSync}
+                title="Generate Timeline Scenes from Script Headings"
+             >
+                Sync to Timeline
+             </Button>
              
              {/* Toggle Chat */}
              <Button 
