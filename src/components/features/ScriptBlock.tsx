@@ -44,52 +44,51 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-mono text-base text-[#CCCCCC] leading-relaxed selection:bg-[#264F78] selection:text-white transition-colors duration-200 placeholder:opacity-20";
+    // Removed activeClass box styling. Only keeping text styles.
+    // Increased placeholder opacity slightly for better visibility of empty blocks.
+    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-mono text-base text-[#CCCCCC] leading-relaxed selection:bg-[#264F78] selection:text-white transition-colors duration-200 placeholder:opacity-30";
     
-    // Active line highlighting (Subtle)
-    const activeClass = isActive ? "bg-[#252526]/50 rounded-sm ring-1 ring-[#333]" : "";
-
     switch (element.type) {
       case 'scene_heading':
         return {
            container: "pt-8 pb-4 border-b border-white/5 mb-4 group/heading",
-           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8] ${activeClass}`,
+           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8]`,
            placeholder: "INT. SCENE HEADING - DAY"
         };
       case 'action':
         return {
            container: "pb-4",
-           input: `${base} ${activeClass}`,
+           input: `${base}`,
            placeholder: "Action..."
         };
       case 'character':
         return {
            container: "pt-4 pb-0 flex justify-center",
-           input: `${base} font-bold uppercase text-center w-[60%] tracking-widest mt-2 ${activeClass}`,
+           input: `${base} font-bold uppercase text-center w-[60%] tracking-widest mt-2`,
            placeholder: "CHARACTER"
         };
       case 'dialogue':
         return {
            container: "pb-2 flex justify-center",
-           input: `${base} text-center w-[70%] max-w-[480px] ${activeClass}`,
+           input: `${base} text-center w-[70%] max-w-[480px]`,
            placeholder: "Dialogue..."
         };
       case 'parenthetical':
         return {
            container: "pb-0 flex justify-center",
-           input: `${base} italic text-sm text-center w-[50%] text-[#969696] ${activeClass}`,
+           input: `${base} italic text-sm text-center w-[50%] text-[#969696]`,
            placeholder: "(parenthetical)"
         };
       case 'transition':
         return {
            container: "pt-4 pb-4 flex justify-end pr-12",
-           input: `${base} font-bold uppercase text-right w-[30%] tracking-widest ${activeClass}`,
+           input: `${base} font-bold uppercase text-right w-[30%] tracking-widest`,
            placeholder: "CUT TO:"
         };
       default:
         return {
            container: "pb-2",
-           input: `${base} ${activeClass}`,
+           input: `${base}`,
            placeholder: ""
         };
     }
@@ -99,7 +98,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-       {/* Type Indicator */}
+       {/* Type Indicator - Visual Guide on the left */}
        <div className={`
           absolute -left-28 top-2 text-[9px] uppercase transition-all duration-200 select-none w-24 text-right pr-4 border-r
           ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'text-[#505050] border-[#333] opacity-0 group-hover:opacity-100'}
