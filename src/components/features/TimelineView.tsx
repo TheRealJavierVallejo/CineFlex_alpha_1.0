@@ -4,13 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem } from '../../types';
+import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem, Location } from '../../types';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ScriptPicker } from './ScriptPicker';
 import { ImageSelectorModal } from './ImageSelectorModal';
-import { generateStoryboardPDF } from '../../services/pdfExport'; // New Import
+import { generateStoryboardPDF } from '../../services/pdfExport';
+import { getLocations } from '../../services/storage';
 
 interface TimelineViewProps {
   project: Project;
@@ -22,8 +23,9 @@ interface TimelineViewProps {
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, importScript, showToast }) => {
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [isUploadingScript, setIsUploadingScript] = useState(false);
-  const [isExporting, setIsExporting] = useState(false); // New State
+  const [isExporting, setIsExporting] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
 
   // Unified Modal State for Adding OR Updating Shots
@@ -50,6 +52,13 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       setScriptElements(project.scriptElements);
     }
   }, [project]);
+
+  // Fetch Locations
+  useEffect(() => {
+    if (project.id) {
+        getLocations(project.id).then(setLocations);
+    }
+  }, [project.id]);
 
   // --- HANDLERS ---
 
@@ -157,6 +166,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       const sceneShots = project.shots.filter(s => s.sceneId === sceneId);
       const maxSeq = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.sequence)) : 0;
       
+      const scene = project.scenes.find(s => s.id === sceneId);
+
       const newShot: Shot = {
         id: crypto.randomUUID(),
         sceneId: sceneId,
@@ -169,7 +180,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         dialogue: '',
         generatedImage: selectedImage ? selectedImage.url : undefined,
         generationCandidates: selectedImage ? [selectedImage.url] : [],
-        model: selectedImage?.model
+        model: selectedImage?.model,
+        locationId: scene?.locationId // INHERIT LOCATION FROM SCENE
       };
 
       onUpdateProject({ ...project, shots: [...project.shots, newShot] });
@@ -258,6 +270,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   };
 
   const handleCreateAndLinkShot = async (sceneId: string) => {
+    const scene = project.scenes.find(s => s.id === sceneId);
+    
     const newShot: Shot = {
       id: crypto.randomUUID(),
       sceneId: sceneId,
@@ -267,7 +281,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       characterIds: [],
       shotType: 'Wide Shot',
       aspectRatio: project.settings.aspectRatio,
-      dialogue: ''
+      dialogue: '',
+      locationId: scene?.locationId // INHERIT LOCATION
     };
 
     onUpdateProject({ ...project, shots: [...project.shots, newShot] });
@@ -282,14 +297,15 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           isUploadingScript={isUploadingScript}
           onImportScript={handleScriptUpload}
           onAddScene={handleAddScene}
-          onExportPDF={handleExportPDF} // Connected
-          isExporting={isExporting} // Connected
+          onExportPDF={handleExportPDF} 
+          isExporting={isExporting} 
         />
 
         <SceneList
           scenes={project.scenes}
           shots={project.shots}
           scriptElements={scriptElements}
+          locations={locations} // Pass locations
           projectSettings={project.settings}
           onUpdateScene={handleUpdateScene}
           onDeleteScene={handleDeleteScene}

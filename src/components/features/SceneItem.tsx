@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowUp, ArrowDown, Trash2, Plus, Type, ChevronRight, ChevronDown } from 'lucide-react';
-import { Scene, Shot, ScriptElement, Project } from '../../types';
+import { ArrowUp, ArrowDown, Trash2, Plus, Type, ChevronDown, MapPin } from 'lucide-react';
+import { Scene, Shot, ScriptElement, Project, Location } from '../../types';
 import Button from '../ui/Button';
 import { ShotRow } from './ShotRow';
 
@@ -10,6 +10,7 @@ interface SceneItemProps {
     totalScenes: number;
     shots: Shot[];
     scriptElements: ScriptElement[];
+    locations: Location[]; // NEW
     projectSettings: Project['settings'];
     onUpdateScene: (id: string, updates: Partial<Scene>) => void;
     onDeleteScene: (id: string) => void;
@@ -30,6 +31,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
     totalScenes,
     shots,
     scriptElements,
+    locations,
     projectSettings,
     onUpdateScene,
     onDeleteScene,
@@ -53,9 +55,10 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                 className="bg-surface-secondary p-4 flex flex-col border-b-2 border-dashed border-border/30 cursor-pointer select-none"
                 onClick={(e) => {
                     // Don't toggle if clicking an input/button
-                    if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
-                        setIsExpanded(!isExpanded);
+                    if (['INPUT', 'BUTTON', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
+                        return;
                     }
+                    setIsExpanded(!isExpanded);
                 }}
             >
                 {/* Dashed Line Top */}
@@ -74,7 +77,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                         <button onClick={(e) => { e.stopPropagation(); onMoveScene(index, 'down'); }} disabled={index === totalScenes - 1} className="text-text-tertiary hover:text-primary disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
                     </div>
 
-                    {/* Heading Input */}
+                    {/* Heading & Metadata */}
                     <div className="flex-1">
                         <input
                             value={scene.heading}
@@ -84,12 +87,36 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                             aria-label="Scene Heading"
                             onClick={(e) => e.stopPropagation()}
                         />
-                        {!isExpanded && (
-                            <div className="text-xs text-text-tertiary mt-1 flex items-center gap-2">
-                                <span className="bg-surface border border-border px-1.5 rounded">{shots.length} Shots</span>
-                                <span className="truncate max-w-[500px]">{scene.actionNotes?.substring(0, 100)}...</span>
-                            </div>
-                        )}
+                        
+                        <div className="flex items-center gap-4 mt-2">
+                             {/* Location Selector */}
+                             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                <MapPin className={`w-3.5 h-3.5 ${scene.locationId ? 'text-primary' : 'text-text-tertiary'}`} />
+                                <div className="relative group/loc">
+                                    <select
+                                        value={scene.locationId || ''}
+                                        onChange={(e) => onUpdateScene(scene.id, { locationId: e.target.value || undefined })}
+                                        className="bg-transparent text-xs text-text-secondary hover:text-text-primary border-none outline-none cursor-pointer appearance-none pr-4 font-medium"
+                                    >
+                                        <option value="">No Location Set</option>
+                                        {locations.map(loc => (
+                                            <option key={loc.id} value={loc.id}>{loc.name}</option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        <ChevronDown className="w-2.5 h-2.5 text-text-tertiary opacity-0 group-hover/loc:opacity-100" />
+                                    </div>
+                                </div>
+                             </div>
+
+                             {!isExpanded && (
+                                <div className="text-xs text-text-tertiary flex items-center gap-2">
+                                    <div className="w-[1px] h-3 bg-border/50"></div>
+                                    <span className="bg-surface border border-border px-1.5 rounded">{shots.length} Shots</span>
+                                    <span className="truncate max-w-[400px]">{scene.actionNotes?.substring(0, 80)}...</span>
+                                </div>
+                             )}
+                        </div>
                     </div>
 
                     <button 
