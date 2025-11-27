@@ -1,4 +1,3 @@
-
 /*
  * 📘 PLAIN ENGLISH GUIDE: TYPES (The Blueprints)
  * 
@@ -168,4 +167,5 @@ export interface ProjectExport {
   project: Project;
   characters: Character[];
   outfits: Outfit[];
+  library: ImageLibraryItem[];
 }

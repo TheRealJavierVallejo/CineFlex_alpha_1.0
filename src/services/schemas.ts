@@ -145,5 +145,6 @@ export const ProjectExportSchema = z.object({
   metadata: ProjectMetadataSchema,
   project: ProjectSchema,
   characters: safeArray(CharacterSchema),
-  outfits: safeArray(OutfitSchema)
+  outfits: safeArray(OutfitSchema),
+  library: safeArray(ImageLibraryItemSchema)
 });

@@ -445,6 +445,7 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const project = await getProjectData(projectId);
   const characters = await getCharacters(projectId);
   const outfits = await getOutfits(projectId);
+  const library = await getImageLibrary(projectId); // Fetch library for export
 
   if (!project) throw new Error("Project not found");
 
@@ -483,9 +484,10 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const portableProject = await deepConvertToBase64(project);
   const portableCharacters = await deepConvertToBase64(characters);
   const portableOutfits = await deepConvertToBase64(outfits);
+  const portableLibrary = await deepConvertToBase64(library); // Convert library images
 
   // Validate on Export to ensure we aren't creating broken files
-  const exportData = {
+  const exportData: ProjectExport = {
     version: 2,
     metadata: {
       id: project.id,
@@ -497,11 +499,10 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
     },
     project: portableProject,
     characters: portableCharacters,
-    outfits: portableOutfits
+    outfits: portableOutfits,
+    library: portableLibrary // Include library in export
   };
 
-  // We could strictly validate export here, but sometimes we want to allow 
-  // users to export broken projects to fix them elsewhere.
   return JSON.stringify(exportData, null, 2);
 };
 
@@ -536,6 +537,7 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
     await saveProjectData(projectId, data.project as Project);
     await saveCharacters(projectId, data.characters as Character[] || []);
     await saveOutfits(projectId, data.outfits as Outfit[] || []);
+    await saveImageLibrary(projectId, data.library as ImageLibraryItem[] || []); // Save imported library
 
     const list = getProjectsList();
     const filtered = list.filter(p => p.id !== projectId);
