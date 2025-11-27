@@ -135,3 +135,54 @@ export const syncScriptToScenes = (project: Project): Project => {
     lastModified: Date.now()
   };
 };
+
+/**
+ * REVERSE SYNC: Generates a basic script from Scene data.
+ * Used when the user creates scenes manually in the Timeline but hasn't written a script.
+ */
+export const generateScriptFromScenes = (scenes: Scene[]): ScriptElement[] => {
+    const elements: ScriptElement[] = [];
+    let seq = 1;
+
+    // Sort by sequence to ensure script order matches timeline order
+    const sortedScenes = [...scenes].sort((a, b) => a.sequence - b.sequence);
+
+    sortedScenes.forEach(scene => {
+        // 1. Create Scene Heading
+        elements.push({
+            id: crypto.randomUUID(),
+            type: 'scene_heading',
+            content: scene.heading || 'INT. UNTITLED SCENE - DAY',
+            sceneId: scene.id,
+            sequence: seq++
+        });
+
+        // 2. Create Action Line if notes exist
+        if (scene.actionNotes && scene.actionNotes.trim()) {
+            elements.push({
+                id: crypto.randomUUID(),
+                type: 'action',
+                content: scene.actionNotes,
+                sceneId: scene.id,
+                sequence: seq++
+            });
+        }
+        
+        // 3. Keep existing elements if they are stored on the scene (fallback)
+        if (scene.scriptElements && scene.scriptElements.length > 0) {
+            scene.scriptElements.forEach(el => {
+                // Avoid duplicating the heading if it was stored
+                if (el.type !== 'scene_heading') {
+                    elements.push({
+                        ...el,
+                        id: crypto.randomUUID(), // New IDs to avoid conflicts
+                        sceneId: scene.id,
+                        sequence: seq++
+                    });
+                }
+            });
+        }
+    });
+
+    return elements;
+};

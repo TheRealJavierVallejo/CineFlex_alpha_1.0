@@ -12,7 +12,7 @@ import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
-import { enrichScriptElements } from '../../services/scriptUtils';
+import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
 
 export const ScriptPage: React.FC = () => {
   const { project, updateScriptElements, importScript } = useWorkspace();
@@ -56,12 +56,25 @@ export const ScriptPage: React.FC = () => {
       []
   );
 
-  // Initial Load / External Update Sync
+  // Initial Load / External Update Sync / Auto-Hydration
   useEffect(() => {
-    if (project.scriptElements && elements.length === 0 && project.scriptElements.length > 0) {
-        setElements(project.scriptElements);
+    // A. Standard Sync: If project has script elements, use them.
+    if (project.scriptElements && project.scriptElements.length > 0) {
+       // Only update if local is empty to avoid overwriting typed work
+       if (elements.length === 0) {
+           setElements(project.scriptElements);
+       }
+       return;
     }
-  }, [project.scriptElements]); 
+
+    // B. Auto-Hydration: If script is empty but Scenes exist (Timeline Created), build script.
+    if (project.scenes.length > 0 && elements.length === 0) {
+        console.log("Hydrating script from scenes...");
+        const generated = generateScriptFromScenes(project.scenes);
+        setElements(generated);
+        // Note: We don't save immediately to avoid loops. User edits will trigger save.
+    }
+  }, [project.scriptElements, project.scenes]); 
 
   // --- 3. EDITING LOGIC ---
 

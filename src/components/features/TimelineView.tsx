@@ -28,7 +28,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   const [isExporting, setIsExporting] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
 
-  // Unified Modal State for Adding OR Updating Shots
+  // Unified Modal State
   const [imageModalState, setImageModalState] = useState<{
     isOpen: boolean;
     sceneId: string | null;
@@ -39,7 +39,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     updateShotId: null
   });
 
-  // State for the "Lego Picker"
   const [pickerState, setPickerState] = useState<{
     isOpen: boolean;
     shotId: string | null;
@@ -53,7 +52,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     }
   }, [project]);
 
-  // Fetch Locations
   useEffect(() => {
     if (project.id) {
         getLocations(project.id).then(setLocations);
@@ -90,14 +88,54 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   };
 
   const handleAddScene = () => {
-    const newScene: Scene = { id: crypto.randomUUID(), sequence: project.scenes.length + 1, heading: 'INT. NEW SCENE - DAY', actionNotes: '' };
-    onUpdateProject({ ...project, scenes: [...project.scenes, newScene] });
+    // 1. Create Scene
+    const newSceneId = crypto.randomUUID();
+    const newScene: Scene = { 
+        id: newSceneId, 
+        sequence: project.scenes.length + 1, 
+        heading: 'INT. NEW SCENE - DAY', 
+        actionNotes: '' 
+    };
+
+    // 2. Create corresponding ScriptElement (Sync Logic)
+    const newScriptEl: ScriptElement = {
+        id: crypto.randomUUID(),
+        type: 'scene_heading',
+        content: newScene.heading,
+        sceneId: newSceneId,
+        sequence: (project.scriptElements?.length || 0) + 1
+    };
+
+    // 3. Update Project with BOTH
+    onUpdateProject({ 
+        ...project, 
+        scenes: [...project.scenes, newScene],
+        scriptElements: [...(project.scriptElements || []), newScriptEl]
+    });
+    
     showToast("Scene added", 'success');
   };
 
   const handleUpdateScene = (sceneId: string, updates: Partial<Scene>) => {
+    // 1. Update Scene List
     const updatedScenes = project.scenes.map(s => s.id === sceneId ? { ...s, ...updates } : s);
-    onUpdateProject({ ...project, scenes: updatedScenes });
+    
+    // 2. Sync Heading updates to Script Elements
+    let updatedScriptElements = project.scriptElements || [];
+    if (updates.heading) {
+        updatedScriptElements = updatedScriptElements.map(el => {
+            if (el.sceneId === sceneId && el.type === 'scene_heading') {
+                return { ...el, content: updates.heading! };
+            }
+            return el;
+        });
+    }
+
+    onUpdateProject({ 
+        ...project, 
+        scenes: updatedScenes,
+        scriptElements: updatedScriptElements 
+    });
   };
 
   const handleDeleteScene = (sceneId: string) => {
@@ -108,9 +146,21 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
 
   const confirmSceneDeletion = () => {
     if (!confirmDeleteScene) return;
+    
+    // 1. Clean Shots
     const updatedShots = project.shots.filter(s => s.sceneId !== confirmDeleteScene.id);
+    // 2. Clean Scenes
     const updatedScenes = project.scenes.filter(s => s.id !== confirmDeleteScene.id);
-    onUpdateProject({ ...project, scenes: updatedScenes, shots: updatedShots });
+    // 3. Clean Script Elements (Sync Logic)
+    const updatedScriptElements = (project.scriptElements || []).filter(el => el.sceneId !== confirmDeleteScene.id);
+
+    onUpdateProject({ 
+        ...project, 
+        scenes: updatedScenes, 
+        shots: updatedShots,
+        scriptElements: updatedScriptElements
+    });
+    
     showToast("Scene deleted", 'info');
     setConfirmDeleteScene(null);
   };
@@ -124,26 +174,23 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     onUpdateProject({ ...project, scenes: newScenes });
   };
 
-  // 1. TRIGGER MODAL (ADD NEW)
+  // ... (Rest of Modal/Picker handlers stay largely the same)
+  
   const handleTriggerAddShot = (sceneId: string) => {
     setImageModalState({ isOpen: true, sceneId, updateShotId: null });
   };
 
-  // 2. TRIGGER MODAL (UPDATE EXISTING)
   const handleTriggerAddVisual = (shotId: string) => {
     const shot = project.shots.find(s => s.id === shotId);
     if (!shot) return;
     setImageModalState({ isOpen: true, sceneId: shot.sceneId || null, updateShotId: shotId });
   };
 
-  // 3. CONFIRM SELECTION (Callback from Modal)
   const handleConfirmImageSelection = (selectedImage: ImageLibraryItem | null) => {
     const { sceneId, updateShotId } = imageModalState;
     
-    // CASE A: UPDATE EXISTING SHOT
     if (updateShotId) {
       if (selectedImage) {
-        // Apply image to existing shot
         const updatedShots = project.shots.map(s => s.id === updateShotId ? {
            ...s,
            generatedImage: selectedImage.url,
@@ -155,17 +202,13 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         onUpdateProject({ ...project, shots: updatedShots });
         showToast("Shot visual updated", 'success');
       } else {
-        // User chose "Blank" for existing shot -> Open Editor
         const shot = project.shots.find(s => s.id === updateShotId);
         if (shot) onEditShot(shot);
       }
     } 
-    // CASE B: ADD NEW SHOT
     else if (sceneId) {
-      // Calculate next sequence
       const sceneShots = project.shots.filter(s => s.sceneId === sceneId);
       const maxSeq = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.sequence)) : 0;
-      
       const scene = project.scenes.find(s => s.id === sceneId);
 
       const newShot: Shot = {
@@ -181,7 +224,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         generatedImage: selectedImage ? selectedImage.url : undefined,
         generationCandidates: selectedImage ? [selectedImage.url] : [],
         model: selectedImage?.model,
-        locationId: scene?.locationId // INHERIT LOCATION FROM SCENE
+        locationId: scene?.locationId
       };
 
       onUpdateProject({ ...project, shots: [...project.shots, newShot] });
@@ -193,8 +236,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         onEditShot(newShot);
       }
     }
-
-    // Reset Modal
     setImageModalState({ isOpen: false, sceneId: null, updateShotId: null });
   };
 
@@ -225,8 +266,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       }
     });
   };
-
-  // --- PICKER LOGIC ---
 
   const handleOpenPicker = (shotId: string, type: 'action' | 'dialogue' | 'script') => {
     const shot = project.shots.find(s => s.id === shotId);
@@ -282,7 +321,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       shotType: 'Wide Shot',
       aspectRatio: project.settings.aspectRatio,
       dialogue: '',
-      locationId: scene?.locationId // INHERIT LOCATION
+      locationId: scene?.locationId
     };
 
     onUpdateProject({ ...project, shots: [...project.shots, newShot] });
@@ -305,7 +344,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           scenes={project.scenes}
           shots={project.shots}
           scriptElements={scriptElements}
-          locations={locations} // Pass locations
+          locations={locations}
           projectSettings={project.settings}
           onUpdateScene={handleUpdateScene}
           onDeleteScene={handleDeleteScene}
@@ -322,7 +361,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
 
       </div>
 
-      {/* SHARED IMAGE SELECTOR MODAL */}
       <ImageSelectorModal 
         isOpen={imageModalState.isOpen}
         onClose={() => setImageModalState({ isOpen: false, sceneId: null, updateShotId: null })}
@@ -339,7 +377,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         onSelect={handleSelectScriptElement}
       />
 
-      {/* Delete Scene Confirmation Modal */}
       {confirmDeleteScene && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in" onClick={() => setConfirmDeleteScene(null)}>
           <div className="bg-surface border border-border rounded-lg p-6 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
