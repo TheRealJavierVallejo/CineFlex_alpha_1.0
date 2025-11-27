@@ -12,24 +12,34 @@ import {
   TimelineView,
   AssetManager,
   ProjectSettings,
-  ShotList,
+  ShotList, // Keeping import just in case, though unused in new dashboard
   ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
+import { ProductionSpreadsheet } from './components/features/ProductionSpreadsheet';
 
 // --- ADAPTER COMPONENTS ---
 
 const DashboardPage = () => {
-    const { project, handleAddShot, handleEditShot, handleDeleteShot, handleDuplicateShot, showToast } = useWorkspace();
+    // Using the exposed handlers from WorkspaceLayout
+    const { 
+        project, 
+        handleUpdateShot, 
+        handleEditShot, 
+        handleDeleteShot, 
+        handleDuplicateShot, 
+        showToast 
+    } = useWorkspace();
+
     return (
-        <div className="absolute inset-0 overflow-y-auto p-6">
+        <div className="absolute inset-0 overflow-hidden">
             <LazyWrapper>
-                <ShotList
+                <ProductionSpreadsheet
                     project={project}
-                    onAddShot={handleAddShot}
+                    onUpdateShot={handleUpdateShot}
                     onEditShot={handleEditShot}
                     onDeleteShot={handleDeleteShot}
-                    onDuplicateShot={handleDuplicateShot} // Connected
+                    onDuplicateShot={handleDuplicateShot}
                     showToast={showToast}
                 />
             </LazyWrapper>
@@ -120,9 +130,10 @@ const App: React.FC = () => {
 
             {/* Main Workspace Layout */}
             <Route path="/project/:projectId" element={<WorkspaceLayout />}>
+                {/* Dashboard is back as Index, but now it's a Spreadsheet */}
                 <Route index element={<DashboardPage />} />
-                <Route path="script" element={<ScriptEditorPage />} />
                 <Route path="timeline" element={<TimelinePage />} />
+                <Route path="script" element={<ScriptEditorPage />} />
                 <Route path="assets" element={<AssetsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
             </Route>

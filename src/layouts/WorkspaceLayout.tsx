@@ -19,8 +19,9 @@ export interface WorkspaceContextType {
     handleUpdateSettings: (key: keyof WorldSettings, value: any) => void;
     handleAddShot: () => void;
     handleEditShot: (shot: Shot) => void;
+    handleUpdateShot: (shot: Shot) => void; // Added this
     handleDeleteShot: (shotId: string) => void;
-    handleDuplicateShot: (shotId: string) => void; // New function
+    handleDuplicateShot: (shotId: string) => void;
     
     // New Centralized Script Functions
     importScript: (file: File) => Promise<void>;
@@ -183,7 +184,7 @@ export const WorkspaceLayout: React.FC = () => {
         }
     };
 
-    const handleSaveShot = (shot: Shot) => {
+    const handleUpdateShot = (shot: Shot) => {
         if (!project) return;
         const exists = project.shots.find(s => s.id === shot.id);
         const newShots = exists ? project.shots.map(s => s.id === shot.id ? shot : s) : [...project.shots, shot];
@@ -267,6 +268,7 @@ export const WorkspaceLayout: React.FC = () => {
         handleUpdateSettings,
         handleAddShot,
         handleEditShot,
+        handleUpdateShot,
         handleDeleteShot,
         handleDuplicateShot,
         importScript,
@@ -332,7 +334,7 @@ export const WorkspaceLayout: React.FC = () => {
                         project={project}
                         activeShot={editingShot}
                         onClose={() => setIsEditorOpen(false)}
-                        onUpdateShot={handleSaveShot}
+                        onUpdateShot={handleUpdateShot}
                         showToast={showToast}
                     />
                 </LazyWrapper>
