@@ -13,6 +13,7 @@ import {
   AssetManager,
   ProjectSettings,
   ShotList,
+  ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
 
@@ -34,6 +35,14 @@ const DashboardPage = () => {
                 />
             </LazyWrapper>
         </div>
+    );
+};
+
+const ScriptEditorPage = () => {
+    return (
+        <LazyWrapper>
+            <ScriptPage />
+        </LazyWrapper>
     );
 };
 
@@ -112,6 +121,7 @@ const App: React.FC = () => {
             {/* Main Workspace Layout */}
             <Route path="/project/:projectId" element={<WorkspaceLayout />}>
                 <Route index element={<DashboardPage />} />
+                <Route path="script" element={<ScriptEditorPage />} />
                 <Route path="timeline" element={<TimelinePage />} />
                 <Route path="assets" element={<AssetsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
