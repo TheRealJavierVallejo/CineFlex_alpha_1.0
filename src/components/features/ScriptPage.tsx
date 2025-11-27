@@ -250,7 +250,7 @@ export const ScriptPage: React.FC = () => {
           }}
         >
           {hasElements ? (
-              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] p-[100px] border border-[#333] relative transition-transform">
+              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border border-[#333] relative transition-transform">
                  <div className="flex flex-col">
                     {elements.map(element => (
                        <ScriptBlock 
