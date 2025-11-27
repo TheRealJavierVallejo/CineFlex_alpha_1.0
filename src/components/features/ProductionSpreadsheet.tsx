@@ -4,11 +4,12 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, ShowToastFn } from '../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../constants';
 import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Layers, Clapperboard, FileText, LayoutGrid } from 'lucide-react';
 import Button from '../ui/Button';
+import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
 
 interface ProductionSpreadsheetProps {
   project: Project;
@@ -21,13 +22,16 @@ interface ProductionSpreadsheetProps {
 
 export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   project,
-  onUpdateShot,
+  onUpdateShot, // We can still use single update for individual rows
   onEditShot,
   onDeleteShot,
   onDuplicateShot,
   showToast
 }) => {
   const navigate = useNavigate();
+  // Get the bulk handler from context
+  const { handleBulkUpdateShots } = useOutletContext<WorkspaceContextType>();
+  
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // Filters
@@ -87,10 +91,15 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
   const handleBulkUpdate = (field: keyof Shot, value: any) => {
     if (selectedIds.size === 0) return;
-    selectedIds.forEach(id => {
-      const shot = project.shots.find(s => s.id === id);
-      if (shot) onUpdateShot({ ...shot, [field]: value });
-    });
+    
+    // Prepare batched updates
+    const shotsToUpdate = project.shots
+        .filter(s => selectedIds.has(s.id))
+        .map(s => ({ ...s, [field]: value }));
+
+    // Send single transaction
+    handleBulkUpdateShots(shotsToUpdate);
+    
     showToast(`Updated ${selectedIds.size} shots`, 'success');
     setSelectedIds(new Set());
   };

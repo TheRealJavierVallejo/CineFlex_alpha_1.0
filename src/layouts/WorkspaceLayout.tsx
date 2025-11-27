@@ -19,7 +19,8 @@ export interface WorkspaceContextType {
     handleUpdateSettings: (key: keyof WorldSettings, value: any) => void;
     handleAddShot: () => void;
     handleEditShot: (shot: Shot) => void;
-    handleUpdateShot: (shot: Shot) => void; // Added this
+    handleUpdateShot: (shot: Shot) => void;
+    handleBulkUpdateShots: (shots: Shot[]) => void; // New Bulk Method
     handleDeleteShot: (shotId: string) => void;
     handleDuplicateShot: (shotId: string) => void;
     
@@ -127,8 +128,6 @@ export const WorkspaceLayout: React.FC = () => {
             const tempProject: Project = {
                 ...project,
                 scriptElements: parsed.elements,
-                // If it's a fresh import, we might want to reset scenes or merge. 
-                // For a "fresh import" behavior, we typically let syncScriptToScenes regenerate scenes.
                 scriptFile: {
                     name: file.name,
                     uploadedAt: Date.now(),
@@ -188,6 +187,14 @@ export const WorkspaceLayout: React.FC = () => {
         if (!project) return;
         const exists = project.shots.find(s => s.id === shot.id);
         const newShots = exists ? project.shots.map(s => s.id === shot.id ? shot : s) : [...project.shots, shot];
+        handleUpdateProject({ ...project, shots: newShots });
+    };
+
+    // NEW: Batch Update for performance
+    const handleBulkUpdateShots = (updatedShots: Shot[]) => {
+        if (!project) return;
+        const shotMap = new Map(updatedShots.map(s => [s.id, s]));
+        const newShots = project.shots.map(s => shotMap.get(s.id) || s);
         handleUpdateProject({ ...project, shots: newShots });
     };
 
@@ -269,6 +276,7 @@ export const WorkspaceLayout: React.FC = () => {
         handleAddShot,
         handleEditShot,
         handleUpdateShot,
+        handleBulkUpdateShots, // Exported
         handleDeleteShot,
         handleDuplicateShot,
         importScript,

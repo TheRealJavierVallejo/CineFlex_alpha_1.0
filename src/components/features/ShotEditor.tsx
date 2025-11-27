@@ -294,7 +294,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           aspectRatio: selectedAspectRatio,
           isFavorite: true // Auto-mark as selected since it's used in a shot
         });
-        const updated = { ...shot, generatedImage: img, generationCandidates: [img] };
+        const updated = { ...shot, generatedImage: img, generationCandidates: [img, ...(shot.generationCandidates || [])] }; // Add to history
         setShot(updated);
         onUpdateShot(updated);
         showToast("Render successful", 'success');
@@ -763,9 +763,10 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             </button>
           </div>
 
-          <div className="flex-1 flex items-center justify-center p-8 overflow-hidden bg-[#0a0a0a]">
-            <div className="relative w-full max-w-4xl flex items-center justify-center shadow-2xl" style={{ maxHeight: '100%' }}>
-              <div className="relative bg-black group rounded-sm overflow-hidden" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '70vh' }}>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden bg-[#0a0a0a]">
+            {/* Main Image */}
+            <div className="relative w-full max-w-4xl flex items-center justify-center shadow-2xl flex-1" style={{ maxHeight: '100%' }}>
+              <div className="relative bg-black group rounded-sm overflow-hidden" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '60vh' }}>
                 {shot.generatedImage ? (
                   <img src={shot.generatedImage} className="block w-full h-full object-contain border-none outline-none m-0 p-0 bg-transparent transform scale-[1.01]" alt="Rendered Shot" />
                 ) : (
@@ -800,6 +801,25 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 )}
               </div>
             </div>
+            
+            {/* Version History Filmstrip (NEW) */}
+            {shot.generationCandidates && shot.generationCandidates.length > 0 && (
+               <div className="w-full max-w-4xl h-24 mt-4 flex gap-2 overflow-x-auto p-2 bg-surface-secondary border border-border rounded-lg shrink-0">
+                  {shot.generationCandidates.map((url, idx) => (
+                     <div 
+                        key={idx} 
+                        onClick={() => setShot(prev => ({...prev, generatedImage: url}))}
+                        className={`
+                           h-full aspect-video bg-black rounded cursor-pointer border-2 transition-all relative group/thumb
+                           ${shot.generatedImage === url ? 'border-primary' : 'border-transparent hover:border-border'}
+                        `}
+                     >
+                        <img src={url} className="w-full h-full object-cover opacity-70 group-hover/thumb:opacity-100 transition-opacity" />
+                        <div className="absolute bottom-1 right-1 bg-black/60 px-1 rounded text-[8px] text-white font-mono">v{idx + 1}</div>
+                     </div>
+                  ))}
+               </div>
+            )}
           </div>
 
           {/* FOOTER */}

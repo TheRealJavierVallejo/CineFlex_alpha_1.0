@@ -11,13 +11,17 @@ import { Shot, Project, Character, Outfit, ScriptElement, Location } from '../ty
 import { constructPrompt } from './promptBuilder';
 
 // Helper to check for API Key
-export const hasApiKey = () => !!import.meta.env.VITE_GEMINI_API_KEY;
+export const hasApiKey = () => {
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const localKey = localStorage.getItem('cinesketch_api_key');
+  return !!(envKey || localKey);
+};
 
 const getClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('cinesketch_api_key');
 
   if (!apiKey) {
-    throw new Error("API Key not found. Please set VITE_GEMINI_API_KEY in your .env.local file and restart the dev server.");
+    throw new Error("API Key not found. Please set VITE_GEMINI_API_KEY in .env or enter it in Project Settings.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -127,7 +131,7 @@ export const generateShotImage = async (
   } catch (error: any) {
     console.error("Gemini Image Gen Error:", error);
     if (error.message?.includes('403') || error.status === 403) {
-      throw new Error(`Permission Denied. Please try using 'Gemini (Fast)' for this request.`);
+      throw new Error(`Permission Denied. Please check your API Key permissions.`);
     }
     throw error;
   }
@@ -232,7 +236,7 @@ export const chatWithScript = async (
     return response.text || "I couldn't generate a response.";
   } catch (error) {
     console.error("Script Chat Error", error);
-    return "Sorry, I encountered an error connecting to the AI.";
+    return "Sorry, I encountered an error connecting to the AI. Check your API Key.";
   }
 };
 
