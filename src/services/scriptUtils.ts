@@ -6,6 +6,38 @@
 import { Project, Scene, ScriptElement } from '../types';
 
 /**
+ * INTELLIGENT SCRIPT COMPILER
+ * Scans the script top-to-bottom and links dialogue to the active character.
+ */
+export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[] => {
+  let activeCharacterName = '';
+
+  return elements.map(el => {
+    // 1. Found a Character Header? Update active character.
+    if (el.type === 'character') {
+      activeCharacterName = el.content.trim();
+      return el;
+    }
+
+    // 2. Found Dialogue or Parenthetical? Link it to the active character.
+    if (el.type === 'dialogue' || el.type === 'parenthetical') {
+      // Only link if we actually have a character context (skips orphaned dialogue at start)
+      if (activeCharacterName) {
+        return { ...el, character: activeCharacterName };
+      }
+    }
+
+    // 3. Found a Scene Heading or Action? Reset active character.
+    // (Characters don't usually speak across scene headers or long action blocks without being re-stated)
+    if (el.type === 'scene_heading') {
+      activeCharacterName = '';
+    }
+
+    return el;
+  });
+};
+
+/**
  * Re-analyzes the entire scriptElements array.
  * 1. Identifies Scene Headings.
  * 2. Creates/Updates Scene objects in project.scenes.
@@ -15,6 +47,9 @@ import { Project, Scene, ScriptElement } from '../types';
 export const syncScriptToScenes = (project: Project): Project => {
   if (!project.scriptElements) return project;
 
+  // STEP 0: ENRICH (Link Characters to Dialogue)
+  const enrichedElements = enrichScriptElements(project.scriptElements);
+
   const newScenes: Scene[] = [];
   const updatedElements: ScriptElement[] = [];
   
@@ -22,11 +57,10 @@ export const syncScriptToScenes = (project: Project): Project => {
   let sceneSequence = 1;
 
   // 1. Map existing scenes for quick lookup (to preserve IDs if strictly matching)
-  // Actually, we rely on the element.sceneId if it exists.
   const existingScenesMap = new Map(project.scenes.map(s => [s.id, s]));
 
-  for (let i = 0; i < project.scriptElements.length; i++) {
-    const el = { ...project.scriptElements[i] };
+  for (let i = 0; i < enrichedElements.length; i++) {
+    const el = { ...enrichedElements[i] };
     
     // CASE A: NEW SCENE HEADING
     if (el.type === 'scene_heading') {
@@ -66,17 +100,19 @@ export const syncScriptToScenes = (project: Project): Project => {
     // CASE C: ORPHANED CONTENT (Before first heading)
     else {
       // Create a default "Start" scene if none exists
-      const sceneId = crypto.randomUUID();
-      const sceneObj: Scene = {
-         id: sceneId,
-         sequence: sceneSequence++,
-         heading: 'START OF SCRIPT',
-         actionNotes: '',
-         scriptElements: []
-      };
-      currentScene = sceneObj;
-      newScenes.push(sceneObj);
-      el.sceneId = sceneId;
+      if (!currentScene) {
+          const sceneId = crypto.randomUUID();
+          const sceneObj: Scene = {
+             id: sceneId,
+             sequence: sceneSequence++,
+             heading: 'START OF SCRIPT',
+             actionNotes: '',
+             scriptElements: []
+          };
+          currentScene = sceneObj;
+          newScenes.push(sceneObj);
+      }
+      el.sceneId = currentScene.id;
     }
 
     updatedElements.push(el);

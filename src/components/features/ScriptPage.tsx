@@ -12,6 +12,7 @@ import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
+import { enrichScriptElements } from '../../services/scriptUtils';
 
 export const ScriptPage: React.FC = () => {
   const { project, updateScriptElements, importScript } = useWorkspace();
@@ -45,25 +46,32 @@ export const ScriptPage: React.FC = () => {
           setIsSyncing(true);
           // Re-sequence before saving to ensure order is correct
           const sequenced = currentElements.map((el, idx) => ({ ...el, sequence: idx + 1 }));
-          updateScriptElements(sequenced);
+          
+          // CRITICAL: We enrich here too, just to be safe before hitting the DB
+          const enriched = enrichScriptElements(sequenced);
+          
+          updateScriptElements(enriched);
           setTimeout(() => setIsSyncing(false), 500);
       }, 2000),
       []
   );
 
   // Initial Load / External Update Sync
-  // We only sync FROM project if the history is empty (initial load) to avoid overwriting work
   useEffect(() => {
     if (project.scriptElements && elements.length === 0 && project.scriptElements.length > 0) {
         setElements(project.scriptElements);
     }
-  }, [project.scriptElements]); // Careful with deps here to avoid loops
+  }, [project.scriptElements]); 
 
   // --- 3. EDITING LOGIC ---
 
   const updateLocal = (newElements: ScriptElement[]) => {
-      setElements(newElements);
-      debouncedSync(newElements);
+      // ENRICHMENT STEP: Link characters to dialogue immediately
+      // This ensures the UI is always correct even before saving
+      const enriched = enrichScriptElements(newElements);
+      
+      setElements(enriched);
+      debouncedSync(enriched);
   };
 
   const handleContentChange = (id: string, newContent: string) => {
@@ -71,9 +79,6 @@ export const ScriptPage: React.FC = () => {
     if (currentIndex === -1) return;
     
     const currentEl = elements[currentIndex];
-    
-    // Optimization: Don't trigger history update for every single character if rapid typing?
-    // For now, simple setElements is fine for < 500 lines.
     
     let newType = currentEl.type;
     const upper = newContent.toUpperCase();
@@ -95,9 +100,6 @@ export const ScriptPage: React.FC = () => {
     const updated = [...elements];
     updated[currentIndex] = { ...currentEl, content: finalContent, type: newType };
     
-    // We use a separate "quiet" update logic for content typing to avoid cluttering undo stack?
-    // Actually, for a script editor, you usually want snapshots. 
-    // Ideally, we'd debounce the "setElements" for history purposes, but for now direct update:
     updateLocal(updated);
   };
 
