@@ -4,9 +4,10 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Project, Shot, ShowToastFn } from '../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../constants';
-import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Image as ImageIcon, Layers, Clapperboard } from 'lucide-react';
+import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Layers, Clapperboard, FileText, LayoutGrid } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface ProductionSpreadsheetProps {
@@ -26,6 +27,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   onDuplicateShot,
   showToast
 }) => {
+  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // Filters
@@ -100,6 +102,40 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
       showToast("Shots deleted", 'info');
     }
   };
+
+  // --- EMPTY STATE CHECK ---
+  if (project.shots.length === 0) {
+      return (
+          <div className="flex flex-col h-full items-center justify-center bg-[#1E1E1E] text-center p-8 animate-in fade-in zoom-in-95 duration-500">
+              <div className="w-20 h-20 bg-[#252526] rounded-2xl flex items-center justify-center mb-6 border border-[#333] shadow-inner">
+                  <LayoutGrid className="w-10 h-10 text-[#505050]" />
+              </div>
+              <h2 className="text-xl font-bold text-[#E8E8E8] mb-2">Welcome to your Project</h2>
+              <p className="text-[#969696] max-w-md mb-8 leading-relaxed">
+                  Your shot list is currently empty. To start visualizing your movie, you can either write/import a script or build scenes manually.
+              </p>
+              
+              <div className="flex gap-4">
+                  <Button 
+                      variant="primary" 
+                      size="lg" 
+                      icon={<FileText className="w-4 h-4" />}
+                      onClick={() => navigate('script')}
+                  >
+                      Open Script Editor
+                  </Button>
+                  <Button 
+                      variant="secondary" 
+                      size="lg" 
+                      icon={<Clapperboard className="w-4 h-4" />}
+                      onClick={() => navigate('timeline')}
+                  >
+                      Go to Timeline
+                  </Button>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#1E1E1E]">
@@ -187,7 +223,6 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
          <div className="w-10 flex justify-center cursor-pointer hover:text-white" onClick={toggleAll}>
             {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-[#007ACC]" /> : <Square className="w-3.5 h-3.5" />}
          </div>
-         {/* Removed text-[#E8E8E8] to match other headers which inherit #969696 */}
          <div className="w-16 text-center">ID</div>
          <div className="w-16 text-center">Visual</div>
          <div className="flex-1 px-3 border-l border-[#2A2A2A]">Scene Assignment</div>

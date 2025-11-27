@@ -56,10 +56,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
       // Prepare history for API (exclude IDs)
       const history = messages.map(m => ({ role: m.role, content: m.content }));
       
+      const elements = project.scriptElements || [];
+      
       const responseText = await chatWithScript(
         userMsg.content, 
         history, 
-        project.scriptElements || [], 
+        elements, 
         characters
       );
 
@@ -147,7 +149,9 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
         <div className="text-[10px] text-text-tertiary mt-2 text-center">
-          AI has read the last 50 lines of your script.
+          {(project.scriptElements || []).length > 0 
+            ? "AI is reading your script context." 
+            : "No script detected. AI will brainstorm freely."}
         </div>
       </div>
     </div>

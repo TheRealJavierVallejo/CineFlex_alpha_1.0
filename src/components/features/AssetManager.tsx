@@ -74,6 +74,17 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
    const isImageUsed = (imageUrl: string) => {
       return projectShots.some(shot => shot.generatedImage === imageUrl);
    };
+   
+   // Helper: Check usage of asset
+   const getUsageCount = (type: 'character' | 'outfit' | 'location', id: string) => {
+       if (type === 'character') {
+           return projectShots.filter(s => s.characterIds?.includes(id)).length;
+       }
+       if (type === 'location') {
+           return projectShots.filter(s => s.locationId === id).length;
+       }
+       return 0; // Outfits not directly linked on shots yet in this version
+   };
 
    // Calculate derived stats
    const usedImagesCount = library.filter(img => isImageUsed(img.url)).length;
@@ -254,10 +265,18 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                <div className="space-y-4">
                   <div className="flex items-center gap-3 p-4 bg-error/10 rounded-lg border border-error/20">
                      <AlertTriangle className="w-5 h-5 text-error shrink-0" />
-                     <p className="text-sm text-text-primary">
-                        Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?
-                        {deleteConfirm.type === 'character' && ' This will also remove all associated outfits.'}
-                     </p>
+                     <div className="text-sm text-text-primary">
+                        <p className="mb-1">Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
+                        
+                        {/* Usage Warning */}
+                        {getUsageCount(deleteConfirm.type, deleteConfirm.id) > 0 && (
+                            <p className="text-error font-bold mt-2">
+                                Warning: This {deleteConfirm.type} is used in {getUsageCount(deleteConfirm.type, deleteConfirm.id)} shot(s).
+                            </p>
+                        )}
+                        
+                        {deleteConfirm.type === 'character' && <p className="text-xs text-text-secondary mt-1">This will also remove all associated outfits.</p>}
+                     </div>
                   </div>
                   <div className="flex gap-2 justify-end">
                      <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
