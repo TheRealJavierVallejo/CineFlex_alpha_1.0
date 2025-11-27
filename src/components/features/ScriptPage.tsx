@@ -7,31 +7,70 @@ import React, { useState, useRef } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Plus, Sparkles, Upload, FilePlus, Loader2 } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Sparkles, Upload, FilePlus, Loader2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
+import { syncScriptToScenes } from '../../services/scriptUtils';
+import { parseScript } from '../../services/scriptParser';
 
 export const ScriptPage: React.FC = () => {
-  const { project, updateScriptElements, importScript, showToast } = useWorkspace();
+  const { project, handleUpdateProject, updateScriptElements, importScript, showToast } = useWorkspace();
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to update via central brain
-  const handleUpdateElements = (newElements: ScriptElement[]) => {
+  const updateElements = (newElements: ScriptElement[]) => {
     // Re-sequence
     const sequenced = newElements.map((el, idx) => ({ ...el, sequence: idx + 1 }));
     updateScriptElements(sequenced); // Auto-syncs to timeline!
   };
 
-  // 1. UPDATE HANDLER
+  // 1. SMART UPDATE HANDLER
   const handleContentChange = (id: string, newContent: string) => {
     if (!project.scriptElements) return;
+
+    const currentEl = project.scriptElements.find(el => el.id === id);
+    if (!currentEl) return;
+
+    let newType = currentEl.type;
+
+    // --- AUTO-FORMATTING LOGIC (Fountain Style) ---
+    const upper = newContent.toUpperCase();
+    
+    // Detect Scene Headings (INT./EXT.)
+    if (currentEl.type !== 'scene_heading') {
+        if (/^(INT\.|EXT\.|INT\/EXT|I\/E)(\s|$)/.test(upper)) {
+            newType = 'scene_heading';
+        }
+    }
+
+    // Detect Transitions (Ends with TO:)
+    if (currentEl.type !== 'transition') {
+        if (upper.endsWith(' TO:') || upper === 'FADE OUT.') {
+            newType = 'transition';
+        }
+    }
+
+    // Detect Characters (All Caps, short line, not scene heading)
+    // Only apply if user just typed it fresh (simple heuristic)
+    /* 
+       Note: Auto-detecting character names while typing is tricky because shouting in action
+       looks like a character name. We'll leave character auto-detect to the 'Enter' key behavior 
+       or manual Tab, but we force Uppercase if it IS a character.
+    */
+    
+    // Auto-uppercase Scene Headings and Characters
+    let finalContent = newContent;
+    if (newType === 'scene_heading' || newType === 'character' || newType === 'transition') {
+        finalContent = newContent.toUpperCase();
+    }
+
     const updated = project.scriptElements.map(el => 
-      el.id === id ? { ...el, content: newContent } : el
+      el.id === id ? { ...el, content: finalContent, type: newType } : el
     );
-    handleUpdateElements(updated);
+    updateElements(updated);
   };
 
   // 2. LOGIC ENGINE (Keyboard nav)
@@ -59,7 +98,7 @@ export const ScriptPage: React.FC = () => {
           updated[currentIndex].content = updated[currentIndex].content.toUpperCase();
       }
       
-      handleUpdateElements(updated);
+      updateElements(updated);
     }
 
     // --- ENTER: NEW BLOCK ---
@@ -68,12 +107,13 @@ export const ScriptPage: React.FC = () => {
       
       let nextType: ScriptElement['type'] = 'action';
       
+      // Standard Screenplay Flow
       switch (type) {
         case 'scene_heading': nextType = 'action'; break;
         case 'character': nextType = 'dialogue'; break;
         case 'parenthetical': nextType = 'dialogue'; break;
         case 'transition': nextType = 'scene_heading'; break;
-        case 'dialogue': nextType = 'character'; break;
+        case 'dialogue': nextType = 'character'; break; // Fast dialogue back-and-forth
         case 'action': nextType = 'action'; break;
       }
 
@@ -87,7 +127,7 @@ export const ScriptPage: React.FC = () => {
 
       const updated = [...project.scriptElements];
       updated.splice(currentIndex + 1, 0, newElement);
-      handleUpdateElements(updated);
+      updateElements(updated);
       
       setTimeout(() => setActiveElementId(newId), 0);
     }
@@ -99,7 +139,7 @@ export const ScriptPage: React.FC = () => {
           const prevId = project.scriptElements[currentIndex - 1].id;
           const updated = [...project.scriptElements];
           updated.splice(currentIndex, 1);
-          handleUpdateElements(updated);
+          updateElements(updated);
           setTimeout(() => setActiveElementId(prevId), 0);
        }
     }
@@ -208,7 +248,7 @@ export const ScriptPage: React.FC = () => {
                  </div>
               </div>
           ) : (
-              // NEW ZERO STATE UI
+              // ZERO STATE UI
               <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="text-center mb-10">
                       <div className="w-16 h-16 bg-surface-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border shadow-inner">
@@ -216,7 +256,7 @@ export const ScriptPage: React.FC = () => {
                       </div>
                       <h2 className="text-2xl font-bold text-text-primary mb-2">No Script Found</h2>
                       <p className="text-text-secondary text-sm max-w-md mx-auto">
-                          This project doesn't have a screenplay yet. Import an existing .fountain file or start writing from scratch.
+                          Import a .fountain file or start writing. We'll automatically build your Timeline scenes as you type headings.
                       </p>
                   </div>
 
@@ -233,7 +273,7 @@ export const ScriptPage: React.FC = () => {
                              {isImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                           </div>
                           <h3 className="text-base font-bold text-text-primary mb-1">Import Script</h3>
-                          <p className="text-xs text-text-tertiary text-center">Upload a .fountain or .txt file. We'll copy it into the project safely.</p>
+                          <p className="text-xs text-text-tertiary text-center">Upload a .fountain or .txt file.</p>
                       </button>
 
                       {/* Option 2: Create New */}
@@ -248,7 +288,7 @@ export const ScriptPage: React.FC = () => {
                              <FilePlus className="w-5 h-5" />
                           </div>
                           <h3 className="text-base font-bold text-text-primary mb-1">Start Fresh</h3>
-                          <p className="text-xs text-text-tertiary text-center">Create a blank screenplay document and start writing immediately.</p>
+                          <p className="text-xs text-text-tertiary text-center">Write from scratch.</p>
                       </button>
                   </div>
               </div>
@@ -261,8 +301,8 @@ export const ScriptPage: React.FC = () => {
       
       {/* Help Hint */}
       {!isChatOpen && hasElements && (
-        <div className="absolute bottom-4 left-6 text-[10px] text-text-tertiary bg-surface/80 p-2 rounded border border-border z-10">
-            <span className="font-bold text-text-secondary">TAB</span> to change element type • <span className="font-bold text-text-secondary">ENTER</span> for new line
+        <div className="absolute bottom-4 left-6 text-[10px] text-text-tertiary bg-surface/80 p-2 rounded border border-border z-10 pointer-events-none">
+            <span className="font-bold text-text-secondary">TAB</span> to change type • <span className="font-bold text-text-secondary">ENTER</span> new line • <span className="text-primary">INT./EXT.</span> auto-detects scene
         </div>
       )}
     </div>

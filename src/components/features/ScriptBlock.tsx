@@ -34,13 +34,14 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [isActive]);
 
   const getStyles = () => {
-    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-[family-name:var(--font-family-screenplay)] text-lg text-text-primary leading-relaxed selection:bg-primary/30";
+    // Base font is explicitly Courier for screenplay look
+    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-mono text-base text-[#CCCCCC] leading-relaxed selection:bg-[#264F78] selection:text-white";
     
     switch (element.type) {
       case 'scene_heading':
         return {
-           container: "pt-8 pb-4 border-b border-border/10 mb-4",
-           input: `${base} font-bold uppercase tracking-wider`
+           container: "pt-8 pb-4 border-b border-white/5 mb-4 group/heading",
+           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8]`
         };
       case 'action':
         return {
@@ -50,22 +51,23 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
       case 'character':
         return {
            container: "pt-4 pb-0 flex justify-center",
-           input: `${base} font-bold uppercase text-center w-[60%] tracking-wide`
+           // Characters are typically centered but slightly to left of true center in standard format, but centered is fine for web
+           input: `${base} font-bold uppercase text-center w-[60%] tracking-widest mt-2`
         };
       case 'dialogue':
         return {
            container: "pb-2 flex justify-center",
-           input: `${base} text-center w-[50%] max-w-[400px]`
+           input: `${base} text-center w-[70%] max-w-[480px]`
         };
       case 'parenthetical':
         return {
            container: "pb-0 flex justify-center",
-           input: `${base} italic text-sm text-center w-[40%]`
+           input: `${base} italic text-sm text-center w-[50%] text-[#969696]`
         };
       case 'transition':
         return {
            container: "pt-4 pb-4 flex justify-end pr-12",
-           input: `${base} font-bold uppercase text-right w-[30%]`
+           input: `${base} font-bold uppercase text-right w-[30%] tracking-widest`
         };
       default:
         return {
@@ -78,9 +80,9 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   const styles = getStyles();
 
   return (
-    <div className={`group relative ${styles.container}`}>
-       {/* Visual Type Indicator (Left Margin) */}
-       <div className="absolute -left-24 top-1/2 -translate-y-1/2 text-[10px] text-text-tertiary uppercase opacity-0 group-hover:opacity-50 select-none w-20 text-right">
+    <div className={`relative ${styles.container}`}>
+       {/* Visual Type Indicator (Left Margin) - Hidden unless hovered */}
+       <div className="absolute -left-28 top-2 text-[9px] text-[#505050] uppercase opacity-0 group-hover:opacity-100 transition-opacity select-none w-24 text-right pr-4 border-r border-[#333]">
           {element.type.replace('_', ' ')}
        </div>
 
