@@ -4,8 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutGrid, Clapperboard, Users, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { LayoutGrid, Clapperboard, Users, Settings, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -50,6 +50,7 @@ export const Sidebar: React.FC = () => {
       <div className="flex flex-col gap-1 p-2">
         {/* The index route is technically "", so we link to "." */}
         <NavItem to="." exact icon={LayoutGrid} label="Dashboard" />
+        <NavItem to="script" icon={FileText} label="Script" />
         <NavItem to="timeline" icon={Clapperboard} label="Timeline" />
         <NavItem to="assets" icon={Users} label="Assets" />
       </div>
