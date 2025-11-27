@@ -7,7 +7,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { Shot, Project, Character, Outfit, ScriptElement } from '../types';
+import { Shot, Project, Character, Outfit, ScriptElement, Location } from '../types';
 import { constructPrompt } from './promptBuilder';
 
 // Helper to check for API Key
@@ -28,12 +28,13 @@ export const generateShotImage = async (
   project: Project,
   activeCharacters: Character[],
   activeOutfits: Outfit[],
+  activeLocation: Location | undefined, // NEW
   options: { model: string; aspectRatio: string; imageSize?: string }
 ): Promise<string> => {
   const ai = getClient();
 
   // 1. Construct Prompt using shared logic
-  let prompt = constructPrompt(shot, project, activeCharacters, activeOutfits, options.aspectRatio, options.model);
+  let prompt = constructPrompt(shot, project, activeCharacters, activeOutfits, activeLocation, options.aspectRatio, options.model);
 
   // --- DEBUG LOGGING ---
   console.group("🎨 GENERATING PROMPT");
@@ -43,7 +44,8 @@ export const generateShotImage = async (
     aspectRatio: options.aspectRatio,
     styleStrength: shot.styleStrength,
     timeOverride: shot.timeOfDay,
-    negative: shot.negativePrompt
+    negative: shot.negativePrompt,
+    location: activeLocation?.name
   });
   console.groupEnd();
 
@@ -74,7 +76,17 @@ export const generateShotImage = async (
       }
     });
 
-    // C. Add Sketch
+    // C. Add Location Reference Photos (NEW)
+    if (activeLocation && activeLocation.referencePhotos && activeLocation.referencePhotos.length > 0) {
+       activeLocation.referencePhotos.forEach(photo => {
+          const match = photo.match(/^data:(.+);base64,(.+)$/);
+          if (match) {
+            contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+          }
+       });
+    }
+
+    // D. Add Sketch
     if (shot.sketchImage) {
       const base64Data = shot.sketchImage.split(',')[1] || shot.sketchImage;
       const mimeMatch = shot.sketchImage.match(/^data:(.+);base64,/);
@@ -82,7 +94,7 @@ export const generateShotImage = async (
       contents.parts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
     }
 
-    // D. Reference Image Control (Depth/Canny)
+    // E. Reference Image Control (Depth/Canny)
     if (shot.referenceImage) {
       const refBase64 = shot.referenceImage.split(',')[1] || shot.referenceImage;
       const mimeMatch = shot.referenceImage.match(/^data:(.+);base64,/);
@@ -90,10 +102,10 @@ export const generateShotImage = async (
       contents.parts.push({ inlineData: { mimeType: mimeType, data: refBase64 } });
     }
 
-    // Add text prompt
+    // F. Add text prompt
     contents.parts.push({ text: prompt });
 
-    // F. Configuration
+    // G. Configuration
     const apiAspectRatio = options.aspectRatio === 'Match Reference' ? undefined : options.aspectRatio;
     const imageConfig: any = apiAspectRatio ? { aspectRatio: apiAspectRatio } : {};
 
@@ -127,11 +139,12 @@ export const generateBatchShotImages = async (
   project: Project,
   activeCharacters: Character[],
   activeOutfits: Outfit[],
+  activeLocation: Location | undefined, // NEW
   options: { model: string; aspectRatio: string; imageSize?: string },
   count: number = 1
 ): Promise<string[]> => {
   const promises = Array(count).fill(null).map(() =>
-    generateShotImage(shot, project, activeCharacters, activeOutfits, options)
+    generateShotImage(shot, project, activeCharacters, activeOutfits, activeLocation, options)
   );
   try {
     const results = await Promise.all(promises);

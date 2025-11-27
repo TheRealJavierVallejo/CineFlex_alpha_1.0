@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Shot, Project, Character, Outfit, ShowToastFn } from '../../types';
+import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../types';
 import { generateShotImage, generateBatchShotImages, analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
 import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, VARIATION_COUNTS, TIMES_OF_DAY } from '../../constants';
-import { X, Wand2, Film, RefreshCw, Download, Copy, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize2, Minimize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, HelpCircle, Eye, FileText, Camera, Users, Settings, ArrowLeft } from 'lucide-react';
-import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary } from '../../services/storage';
+import { X, Wand2, Film, RefreshCw, Download, Copy, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize2, Minimize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, HelpCircle, Eye, FileText, Camera, Users, Settings, ArrowLeft, MapPin } from 'lucide-react';
+import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
 import Button from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { VariationPicker } from '../features/VariationPicker';
@@ -40,10 +40,14 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     referenceStrength: 50,
     timeOfDay: undefined,
     negativePrompt: '',
-    styleStrength: 100
+    styleStrength: 100,
+    locationId: undefined // Explicitly init
   });
+  
   const [characters, setCharacters] = useState<Character[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]); // New State
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -65,6 +69,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   const activeChars = characters.filter(c => shot.characterIds.includes(c.id));
+  const activeLocation = locations.find(l => l.id === shot.locationId);
 
   // --- KEYBOARD & FOCUS ---
   useEffect(() => {
@@ -87,12 +92,14 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   // Load assets
   useEffect(() => {
     const loadAssets = async () => {
-      const [chars, outfs] = await Promise.all([
+      const [chars, outfs, locs] = await Promise.all([
         getCharacters(project.id),
-        getOutfits(project.id)
+        getOutfits(project.id),
+        getLocations(project.id)
       ]);
       setCharacters(chars);
       setOutfits(outfs);
+      setLocations(locs);
     };
     loadAssets();
   }, [project.id]);
@@ -200,12 +207,17 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     showToast("Starting render...", 'info');
 
     try {
+      // Common Payload Construction
+      const effectiveShot = noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot;
+      const effectiveChars = noCharacters ? [] : activeChars;
+
       if (variationCount > 1) {
         const images = await generateBatchShotImages(
-          noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot,
+          effectiveShot,
           project,
-          noCharacters ? [] : activeChars,
+          effectiveChars,
           outfits,
+          activeLocation, // NEW
           {
             model: selectedModel,
             aspectRatio: selectedAspectRatio,
@@ -221,7 +233,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             url: img,
             createdAt: Date.now(),
             shotId: shot.id,
-            prompt: constructPrompt(shot, project, noCharacters ? [] : activeChars, outfits, selectedAspectRatio),
+            prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation, selectedAspectRatio),
             model: selectedModel,
             aspectRatio: selectedAspectRatio
         }));
@@ -234,10 +246,11 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
         showToast("Batch complete", 'success');
       } else {
         const img = await generateShotImage(
-          noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot,
+          effectiveShot,
           project,
-          noCharacters ? [] : activeChars,
+          effectiveChars,
           outfits,
+          activeLocation, // NEW
           {
             model: selectedModel,
             aspectRatio: selectedAspectRatio,
@@ -253,7 +266,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           url: img,
           createdAt: Date.now(),
           shotId: shot.id,
-          prompt: constructPrompt(shot, project, noCharacters ? [] : activeChars, outfits, selectedAspectRatio),
+          prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation, selectedAspectRatio),
           model: selectedModel,
           aspectRatio: selectedAspectRatio,
           isFavorite: true // Auto-mark as selected since it's used in a shot
@@ -293,7 +306,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   };
 
   const handleCopyPrompt = () => {
-    const txt = constructPrompt(shot, project, activeChars, outfits, selectedAspectRatio);
+    const txt = constructPrompt(shot, project, activeChars, outfits, activeLocation, selectedAspectRatio);
     navigator.clipboard.writeText(txt);
     showToast("Prompt copied to clipboard", 'success');
   };
@@ -329,8 +342,6 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       showToast("Image downloaded!", 'success');
     }
   };
-
-
 
   const getAspectRatioStyle = (ratio: string) => {
     if (ratio === 'Match Reference' && detectedReferenceRatio) {
@@ -386,7 +397,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 </div>
               )}
               <pre className="whitespace-pre-wrap font-mono text-xs text-text-secondary leading-relaxed selection:bg-primary/30 selection:text-white">
-                {constructPrompt(shot, project, activeChars, outfits, selectedAspectRatio)}
+                {constructPrompt(shot, project, activeChars, outfits, activeLocation, selectedAspectRatio)}
               </pre>
             </div>
             <div className="p-4 border-t border-border bg-surface-secondary flex justify-end">
@@ -443,6 +454,36 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary resize-none h-32 leading-relaxed"
                     placeholder="Describe the action, subject, and environment..."
                   />
+                </div>
+
+                {/* Location Selection (NEW) */}
+                <div>
+                   <label className="block text-xs font-semibold text-text-secondary mb-2">Location / Set</label>
+                   <div className="relative">
+                      <select 
+                        value={shot.locationId || ''} 
+                        onChange={(e) => setShot(prev => ({...prev, locationId: e.target.value || undefined}))}
+                        className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary appearance-none"
+                      >
+                         <option value="">No specific location (Use Prompt)</option>
+                         {locations.map(loc => (
+                            <option key={loc.id} value={loc.id}>{loc.name}</option>
+                         ))}
+                      </select>
+                      <MapPin className="absolute right-3 top-2.5 w-4 h-4 text-text-tertiary pointer-events-none" />
+                   </div>
+                   {activeLocation && (
+                      <div className="mt-2 p-2 bg-surface-secondary border border-border rounded text-xs text-text-secondary flex items-start gap-2">
+                         <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                         <div>
+                            <span className="font-semibold block">Using Reference:</span>
+                            {activeLocation.description}
+                            {activeLocation.referencePhotos && activeLocation.referencePhotos.length > 0 && (
+                               <div className="mt-1 text-[10px] text-primary">{activeLocation.referencePhotos.length} reference photos attached</div>
+                            )}
+                         </div>
+                      </div>
+                   )}
                 </div>
 
                 <div>
