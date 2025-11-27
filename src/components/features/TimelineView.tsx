@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem } from '../../types';
-import { parseScript } from '../../services/scriptParser';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
@@ -16,10 +15,11 @@ interface TimelineViewProps {
   project: Project;
   onUpdateProject: (project: Project) => void;
   onEditShot: (shot: Shot) => void;
+  importScript: (file: File) => Promise<void>; // New Prop
   showToast: ShowToastFn;
 }
 
-export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
+export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, importScript, showToast }) => {
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
@@ -56,35 +56,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     if (!file) return;
 
     setIsUploadingScript(true);
-
-    try {
-      const parsed = await parseScript(file);
-
-      const updatedProject = {
-        ...project,
-        scenes: parsed.scenes,
-        scriptElements: parsed.elements,
-        scriptFile: {
-          name: file.name,
-          uploadedAt: Date.now(),
-          format: file.name.endsWith('.fountain') ? 'fountain' as const : 'txt' as const
-        }
-      };
-
-      onUpdateProject(updatedProject);
-      setScriptElements(parsed.elements);
-
-      showToast(
-        `Script imported: ${parsed.scenes.length} scenes, ${parsed.elements.length} elements`,
-        'success'
-      );
-
-    } catch (error: any) {
-      console.error(error);
-      showToast('Failed to parse script: ' + (error.message || 'Unknown error'), 'error');
-    } finally {
-      setIsUploadingScript(false);
-    }
+    await importScript(file); // Use central brain
+    setIsUploadingScript(false);
   };
 
   const handleAddScene = () => {

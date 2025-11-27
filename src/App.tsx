@@ -18,8 +18,6 @@ import {
 } from './components/features/LazyComponents';
 
 // --- ADAPTER COMPONENTS ---
-// These wrappers extract data from the WorkspaceContext and pass it to the legacy feature components.
-// This allows us to keep the feature components pure and testable.
 
 const DashboardPage = () => {
     const { project, handleAddShot, handleEditShot, handleDeleteShot, showToast } = useWorkspace();
@@ -47,13 +45,14 @@ const ScriptEditorPage = () => {
 };
 
 const TimelinePage = () => {
-    const { project, handleUpdateProject, handleEditShot, showToast } = useWorkspace();
+    const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useWorkspace();
     return (
         <LazyWrapper>
             <TimelineView
                 project={project}
                 onUpdateProject={handleUpdateProject}
                 onEditShot={handleEditShot}
+                importScript={importScript} // Pass the centralized importer
                 showToast={showToast}
             />
         </LazyWrapper>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useParams, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
-import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification } from '../types';
+import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { Sidebar } from '../components/features/Sidebar';
 import { ToastContainer } from '../components/features/Toast';
@@ -9,8 +9,10 @@ import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { Command, ChevronRight, Plus, Box, Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { parseScript } from '../services/scriptParser';
+import { syncScriptToScenes } from '../services/scriptUtils';
 
-// Context type for child routes (Dashboard, Timeline, etc.) to access project data
+// Context type for child routes
 export interface WorkspaceContextType {
     project: Project;
     handleUpdateProject: (updated: Project) => void;
@@ -18,6 +20,11 @@ export interface WorkspaceContextType {
     handleAddShot: () => void;
     handleEditShot: (shot: Shot) => void;
     handleDeleteShot: (shotId: string) => void;
+    
+    // New Centralized Script Functions
+    importScript: (file: File) => Promise<void>;
+    updateScriptElements: (elements: ScriptElement[]) => void;
+    
     showToast: ShowToastFn;
 }
 
@@ -105,6 +112,56 @@ export const WorkspaceLayout: React.FC = () => {
         handleUpdateProject(updated);
     };
 
+    // --- CENTRALIZED SCRIPT LOGIC ("THE ONE BRAIN") ---
+    
+    const importScript = async (file: File) => {
+        if (!project) return;
+        
+        try {
+            setSaveStatus('saving');
+            const parsed = await parseScript(file);
+            
+            // 1. Create a temp project state with the new elements
+            const tempProject: Project = {
+                ...project,
+                scriptElements: parsed.elements,
+                // If it's a fresh import, we might want to reset scenes or merge. 
+                // For a "fresh import" behavior, we typically let syncScriptToScenes regenerate scenes.
+                scriptFile: {
+                    name: file.name,
+                    uploadedAt: Date.now(),
+                    format: file.name.endsWith('.fountain') ? 'fountain' : 'txt'
+                }
+            };
+            
+            // 2. AUTO-SYNC: Immediately generate/update scenes from the new script
+            const syncedProject = syncScriptToScenes(tempProject);
+            
+            // 3. Save
+            await handleUpdateProject(syncedProject);
+            showToast(`Script imported & synced (${parsed.elements.length} lines)`, 'success');
+        } catch (e: any) {
+            console.error(e);
+            showToast(e.message || "Failed to parse script", 'error');
+            setSaveStatus('saved');
+        }
+    };
+
+    const updateScriptElements = (elements: ScriptElement[]) => {
+        if (!project) return;
+        
+        // 1. Update elements
+        const tempProject = { ...project, scriptElements: elements };
+        
+        // 2. AUTO-SYNC: Check if headings changed and update Timeline scenes
+        const syncedProject = syncScriptToScenes(tempProject);
+        
+        // 3. Save
+        handleUpdateProject(syncedProject);
+    };
+
+    // --- SHOT ACTIONS ---
+
     const handleAddShot = () => {
         if (project && project.scenes.length > 0) {
             const newShot: Shot = {
@@ -180,6 +237,8 @@ export const WorkspaceLayout: React.FC = () => {
         handleAddShot,
         handleEditShot,
         handleDeleteShot,
+        importScript,
+        updateScriptElements,
         showToast
     };
 

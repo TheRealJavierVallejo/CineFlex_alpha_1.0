@@ -7,37 +7,34 @@ import React, { useState, useRef } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Plus, RefreshCw, Sparkles, Upload, FilePlus, Loader2 } from 'lucide-react';
+import { FileText, Plus, Sparkles, Upload, FilePlus, Loader2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
-import { syncScriptToScenes } from '../../services/scriptUtils';
-import { parseScript } from '../../services/scriptParser';
 
 export const ScriptPage: React.FC = () => {
-  const { project, handleUpdateProject, showToast } = useWorkspace();
+  const { project, updateScriptElements, importScript, showToast } = useWorkspace();
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to update the main project state
-  const updateElements = (newElements: ScriptElement[]) => {
+  // Helper to update via central brain
+  const handleUpdateElements = (newElements: ScriptElement[]) => {
     // Re-sequence
     const sequenced = newElements.map((el, idx) => ({ ...el, sequence: idx + 1 }));
-    handleUpdateProject({ ...project, scriptElements: sequenced });
+    updateScriptElements(sequenced); // Auto-syncs to timeline!
   };
 
-  // 1. UPDATE HANDLER (Global Sync)
+  // 1. UPDATE HANDLER
   const handleContentChange = (id: string, newContent: string) => {
     if (!project.scriptElements) return;
     const updated = project.scriptElements.map(el => 
       el.id === id ? { ...el, content: newContent } : el
     );
-    updateElements(updated);
+    handleUpdateElements(updated);
   };
 
-  // 2. LOGIC ENGINE
+  // 2. LOGIC ENGINE (Keyboard nav)
   const handleKeyDown = (e: React.KeyboardEvent, id: string, type: ScriptElement['type']) => {
     if (!project.scriptElements) return;
     const currentIndex = project.scriptElements.findIndex(el => el.id === id);
@@ -47,7 +44,6 @@ export const ScriptPage: React.FC = () => {
     if (e.key === 'Tab') {
       e.preventDefault();
       
-      // Smart cycling based on current type (Standard Screenwriting Logic)
       let nextType: ScriptElement['type'] = 'action';
       if (type === 'scene_heading' && !e.shiftKey) nextType = 'action';
       else if (type === 'action' && !e.shiftKey) nextType = 'character';
@@ -56,17 +52,14 @@ export const ScriptPage: React.FC = () => {
       else if (type === 'dialogue' && !e.shiftKey) nextType = 'parenthetical';
       else if (type === 'parenthetical' && !e.shiftKey) nextType = 'dialogue';
       
-      // Shift+Tab Logic (Reverse) could be added here if needed
-      
       const updated = [...project.scriptElements];
       updated[currentIndex] = { ...updated[currentIndex], type: nextType };
       
-      // Auto-uppercase for certain types
       if (['scene_heading', 'character', 'transition'].includes(nextType)) {
           updated[currentIndex].content = updated[currentIndex].content.toUpperCase();
       }
       
-      updateElements(updated);
+      handleUpdateElements(updated);
     }
 
     // --- ENTER: NEW BLOCK ---
@@ -75,7 +68,6 @@ export const ScriptPage: React.FC = () => {
       
       let nextType: ScriptElement['type'] = 'action';
       
-      // Logic for what follows what
       switch (type) {
         case 'scene_heading': nextType = 'action'; break;
         case 'character': nextType = 'dialogue'; break;
@@ -95,9 +87,8 @@ export const ScriptPage: React.FC = () => {
 
       const updated = [...project.scriptElements];
       updated.splice(currentIndex + 1, 0, newElement);
-      updateElements(updated);
+      handleUpdateElements(updated);
       
-      // Focus the new element next render
       setTimeout(() => setActiveElementId(newId), 0);
     }
 
@@ -108,7 +99,7 @@ export const ScriptPage: React.FC = () => {
           const prevId = project.scriptElements[currentIndex - 1].id;
           const updated = [...project.scriptElements];
           updated.splice(currentIndex, 1);
-          updateElements(updated);
+          handleUpdateElements(updated);
           setTimeout(() => setActiveElementId(prevId), 0);
        }
     }
@@ -138,7 +129,7 @@ export const ScriptPage: React.FC = () => {
          content: '',
          sequence: 1
      };
-     handleUpdateProject({ ...project, scriptElements: [el] });
+     updateScriptElements([el]);
      setTimeout(() => setActiveElementId(newId), 0);
   };
 
@@ -147,41 +138,9 @@ export const ScriptPage: React.FC = () => {
     if (!file) return;
 
     setIsImporting(true);
-    try {
-        const parsed = await parseScript(file);
-        
-        handleUpdateProject({
-            ...project,
-            scriptElements: parsed.elements,
-            scenes: parsed.scenes.length > 0 ? parsed.scenes : project.scenes,
-            scriptFile: {
-                name: file.name,
-                uploadedAt: Date.now(),
-                format: file.name.endsWith('.fountain') ? 'fountain' : 'txt'
-            }
-        });
-        
-        showToast(`Imported ${parsed.elements.length} blocks successfully`, 'success');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        
-    } catch (error: any) {
-        showToast(error.message || "Failed to parse script", 'error');
-    } finally {
-        setIsImporting(false);
-    }
-  };
-
-  const handleSync = () => {
-     setIsSyncing(true);
-     try {
-        const syncedProject = syncScriptToScenes(project);
-        handleUpdateProject(syncedProject);
-        showToast(`Synced ${syncedProject.scenes.length} Scenes to Timeline`, 'success');
-     } catch (e) {
-        showToast("Sync failed", 'error');
-     } finally {
-        setIsSyncing(false);
-     }
+    await importScript(file);
+    setIsImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const hasElements = project.scriptElements && project.scriptElements.length > 0;
@@ -208,17 +167,6 @@ export const ScriptPage: React.FC = () => {
              </div>
 
              <div className="h-4 w-[1px] bg-border" />
-
-             {/* Sync Button */}
-             <Button
-                variant="secondary"
-                size="sm"
-                icon={<RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />}
-                onClick={handleSync}
-                title="Generate Timeline Scenes from Script Headings"
-             >
-                Sync to Timeline
-             </Button>
              
              {/* Toggle Chat */}
              <Button 
