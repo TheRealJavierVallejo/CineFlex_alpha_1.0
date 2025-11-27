@@ -1,23 +1,25 @@
 /*
  * 🎬 PAGE: SCRIPT EDITOR
- * A "Final Draft" style writing interface.
- * Implements Phase 1: Block-based editing with global sync.
+ * Optimized for Consumer Use - Import vs New Workflow
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Plus, Download, Sparkles, RefreshCw } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Sparkles, Upload, FilePlus, Loader2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { syncScriptToScenes } from '../../services/scriptUtils';
+import { parseScript } from '../../services/scriptParser';
 
 export const ScriptPage: React.FC = () => {
   const { project, handleUpdateProject, showToast } = useWorkspace();
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to update the main project state
   const updateElements = (newElements: ScriptElement[]) => {
@@ -32,8 +34,6 @@ export const ScriptPage: React.FC = () => {
     const updated = project.scriptElements.map(el => 
       el.id === id ? { ...el, content: newContent } : el
     );
-    // Note: In a production app, we would debounce this or use local state
-    // But for immediate sync requirements, we update the parent
     updateElements(updated);
   };
 
@@ -46,24 +46,17 @@ export const ScriptPage: React.FC = () => {
     // --- TAB: CYCLE TYPES ---
     if (e.key === 'Tab') {
       e.preventDefault();
-      const types: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition'];
       
-      // Smart cycling based on current type
+      // Smart cycling based on current type (Standard Screenwriting Logic)
       let nextType: ScriptElement['type'] = 'action';
-      if (type === 'scene_heading') nextType = 'action';
-      else if (type === 'action') nextType = 'character';
-      else if (type === 'character') nextType = 'transition';
-      else if (type === 'transition') nextType = 'scene_heading';
-      else if (type === 'dialogue') nextType = 'parenthetical';
-      else if (type === 'parenthetical') nextType = 'dialogue';
-
-      // Standard Screenwriting Software Logic:
-      if (type === 'action' && !e.shiftKey) nextType = 'character';
+      if (type === 'scene_heading' && !e.shiftKey) nextType = 'action';
+      else if (type === 'action' && !e.shiftKey) nextType = 'character';
       else if (type === 'character' && !e.shiftKey) nextType = 'transition';
       else if (type === 'transition' && !e.shiftKey) nextType = 'scene_heading';
-      else if (type === 'scene_heading' && !e.shiftKey) nextType = 'action';
       else if (type === 'dialogue' && !e.shiftKey) nextType = 'parenthetical';
       else if (type === 'parenthetical' && !e.shiftKey) nextType = 'dialogue';
+      
+      // Shift+Tab Logic (Reverse) could be added here if needed
       
       const updated = [...project.scriptElements];
       updated[currentIndex] = { ...updated[currentIndex], type: nextType };
@@ -149,6 +142,35 @@ export const ScriptPage: React.FC = () => {
      setTimeout(() => setActiveElementId(newId), 0);
   };
 
+  const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+        const parsed = await parseScript(file);
+        
+        handleUpdateProject({
+            ...project,
+            scriptElements: parsed.elements,
+            scenes: parsed.scenes.length > 0 ? parsed.scenes : project.scenes,
+            scriptFile: {
+                name: file.name,
+                uploadedAt: Date.now(),
+                format: file.name.endsWith('.fountain') ? 'fountain' : 'txt'
+            }
+        });
+        
+        showToast(`Imported ${parsed.elements.length} blocks successfully`, 'success');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        
+    } catch (error: any) {
+        showToast(error.message || "Failed to parse script", 'error');
+    } finally {
+        setIsImporting(false);
+    }
+  };
+
   const handleSync = () => {
      setIsSyncing(true);
      try {
@@ -165,7 +187,15 @@ export const ScriptPage: React.FC = () => {
   const hasElements = project.scriptElements && project.scriptElements.length > 0;
 
   return (
-    <div className="relative h-full flex flex-col bg-[#111111] overflow-hidden">
+    <div className="relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans">
+      <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept=".fountain,.txt" 
+          onChange={handleImportScript} 
+      />
+
       {/* Toolbar */}
       <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10">
          <div className="flex items-center gap-2 text-text-primary font-medium">
@@ -230,12 +260,49 @@ export const ScriptPage: React.FC = () => {
                  </div>
               </div>
           ) : (
-              <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-4 pb-20">
-                  <FileText className="w-16 h-16 opacity-20" />
-                  <p>Start writing your masterpiece.</p>
-                  <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={handleAddFirstElement}>
-                      Add Scene Heading
-                  </Button>
+              // NEW ZERO STATE UI
+              <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="text-center mb-10">
+                      <div className="w-16 h-16 bg-surface-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border shadow-inner">
+                          <FileText className="w-8 h-8 text-text-tertiary" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-text-primary mb-2">No Script Found</h2>
+                      <p className="text-text-secondary text-sm max-w-md mx-auto">
+                          This project doesn't have a screenplay yet. Import an existing .fountain file or start writing from scratch.
+                      </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full px-8">
+                      {/* Option 1: Import */}
+                      <button 
+                          onClick={(e) => {
+                             e.stopPropagation();
+                             fileInputRef.current?.click();
+                          }}
+                          className="group flex flex-col items-center p-6 bg-surface border border-border rounded-xl hover:border-primary hover:bg-surface-secondary transition-all text-left relative overflow-hidden"
+                      >
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
+                             {isImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                          </div>
+                          <h3 className="text-base font-bold text-text-primary mb-1">Import Script</h3>
+                          <p className="text-xs text-text-tertiary text-center">Upload a .fountain or .txt file. We'll copy it into the project safely.</p>
+                      </button>
+
+                      {/* Option 2: Create New */}
+                      <button 
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddFirstElement();
+                          }}
+                          className="group flex flex-col items-center p-6 bg-surface border border-border rounded-xl hover:border-primary hover:bg-surface-secondary transition-all text-left relative overflow-hidden"
+                      >
+                          <div className="w-12 h-12 rounded-full bg-surface-secondary flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-colors text-text-primary border border-border group-hover:border-transparent">
+                             <FilePlus className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-base font-bold text-text-primary mb-1">Start Fresh</h3>
+                          <p className="text-xs text-text-tertiary text-center">Create a blank screenplay document and start writing immediately.</p>
+                      </button>
+                  </div>
               </div>
           )}
         </div>
@@ -245,7 +312,7 @@ export const ScriptPage: React.FC = () => {
       </div>
       
       {/* Help Hint */}
-      {!isChatOpen && (
+      {!isChatOpen && hasElements && (
         <div className="absolute bottom-4 left-6 text-[10px] text-text-tertiary bg-surface/80 p-2 rounded border border-border z-10">
             <span className="font-bold text-text-secondary">TAB</span> to change element type • <span className="font-bold text-text-secondary">ENTER</span> for new line
         </div>
