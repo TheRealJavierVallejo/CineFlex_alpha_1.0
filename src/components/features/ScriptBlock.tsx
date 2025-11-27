@@ -45,10 +45,10 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   const getStyles = () => {
     const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-mono text-base text-[#CCCCCC] leading-relaxed selection:bg-[#264F78] selection:text-white transition-colors duration-200 placeholder:opacity-30";
-    const activeClass = isActive ? "bg-[#252526]/50 rounded-sm ring-1 ring-[#333]" : "";
     
-    // We explicitly calculate the 'indicator' class to match the vertical offset 
-    // of the text caused by padding/margin in the container.
+    // No active box styling
+    const activeClass = "";
+
     switch (element.type) {
       case 'scene_heading':
         return {
