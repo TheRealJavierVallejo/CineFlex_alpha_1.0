@@ -12,6 +12,7 @@ import { ScriptPicker } from './ScriptPicker';
 import { ImageSelectorModal } from './ImageSelectorModal';
 import { generateStoryboardPDF } from '../../services/pdfExport';
 import { getLocations } from '../../services/storage';
+import { EmptyProjectState } from './EmptyProjectState';
 
 interface TimelineViewProps {
   project: Project;
@@ -328,38 +329,49 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
   };
 
+  const hasContent = project.scenes.length > 0;
+
   return (
     <div className="h-full bg-background overflow-y-auto font-sans relative">
-      <div className="max-w-[1600px] mx-auto pb-20">
+      
+      {hasContent ? (
+        <div className="max-w-[1600px] mx-auto pb-20">
+            <TimelineHeader
+            isUploadingScript={isUploadingScript}
+            onImportScript={handleScriptUpload}
+            onAddScene={handleAddScene}
+            onExportPDF={handleExportPDF} 
+            isExporting={isExporting} 
+            />
 
-        <TimelineHeader
-          isUploadingScript={isUploadingScript}
-          onImportScript={handleScriptUpload}
-          onAddScene={handleAddScene}
-          onExportPDF={handleExportPDF} 
-          isExporting={isExporting} 
+            <SceneList
+            scenes={project.scenes}
+            shots={project.shots}
+            scriptElements={scriptElements}
+            locations={locations}
+            projectSettings={project.settings}
+            onUpdateScene={handleUpdateScene}
+            onDeleteScene={handleDeleteScene}
+            onMoveScene={handleMoveScene}
+            onAddShot={handleTriggerAddShot}
+            onUpdateShot={handleUpdateShot}
+            onDeleteShot={handleDeleteShot}
+            onLinkElement={handleOpenPicker}
+            onUnlinkElement={handleUnlinkElement}
+            onEditShot={onEditShot}
+            onCreateAndLinkShot={handleCreateAndLinkShot}
+            onAddVisual={handleTriggerAddVisual}
+            />
+        </div>
+      ) : (
+        <EmptyProjectState 
+            title="Empty Timeline"
+            description="Start by creating a scene manually or importing a script."
+            onImport={handleScriptUpload}
+            onCreate={handleAddScene}
+            isImporting={isUploadingScript}
         />
-
-        <SceneList
-          scenes={project.scenes}
-          shots={project.shots}
-          scriptElements={scriptElements}
-          locations={locations}
-          projectSettings={project.settings}
-          onUpdateScene={handleUpdateScene}
-          onDeleteScene={handleDeleteScene}
-          onMoveScene={handleMoveScene}
-          onAddShot={handleTriggerAddShot}
-          onUpdateShot={handleUpdateShot}
-          onDeleteShot={handleDeleteShot}
-          onLinkElement={handleOpenPicker}
-          onUnlinkElement={handleUnlinkElement}
-          onEditShot={onEditShot}
-          onCreateAndLinkShot={handleCreateAndLinkShot}
-          onAddVisual={handleTriggerAddVisual}
-        />
-
-      </div>
+      )}
 
       <ImageSelectorModal 
         isOpen={imageModalState.isOpen}

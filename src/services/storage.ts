@@ -236,15 +236,15 @@ export const setActiveProjectId = (id: string | null) => {
 
 export const createNewProject = async (name: string): Promise<string> => {
   const projectId = crypto.randomUUID();
-  const sceneId = crypto.randomUUID();
   const now = Date.now();
 
   const newProject: Project = {
     id: projectId,
     name: name,
     settings: { ...DEFAULT_WORLD_SETTINGS, customEras: [], customStyles: [], customTimes: [], customLighting: [], customLocations: [] },
-    scenes: [{ id: sceneId, sequence: 1, heading: 'INT. UNTITLED SCENE - DAY', actionNotes: '' }],
+    scenes: [], // START EMPTY
     shots: [],
+    scriptElements: [], // START EMPTY
     createdAt: now,
     lastModified: now
   };
@@ -315,14 +315,7 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
   
   const healedProject = parseResult.success ? parseResult.data : rawProject;
 
-  // 3. LEGACY MIGRATION (Manual)
-  if (!healedProject.scenes || healedProject.scenes.length === 0) {
-     const defId = crypto.randomUUID();
-     healedProject.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
-     healedProject.shots = healedProject.shots.map(s => ({ ...s, sceneId: s.sceneId || defId }));
-  }
-
-  // 4. HYDRATE (Blobs)
+  // 3. HYDRATE (Blobs)
   console.log(`💧 Hydrating Project: ${healedProject.name}`);
   const hydratedProject = await hydrateObject(healedProject);
   
