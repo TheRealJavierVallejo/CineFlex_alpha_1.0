@@ -36,6 +36,13 @@ export const OutfitSchema = z.object({
   referencePhotos: safeArray(z.string())
 });
 
+export const LocationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  referencePhotos: safeArray(z.string())
+});
+
 // --- 2. WORLD SETTINGS ---
 
 export const WorldSettingsSchema = z.object({
@@ -73,7 +80,8 @@ export const SceneSchema = z.object({
   sequence: z.number(),
   heading: z.string(),
   actionNotes: z.string().optional().default(''),
-  scriptElements: safeArray(ScriptElementSchema)
+  scriptElements: safeArray(ScriptElementSchema),
+  locationId: z.string().optional()
 });
 
 // --- 4. SHOTS (The Complex One) ---
@@ -101,6 +109,7 @@ export const ShotSchema = z.object({
   linkedElementIds: safeArray(z.string()),
   
   // Advanced / AI Control
+  locationId: z.string().optional(),
   timeOfDay: z.string().optional(),
   negativePrompt: z.string().optional(),
   styleStrength: z.number().optional().default(100),
@@ -146,5 +155,6 @@ export const ProjectExportSchema = z.object({
   project: ProjectSchema,
   characters: safeArray(CharacterSchema),
   outfits: safeArray(OutfitSchema),
+  locations: safeArray(LocationSchema),
   library: safeArray(ImageLibraryItemSchema)
 });

@@ -48,6 +48,14 @@ export interface Outfit {
   referencePhotos?: string[]; // Photos of what the clothes look like
 }
 
+// 📍 LOCATION: Defines a set or environment
+export interface Location {
+  id: string;
+  name: string;            // e.g., "Main Street"
+  description: string;     // e.g., "Busy intersection, neon lights"
+  referencePhotos?: string[]; // Location scout photos
+}
+
 // 🖼️ IMAGE LIBRARY: A collection of all generated images for the project
 export interface ImageLibraryItem {
   id: string;
@@ -98,6 +106,7 @@ export interface Scene {
   heading: string;         // e.g., "INT. COFFEE SHOP - DAY"
   actionNotes: string;     // General description of what happens
   scriptElements?: ScriptElement[]; // The raw script lines for this scene
+  locationId?: string;     // Link to a specific Location Asset
 }
 
 // 📸 SHOT: A single camera angle or image
@@ -118,9 +127,9 @@ export interface Shot {
   model?: string;          // Which AI brain used (Gemini vs Imagen)
   imageSize?: string;
   linkedElementIds?: string[]; // IDs of the script elements this shot visualizes
-
-
+  
   // Creative Overrides
+  locationId?: string;     // Specific location for this shot (overrides scene default)
   timeOfDay?: string;      // Override global time setting
   negativePrompt?: string; // What NOT to include
   styleStrength?: number;  // 0-100, how much global style applies
@@ -167,5 +176,6 @@ export interface ProjectExport {
   project: Project;
   characters: Character[];
   outfits: Outfit[];
+  locations: Location[]; // New export field
   library: ImageLibraryItem[];
 }
