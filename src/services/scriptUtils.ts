@@ -8,32 +8,42 @@ import { Project, Scene, ScriptElement } from '../types';
 /**
  * INTELLIGENT SCRIPT COMPILER
  * Scans the script top-to-bottom and links dialogue to the active character.
+ * NOW WITH SANITIZATION: Removes stale character tags from non-dialogue elements.
  */
 export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[] => {
   let activeCharacterName = '';
 
   return elements.map(el => {
-    // 1. Found a Character Header? Update active character.
-    if (el.type === 'character') {
-      activeCharacterName = el.content.trim();
-      return el;
+    // 1. Create a clean copy to ensure no stale properties (like 'character' on an Action line) persist
+    const cleanEl: ScriptElement = {
+        id: el.id,
+        type: el.type,
+        content: el.content,
+        sequence: el.sequence,
+        sceneId: el.sceneId,
+        associatedShotIds: el.associatedShotIds
+    };
+
+    // 2. Found a Character Header? Update active character.
+    if (cleanEl.type === 'character') {
+      activeCharacterName = cleanEl.content.trim();
+      return cleanEl;
     }
 
-    // 2. Found Dialogue or Parenthetical? Link it to the active character.
-    if (el.type === 'dialogue' || el.type === 'parenthetical') {
+    // 3. Found Dialogue or Parenthetical? Link it to the active character.
+    if (cleanEl.type === 'dialogue' || cleanEl.type === 'parenthetical') {
       // Only link if we actually have a character context (skips orphaned dialogue at start)
       if (activeCharacterName) {
-        return { ...el, character: activeCharacterName };
+        cleanEl.character = activeCharacterName;
       }
+      return cleanEl;
     }
 
-    // 3. Found a Scene Heading or Action? Reset active character.
-    // (Characters don't usually speak across scene headers or long action blocks without being re-stated)
-    if (el.type === 'scene_heading') {
-      activeCharacterName = '';
-    }
-
-    return el;
+    // 4. Found a Scene Heading, Action, or Transition? 
+    // Reset active character context.
+    // Crucially, 'cleanEl' does NOT have a 'character' property here, fixing the ghost bug.
+    activeCharacterName = '';
+    return cleanEl;
   });
 };
 
@@ -47,7 +57,7 @@ export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[]
 export const syncScriptToScenes = (project: Project): Project => {
   if (!project.scriptElements) return project;
 
-  // STEP 0: ENRICH (Link Characters to Dialogue)
+  // STEP 0: ENRICH (Link Characters to Dialogue & Sanitize)
   const enrichedElements = enrichScriptElements(project.scriptElements);
 
   const newScenes: Scene[] = [];
