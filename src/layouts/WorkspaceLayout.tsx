@@ -20,6 +20,7 @@ export interface WorkspaceContextType {
     handleAddShot: () => void;
     handleEditShot: (shot: Shot) => void;
     handleDeleteShot: (shotId: string) => void;
+    handleDuplicateShot: (shotId: string) => void; // New function
     
     // New Centralized Script Functions
     importScript: (file: File) => Promise<void>;
@@ -213,6 +214,36 @@ export const WorkspaceLayout: React.FC = () => {
         });
     };
 
+    const handleDuplicateShot = (shotId: string) => {
+        if (!project) return;
+        // 1. Find original
+        const index = project.shots.findIndex(s => s.id === shotId);
+        if (index === -1) return;
+        const original = project.shots[index];
+
+        // 2. Create Clone
+        const newShot: Shot = {
+            ...original,
+            id: crypto.randomUUID(),
+            sequence: original.sequence + 1,
+            // We clear the image so they can generate a variation
+            generatedImage: undefined, 
+            generationCandidates: [],
+            description: original.description + " (Copy)"
+        };
+
+        // 3. Insert and Re-Sequence
+        const newShots = [...project.shots];
+        // Insert after original
+        newShots.splice(index + 1, 0, newShot);
+        
+        // Re-assign sequences for everyone to keep order clean
+        newShots.forEach((s, i) => s.sequence = i + 1);
+
+        handleUpdateProject({ ...project, shots: newShots });
+        showToast("Shot duplicated", 'success');
+    };
+
     const handleEditShot = (shot: Shot) => {
         setEditingShot(shot);
         setIsEditorOpen(true);
@@ -237,6 +268,7 @@ export const WorkspaceLayout: React.FC = () => {
         handleAddShot,
         handleEditShot,
         handleDeleteShot,
+        handleDuplicateShot,
         importScript,
         updateScriptElements,
         showToast

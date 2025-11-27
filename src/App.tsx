@@ -20,7 +20,7 @@ import {
 // --- ADAPTER COMPONENTS ---
 
 const DashboardPage = () => {
-    const { project, handleAddShot, handleEditShot, handleDeleteShot, showToast } = useWorkspace();
+    const { project, handleAddShot, handleEditShot, handleDeleteShot, handleDuplicateShot, showToast } = useWorkspace();
     return (
         <div className="absolute inset-0 overflow-y-auto p-6">
             <LazyWrapper>
@@ -29,6 +29,7 @@ const DashboardPage = () => {
                     onAddShot={handleAddShot}
                     onEditShot={handleEditShot}
                     onDeleteShot={handleDeleteShot}
+                    onDuplicateShot={handleDuplicateShot} // Connected
                     showToast={showToast}
                 />
             </LazyWrapper>
