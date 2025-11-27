@@ -8,12 +8,14 @@ import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Plus, Download } from 'lucide-react';
+import { FileText, Plus, Download, Sparkles } from 'lucide-react';
 import Button from '../ui/Button';
+import { ScriptChat } from './ScriptChat';
 
 export const ScriptPage: React.FC = () => {
   const { project, handleUpdateProject, showToast } = useWorkspace();
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Helper to update the main project state
   const updateElements = (newElements: ScriptElement[]) => {
@@ -53,11 +55,6 @@ export const ScriptPage: React.FC = () => {
       else if (type === 'dialogue') nextType = 'parenthetical';
       else if (type === 'parenthetical') nextType = 'dialogue';
 
-      // If holding shift, cycle backwards? Or just stick to simple rotation for now.
-      // Let's stick to the specific flow:
-      // Action <-> Character
-      // Character -> Dialogue (usually Enter does this)
-      
       // Standard Screenwriting Software Logic:
       if (type === 'action' && !e.shiftKey) nextType = 'character';
       else if (type === 'character' && !e.shiftKey) nextType = 'transition';
@@ -89,11 +86,7 @@ export const ScriptPage: React.FC = () => {
         case 'character': nextType = 'dialogue'; break;
         case 'parenthetical': nextType = 'dialogue'; break;
         case 'transition': nextType = 'scene_heading'; break;
-        case 'dialogue': 
-           // Double enter on dialogue usually goes to Action, single goes to Character?
-           // For simplicity: Dialogue -> Character (for rapid fire)
-           nextType = 'character'; 
-           break;
+        case 'dialogue': nextType = 'character'; break;
         case 'action': nextType = 'action'; break;
       }
 
@@ -127,7 +120,6 @@ export const ScriptPage: React.FC = () => {
 
     // --- ARROW KEYS: NAVIGATION ---
     if (e.key === 'ArrowUp' && currentIndex > 0) {
-        // Only move if at start of line? Or always? standard behavior is simple up/down
         const target = e.target as HTMLTextAreaElement;
         if (target.selectionStart === 0) {
             e.preventDefault();
@@ -158,7 +150,7 @@ export const ScriptPage: React.FC = () => {
   const hasElements = project.scriptElements && project.scriptElements.length > 0;
 
   return (
-    <div className="relative h-full flex flex-col bg-[#111111]">
+    <div className="relative h-full flex flex-col bg-[#111111] overflow-hidden">
       {/* Toolbar */}
       <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10">
          <div className="flex items-center gap-2 text-text-primary font-medium">
@@ -169,48 +161,67 @@ export const ScriptPage: React.FC = () => {
              <div className="text-xs text-text-tertiary">
                  {hasElements ? `${project.scriptElements?.length} Blocks` : 'Empty'}
              </div>
-             {/* Future: Export to PDF/FDX */}
+             
+             {/* Toggle Chat */}
+             <Button 
+                variant={isChatOpen ? "primary" : "secondary"}
+                size="sm"
+                icon={<Sparkles className="w-3 h-3" />}
+                onClick={() => setIsChatOpen(!isChatOpen)}
+             >
+                AI Co-Pilot
+             </Button>
          </div>
       </div>
 
-      {/* The "Paper" Container */}
-      <div className="flex-1 overflow-y-auto w-full flex justify-center p-8 cursor-text" onClick={() => {
-         // If clicking empty space at bottom, focus last element or add new one
-         if (hasElements) {
-             const lastId = project.scriptElements![project.scriptElements!.length - 1].id;
-             setActiveElementId(lastId);
-         }
-      }}>
-        {hasElements ? (
-            <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] p-[100px] border border-[#333] mb-20 relative">
-               <div className="flex flex-col">
-                  {project.scriptElements!.map(element => (
-                     <ScriptBlock 
-                        key={element.id}
-                        element={element}
-                        isActive={activeElementId === element.id}
-                        onChange={handleContentChange}
-                        onKeyDown={handleKeyDown}
-                        onFocus={setActiveElementId}
-                     />
-                  ))}
-               </div>
-            </div>
-        ) : (
-            <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-4 pb-20">
-                <FileText className="w-16 h-16 opacity-20" />
-                <p>Start writing your masterpiece.</p>
-                <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={handleAddFirstElement}>
-                    Add Scene Heading
-                </Button>
-            </div>
-        )}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* The "Paper" Container */}
+        <div 
+          className="flex-1 overflow-y-auto w-full flex justify-center p-8 cursor-text transition-all duration-300" 
+          style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
+          onClick={() => {
+             if (hasElements) {
+                 const lastId = project.scriptElements![project.scriptElements!.length - 1].id;
+                 setActiveElementId(lastId);
+             }
+          }}
+        >
+          {hasElements ? (
+              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] p-[100px] border border-[#333] mb-20 relative transition-transform">
+                 <div className="flex flex-col">
+                    {project.scriptElements!.map(element => (
+                       <ScriptBlock 
+                          key={element.id}
+                          element={element}
+                          isActive={activeElementId === element.id}
+                          onChange={handleContentChange}
+                          onKeyDown={handleKeyDown}
+                          onFocus={setActiveElementId}
+                       />
+                    ))}
+                 </div>
+              </div>
+          ) : (
+              <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-4 pb-20">
+                  <FileText className="w-16 h-16 opacity-20" />
+                  <p>Start writing your masterpiece.</p>
+                  <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={handleAddFirstElement}>
+                      Add Scene Heading
+                  </Button>
+              </div>
+          )}
+        </div>
+
+        {/* AI Sidebar */}
+        <ScriptChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
       </div>
       
       {/* Help Hint */}
-      <div className="absolute bottom-4 left-6 text-[10px] text-text-tertiary bg-surface/80 p-2 rounded border border-border">
-          <span className="font-bold text-text-secondary">TAB</span> to change element type • <span className="font-bold text-text-secondary">ENTER</span> for new line
-      </div>
+      {!isChatOpen && (
+        <div className="absolute bottom-4 left-6 text-[10px] text-text-tertiary bg-surface/80 p-2 rounded border border-border z-10">
+            <span className="font-bold text-text-secondary">TAB</span> to change element type • <span className="font-bold text-text-secondary">ENTER</span> for new line
+        </div>
+      )}
     </div>
   );
 };

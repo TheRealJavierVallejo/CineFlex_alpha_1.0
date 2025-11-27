@@ -7,7 +7,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { Shot, Project, Character, Outfit } from '../types';
+import { Shot, Project, Character, Outfit, ScriptElement } from '../types';
 import { constructPrompt } from './promptBuilder';
 
 // Helper to check for API Key
@@ -163,5 +163,64 @@ export const analyzeSketch = async (sketchBase64: string): Promise<string> => {
   }
 };
 
-// Re-export constructPrompt for convenience, though imports should ideally update
+// --- SCRIPT ASSISTANT (CHAT) ---
+export const chatWithScript = async (
+  message: string,
+  history: { role: 'user' | 'model'; content: string }[],
+  scriptContext: ScriptElement[],
+  characters: Character[]
+): Promise<string> => {
+  const ai = getClient();
+  try {
+    // 1. Convert Script Elements to readable text format (Fountain-ish)
+    // Limit to last 50 elements to avoid token limits, but prioritize current scene
+    const scriptText = scriptContext.slice(-50).map(el => {
+      if (el.type === 'scene_heading') return `\n${el.content}`;
+      if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
+      if (el.type === 'dialogue') return `${el.content}`;
+      if (el.type === 'parenthetical') return `(${el.content})`;
+      return `${el.content}`;
+    }).join('\n');
+
+    const charText = characters.map(c => `${c.name}: ${c.description}`).join('\n');
+
+    const systemPrompt = `
+      You are a professional screenwriter's assistant in a virtual writer's room.
+      
+      CONTEXT:
+      The script so far (last snippet):
+      ---
+      ${scriptText}
+      ---
+
+      CHARACTERS:
+      ${charText}
+
+      TASK:
+      Answer the user's request. You can suggest dialogue, improve formatting, brainstorming plot points, or provide feedback.
+      Keep answers concise and helpful for a writer in the flow. If suggesting dialogue, use standard screenplay format.
+    `;
+
+    // 2. Prepare history for API
+    const contents = [
+      { role: 'user', parts: [{ text: systemPrompt }] }, // System instruction as first user msg
+      ...history.map(h => ({
+        role: h.role,
+        parts: [{ text: h.content }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: contents as any
+    });
+
+    return response.text || "I couldn't generate a response.";
+  } catch (error) {
+    console.error("Script Chat Error", error);
+    return "Sorry, I encountered an error connecting to the AI.";
+  }
+};
+
 export { constructPrompt };
