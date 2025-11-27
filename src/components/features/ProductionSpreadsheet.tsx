@@ -216,8 +216,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                      {isSelected ? <CheckSquare className="w-4 h-4 text-[#007ACC]" /> : <Square className="w-4 h-4 text-[#505050]" />}
                   </div>
 
-                  {/* ID (Merged) */}
-                  <div className="w-16 text-center font-bold text-white text-[13px]">{idString}</div>
+                  {/* ID (Merged) - Updated styling */}
+                  <div className="w-16 text-center text-[#CCCCCC] text-[12px]">{idString}</div>
 
                   {/* Thumbnail */}
                   <div className="w-16 p-1.5 h-full cursor-pointer relative" onClick={() => onEditShot(shot)}>
@@ -316,7 +316,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                   value="" 
                >
                   <option value="" disabled>Move to Scene...</option>
-                  {project.scenes.map(s => <option key={s.id} value={s.id} className="text-black">{s.heading}</option>)}
+                  {project.scenes.map(s => <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>)}
                </select>
 
                {/* Bulk Type Change */}
