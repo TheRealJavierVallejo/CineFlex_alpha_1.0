@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../constants';
-import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Image as ImageIcon } from 'lucide-react';
+import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Image as ImageIcon, Link as LinkIcon, Clapperboard } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface ProductionSpreadsheetProps {
@@ -64,8 +64,6 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     if (selectedIds.size === 0) return;
     
     // We update each selected shot
-    // Note: In a real app with backend, we'd send a batch update. 
-    // Here we just loop (it's fast enough for client-side).
     selectedIds.forEach(id => {
       const shot = project.shots.find(s => s.id === id);
       if (shot) {
@@ -83,13 +81,6 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
       setSelectedIds(new Set());
       showToast("Shots deleted", 'info');
     }
-  };
-
-  // Helper to find Scene Heading for a shot
-  const getSceneHeading = (sceneId?: string) => {
-    if (!sceneId) return '-';
-    const scene = project.scenes.find(s => s.id === sceneId);
-    return scene ? scene.heading : 'Unknown Scene';
   };
 
   return (
@@ -130,7 +121,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
          </div>
          <div className="w-12 text-center">Seq</div>
          <div className="w-16 text-center">Visual</div>
-         <div className="flex-[2] px-2 border-l border-[#2A2A2A]">Scene / Description</div>
+         <div className="flex-[1.5] px-2 border-l border-[#2A2A2A]">Description</div>
+         <div className="flex-[1] px-2 border-l border-[#2A2A2A]">Scene (Syncs to Timeline)</div>
          <div className="w-32 px-2 border-l border-[#2A2A2A]">Shot Type</div>
          <div className="w-24 px-2 border-l border-[#2A2A2A]">Aspect</div>
          <div className="w-32 px-2 border-l border-[#2A2A2A]">Time</div>
@@ -170,13 +162,35 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                   </div>
                </div>
 
-               {/* Description & Scene */}
-               <div className="flex-[2] px-3 flex flex-col justify-center gap-0.5 truncate border-l border-[#2A2A2A] h-full">
-                  <div className="text-[10px] text-[#007ACC] font-bold uppercase truncate">
-                     {getSceneHeading(shot.sceneId)}
+               {/* Description & Script Link Status */}
+               <div className="flex-[1.5] px-3 flex flex-col justify-center gap-0.5 truncate border-l border-[#2A2A2A] h-full">
+                  <div className="flex items-center gap-1.5">
+                      {shot.linkedElementIds && shot.linkedElementIds.length > 0 && (
+                          <div className="flex items-center gap-1 text-[10px] bg-primary/20 text-primary px-1 rounded-sm">
+                             <LinkIcon className="w-2.5 h-2.5" />
+                             <span>Script Linked</span>
+                          </div>
+                      )}
+                      <div className="truncate text-[#E8E8E8] w-full" title={shot.description}>
+                         {shot.description || <span className="text-[#505050] italic">No description</span>}
+                      </div>
                   </div>
-                  <div className="truncate text-[#E8E8E8]" title={shot.description}>
-                     {shot.description || <span className="text-[#505050] italic">No description</span>}
+               </div>
+
+               {/* Scene Dropdown (LIVE SYNC) */}
+               <div className="flex-[1] px-2 border-l border-[#2A2A2A] h-full flex items-center">
+                  <div className="w-full relative group/scene">
+                      <select
+                          value={shot.sceneId || ''}
+                          onChange={(e) => onUpdateShot({ ...shot, sceneId: e.target.value })}
+                          className="w-full bg-transparent text-[#007ACC] font-medium outline-none text-[11px] cursor-pointer hover:text-white appearance-none uppercase"
+                      >
+                          {project.scenes.map(s => (
+                              <option key={s.id} value={s.id} className="text-black">{s.heading}</option>
+                          ))}
+                      </select>
+                      {/* Only show icon on hover to keep it clean */}
+                      <Clapperboard className="w-3 h-3 absolute right-0 top-1/2 -translate-y-1/2 text-[#505050] group-hover/scene:text-white pointer-events-none" />
                   </div>
                </div>
 
@@ -234,11 +248,21 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
             <div className="flex items-center gap-2">
                <div className="h-4 w-[1px] bg-white/30 mx-2" />
                
+               {/* Bulk Scene Move (NEW) */}
+               <select 
+                  onChange={(e) => handleBulkUpdate('sceneId', e.target.value)}
+                  className="bg-white/10 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-white/20 max-w-[150px]"
+                  value="" 
+               >
+                  <option value="" disabled>Move to Scene...</option>
+                  {project.scenes.map(s => <option key={s.id} value={s.id} className="text-black">{s.heading}</option>)}
+               </select>
+
                {/* Bulk Type Change */}
                <select 
                   onChange={(e) => handleBulkUpdate('shotType', e.target.value)}
                   className="bg-white/10 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-white/20"
-                  value="" // Always reset
+                  value="" 
                >
                   <option value="" disabled>Set Shot Type...</option>
                   {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
