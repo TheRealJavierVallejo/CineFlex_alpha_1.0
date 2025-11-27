@@ -279,7 +279,7 @@ export const ScriptPage: React.FC = () => {
       <div className="flex-1 flex overflow-hidden relative">
         <div 
           ref={containerRef}
-          className="flex-1 overflow-y-auto w-full flex justify-center p-8 cursor-text transition-all duration-300 bg-[#111111]" 
+          className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#111111]" 
           style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
           onClick={(e) => {
               if (e.target === containerRef.current && hasElements) {
@@ -288,7 +288,7 @@ export const ScriptPage: React.FC = () => {
           }}
         >
           {hasElements ? (
-              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] p-[100px] border border-[#333] mb-20 relative transition-transform">
+              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] p-[100px] border border-[#333] relative transition-transform">
                  <div className="flex flex-col">
                     {elements.map(element => (
                        <ScriptBlock 
