@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../constants';
-import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Image as ImageIcon, Link as LinkIcon, Clapperboard, Layers, AlertCircle } from 'lucide-react';
+import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Image as ImageIcon, Layers, Clapperboard } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface ProductionSpreadsheetProps {
@@ -187,15 +187,13 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
          <div className="w-10 flex justify-center cursor-pointer hover:text-white" onClick={toggleAll}>
             {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-[#007ACC]" /> : <Square className="w-3.5 h-3.5" />}
          </div>
-         <div className="w-10 text-center text-[#E8E8E8]">Sce</div>
-         <div className="w-10 text-center">#</div>
-         <div className="w-16 text-center">Still</div>
-         <div className="flex-[2] px-3 border-l border-[#2A2A2A]">Description / Script</div>
-         <div className="w-40 px-3 border-l border-[#2A2A2A]">Scene Assignment</div>
+         <div className="w-16 text-center text-[#E8E8E8]">ID</div>
+         <div className="w-16 text-center">Visual</div>
+         <div className="flex-1 px-3 border-l border-[#2A2A2A]">Scene Assignment</div>
          <div className="w-32 px-2 border-l border-[#2A2A2A]">Shot Type</div>
          <div className="w-24 px-2 border-l border-[#2A2A2A]">Aspect</div>
          <div className="w-32 px-2 border-l border-[#2A2A2A]">Time</div>
-         <div className="w-16 text-center border-l border-[#2A2A2A]">Edit</div>
+         <div className="w-16 text-center border-l border-[#2A2A2A]">Actions</div>
       </div>
 
       {/* 3. TABLE BODY */}
@@ -203,12 +201,13 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
          {filteredShots.map((shot, idx) => {
             const sceneInfo = getSceneInfo(shot.sceneId);
             const isSelected = selectedIds.has(shot.id);
+            const idString = `${sceneInfo.sequence}:${shot.sequence}`;
             
             return (
                <div 
                   key={shot.id} 
                   className={`
-                    flex items-center h-[72px] border-b border-[#252526] text-[12px] text-[#CCCCCC] transition-colors hover:bg-[#2A2D2E] group
+                    flex items-center h-16 border-b border-[#252526] text-[12px] text-[#CCCCCC] transition-colors hover:bg-[#2A2D2E] group
                     ${isSelected ? 'bg-[#2A3744] hover:bg-[#303F4F]' : ''}
                   `}
                >
@@ -217,13 +216,10 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                      {isSelected ? <CheckSquare className="w-4 h-4 text-[#007ACC]" /> : <Square className="w-4 h-4 text-[#505050]" />}
                   </div>
 
-                  {/* Scene Number (Sce) */}
-                  <div className="w-10 text-center font-bold text-white text-[13px]">{sceneInfo.sequence}</div>
+                  {/* ID (Merged) */}
+                  <div className="w-16 text-center font-bold text-white text-[13px]">{idString}</div>
 
-                  {/* Shot Number (#) */}
-                  <div className="w-10 text-center font-mono text-[#707070] text-[11px]">{shot.sequence}</div>
-
-                  {/* Visual / Thumbnail */}
+                  {/* Thumbnail */}
                   <div className="w-16 p-1.5 h-full cursor-pointer relative" onClick={() => onEditShot(shot)}>
                      {shot.generatedImage ? (
                         <img src={shot.generatedImage} className="w-full h-full object-cover rounded-[2px] border border-[#333] group-hover:border-[#505050]" />
@@ -232,50 +228,25 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                            <Film className="w-4 h-4 text-[#333]" />
                         </div>
                      )}
-                     {!shot.generatedImage && (
-                        <div className="absolute top-0 right-0 p-0.5">
-                           <AlertCircle className="w-3 h-3 text-[#E5B557]" />
-                        </div>
-                     )}
-                  </div>
-
-                  {/* Description & Script */}
-                  <div className="flex-[2] px-3 flex flex-col justify-center gap-1 border-l border-[#2A2A2A] h-full min-w-0">
-                     <div className="flex items-center gap-2">
-                         {shot.linkedElementIds && shot.linkedElementIds.length > 0 ? (
-                             <div className="flex items-center gap-1 text-[10px] bg-[#007ACC]/20 text-[#007ACC] px-1.5 py-0.5 rounded-sm font-medium shrink-0">
-                                <LinkIcon className="w-2.5 h-2.5" />
-                                <span>LINKED</span>
-                             </div>
-                         ) : (
-                             <div className="flex items-center gap-1 text-[10px] text-[#505050] px-1.5 py-0.5 border border-[#333] rounded-sm shrink-0">
-                                <LinkIcon className="w-2.5 h-2.5" />
-                                <span>UNLINKED</span>
-                             </div>
-                         )}
-                         <div className="text-[10px] text-[#707070] font-mono truncate">
-                            {shot.id.substring(0,8)}
-                         </div>
+                     {/* Hover Edit Hint */}
+                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white">
+                        <Edit2 className="w-3 h-3" />
                      </div>
-                     <div className="truncate text-[#E8E8E8] text-[13px] font-medium" title={shot.description}>
-                        {shot.description || <span className="text-[#505050] italic">No description</span>}
-                     </div>
-                     {shot.notes && <div className="truncate text-[#707070] text-[11px] italic">{shot.notes}</div>}
                   </div>
 
                   {/* Scene Dropdown (Assignment) */}
-                  <div className="w-40 px-3 border-l border-[#2A2A2A] h-full flex items-center">
+                  <div className="flex-1 px-3 border-l border-[#2A2A2A] h-full flex items-center">
                      <div className="w-full relative group/scene">
                          <select
                              value={shot.sceneId || ''}
                              onChange={(e) => onUpdateShot({ ...shot, sceneId: e.target.value })}
-                             className="w-full bg-transparent text-[#969696] group-hover:text-white font-medium outline-none text-[11px] cursor-pointer appearance-none uppercase transition-colors pr-4"
+                             className="w-full bg-transparent text-[#007ACC] font-medium outline-none text-[11px] cursor-pointer hover:text-white appearance-none uppercase"
                          >
                              {project.scenes.map(s => (
-                                 <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading.substring(0, 20)}...</option>
+                                 <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>
                              ))}
                          </select>
-                         <ChevronDown className="w-3 h-3 absolute right-0 top-1/2 -translate-y-1/2 text-[#505050] pointer-events-none" />
+                         <Clapperboard className="w-3 h-3 absolute right-0 top-1/2 -translate-y-1/2 text-[#505050] group-hover/scene:text-white pointer-events-none" />
                      </div>
                   </div>
 
@@ -345,7 +316,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                   value="" 
                >
                   <option value="" disabled>Move to Scene...</option>
-                  {project.scenes.map(s => <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>)}
+                  {project.scenes.map(s => <option key={s.id} value={s.id} className="text-black">{s.heading}</option>)}
                </select>
 
                {/* Bulk Type Change */}
