@@ -187,7 +187,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
          <div className="w-10 flex justify-center cursor-pointer hover:text-white" onClick={toggleAll}>
             {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-[#007ACC]" /> : <Square className="w-3.5 h-3.5" />}
          </div>
-         <div className="w-16 text-center text-[#E8E8E8]">ID</div>
+         <div className="w-16 text-center text-[#E8E8E8]">Scene:Shot</div>
          <div className="w-16 text-center">Visual</div>
          <div className="flex-1 px-3 border-l border-[#2A2A2A]">Scene Assignment</div>
          <div className="w-32 px-2 border-l border-[#2A2A2A]">Shot Type</div>
