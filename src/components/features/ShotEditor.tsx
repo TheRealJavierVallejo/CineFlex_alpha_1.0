@@ -7,8 +7,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../types';
 import { generateShotImage, generateBatchShotImages, analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
-import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, VARIATION_COUNTS, TIMES_OF_DAY } from '../../constants';
-import { X, Wand2, Film, RefreshCw, Download, Copy, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize2, Minimize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, HelpCircle, Eye, FileText, Camera, Users, Settings, ArrowLeft, MapPin } from 'lucide-react';
+import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, TIMES_OF_DAY } from '../../constants';
+import { X, Wand2, RefreshCw, Copy, Eye, Image as ImageIcon, Maximize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, Camera, Users, Settings, ArrowLeft, MapPin } from 'lucide-react';
 import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
 import Button from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
@@ -21,6 +21,17 @@ interface ShotEditorProps {
   activeShot: Shot | null;
   showToast: ShowToastFn;
 }
+
+const LOADING_MESSAGES = [
+  "Calibrating lenses...",
+  "Setting up lighting...",
+  "Directing actors...",
+  "Scouting location...",
+  "Adjusting aperture...",
+  "Applying color grade...",
+  "Developing film...",
+  "Focusing camera..."
+];
 
 export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, onClose, activeShot, showToast }) => {
   // --- STATE ---
@@ -49,6 +60,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const [locations, setLocations] = useState<Location[]>([]); // New State
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
@@ -88,6 +100,17 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showPromptPreview]);
+
+  // Loading Message Cycler
+  useEffect(() => {
+    let interval: any;
+    if (isGenerating) {
+       interval = setInterval(() => {
+          setLoadingMsgIndex(prev => (prev + 1) % LOADING_MESSAGES.length);
+       }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   // Load assets
   useEffect(() => {
@@ -204,8 +227,8 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     }
 
     setIsGenerating(true);
-    showToast("Starting render...", 'info');
-
+    // Removed toast here to reduce noise, UI has spinner
+    
     try {
       // Common Payload Construction
       const effectiveShot = noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot;
@@ -750,7 +773,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     {isGenerating ? (
                       <div className="flex flex-col items-center gap-3 animate-pulse">
                         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                        <div className="text-xs font-mono text-primary">RENDERING...</div>
+                        <div className="text-xs font-mono text-primary animate-pulse">{LOADING_MESSAGES[loadingMsgIndex]}</div>
                       </div>
                     ) : (
                       <>

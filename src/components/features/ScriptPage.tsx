@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
@@ -32,6 +32,7 @@ export const ScriptPage: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false); // New Zen Mode State
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
@@ -96,6 +97,10 @@ export const ScriptPage: React.FC = () => {
         e.preventDefault();
         e.shiftKey ? (canRedo && redo()) : (canUndo && undo());
         return;
+    }
+
+    if (e.key === 'Escape' && isZenMode) {
+        setIsZenMode(false);
     }
 
     const index = elements.findIndex(el => el.id === id);
@@ -192,11 +197,11 @@ export const ScriptPage: React.FC = () => {
   const hasElements = elements.length > 0;
 
   return (
-    <div className="relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans">
+    <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
       
-      {/* Toolbar - Only show if has elements, otherwise the empty state looks cleaner alone? No, let's keep it but simplified if empty. */}
+      {/* Toolbar */}
       {hasElements && (
-        <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10">
+        <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
            <div className="flex items-center gap-2 text-text-primary font-medium">
                <FileText className="w-4 h-4 text-primary" />
                <span>Screenplay Editor</span>
@@ -207,6 +212,7 @@ export const ScriptPage: React.FC = () => {
                   <div className="w-[1px] h-4 bg-border mx-1" />
                   <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3.5 h-3.5" /></button>
                </div>
+               
                <div className="flex items-center gap-2">
                   {isSyncing ? (
                       <span className="text-xs text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</span>
@@ -214,7 +220,17 @@ export const ScriptPage: React.FC = () => {
                       <span className="text-xs text-text-tertiary flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
                   )}
                </div>
+               
                <div className="h-4 w-[1px] bg-border" />
+               
+               <button 
+                  onClick={() => setIsZenMode(!isZenMode)}
+                  className={`p-1.5 rounded transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-tertiary hover:text-white hover:bg-[#2A2D2E]'}`}
+                  title={isZenMode ? "Exit Zen Mode (Esc)" : "Enter Zen Mode"}
+               >
+                  {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+               </button>
+
                <Button variant={isChatOpen ? "primary" : "secondary"} size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={() => setIsChatOpen(!isChatOpen)}>
                   AI Co-Pilot
                </Button>
