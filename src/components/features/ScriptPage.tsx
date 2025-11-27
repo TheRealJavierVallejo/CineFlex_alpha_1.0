@@ -7,30 +7,39 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Plus, RefreshCw, Sparkles, Upload, FilePlus, Loader2, Save } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Sparkles, Upload, FilePlus, Loader2, Save, Undo, Redo } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
+import { useHistory } from '../../hooks/useHistory';
 
 export const ScriptPage: React.FC = () => {
   const { project, updateScriptElements, importScript } = useWorkspace();
   
-  // --- 1. LOCAL STATE (For Speed) ---
-  // We mirror the project elements here to avoid DB lag on every keystroke
-  const [elements, setElements] = useState<ScriptElement[]>(project.scriptElements || []);
+  // --- 1. HISTORY STATE (Undo/Redo) ---
+  const { 
+      state: elements, 
+      set: setElements, 
+      undo, 
+      redo, 
+      canUndo, 
+      canRedo 
+  } = useHistory<ScriptElement[]>(project.scriptElements || []);
+
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Refs for cursor management during splits/merges
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
 
   // --- 2. SYNC ENGINE ---
   
-  // Sync local changes to global project (Debounced 1s)
+  // Sync local changes to global project (Debounced 2s)
   const debouncedSync = useCallback(
       debounce((currentElements: ScriptElement[]) => {
           setIsSyncing(true);
@@ -43,13 +52,12 @@ export const ScriptPage: React.FC = () => {
   );
 
   // Initial Load / External Update Sync
+  // We only sync FROM project if the history is empty (initial load) to avoid overwriting work
   useEffect(() => {
-      // Only sync FROM project if we aren't currently typing/syncing
-      // This prevents "fighting" if the DB updates while we type
-      if (project.scriptElements && !isSyncing && project.scriptElements.length !== elements.length) {
-          setElements(project.scriptElements);
-      }
-  }, [project.scriptElements]);
+    if (project.scriptElements && elements.length === 0 && project.scriptElements.length > 0) {
+        setElements(project.scriptElements);
+    }
+  }, [project.scriptElements]); // Careful with deps here to avoid loops
 
   // --- 3. EDITING LOGIC ---
 
@@ -63,6 +71,10 @@ export const ScriptPage: React.FC = () => {
     if (currentIndex === -1) return;
     
     const currentEl = elements[currentIndex];
+    
+    // Optimization: Don't trigger history update for every single character if rapid typing?
+    // For now, simple setElements is fine for < 500 lines.
+    
     let newType = currentEl.type;
     const upper = newContent.toUpperCase();
 
@@ -82,11 +94,26 @@ export const ScriptPage: React.FC = () => {
 
     const updated = [...elements];
     updated[currentIndex] = { ...currentEl, content: finalContent, type: newType };
+    
+    // We use a separate "quiet" update logic for content typing to avoid cluttering undo stack?
+    // Actually, for a script editor, you usually want snapshots. 
+    // Ideally, we'd debounce the "setElements" for history purposes, but for now direct update:
     updateLocal(updated);
   };
 
   // The Big One: Handling Keys
   const handleKeyDown = (e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
+    // --- GLOBAL HOTKEYS ---
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+            if (canRedo) redo();
+        } else {
+            if (canUndo) undo();
+        }
+        return;
+    }
+
     const index = elements.findIndex(el => el.id === id);
     if (index === -1) return;
 
@@ -95,10 +122,7 @@ export const ScriptPage: React.FC = () => {
        e.preventDefault();
 
        const currentContent = elements[index].content;
-       
-       // 1. Text Before Cursor
        const contentBefore = currentContent.slice(0, cursorPosition);
-       // 2. Text After Cursor (moves to new block)
        const contentAfter = currentContent.slice(cursorPosition);
 
        // Determine Next Type
@@ -109,15 +133,8 @@ export const ScriptPage: React.FC = () => {
        else if (type === 'parenthetical') nextType = 'dialogue';
        else if (type === 'transition') nextType = 'scene_heading';
 
-       // Special Case: Empty Character line -> Action (escape out of dialogue mode)
-       if (type === 'character' && currentContent.trim() === '') {
-           const updated = [...elements];
-           updated[index].type = 'action';
-           updateLocal(updated);
-           return;
-       }
-       // Special Case: Empty Dialogue -> Action (escape)
-       if (type === 'dialogue' && currentContent.trim() === '') {
+       // Escaping Empty blocks
+       if ((type === 'character' || type === 'dialogue') && currentContent.trim() === '') {
            const updated = [...elements];
            updated[index].type = 'action';
            updateLocal(updated);
@@ -128,19 +145,16 @@ export const ScriptPage: React.FC = () => {
        const newElement: ScriptElement = {
            id: newId,
            type: nextType,
-           content: contentAfter, // Move rest of line to new block
+           content: contentAfter,
            sequence: index + 2
        };
 
        const updated = [...elements];
-       // Update current block to only have text before cursor
        updated[index] = { ...updated[index], content: contentBefore };
-       // Insert new block
        updated.splice(index + 1, 0, newElement);
        
        updateLocal(updated);
        
-       // Focus new block at start
        setTimeout(() => {
            setActiveElementId(newId);
            cursorTargetRef.current = { id: newId, position: 0 };
@@ -149,26 +163,20 @@ export const ScriptPage: React.FC = () => {
 
     // --- BACKSPACE: MERGE PREVIOUS ---
     if (e.key === 'Backspace' && cursorPosition === 0 && selectionEnd === 0) {
-       // Only merge if we aren't at the very top
        if (index > 0) {
            e.preventDefault();
            const prevIndex = index - 1;
            const prevEl = elements[prevIndex];
            const currentEl = elements[index];
-
-           // Calculate where cursor should go (at end of previous content)
            const newCursorPos = prevEl.content.length;
-
-           // Merge content
            const mergedContent = prevEl.content + currentEl.content;
            
            const updated = [...elements];
            updated[prevIndex] = { ...prevEl, content: mergedContent };
-           updated.splice(index, 1); // Delete current
+           updated.splice(index, 1);
            
            updateLocal(updated);
 
-           // Focus previous and set cursor
            setTimeout(() => {
                setActiveElementId(prevEl.id);
                cursorTargetRef.current = { id: prevEl.id, position: newCursorPos };
@@ -231,6 +239,27 @@ export const ScriptPage: React.FC = () => {
              <span>Screenplay Editor</span>
          </div>
          <div className="flex items-center gap-4">
+             {/* UNDO / REDO CONTROLS */}
+             <div className="flex items-center bg-[#252526] rounded border border-border p-0.5">
+                <button 
+                  onClick={undo} 
+                  disabled={!canUndo}
+                  className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors"
+                  title="Undo (Ctrl+Z)"
+                >
+                   <Undo className="w-3.5 h-3.5" />
+                </button>
+                <div className="w-[1px] h-4 bg-border mx-1" />
+                <button 
+                  onClick={redo} 
+                  disabled={!canRedo}
+                  className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors"
+                  title="Redo (Ctrl+Shift+Z)"
+                >
+                   <Redo className="w-3.5 h-3.5" />
+                </button>
+             </div>
+
              <div className="flex items-center gap-2">
                 {isSyncing ? (
                     <span className="text-xs text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</span>
@@ -247,9 +276,14 @@ export const ScriptPage: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden relative">
         <div 
+          ref={containerRef}
           className="flex-1 overflow-y-auto w-full flex justify-center p-8 cursor-text transition-all duration-300 bg-[#111111]" 
           style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
-          onClick={() => hasElements && setActiveElementId(elements[elements.length - 1].id)}
+          onClick={(e) => {
+              if (e.target === containerRef.current && hasElements) {
+                  setActiveElementId(elements[elements.length - 1].id);
+              }
+          }}
         >
           {hasElements ? (
               <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] p-[100px] border border-[#333] mb-20 relative transition-transform">
