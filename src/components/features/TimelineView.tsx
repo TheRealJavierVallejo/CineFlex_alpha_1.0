@@ -10,25 +10,27 @@ import { TimelineHeader } from './TimelineHeader';
 import { SceneList } from './SceneList';
 import { ScriptPicker } from './ScriptPicker';
 import { ImageSelectorModal } from './ImageSelectorModal';
+import { generateStoryboardPDF } from '../../services/pdfExport'; // New Import
 
 interface TimelineViewProps {
   project: Project;
   onUpdateProject: (project: Project) => void;
   onEditShot: (shot: Shot) => void;
-  importScript: (file: File) => Promise<void>; // New Prop
+  importScript: (file: File) => Promise<void>;
   showToast: ShowToastFn;
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, importScript, showToast }) => {
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [isUploadingScript, setIsUploadingScript] = useState(false);
+  const [isExporting, setIsExporting] = useState(false); // New State
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
 
   // Unified Modal State for Adding OR Updating Shots
   const [imageModalState, setImageModalState] = useState<{
     isOpen: boolean;
     sceneId: string | null;
-    updateShotId: string | null; // If present, we are updating this shot's visual
+    updateShotId: string | null;
   }>({
     isOpen: false,
     sceneId: null,
@@ -56,8 +58,26 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     if (!file) return;
 
     setIsUploadingScript(true);
-    await importScript(file); // Use central brain
+    await importScript(file);
     setIsUploadingScript(false);
+  };
+
+  const handleExportPDF = async () => {
+    if (project.scenes.length === 0) {
+        showToast("Add scenes before exporting", 'warning');
+        return;
+    }
+    setIsExporting(true);
+    showToast("Generating PDF...", 'info');
+    try {
+        await generateStoryboardPDF(project);
+        showToast("PDF Downloaded", 'success');
+    } catch (e) {
+        console.error(e);
+        showToast("Export failed", 'error');
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   const handleAddScene = () => {
@@ -119,7 +139,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
            ...s,
            generatedImage: selectedImage.url,
            generationCandidates: [selectedImage.url],
-           description: selectedImage.prompt || s.description, // Update prompt if available
+           description: selectedImage.prompt || s.description,
            model: selectedImage.model || s.model,
            aspectRatio: selectedImage.aspectRatio || s.aspectRatio
         } : s);
@@ -262,6 +282,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           isUploadingScript={isUploadingScript}
           onImportScript={handleScriptUpload}
           onAddScene={handleAddScene}
+          onExportPDF={handleExportPDF} // Connected
+          isExporting={isExporting} // Connected
         />
 
         <SceneList
@@ -279,7 +301,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
           onUnlinkElement={handleUnlinkElement}
           onEditShot={onEditShot}
           onCreateAndLinkShot={handleCreateAndLinkShot}
-          onAddVisual={handleTriggerAddVisual} // NEW PROP
+          onAddVisual={handleTriggerAddVisual}
         />
 
       </div>
