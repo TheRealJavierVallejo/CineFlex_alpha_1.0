@@ -34,10 +34,15 @@ export const ScriptPage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   
-  // INDEPENDENT PAPER STATE
-  // Defaults to FALSE (Dark Paper) regardless of app theme.
-  // This state now strictly controls the Paper color and Text color ONLY.
-  const [isPaperWhite, setIsPaperWhite] = useState(false); 
+  // --- PAPER THEME LOGIC ---
+  // Check Global Theme (This is static per session unless we listen to changes, but usually settings requires navigation)
+  const isGlobalLight = document.documentElement.classList.contains('light');
+  
+  // Local Toggle: Only active in Dark Mode. Defaults to Dark Paper (false).
+  const [localPaperWhite, setLocalPaperWhite] = useState(false);
+  
+  // Effective State: If Global Light -> Force White Paper. Else -> Use Local Toggle.
+  const isPaperWhite = isGlobalLight || localPaperWhite;
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
@@ -55,10 +60,12 @@ export const ScriptPage: React.FC = () => {
   );
 
   useEffect(() => {
+    // Priority: If script elements exist in DB, use them.
     if (project.scriptElements && project.scriptElements.length > 0) {
        if (elements.length === 0) setElements(project.scriptElements);
        return;
     }
+    // Fallback: If no script exists, try to rebuild from scenes (only on first load)
     if (project.scenes.length > 0 && elements.length === 0) {
         const generated = generateScriptFromScenes(project.scenes);
         setElements(generated);
@@ -197,6 +204,7 @@ export const ScriptPage: React.FC = () => {
 
   const hasElements = elements.length > 0;
   
+  // Navigation Helper
   const headings = elements.filter(el => el.type === 'scene_heading');
   const scrollToElement = (id: string) => {
      setActiveElementId(id);
@@ -242,7 +250,7 @@ export const ScriptPage: React.FC = () => {
 
   return (
     <PageWithToolRail tools={tools} defaultTool={null}>
-        <div className={`relative h-full flex flex-col bg-surface-secondary overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+        <div className={`relative h-full flex flex-col overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''} ${isGlobalLight ? 'bg-background' : 'bg-black'}`}>
         
         {/* Toolbar */}
         {hasElements && (
@@ -270,14 +278,16 @@ export const ScriptPage: React.FC = () => {
                 
                 <div className="h-4 w-[1px] bg-border" />
 
-                {/* Independent Paper Mode Switch */}
-                <button 
-                    onClick={() => setIsPaperWhite(!isPaperWhite)}
-                    className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
-                    title={isPaperWhite ? "Switch to Dark Paper" : "Switch to Light Paper"}
-                >
-                    {isPaperWhite ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                </button>
+                {/* Paper Mode Switch - ONLY VISIBLE IN DARK MODE */}
+                {!isGlobalLight && (
+                    <button 
+                        onClick={() => setLocalPaperWhite(!localPaperWhite)}
+                        className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
+                        title={localPaperWhite ? "Switch to Dark Paper" : "Switch to Light Paper"}
+                    >
+                        {localPaperWhite ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                    </button>
+                )}
                 
                 <button 
                     onClick={() => setIsZenMode(!isZenMode)}
@@ -293,8 +303,8 @@ export const ScriptPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden relative">
             <div 
             ref={containerRef}
-            // Use bg-surface-secondary here for the "Desk" (area behind paper) so it follows app theme
-            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-surface-secondary" 
+            // "Desk" Background: In Light Mode = App Background. In Dark Mode = Black (Void).
+            className={`flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 ${isGlobalLight ? 'bg-surface-secondary' : 'bg-black'}`}
             onClick={(e) => {
                 if (e.target === containerRef.current && hasElements) {
                     setActiveElementId(elements[elements.length - 1].id);
@@ -306,8 +316,8 @@ export const ScriptPage: React.FC = () => {
                     className={`
                         w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
                         ${isPaperWhite 
-                            ? 'bg-white border-zinc-200 shadow-zinc-900/10' // WHITE PAPER
-                            : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} // DARK PAPER (Hardcoded to avoid theme flip)
+                            ? 'bg-white border-zinc-200 shadow-zinc-900/10' // WHITE PAPER (Used in Global Light Mode OR Local Toggle)
+                            : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} // DARK PAPER (Hardcoded Dark Grey)
                     `}
                 >
                     <div className="flex flex-col">
@@ -320,7 +330,7 @@ export const ScriptPage: React.FC = () => {
                             onKeyDown={handleKeyDown}
                             onFocus={setActiveElementId}
                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                            isLightMode={isPaperWhite} // Pass local state directly
+                            isLightMode={isPaperWhite} // This passes true if global light OR local toggle
                         />
                         ))}
                     </div>
