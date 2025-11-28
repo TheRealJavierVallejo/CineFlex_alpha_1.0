@@ -12,34 +12,54 @@ export default {
                 mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
             },
             colors: {
-                // VS Code inspired color palette
+                // "Dark Room" Cinema Palette
+                background: '#09090b', // Deepest Zinc (Main Canvas)
+                
                 app: {
-                    DEFAULT: '#18181B',
-                    panel: '#1E1E1E',
-                    hover: '#2A2D2E',
-                    active: '#37373D',
+                    DEFAULT: '#09090b',
+                    panel: '#18181b',   // Zinc 900 (Sidebar/Panels)
+                    hover: '#27272a',   // Zinc 800
+                    active: '#3f3f46',  // Zinc 700
                 },
+                
+                surface: {
+                    DEFAULT: '#18181b', // Zinc 900 (Cards/Modals)
+                    secondary: '#0f0f10', // Darker surface for headers/inputs
+                    hover: '#27272a',
+                    border: '#27272a',
+                },
+
                 border: {
-                    DEFAULT: '#333333',
-                    focus: '#007ACC',
-                    subtle: '#252526',
+                    DEFAULT: '#27272a', // Zinc 800 (Subtle)
+                    focus: '#3b82f6',   // Electric Blue
+                    subtle: '#18181b',
                 },
+
                 text: {
-                    primary: '#CCCCCC',
-                    secondary: '#969696',
-                    muted: '#6E7681',
-                    inverse: '#FFFFFF',
+                    primary: '#e4e4e7',   // Zinc 200 (Bright but not harsh white)
+                    secondary: '#a1a1aa', // Zinc 400
+                    muted: '#71717a',     // Zinc 500
+                    inverse: '#000000',
+                },
+
+                // Electric Blue Accent (Vibrant)
+                primary: {
+                    DEFAULT: '#3b82f6', // Blue 500
+                    hover: '#2563eb',   // Blue 600
+                    foreground: '#FFFFFF',
+                    glow: 'rgba(59, 130, 246, 0.5)'
                 },
                 accent: {
-                    DEFAULT: '#007ACC',
-                    hover: '#0062A3',
-                    light: '#4FC3F7',
+                    DEFAULT: '#3b82f6',
+                    hover: '#2563eb',
+                    light: '#60a5fa',
                 },
+
                 status: {
-                    error: '#F48771',
-                    warning: '#CCA700',
-                    success: '#89D185',
-                    info: '#75BEFF',
+                    error: '#ef4444',   // Red 500
+                    warning: '#eab308', // Yellow 500
+                    success: '#22c55e', // Green 500
+                    info: '#0ea5e9',    // Sky 500
                 },
             },
             fontSize: {
@@ -55,21 +75,24 @@ export default {
                 '88': '22rem',
             },
             borderRadius: {
-                'sm': '3px',
-                DEFAULT: '3px',
-                'md': '4px',
-                'lg': '6px',
+                'sm': '4px',
+                DEFAULT: '6px',
+                'md': '8px',
+                'lg': '10px',
+                'xl': '12px',
             },
             boxShadow: {
-                'window': '0 0 0 1px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.4)',
-                'panel': '0 2px 8px rgba(0,0,0,0.3)',
-                'focus': '0 0 0 2px #007ACC',
+                'window': '0 20px 50px -12px rgba(0, 0, 0, 0.5)',
+                'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                'glow': '0 0 15px rgba(59, 130, 246, 0.3)',
+                'focus': '0 0 0 2px rgba(59, 130, 246, 0.5)',
             },
             animation: {
-                'slide-up': 'slideUp 0.2s ease-out',
-                'slide-down': 'slideDown 0.2s ease-out',
-                'fade-in': 'fadeIn 0.15s ease-out',
+                'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                'slide-down': 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                'fade-in': 'fadeIn 0.2s ease-out',
                 'shimmer': 'shimmer 2s infinite',
+                'pulse-glow': 'pulseGlow 2s infinite',
             },
             keyframes: {
                 slideUp: {
@@ -88,6 +111,10 @@ export default {
                     '0%': { backgroundPosition: '-1000px 0' },
                     '100%': { backgroundPosition: '1000px 0' },
                 },
+                pulseGlow: {
+                    '0%, 100%': { opacity: '1', boxShadow: '0 0 15px rgba(59, 130, 246, 0.3)' },
+                    '50%': { opacity: '0.8', boxShadow: '0 0 5px rgba(59, 130, 246, 0.1)' },
+                }
             },
         },
     },

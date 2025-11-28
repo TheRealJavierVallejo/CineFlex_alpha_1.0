@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ============================================
-   CINESKETCH STUDIO - DESIGN SYSTEM
-   Professional Desktop Application Styles
+   CINESKETCH STUDIO - CINEMA DARK THEME
+   Phase 1: Dark Room Aesthetic
    ============================================ */
 
 @theme {
@@ -11,317 +11,146 @@
   --font-family-mono: JetBrains Mono, Menlo, Monaco, Courier New, monospace;
   --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
 
-  /* VS Code inspired color palette */
-  --color-app: #18181B;
-  --color-app-panel: #1E1E1E;
-  --color-app-hover: #2A2D2E;
-  --color-app-active: #37373D;
-
-  --color-border: #333333;
-  --color-border-focus: #007ACC;
-  --color-border-subtle: #252526;
-
-  --color-text-primary: #CCCCCC;
-  --color-text-secondary: #969696;
-  --color-text-muted: #6E7681;
-  --color-text-inverse: #FFFFFF;
-
-  --color-accent: #007ACC;
-  --color-accent-hover: #0062A3;
-  --color-accent-light: #4FC3F7;
-
-  --color-status-error: #F48771;
-  --color-status-warning: #CCA700;
-  --color-status-success: #89D185;
-  --color-status-info: #75BEFF;
-
-  /* Font Sizes with line heights */
-  --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-lg: 14px;
-  --font-size-xl: 16px;
-  --font-size-2xl: 18px;
-
-  /* Spacing */
-  --spacing-18: 4.5rem;
-  --spacing-88: 22rem;
-
-  /* Border Radius */
-  --radius-sm: 3px;
-  --radius: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-
-  /* Animations */
-  --animate-slide-up: slideUp 0.2s ease-out;
-  --animate-slide-down: slideDown 0.2s ease-out;
-  --animate-fade-in: fadeIn 0.15s ease-out;
-  --animate-shimmer: shimmer 2s infinite;
-
-  /* Keyframes */
-  @keyframes slideUp {
-    0% {
-      transform: translateY(10px);
-      opacity: 0;
-    }
-
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideDown {
-    0% {
-      transform: translateY(-10px);
-      opacity: 0;
-    }
-
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-    }
-
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-
-    100% {
-      background-position: 1000px 0;
-    }
-  }
+  /* Colors - Mapping to Tailwind Config logic */
+  --color-background: #09090b; /* Zinc 950 */
+  --color-surface: #18181b;    /* Zinc 900 */
+  
+  --color-primary: #3b82f6;    /* Electric Blue */
+  
+  --radius: 6px;
 }
 
 @layer base {
-
-  /* CSS Custom Properties for legacy support */
   :root {
     /* Background Colors */
-    --bg-app: #18181B;
-    --bg-panel: #1E1E1E;
-    --bg-hover: #2A2D2E;
-    --bg-active: #37373D;
+    --bg-app: #09090b;
+    --bg-panel: #18181b;
+    --bg-surface: #18181b;
+    --bg-hover: #27272a;
+    --bg-active: #3f3f46;
 
     /* Border Colors */
-    --border: #333333;
-    --border-focus: #007ACC;
-    --border-subtle: #252526;
+    --border: #27272a;
+    --border-focus: #3b82f6;
+    --border-subtle: #18181b;
 
     /* Text Colors */
-    --text-primary: #CCCCCC;
-    --text-secondary: #969696;
-    --text-muted: #6E7681;
+    --text-primary: #e4e4e7;   /* Zinc 200 */
+    --text-secondary: #a1a1aa; /* Zinc 400 */
+    --text-muted: #71717a;     /* Zinc 500 */
 
     /* Accent Colors */
-    --accent: #007ACC;
-    --accent-hover: #0062A3;
-    --accent-text: #FFFFFF;
-
-    /* Status Colors */
-    --error: #F48771;
-    --warning: #CCA700;
-    --success: #89D185;
-    --info: #75BEFF;
-
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --accent: #3b82f6;
+    
     /* Layout */
-    --radius: 3px;
-    --header-height: 36px;
-    --status-bar-height: 22px;
+    --header-height: 48px;
     --sidebar-width: 240px;
-    --sidebar-collapsed: 48px;
+    --sidebar-collapsed: 56px;
   }
 
   /* Global Resets */
   * {
-    border-color: var(--color-border, #333333);
+    border-color: var(--border);
   }
 
   body {
-    background-color: var(--color-app, #18181B);
-    color: var(--color-text-primary, #CCCCCC);
+    background-color: var(--bg-app);
+    color: var(--text-primary);
     font-family: var(--font-family-sans);
-    font-size: var(--font-size-base, 13px);
+    font-size: 13px;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    user-select: none;
   }
 
-  /* Selectable Text Areas */
-  .selectable {
-    user-select: text;
+  /* Selection Color (Cinema Blue) */
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.3);
+    color: white;
   }
 }
 
 @layer components {
 
   /* ============================================
-     CUSTOM SCROLLBARS
+     CINEMA SCROLLBARS (Thin & Dark)
      ============================================ */
   ::-webkit-scrollbar {
-    @apply w-2.5 h-2.5;
+    @apply w-2 h-2;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-app;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#424242] rounded-full;
-    border: 2px solid var(--bg-app);
+    @apply bg-white/10 rounded-full transition-colors;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-[#4F4F4F];
+    @apply bg-white/20;
+  }
+  
+  /* Corner for dual scrollbars */
+  ::-webkit-scrollbar-corner {
+    @apply bg-transparent;
   }
 
   /* ============================================
-     NATIVE APP UTILITIES
+     GLASSMORPHISM UTILITIES
      ============================================ */
-  .app-region-drag {
-    -webkit-app-region: drag;
+  .glass-panel {
+    @apply bg-[#18181b]/80 backdrop-blur-md border border-white/5;
   }
-
-  .app-no-drag {
-    -webkit-app-region: no-drag;
+  
+  .glass-header {
+    @apply bg-[#09090b]/80 backdrop-blur-md border-b border-white/5;
   }
 
   /* ============================================
-     LEGACY BUTTON CLASSES (for gradual migration)
+     STUDIO CARD (Elevated Surface)
      ============================================ */
-  .app-btn {
-    @apply h-7 px-3 rounded-sm text-sm font-medium;
-    @apply inline-flex items-center gap-1.5;
-    @apply transition-all duration-100;
-    @apply select-none cursor-default;
+  .studio-card {
+    @apply bg-surface border border-border rounded-lg shadow-panel overflow-hidden;
   }
-
-  .app-btn:active {
-    @apply translate-y-px;
+  
+  .studio-input {
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm text-text-primary;
+    @apply outline-none transition-all duration-200;
   }
-
-  .app-btn-primary {
-    @apply bg-accent text-white;
+  
+  .studio-input:focus {
+    @apply border-primary ring-1 ring-primary/30 bg-black/40;
   }
-
-  .app-btn-primary:hover {
-    @apply bg-accent-hover;
-  }
-
-  .app-btn-secondary {
-    @apply bg-[#2D2D30] border border-border text-text-primary;
-  }
-
-  .app-btn-secondary:hover {
-    @apply bg-[#3E3E42];
-  }
-
-  .app-btn-ghost {
-    @apply bg-transparent text-text-secondary;
-  }
-
-  .app-btn-ghost:hover {
-    @apply bg-white/5 text-text-primary;
-  }
-
+  
   /* ============================================
-     LEGACY INPUT CLASSES
+     LEGACY UTILS (Preserved for compatibility)
      ============================================ */
   .app-input {
-    @apply bg-[#252526] border border-border;
-    @apply text-text-primary text-sm h-7 px-2;
-    @apply rounded-sm outline-none;
-    @apply transition-colors duration-100;
+    @apply studio-input h-8;
+  }
+  
+  .app-btn {
+    @apply h-8 px-3 rounded text-sm font-medium inline-flex items-center gap-2 transition-all cursor-pointer;
+  }
+  
+  .app-btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-white shadow-glow;
+  }
+  
+  .app-btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 text-text-primary border border-white/5;
   }
 
-  .app-input:focus {
-    @apply border-border-focus;
-  }
-
-  /* ============================================
-     WINDOW & PANEL SHADOWS
-     ============================================ */
-  .window-shadow {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
-
-  .panel-shadow {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  /* ============================================
-     FOCUS STYLES
-     ============================================ */
   .focus-ring {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-app;
-  }
-
-  /* ============================================
-     ANIMATIONS
-     ============================================ */
-  .animate-toast-in {
-    animation: slideUp 0.2s ease-out;
-  }
-
-  .animate-modal-in {
-    animation: fadeIn 0.15s ease-out;
-  }
-
-  /* ============================================
-     SKELETON LOADER
-     ============================================ */
-  .skeleton {
-    @apply bg-gradient-to-r from-[#2A2A2A] via-[#333333] to-[#2A2A2A];
-    @apply bg-[length:1000px_100%];
-    @apply animate-shimmer;
+    @apply outline-none ring-2 ring-primary/50 ring-offset-1 ring-offset-app;
   }
 }
 
 @layer utilities {
-
-  /* Text Utilities */
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* Truncate with tooltip */
-  .truncate-tooltip {
-    @apply truncate;
-    @apply cursor-help;
-  }
-
-  /* Hide scrollbar but keep functionality */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Glass morphism effect */
-  .glass {
-    @apply bg-white/5 backdrop-blur-sm;
-    @apply border border-white/10;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-gradient-to-r from-accent to-accent-light;
-    @apply bg-clip-text text-transparent;
-  }
+  .text-balance { text-wrap: balance; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }

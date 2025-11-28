@@ -16,22 +16,22 @@ export const Sidebar: React.FC = () => {
         to={to}
         end={exact}
         className={({ isActive }) => `
-          w-full h-9 flex items-center gap-3 px-2.5 mb-1 rounded-[3px] transition-colors group relative
+          w-full h-10 flex items-center gap-3 px-3 mb-1 rounded-md transition-all duration-200 group relative
           ${isActive 
-            ? 'bg-[#37373D] text-white' 
-            : 'text-[#969696] hover:text-white hover:bg-[#2A2D2E]'}
+            ? 'bg-primary/10 text-primary font-medium' 
+            : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}
         `}
         title={label}
       >
         {({ isActive }) => (
             <>
-                {/* Active Bar Left */}
-                {isActive && <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-[#007ACC] rounded-r-sm" />}
+                {/* Active Indicator */}
+                {isActive && <div className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
                 
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#969696] group-hover:text-white'}`} />
+                <Icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? 'text-primary' : 'text-text-muted group-hover:text-text-primary'}`} />
                 
                 {!isCollapsed && (
-                <span className="text-[13px] font-medium truncate">{label}</span>
+                <span className="text-sm truncate animate-in fade-in duration-200">{label}</span>
                 )}
             </>
         )}
@@ -42,31 +42,31 @@ export const Sidebar: React.FC = () => {
   return (
     <aside 
       className={`
-        relative bg-[#1E1E1E] border-r border-[#333] flex flex-col transition-all duration-150 ease-out z-20
-        ${isCollapsed ? 'w-[48px]' : 'w-[200px]'}
+        relative bg-surface border-r border-border flex flex-col transition-all duration-300 ease-out z-20 shadow-xl
+        ${isCollapsed ? 'w-[56px]' : 'w-[240px]'}
       `}
     >
       {/* Activity Bar Top */}
-      <div className="flex flex-col gap-1 p-2">
+      <div className="flex flex-col gap-1 p-3 pt-4">
         {/* The index route is technically "", so we link to "." */}
         <NavItem to="." exact icon={LayoutGrid} label="Dashboard" />
-        <NavItem to="script" icon={FileText} label="Script" />
         <NavItem to="timeline" icon={Clapperboard} label="Timeline" />
+        <NavItem to="script" icon={FileText} label="Script" />
         <NavItem to="assets" icon={Users} label="Assets" />
       </div>
 
       <div className="flex-1" />
 
       {/* Settings & Toggle Bottom */}
-      <div className="p-2 flex flex-col gap-1 border-t border-[#333]">
+      <div className="p-3 flex flex-col gap-1 border-t border-border bg-surface-secondary/50">
         <NavItem to="settings" icon={Settings} label="Settings" />
         
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full h-9 flex items-center justify-center rounded-[3px] text-[#969696] hover:bg-[#2A2D2E] hover:text-white transition-colors"
+          className="w-full h-10 flex items-center justify-center rounded-md text-text-muted hover:bg-white/5 hover:text-text-primary transition-colors"
           title={isCollapsed ? "Expand" : "Collapse"}
         >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
         </button>
       </div>
 

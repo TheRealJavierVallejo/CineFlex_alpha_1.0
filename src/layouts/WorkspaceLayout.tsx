@@ -20,14 +20,11 @@ export interface WorkspaceContextType {
     handleAddShot: () => void;
     handleEditShot: (shot: Shot) => void;
     handleUpdateShot: (shot: Shot) => void;
-    handleBulkUpdateShots: (shots: Shot[]) => void; // New Bulk Method
+    handleBulkUpdateShots: (shots: Shot[]) => void;
     handleDeleteShot: (shotId: string) => void;
     handleDuplicateShot: (shotId: string) => void;
-    
-    // New Centralized Script Functions
     importScript: (file: File) => Promise<void>;
     updateScriptElements: (elements: ScriptElement[]) => void;
-    
     showToast: ShowToastFn;
 }
 
@@ -39,16 +36,11 @@ export const WorkspaceLayout: React.FC = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-    
-    // Editor State
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
-    
-    // UI State
     const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
-    // --- KEYBOARD SHORTCUTS ---
     useKeyboardShortcut({
         key: 'k',
         meta: true,
@@ -62,7 +54,6 @@ export const WorkspaceLayout: React.FC = () => {
         description: 'Open keyboard shortcuts',
     });
 
-    // --- TOASTS ---
     const showToast: ShowToastFn = (message, type = 'info', action) => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, message, type, action }]);
@@ -72,7 +63,6 @@ export const WorkspaceLayout: React.FC = () => {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
 
-    // --- INITIALIZATION ---
     useEffect(() => {
         if (!projectId) {
             navigate('/');
@@ -100,8 +90,6 @@ export const WorkspaceLayout: React.FC = () => {
         }
     };
 
-    // --- PROJECT ACTIONS ---
-
     const handleUpdateProject = async (updated: Project) => {
         setSaveStatus('saving');
         setProject(updated);
@@ -115,16 +103,11 @@ export const WorkspaceLayout: React.FC = () => {
         handleUpdateProject(updated);
     };
 
-    // --- CENTRALIZED SCRIPT LOGIC ("THE ONE BRAIN") ---
-    
     const importScript = async (file: File) => {
         if (!project) return;
-        
         try {
             setSaveStatus('saving');
             const parsed = await parseScript(file);
-            
-            // 1. Create a temp project state with the new elements
             const tempProject: Project = {
                 ...project,
                 scriptElements: parsed.elements,
@@ -134,11 +117,7 @@ export const WorkspaceLayout: React.FC = () => {
                     format: file.name.endsWith('.fountain') ? 'fountain' : 'txt'
                 }
             };
-            
-            // 2. AUTO-SYNC: Immediately generate/update scenes from the new script
             const syncedProject = syncScriptToScenes(tempProject);
-            
-            // 3. Save
             await handleUpdateProject(syncedProject);
             showToast(`Script imported & synced (${parsed.elements.length} lines)`, 'success');
         } catch (e: any) {
@@ -150,18 +129,10 @@ export const WorkspaceLayout: React.FC = () => {
 
     const updateScriptElements = (elements: ScriptElement[]) => {
         if (!project) return;
-        
-        // 1. Update elements
         const tempProject = { ...project, scriptElements: elements };
-        
-        // 2. AUTO-SYNC: Check if headings changed and update Timeline scenes
         const syncedProject = syncScriptToScenes(tempProject);
-        
-        // 3. Save
         handleUpdateProject(syncedProject);
     };
-
-    // --- SHOT ACTIONS ---
 
     const handleAddShot = () => {
         if (project && project.scenes.length > 0) {
@@ -190,7 +161,6 @@ export const WorkspaceLayout: React.FC = () => {
         handleUpdateProject({ ...project, shots: newShots });
     };
 
-    // NEW: Batch Update for performance
     const handleBulkUpdateShots = (updatedShots: Shot[]) => {
         if (!project) return;
         const shotMap = new Map(updatedShots.map(s => [s.id, s]));
@@ -224,30 +194,20 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleDuplicateShot = (shotId: string) => {
         if (!project) return;
-        // 1. Find original
         const index = project.shots.findIndex(s => s.id === shotId);
         if (index === -1) return;
         const original = project.shots[index];
-
-        // 2. Create Clone
         const newShot: Shot = {
             ...original,
             id: crypto.randomUUID(),
             sequence: original.sequence + 1,
-            // We clear the image so they can generate a variation
             generatedImage: undefined, 
             generationCandidates: [],
             description: original.description + " (Copy)"
         };
-
-        // 3. Insert and Re-Sequence
         const newShots = [...project.shots];
-        // Insert after original
         newShots.splice(index + 1, 0, newShot);
-        
-        // Re-assign sequences for everyone to keep order clean
         newShots.forEach((s, i) => s.sequence = i + 1);
-
         handleUpdateProject({ ...project, shots: newShots });
         showToast("Shot duplicated", 'success');
     };
@@ -259,52 +219,44 @@ export const WorkspaceLayout: React.FC = () => {
 
     if (isLoading || !project) {
         return (
-            <div className="h-screen w-screen bg-[#1E1E1E] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4 text-[#969696]">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#007ACC]" />
+            <div className="h-screen w-screen bg-background flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 text-text-secondary">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     <span className="text-sm">Loading Project...</span>
                 </div>
             </div>
         );
     }
 
-    // Prepare context for child routes
     const contextValue: WorkspaceContextType = {
-        project,
-        handleUpdateProject,
-        handleUpdateSettings,
-        handleAddShot,
-        handleEditShot,
-        handleUpdateShot,
-        handleBulkUpdateShots, // Exported
-        handleDeleteShot,
-        handleDuplicateShot,
-        importScript,
-        updateScriptElements,
-        showToast
+        project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
+        handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
+        importScript, updateScriptElements, showToast
     };
 
     return (
-        <div className="h-screen w-screen bg-[#1E1E1E] text-[#CCCCCC] flex flex-col overflow-hidden font-sans">
+        <div className="h-screen w-screen bg-background text-text-primary flex flex-col overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
             <ToastContainer toasts={toasts} onClose={closeToast} />
 
-            {/* 1. NATIVE TITLE BAR */}
-            <header className="h-9 bg-[#252526] border-b border-[#333] flex items-center justify-between px-3 app-region-drag select-none shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-[12px] text-[#CCCCCC]">
-                        <Command className="w-3.5 h-3.5 text-[#007ACC]" />
-                        <span className="font-bold">CineSketch</span>
+            {/* 1. GLASS HEADER */}
+            <header className="h-12 glass-header flex items-center justify-between px-4 app-region-drag select-none shrink-0 z-30">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm text-text-primary">
+                        <div className="w-6 h-6 bg-gradient-to-br from-primary to-blue-600 rounded flex items-center justify-center shadow-glow">
+                            <Command className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span className="font-bold tracking-tight">CineSketch</span>
                     </div>
-                    <div className="h-4 w-[1px] bg-[#3E3E42] mx-1" />
-                    <div className="flex items-center gap-1 text-[12px] text-[#969696] app-no-drag">
-                        <button onClick={() => navigate('/')} className="hover:text-white transition-colors">Projects</button>
-                        <ChevronRight className="w-3 h-3 text-[#505050]" />
-                        <span className="text-[#E8E8E8] font-medium">{project.name}</span>
+                    <div className="h-4 w-[1px] bg-white/10" />
+                    <div className="flex items-center gap-1 text-sm text-text-secondary app-no-drag">
+                        <button onClick={() => navigate('/')} className="hover:text-text-primary transition-colors">Projects</button>
+                        <ChevronRight className="w-3 h-3 text-text-muted" />
+                        <span className="text-text-primary font-medium">{project.name}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 app-no-drag">
-                    <button onClick={handleAddShot} className="app-btn app-btn-primary h-6">
-                        <Plus className="w-3.5 h-3.5" /> New Shot
+                    <button onClick={handleAddShot} className="app-btn app-btn-primary h-8 px-4 rounded-full">
+                        <Plus className="w-4 h-4" /> <span className="text-xs font-bold">New Shot</span>
                     </button>
                 </div>
             </header>
@@ -312,7 +264,8 @@ export const WorkspaceLayout: React.FC = () => {
             {/* 2. MAIN WORKSPACE */}
             <div className="flex-1 flex overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 bg-[#18181B] relative overflow-hidden">
+                <main className="flex-1 bg-background relative overflow-hidden shadow-inner">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
                     <ErrorBoundary key={location.pathname}>
                         <Outlet context={contextValue} />
                     </ErrorBoundary>
@@ -320,7 +273,7 @@ export const WorkspaceLayout: React.FC = () => {
             </div>
 
             {/* 3. STATUS BAR */}
-            <footer className="h-[22px] bg-[#007ACC] text-white flex items-center justify-between px-3 text-[11px] select-none shrink-0">
+            <footer className="h-6 bg-surface border-t border-border flex items-center justify-between px-4 text-[10px] select-none shrink-0 text-text-secondary">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5">
                         <Box className="w-3 h-3 opacity-70" /> Workspace Ready
@@ -328,9 +281,9 @@ export const WorkspaceLayout: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     {saveStatus === 'saving' ? (
-                        <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>
+                        <span className="flex items-center gap-1 text-primary"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>
                     ) : (
-                        <span>Saved</span>
+                        <span className="text-text-muted">Saved</span>
                     )}
                 </div>
             </footer>
@@ -353,7 +306,6 @@ export const WorkspaceLayout: React.FC = () => {
     );
 };
 
-// Hook Helper
 export function useWorkspace() {
     return useOutletContext<WorkspaceContextType>();
 }
