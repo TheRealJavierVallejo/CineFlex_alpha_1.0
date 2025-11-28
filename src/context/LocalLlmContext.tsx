@@ -29,20 +29,27 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Engine ref
   const engine = useRef<WebWorkerMLCEngine | null>(null);
-  const workerRef = useRef<Worker | null>(null);
 
-  // Check WebGPU support on mount
+  // Check WebGPU & Security Context on mount
   useEffect(() => {
+    // 1. Check GPU
     if (!navigator.gpu) {
       setIsSupported(false);
       setError("WebGPU is not supported in this browser. Local AI requires WebGPU.");
+      return;
+    }
+
+    // 2. Check Security Headers (SharedArrayBuffer support)
+    if (!window.crossOriginIsolated) {
+      setIsSupported(false);
+      setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine. If you are in a preview environment, try opening the app in a new window or tab.");
     }
   }, []);
 
   const initModel = useCallback(async () => {
     if (isReady || isDownloading) return;
     if (!isSupported) {
-        setError("Cannot start AI: WebGPU not supported.");
+        // Don't clear error here, keep the specific message from mount
         return;
     }
 
@@ -52,27 +59,22 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setDownloadProgress(0);
       setDownloadText("Initializing engine...");
 
-      // Cleanup existing worker if any (Hard Reset)
-      if (engine.current || workerRef.current) {
-         engine.current?.unload();
-         workerRef.current?.terminate();
-         engine.current = null;
-         workerRef.current = null;
+      // Initialize the worker if not exists
+      if (!engine.current) {
+        console.log("Creating new LLM Worker...");
+        const worker = new LLMWorker();
+
+        worker.onerror = (e) => {
+            console.error("Worker startup error:", e);
+            const msg = e instanceof ErrorEvent ? e.message : "Worker failed to start.";
+            setError(`Worker Error: ${msg}. Check console for details.`);
+            setIsDownloading(false);
+        };
+
+        engine.current = new WebWorkerMLCEngine(worker);
       }
 
-      // Create new worker
-      const worker = new LLMWorker();
-      workerRef.current = worker;
-
-      worker.onerror = (e) => {
-          console.error("Worker startup error:", e);
-          const msg = e instanceof ErrorEvent ? e.message : "Worker failed to start.";
-          setError(`Worker Error: ${msg}`);
-          setIsDownloading(false);
-      };
-
-      engine.current = new WebWorkerMLCEngine(worker);
-
+      // Define callback
       const onProgress = (report: InitProgressReport) => {
         const percent = Math.round(report.progress * 100);
         setDownloadProgress(percent);
@@ -81,9 +83,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: 60s
+      // SAFETY TIMEOUT: 45s
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Engine timed out. Please refresh and try again.")), 60000)
+        setTimeout(() => reject(new Error("Engine timed out. Please refresh and try again.")), 45000)
       );
 
       await Promise.race([
@@ -98,12 +100,6 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     } catch (err: any) {
       console.error("LLM Init Error:", err);
-      // Clean up on error
-      if (workerRef.current) {
-          workerRef.current.terminate();
-          workerRef.current = null;
-          engine.current = null;
-      }
       setError(err.message || "Failed to download model.");
       setIsDownloading(false);
       setDownloadText("Error");
