@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useParams, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
+import { Outlet, useParams, useNavigate, useLocation, useOutletContext, NavLink } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
-import { Sidebar } from '../components/features/Sidebar';
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { Box, Loader2 } from 'lucide-react';
+import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Users, Settings } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
@@ -234,15 +233,33 @@ export const WorkspaceLayout: React.FC = () => {
         importScript, updateScriptElements, showToast
     };
 
+    const NavTab = ({ to, icon: Icon, label, exact = false }: { to: string, icon: any, label: string, exact?: boolean }) => (
+        <NavLink 
+            to={to} 
+            end={exact}
+            className={({ isActive }) => `
+                h-full px-4 flex items-center gap-2 border-b-2 transition-all text-xs font-bold uppercase tracking-wider
+                ${isActive 
+                    ? 'border-primary text-white bg-white/5' 
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}
+            `}
+        >
+            <Icon className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">{label}</span>
+        </NavLink>
+    );
+
     return (
         <div className="h-screen w-screen bg-background text-text-primary flex flex-col overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
             <ToastContainer toasts={toasts} onClose={closeToast} />
 
-            {/* 1. GLASS HEADER (ONYX STYLE) */}
-            <header className="h-12 glass-header flex items-center justify-between px-4 app-region-drag select-none shrink-0 z-30">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-                         {/* ONYX ICON: Square with Slash */}
+            {/* 1. HEADER (Command Center) */}
+            <header className="h-12 bg-[#050505] border-b border-border flex items-center justify-between px-0 select-none shrink-0 z-30 relative">
+                
+                {/* LEFT: Branding & Project */}
+                <div className="flex items-center h-full px-4 gap-4">
+                    <div className="flex items-center gap-3 cursor-pointer group h-full" onClick={() => navigate('/')}>
+                         {/* ONYX ICON */}
                         <div className="w-6 h-6 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden group-hover:border-primary transition-colors">
                              <div className="absolute inset-0 bg-primary/20 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
                              <div className="w-[1px] h-[140%] bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45"></div>
@@ -252,15 +269,22 @@ export const WorkspaceLayout: React.FC = () => {
                     
                     <div className="h-4 w-[1px] bg-zinc-800" />
                     
-                    <div className="flex items-center gap-2 text-xs text-text-muted app-no-drag">
-                        <span className="uppercase tracking-wider font-mono">PROJECT</span>
-                        <span className="text-zinc-600">/</span>
-                        <span className="text-text-primary font-medium">{project.name}</span>
+                    <div className="flex items-center gap-2 text-xs text-text-muted">
+                        <span className="text-text-primary font-medium truncate max-w-[150px]">{project.name}</span>
                     </div>
                 </div>
+
+                {/* CENTER: Navigation Tabs */}
+                <nav className="flex items-center h-full absolute left-1/2 -translate-x-1/2">
+                    <NavTab to="." exact icon={LayoutGrid} label="Dashboard" />
+                    <NavTab to="timeline" icon={Clapperboard} label="Timeline" />
+                    <NavTab to="script" icon={FileText} label="Script" />
+                    <NavTab to="assets" icon={Users} label="Assets" />
+                    <NavTab to="settings" icon={Settings} label="Config" />
+                </nav>
                 
-                {/* Right Side: Status or User - Clean, no buttons */}
-                <div className="flex items-center gap-3 app-no-drag text-xs text-zinc-500 font-mono">
+                {/* RIGHT: Status */}
+                <div className="flex items-center gap-4 px-4 h-full text-xs text-zinc-500 font-mono">
                     {saveStatus === 'saving' ? (
                         <span className="flex items-center gap-2 text-primary animate-pulse"><div className="w-1.5 h-1.5 bg-primary rounded-full" /> SYNCING</span>
                     ) : (
@@ -271,10 +295,9 @@ export const WorkspaceLayout: React.FC = () => {
 
             {/* 2. MAIN WORKSPACE */}
             <div className="flex-1 flex overflow-hidden">
-                <Sidebar />
                 <main className="flex-1 bg-black relative overflow-hidden">
-                    {/* Subtle noise/gradient for depth */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 to-transparent pointer-events-none z-10" />
+                    {/* Subtle gradient for depth */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/10 to-transparent pointer-events-none z-10" />
                     <ErrorBoundary key={location.pathname}>
                         <Outlet context={contextValue} />
                     </ErrorBoundary>
