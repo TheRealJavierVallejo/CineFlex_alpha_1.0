@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, FileText, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, FileText, Loader2, Film } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
 
 export const ProjectLibrary: React.FC = () => {
@@ -113,13 +113,13 @@ export const ProjectLibrary: React.FC = () => {
          <div className="h-14 border-b border-border flex items-center justify-between px-8 bg-[#050505] shrink-0 z-10">
             <div className="flex items-center gap-8">
                
-               {/* ONYX BRANDING */}
+               {/* CINEFLEX BRANDING */}
                <div className="flex items-center gap-3 select-none">
-                  {/* Icon: Square with Slash */}
-                  <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden">
-                      <div className="w-[1px] h-[150%] bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45"></div>
+                  {/* Icon: Film Reel */}
+                  <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden rounded-full">
+                      <Film className="w-4 h-4 text-primary" />
                   </div>
-                  <span className="text-xl tracking-tight font-bold text-white">ONYX</span>
+                  <span className="text-xl tracking-tight font-bold text-white">CineFlex</span>
                </div>
                
                <div className="h-8 w-[1px] bg-zinc-800" />
@@ -206,7 +206,7 @@ export const ProjectLibrary: React.FC = () => {
 
          {/* Status Footer */}
          <div className="h-8 bg-[#050505] border-t border-border text-[9px] flex items-center px-8 font-mono select-none text-zinc-600 uppercase tracking-widest justify-between shrink-0">
-            <span>ONYX SYSTEM v3.1</span>
+            <span>CINEFLEX SYSTEM v3.1</span>
             <span>{projects.length} PROJECTS INDEXED</span>
          </div>
 

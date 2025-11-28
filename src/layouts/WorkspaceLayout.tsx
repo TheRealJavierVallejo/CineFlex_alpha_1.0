@@ -5,7 +5,7 @@ import { getProjectData, saveProjectData, setActiveProjectId } from '../services
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Users, Settings } from 'lucide-react';
+import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Users, Settings, Film } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
@@ -221,7 +221,7 @@ export const WorkspaceLayout: React.FC = () => {
             <div className="h-screen w-screen bg-black flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4 text-text-secondary">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <span className="text-sm font-mono tracking-widest uppercase">Initializing ONYX...</span>
+                    <span className="text-sm font-mono tracking-widest uppercase">Initializing CineFlex...</span>
                 </div>
             </div>
         );
@@ -259,12 +259,11 @@ export const WorkspaceLayout: React.FC = () => {
                 {/* LEFT: Branding & Project */}
                 <div className="flex items-center h-full px-4 gap-4">
                     <div className="flex items-center gap-3 cursor-pointer group h-full" onClick={() => navigate('/')}>
-                         {/* ONYX ICON */}
-                        <div className="w-6 h-6 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden group-hover:border-primary transition-colors">
-                             <div className="absolute inset-0 bg-primary/20 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
-                             <div className="w-[1px] h-[140%] bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45"></div>
+                         {/* CINEFLEX ICON */}
+                        <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-primary transition-colors rounded-full">
+                             <Film className="w-4 h-4 text-zinc-400 group-hover:text-primary transition-colors" />
                         </div>
-                        <span className="font-bold tracking-tight text-sm text-zinc-100 group-hover:text-white transition-colors">ONYX</span>
+                        <span className="font-bold tracking-tight text-sm text-zinc-100 group-hover:text-white transition-colors">CineFlex</span>
                     </div>
                     
                     <div className="h-4 w-[1px] bg-zinc-800" />
@@ -308,7 +307,7 @@ export const WorkspaceLayout: React.FC = () => {
             <footer className="h-6 bg-[#050505] border-t border-border flex items-center justify-between px-4 text-[9px] font-mono select-none shrink-0 text-zinc-600 uppercase tracking-wider">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5">
-                        <Box className="w-3 h-3 opacity-50" /> v3.0.1 PRO
+                        <Box className="w-3 h-3 opacity-50" /> v3.1 PRO
                     </span>
                 </div>
                 <div>
