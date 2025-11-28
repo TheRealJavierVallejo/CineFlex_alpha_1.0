@@ -47,27 +47,28 @@ export const SceneList: React.FC<SceneListProps> = ({
                     .sort((a, b) => a.sequence - b.sequence);
 
                 return (
-                    <SceneItem
-                        key={scene.id}
-                        scene={scene}
-                        index={index}
-                        totalScenes={scenes.length}
-                        shots={sceneShots}
-                        scriptElements={scriptElements}
-                        locations={locations} // Pass down
-                        projectSettings={projectSettings}
-                        onUpdateScene={onUpdateScene}
-                        onDeleteScene={onDeleteScene}
-                        onMoveScene={onMoveScene}
-                        onAddShot={onAddShot}
-                        onUpdateShot={onUpdateShot}
-                        onDeleteShot={onDeleteShot}
-                        onLinkElement={onLinkElement}
-                        onUnlinkElement={onUnlinkElement}
-                        onEditShot={onEditShot}
-                        onCreateAndLinkShot={onCreateAndLinkShot}
-                        onAddVisual={onAddVisual}
-                    />
+                    <div key={scene.id} id={`scene-${scene.id}`}>
+                        <SceneItem
+                            scene={scene}
+                            index={index}
+                            totalScenes={scenes.length}
+                            shots={sceneShots}
+                            scriptElements={scriptElements}
+                            locations={locations}
+                            projectSettings={projectSettings}
+                            onUpdateScene={onUpdateScene}
+                            onDeleteScene={onDeleteScene}
+                            onMoveScene={onMoveScene}
+                            onAddShot={onAddShot}
+                            onUpdateShot={onUpdateShot}
+                            onDeleteShot={onDeleteShot}
+                            onLinkElement={onLinkElement}
+                            onUnlinkElement={onUnlinkElement}
+                            onEditShot={onEditShot}
+                            onCreateAndLinkShot={onCreateAndLinkShot}
+                            onAddVisual={onAddVisual}
+                        />
+                    </div>
                 );
             })}
         </div>

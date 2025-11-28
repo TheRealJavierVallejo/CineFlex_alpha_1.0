@@ -7,13 +7,14 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2 } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Search } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
 import { EmptyProjectState } from './EmptyProjectState';
+import { PageWithSidebar } from '../layout/PageWithSidebar';
 
 export const ScriptPage: React.FC = () => {
   const { project, updateScriptElements, importScript } = useWorkspace();
@@ -195,86 +196,113 @@ export const ScriptPage: React.FC = () => {
   };
 
   const hasElements = elements.length > 0;
+  
+  // Navigation
+  const headings = elements.filter(el => el.type === 'scene_heading');
+  const scrollToElement = (id: string) => {
+     setActiveElementId(id);
+     // Scroll logic handled by focus in ScriptBlock, but we can also trigger smooth scroll if needed
+  };
+
+  const SidebarContent = (
+     <div className="space-y-4">
+        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Outline</div>
+        <div className="space-y-1">
+           {headings.map((h, i) => (
+              <button 
+                 key={h.id}
+                 onClick={() => scrollToElement(h.id)}
+                 className="w-full text-left px-2 py-1.5 rounded-sm hover:bg-[#18181b] flex gap-2 group transition-colors"
+              >
+                 <span className="text-[10px] font-mono text-zinc-600 font-bold w-4">{i + 1}.</span>
+                 <span className="text-xs text-zinc-400 font-medium truncate group-hover:text-white">{h.content || "UNTITLED SCENE"}</span>
+              </button>
+           ))}
+        </div>
+     </div>
+  );
 
   return (
-    <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
-      
-      {/* Toolbar */}
-      {hasElements && (
-        <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
-           <div className="flex items-center gap-2 text-text-primary font-medium">
-               <FileText className="w-4 h-4 text-primary" />
-               <span>Screenplay Editor</span>
-           </div>
-           <div className="flex items-center gap-4">
-               <div className="flex items-center bg-[#252526] rounded border border-border p-0.5">
-                  <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3.5 h-3.5" /></button>
-                  <div className="w-[1px] h-4 bg-border mx-1" />
-                  <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3.5 h-3.5" /></button>
-               </div>
-               
-               <div className="flex items-center gap-2">
-                  {isSyncing ? (
-                      <span className="text-xs text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</span>
-                  ) : (
-                      <span className="text-xs text-text-tertiary flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
-                  )}
-               </div>
-               
-               <div className="h-4 w-[1px] bg-border" />
-               
-               <button 
-                  onClick={() => setIsZenMode(!isZenMode)}
-                  className={`p-1.5 rounded transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-tertiary hover:text-white hover:bg-[#2A2D2E]'}`}
-                  title={isZenMode ? "Exit Zen Mode (Esc)" : "Enter Zen Mode"}
-               >
-                  {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-               </button>
+    <PageWithSidebar sidebarContent={SidebarContent} icon={<AlignLeft className="w-4 h-4" />} title="Structure">
+        <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+        
+        {/* Toolbar */}
+        {hasElements && (
+            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
+            <div className="flex items-center gap-2 text-text-primary font-medium pl-10">
+                <FileText className="w-4 h-4 text-primary" />
+                <span>Screenplay Editor</span>
+            </div>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center bg-[#252526] rounded border border-border p-0.5">
+                    <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3.5 h-3.5" /></button>
+                    <div className="w-[1px] h-4 bg-border mx-1" />
+                    <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3.5 h-3.5" /></button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    {isSyncing ? (
+                        <span className="text-xs text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</span>
+                    ) : (
+                        <span className="text-xs text-text-tertiary flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
+                    )}
+                </div>
+                
+                <div className="h-4 w-[1px] bg-border" />
+                
+                <button 
+                    onClick={() => setIsZenMode(!isZenMode)}
+                    className={`p-1.5 rounded transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-tertiary hover:text-white hover:bg-[#2A2D2E]'}`}
+                    title={isZenMode ? "Exit Zen Mode (Esc)" : "Enter Zen Mode"}
+                >
+                    {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
 
-               <Button variant={isChatOpen ? "primary" : "secondary"} size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={() => setIsChatOpen(!isChatOpen)}>
-                  AI Co-Pilot
-               </Button>
-           </div>
-        </div>
-      )}
+                <Button variant={isChatOpen ? "primary" : "secondary"} size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={() => setIsChatOpen(!isChatOpen)}>
+                    AI Co-Pilot
+                </Button>
+            </div>
+            </div>
+        )}
 
-      <div className="flex-1 flex overflow-hidden relative">
-        <div 
-          ref={containerRef}
-          className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#111111]" 
-          style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
-          onClick={(e) => {
-              if (e.target === containerRef.current && hasElements) {
-                  setActiveElementId(elements[elements.length - 1].id);
-              }
-          }}
-        >
-          {hasElements ? (
-              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border border-[#333] relative transition-transform">
-                 <div className="flex flex-col">
-                    {elements.map(element => (
-                       <ScriptBlock 
-                          key={element.id}
-                          element={element}
-                          isActive={activeElementId === element.id}
-                          onChange={handleContentChange}
-                          onKeyDown={handleKeyDown}
-                          onFocus={setActiveElementId}
-                          cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                       />
-                    ))}
-                 </div>
-              </div>
-          ) : (
-              <EmptyProjectState 
-                 onImport={handleImportScript}
-                 onCreate={handleAddFirstElement}
-                 isImporting={isImporting}
-              />
-          )}
+        <div className="flex-1 flex overflow-hidden relative">
+            <div 
+            ref={containerRef}
+            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#111111]" 
+            style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
+            onClick={(e) => {
+                if (e.target === containerRef.current && hasElements) {
+                    setActiveElementId(elements[elements.length - 1].id);
+                }
+            }}
+            >
+            {hasElements ? (
+                <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border border-[#333] relative transition-transform">
+                    <div className="flex flex-col">
+                        {elements.map(element => (
+                        <ScriptBlock 
+                            key={element.id}
+                            element={element}
+                            isActive={activeElementId === element.id}
+                            onChange={handleContentChange}
+                            onKeyDown={handleKeyDown}
+                            onFocus={setActiveElementId}
+                            cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
+                        />
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <EmptyProjectState 
+                    onImport={handleImportScript}
+                    onCreate={handleAddFirstElement}
+                    isImporting={isImporting}
+                />
+            )}
+            </div>
+            <ScriptChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
         </div>
-        <ScriptChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-      </div>
-    </div>
+        </div>
+    </PageWithSidebar>
   );
 };

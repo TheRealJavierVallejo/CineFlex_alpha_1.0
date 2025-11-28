@@ -7,10 +7,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Character, Outfit, ShowToastFn, ImageLibraryItem, Shot, Location } from '../../types';
 import { getCharacters, saveCharacters, getOutfits, saveOutfits, getImageLibrary, getLocations, saveLocations } from '../../services/storage';
 import { compressImage } from '../../services/image';
-import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Edit2, CheckCircle, MapPin } from 'lucide-react';
+import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Edit2, CheckCircle, MapPin, Package } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
+import { PageWithSidebar } from '../layout/PageWithSidebar';
 
 interface AssetManagerProps {
    projectId: string;
@@ -183,10 +184,50 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       }
    };
 
+   const SidebarContent = (
+      <div className="space-y-4">
+         {/* Navigation Pills */}
+         <div className="flex flex-col gap-1">
+            {['assets', 'locations', 'gallery'].map(tab => (
+               <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab as any)} 
+                  className={`flex items-center gap-3 px-3 py-2 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === tab ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'}`}
+               >
+                  {tab === 'assets' && <User className="w-3.5 h-3.5" />}
+                  {tab === 'locations' && <MapPin className="w-3.5 h-3.5" />}
+                  {tab === 'gallery' && <ImageIcon className="w-3.5 h-3.5" />}
+                  {tab}
+               </button>
+            ))}
+         </div>
+
+         {/* Contextual Lists */}
+         <div className="border-t border-border pt-4">
+            {activeTab === 'assets' && (
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Input placeholder="NEW CHARACTER" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
+                        <Button variant="secondary" className="w-full" size="sm" onClick={handleAddCharacter} disabled={!newCharName} icon={<Plus className="w-4 h-4" />}>Add</Button>
+                    </div>
+                    <div className="space-y-1">
+                        {characters.map(char => (
+                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} className={`p-2 rounded-sm cursor-pointer transition-colors group relative flex items-center justify-between ${selectedCharId === char.id ? 'bg-[#18181b] border-l-2 border-primary text-white' : 'hover:bg-[#18181b] text-zinc-500'}`}>
+                              <span className="text-xs font-bold uppercase truncate">{char.name}</span>
+                           </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+         </div>
+      </div>
+   );
+
    if (isLoading) return <div className="h-full flex items-center justify-center bg-black text-zinc-500 font-mono text-xs uppercase tracking-widest">Loading Database...</div>;
 
    return (
-      <div className="flex flex-col h-full bg-black overflow-hidden font-sans">
+    <PageWithSidebar sidebarContent={SidebarContent} icon={<Package className="w-4 h-4" />} title="Asset Manager">
+      <div className="flex flex-col h-full bg-black overflow-hidden font-sans pl-10 pt-4">
          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
 
          {/* Modals */}
@@ -206,6 +247,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
             </Modal>
          )}
 
+         {/* ... (Delete Confirm Modal & Preview Image Modal remain same) ... */}
          {deleteConfirm && (
             <Modal isOpen={true} onClose={() => setDeleteConfirm(null)} title="CONFIRM DELETION" size="sm">
                <div className="space-y-6">
@@ -232,24 +274,8 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
             </div>
          )}
 
-         {/* TAB BAR */}
-         <div className="h-10 border-b border-zinc-800 flex items-center px-6 gap-6 bg-[#09090b] shrink-0">
-            {['assets', 'locations', 'gallery'].map(tab => (
-               <button 
-                  key={tab}
-                  onClick={() => setActiveTab(tab as any)} 
-                  className={`h-full flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === tab ? 'border-primary text-white' : 'border-transparent text-zinc-600 hover:text-zinc-400'}`}
-               >
-                  {tab === 'assets' && <User className="w-3.5 h-3.5" />}
-                  {tab === 'locations' && <MapPin className="w-3.5 h-3.5" />}
-                  {tab === 'gallery' && <ImageIcon className="w-3.5 h-3.5" />}
-                  {tab}
-               </button>
-            ))}
-         </div>
-
-         {/* CONTENT */}
-         <div className="flex-1 overflow-hidden">
+         {/* CONTENT AREA (REFACTORED TO REMOVE SIDEBAR DUPLICATION) */}
+         <div className="flex-1 overflow-hidden pr-4 pb-4">
             
             {/* 1. GALLERY */}
             {activeTab === 'gallery' && (
@@ -275,8 +301,9 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
 
             {/* 2. LOCATIONS */}
             {activeTab === 'locations' && (
-               <div className="h-full flex p-0">
-                  <div className="w-[300px] border-r border-zinc-800 bg-[#050505] p-4 flex flex-col gap-4">
+               <div className="h-full flex p-0 gap-6">
+                  {/* Create Form (Moved from sidebar to main area top) */}
+                  <div className="w-[300px] bg-[#050505] p-4 flex flex-col gap-4 border border-zinc-800 rounded-sm h-fit">
                      <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">New Location</h3>
                      <div className="space-y-2">
                         <Input placeholder="LOCATION NAME" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
@@ -284,7 +311,9 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                         <Button variant="secondary" className="w-full" onClick={handleAddLocation} disabled={!newLocName}>Create Asset</Button>
                      </div>
                   </div>
-                  <div className="flex-1 p-6 overflow-y-auto bg-black">
+
+                  {/* List */}
+                  <div className="flex-1 overflow-y-auto bg-black">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
                         {locations.map(loc => (
                            <div key={loc.id} className="bg-[#09090b] border border-zinc-800 p-4 group relative hover:border-zinc-700 transition-colors">
@@ -314,38 +343,13 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
 
             {/* 3. ASSETS (CAST) */}
             {activeTab === 'assets' && (
-               <div className="flex h-full">
-                  {/* Cast List Sidebar */}
-                  <div className="w-[300px] border-r border-zinc-800 bg-[#050505] flex flex-col">
-                     <div className="p-4 border-b border-zinc-800 space-y-2">
-                        <Input placeholder="NEW CHARACTER" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
-                        <div className="flex gap-2">
-                           <Input placeholder="ROLE/DESC" value={newCharDesc} onChange={e => setNewCharDesc(e.target.value)} />
-                           <Button variant="secondary" size="icon" onClick={handleAddCharacter} disabled={!newCharName} icon={<Plus className="w-4 h-4" />} />
-                        </div>
-                     </div>
-                     <div className="flex-1 overflow-y-auto">
-                        {characters.map(char => (
-                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} className={`p-3 border-b border-zinc-900 cursor-pointer transition-colors group relative flex items-center justify-between ${selectedCharId === char.id ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-[#0a0a0a] border-l-2 border-l-transparent'}`}>
-                              <div>
-                                 <div className={`font-bold text-xs uppercase tracking-wide ${selectedCharId === char.id ? 'text-white' : 'text-zinc-400'}`}>{char.name}</div>
-                                 <div className="text-[10px] text-zinc-600 font-mono truncate max-w-[150px]">{char.description}</div>
-                              </div>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                                 <button onClick={(e) => { e.stopPropagation(); setEditingItem({ type: 'character', id: char.id, name: char.name, description: char.description }); }} className="text-zinc-600 hover:text-white p-1"><Edit2 className="w-3 h-3" /></button>
-                                 <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'character', id: char.id, name: char.name }); }} className="text-zinc-600 hover:text-red-500 p-1"><Trash2 className="w-3 h-3" /></button>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-
+               <div className="flex h-full bg-black">
                   {/* Character Detail / Wardrobe */}
-                  <div className="flex-1 bg-black flex flex-col">
+                  <div className="flex-1 bg-black flex flex-col border border-zinc-800 rounded-sm overflow-hidden">
                      {!selectedCharId ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-zinc-800">
                            <User className="w-16 h-16 mb-4 opacity-10" />
-                           <span className="text-xs font-mono uppercase tracking-widest">Select Character</span>
+                           <span className="text-xs font-mono uppercase tracking-widest">Select Character from Sidebar</span>
                         </div>
                      ) : (
                         <div className="flex-1 flex flex-col">
@@ -357,7 +361,10 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                                    </div>
                                    <div>
                                       <h2 className="text-sm font-bold text-white uppercase tracking-wider">{characters.find(c => c.id === selectedCharId)?.name}</h2>
-                                      <p className="text-[10px] text-zinc-500 font-mono">Reference & Wardrobe Config</p>
+                                      <div className="flex gap-2 mt-1">
+                                          <button onClick={() => setEditingItem({ type: 'character', id: selectedCharId, name: characters.find(c => c.id === selectedCharId)!.name, description: characters.find(c => c.id === selectedCharId)!.description })} className="text-[10px] text-zinc-500 hover:text-white uppercase tracking-wider flex items-center gap-1"><Edit2 className="w-3 h-3" /> Edit Profile</button>
+                                          <button onClick={() => setDeleteConfirm({ type: 'character', id: selectedCharId, name: characters.find(c => c.id === selectedCharId)!.name })} className="text-[10px] text-zinc-500 hover:text-red-500 uppercase tracking-wider flex items-center gap-1"><Trash2 className="w-3 h-3" /> Delete</button>
+                                      </div>
                                    </div>
                                </div>
                                <div className="flex gap-2">
@@ -432,5 +439,6 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
             )}
          </div>
       </div>
+    </PageWithSidebar>
    );
 };
