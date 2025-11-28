@@ -34,8 +34,10 @@ export const ScriptPage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   
-  // Independent Paper State: Defaults to False (Grey/Dark Paper) regardless of App Theme
-  const [isLightMode, setIsLightMode] = useState(false); 
+  // INDEPENDENT PAPER STATE
+  // Defaults to FALSE (Dark Paper) regardless of app theme.
+  // This state now strictly controls the Paper color and Text color ONLY.
+  const [isPaperWhite, setIsPaperWhite] = useState(false); 
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
@@ -48,18 +50,15 @@ export const ScriptPage: React.FC = () => {
           const enriched = enrichScriptElements(sequenced);
           updateScriptElements(enriched);
           setTimeout(() => setIsSyncing(false), 500);
-      }, 800), // Reduced from 2000ms to 800ms
+      }, 800),
       []
   );
 
   useEffect(() => {
-    // Priority: If script elements exist in DB, use them.
     if (project.scriptElements && project.scriptElements.length > 0) {
-       // Only set if we don't have local changes, or on first load
        if (elements.length === 0) setElements(project.scriptElements);
        return;
     }
-    // Fallback: If no script exists, try to rebuild from scenes (only on first load)
     if (project.scenes.length > 0 && elements.length === 0) {
         const generated = generateScriptFromScenes(project.scenes);
         setElements(generated);
@@ -198,7 +197,6 @@ export const ScriptPage: React.FC = () => {
 
   const hasElements = elements.length > 0;
   
-  // Navigation Helper
   const headings = elements.filter(el => el.type === 'scene_heading');
   const scrollToElement = (id: string) => {
      setActiveElementId(id);
@@ -244,13 +242,15 @@ export const ScriptPage: React.FC = () => {
 
   return (
     <PageWithToolRail tools={tools} defaultTool={null}>
-        <div className={`relative h-full flex flex-col bg-black overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+        <div className={`relative h-full flex flex-col bg-surface-secondary overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
         
         {/* Toolbar */}
         {hasElements && (
             <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-black border-border' : ''}`}>
             <div className="flex items-center gap-2 text-text-primary font-medium pl-2">
-                <FileText className="w-4 h-4 text-primary" />
+                <div className={`p-1.5 rounded-full ${isSyncing ? 'bg-primary/20 text-primary animate-pulse' : 'bg-surface-secondary text-text-muted'}`}>
+                    <FileText className="w-4 h-4" />
+                </div>
                 <span>Screenplay Editor</span>
             </div>
             <div className="flex items-center gap-4">
@@ -270,13 +270,13 @@ export const ScriptPage: React.FC = () => {
                 
                 <div className="h-4 w-[1px] bg-border" />
 
-                {/* Paper Mode Switch */}
+                {/* Independent Paper Mode Switch */}
                 <button 
-                    onClick={() => setIsLightMode(!isLightMode)}
+                    onClick={() => setIsPaperWhite(!isPaperWhite)}
                     className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
-                    title={isLightMode ? "Switch to Dark Paper" : "Switch to Light Paper"}
+                    title={isPaperWhite ? "Switch to Dark Paper" : "Switch to Light Paper"}
                 >
-                    {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                    {isPaperWhite ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                 </button>
                 
                 <button 
@@ -293,7 +293,8 @@ export const ScriptPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden relative">
             <div 
             ref={containerRef}
-            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-black" 
+            // Use bg-surface-secondary here for the "Desk" (area behind paper) so it follows app theme
+            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-surface-secondary" 
             onClick={(e) => {
                 if (e.target === containerRef.current && hasElements) {
                     setActiveElementId(elements[elements.length - 1].id);
@@ -304,9 +305,9 @@ export const ScriptPage: React.FC = () => {
                 <div 
                     className={`
                         w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
-                        ${isLightMode 
-                            ? 'bg-white border-zinc-200 shadow-zinc-900/10' 
-                            : 'bg-surface-secondary border-border'}
+                        ${isPaperWhite 
+                            ? 'bg-white border-zinc-200 shadow-zinc-900/10' // WHITE PAPER
+                            : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} // DARK PAPER (Hardcoded to avoid theme flip)
                     `}
                 >
                     <div className="flex flex-col">
@@ -319,7 +320,7 @@ export const ScriptPage: React.FC = () => {
                             onKeyDown={handleKeyDown}
                             onFocus={setActiveElementId}
                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                            isLightMode={isLightMode}
+                            isLightMode={isPaperWhite} // Pass local state directly
                         />
                         ))}
                     </div>
