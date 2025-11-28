@@ -5,10 +5,9 @@ interface ScriptBlockProps {
   element: ScriptElement;
   isActive: boolean;
   onChange: (id: string, value: string) => void;
-  // Updated onKeyDown signature to include cursor position
   onKeyDown: (e: React.KeyboardEvent, id: string, type: ScriptElement['type'], selectionStart: number, selectionEnd: number) => void;
   onFocus: (id: string) => void;
-  cursorRequest?: number | null; // New prop: Parent asks to move cursor here
+  cursorRequest?: number | null; 
 }
 
 export const ScriptBlock: React.FC<ScriptBlockProps> = ({
@@ -21,7 +20,6 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Resize Logic (UseLayoutEffect prevents visual jitter)
   useLayoutEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -29,75 +27,58 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
     }
   }, [element.content]);
 
-  // Focus Logic
   useEffect(() => {
     if (isActive && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [isActive]);
 
-  // Forced Cursor Positioning (For Merges/Splits)
   useEffect(() => {
     if (isActive && cursorRequest !== null && cursorRequest !== undefined && textareaRef.current) {
        textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
     }
   }, [cursorRequest, isActive]);
 
+  // SCREENPLAY FORMATTING RULES
+  // Using standard Tailwind classes to approximate industry margins (in inches/percentages)
   const getStyles = () => {
-    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-mono text-base text-[#CCCCCC] leading-relaxed selection:bg-[#264F78] selection:text-white transition-colors duration-200 placeholder:opacity-30";
+    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[16px] leading-relaxed text-black transition-colors duration-200 placeholder:opacity-30 border-none p-0 m-0 focus:ring-0";
     
-    // No active box styling
-    const activeClass = "";
-
     switch (element.type) {
       case 'scene_heading':
         return {
-           container: "pt-8 pb-4 border-b border-white/5 mb-4 group/heading",
-           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8] ${activeClass}`,
-           placeholder: "INT. SCENE HEADING - DAY",
-           indicator: "top-10" // Matches pt-8 (32px) offset
+           container: "pt-6 pb-2", // Scene headings have top padding
+           input: `${base} font-bold uppercase`
         };
       case 'action':
         return {
-           container: "pb-4",
-           input: `${base} ${activeClass}`,
-           placeholder: "Action...",
-           indicator: "top-1" // Standard alignment
+           container: "pb-2",
+           input: `${base}`
         };
       case 'character':
         return {
-           container: "pt-4 pb-0 flex justify-center",
-           input: `${base} font-bold uppercase text-center w-[60%] tracking-widest mt-2 ${activeClass}`,
-           placeholder: "CHARACTER",
-           indicator: "top-8" // Matches pt-4 (16px) + mt-2 (8px) = 24px offset
+           container: "pt-4 pb-0 w-[60%] mx-auto", // Centered-ish, narrower width
+           input: `${base} font-bold uppercase text-center`
         };
       case 'dialogue':
         return {
-           container: "pb-2 flex justify-center",
-           input: `${base} text-center w-[70%] max-w-[480px] ${activeClass}`,
-           placeholder: "Dialogue...",
-           indicator: "top-1" // Standard alignment
+           container: "pb-2 w-[70%] mx-auto", // Wider than character, narrower than action
+           input: `${base} text-center` // Ideally left-aligned within a centered box, but center aligns often look better on web responsive
         };
       case 'parenthetical':
         return {
-           container: "pb-0 flex justify-center",
-           input: `${base} italic text-sm text-center w-[50%] text-[#969696] ${activeClass}`,
-           placeholder: "(parenthetical)",
-           indicator: "top-0.5" // Slightly tighter alignment for smaller text
+           container: "pb-0 w-[55%] mx-auto",
+           input: `${base} italic text-center` // Keep parentheticals tight
         };
       case 'transition':
         return {
-           container: "pt-4 pb-4 flex justify-end pr-12",
-           input: `${base} font-bold uppercase text-right w-[30%] tracking-widest ${activeClass}`,
-           placeholder: "CUT TO:",
-           indicator: "top-6" // Matches pt-4 (16px) offset
+           container: "pt-4 pb-4 flex justify-end",
+           input: `${base} font-bold uppercase text-right w-[20%]`
         };
       default:
         return {
            container: "pb-2",
-           input: `${base} ${activeClass}`,
-           placeholder: "",
-           indicator: "top-2"
+           input: `${base}`
         };
     }
   };
@@ -105,14 +86,12 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   const styles = getStyles();
 
   return (
-    <div className={`relative ${styles.container}`}>
-       {/* Type Indicator - Visual Guide on the left */}
-       <div className={`
-          absolute -left-28 text-[9px] uppercase transition-all duration-200 select-none w-24 text-right pr-4 border-r
-          ${styles.indicator}
-          ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'text-[#505050] border-[#333] opacity-0 group-hover:opacity-100'}
-       `}>
-          {element.type.replace('_', ' ')}
+    <div className={`relative ${styles.container} group/block`}>
+       {/* Element Type Indicator (Left Margin) */}
+       <div className="absolute -left-24 top-0 h-full w-20 flex items-start justify-end pr-4 opacity-0 group-hover/block:opacity-30 select-none pointer-events-none transition-opacity">
+          <span className="text-[10px] font-sans font-bold uppercase text-zinc-400">
+             {element.type.replace('_', ' ')}
+          </span>
        </div>
 
        <textarea
@@ -120,14 +99,12 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
           value={element.content}
           onChange={(e) => onChange(element.id, e.target.value)}
           onKeyDown={(e) => {
-             // Pass precise cursor info to parent
              const target = e.target as HTMLTextAreaElement;
              onKeyDown(e, element.id, element.type, target.selectionStart, target.selectionEnd);
           }}
           onFocus={() => onFocus(element.id)}
           className={styles.input}
           rows={1}
-          placeholder={styles.placeholder}
           spellCheck={false}
        />
     </div>
