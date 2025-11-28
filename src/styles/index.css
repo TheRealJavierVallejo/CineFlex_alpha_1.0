@@ -14,10 +14,7 @@
   --color-background: #000000;
   --color-surface: #09090b;
   
-  /* NOTE: Primary colors are now defined in :root for dynamic theming */
-  
   --color-border: #27272a;
-  --color-border-focus: var(--color-primary);
   --color-border-subtle: #18181b;
 
   --color-text-primary: #f4f4f5;
@@ -114,7 +111,8 @@
   }
   
   .studio-input:focus {
-    @apply border-primary bg-[#050505];
+    @apply bg-[#050505];
+    border-color: var(--color-primary);
   }
   
   /* ============================================
@@ -125,7 +123,13 @@
   }
   
   .app-btn-primary {
-    @apply text-white bg-primary hover:bg-primary/90 border border-primary;
+    @apply text-white border;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+  .app-btn-primary:hover {
+    background-color: var(--color-primary-hover);
   }
   
   .app-btn-secondary {
@@ -133,7 +137,8 @@
   }
 
   .focus-ring {
-    @apply outline-none ring-1 ring-primary ring-offset-0;
+    @apply outline-none ring-1 ring-offset-0;
+    --tw-ring-color: var(--color-primary);
   }
 }
 

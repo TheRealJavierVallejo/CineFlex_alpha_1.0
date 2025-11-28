@@ -1,13 +1,13 @@
 /*
  * 📂 COMPONENT: PROJECT LIBRARY (Data Table)
- * ONYX Edition: Sharp, Technical, Branding Update
+ * ONYX Edition - Themed
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, FileText, Loader2, Film } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, FileText, Loader2, Check, Film } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
 
 export const ProjectLibrary: React.FC = () => {
@@ -22,6 +22,17 @@ export const ProjectLibrary: React.FC = () => {
 
    useEffect(() => {
       loadProjects();
+      
+      // Apply theme on load for the landing page
+      const savedColor = localStorage.getItem('cinesketch_theme_color');
+      if (savedColor) {
+        document.documentElement.style.setProperty('--color-primary', savedColor);
+        // Recalculate glow
+        const r = parseInt(savedColor.slice(1, 3), 16);
+        const g = parseInt(savedColor.slice(3, 5), 16);
+        const b = parseInt(savedColor.slice(5, 7), 16);
+        document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+      }
    }, []);
 
    const showToast: ShowToastFn = (message, type = 'info', action) => {
@@ -106,7 +117,7 @@ export const ProjectLibrary: React.FC = () => {
    };
 
    return (
-      <div className="h-screen w-screen bg-black text-text-primary flex flex-col font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
+      <div className="h-screen w-screen bg-black text-text-primary flex flex-col font-sans">
          <ToastContainer toasts={toasts} onClose={closeToast} />
 
          {/* Toolbar */}
@@ -115,7 +126,6 @@ export const ProjectLibrary: React.FC = () => {
                
                {/* CINEFLEX BRANDING */}
                <div className="flex items-center gap-3 select-none">
-                  {/* Icon: Film Reel */}
                   <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden rounded-full">
                       <Film className="w-4 h-4 text-primary" />
                   </div>
@@ -181,7 +191,7 @@ export const ProjectLibrary: React.FC = () => {
                         `}
                         >
                             <div className="flex-[2] pl-2 font-medium flex items-center gap-4 truncate">
-                            <div className={`w-2 h-2 rounded-full ${selection === proj.id ? 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'bg-zinc-800 group-hover:bg-zinc-600'}`} />
+                            <div className={`w-2 h-2 rounded-full ${selection === proj.id ? 'bg-primary shadow-[0_0_8px_var(--color-primary-glow)]' : 'bg-zinc-800 group-hover:bg-zinc-600'}`} />
                             <span className="font-mono">{proj.name}</span>
                             </div>
                             <div className="flex-1 opacity-60 group-hover:opacity-100 transition-opacity text-xs font-mono">{proj.shotCount} shots</div>
