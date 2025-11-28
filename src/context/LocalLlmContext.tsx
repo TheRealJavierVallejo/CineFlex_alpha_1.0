@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
-// Explicit Vite Worker Import (More reliable than new URL)
-import LLMWorker from '../workers/llm.worker?worker';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -53,8 +51,18 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Initialize the worker if not exists
       if (!engine.current) {
-        // Use the imported worker constructor
-        const worker = new LLMWorker();
+        // Use the standard Vite/Browser worker pattern
+        const worker = new Worker(new URL('../workers/llm.worker.ts', import.meta.url), { 
+            type: 'module' 
+        });
+
+        // Listen for startup errors (Critical for debugging "Stuck on Initializing")
+        worker.onerror = (e) => {
+            console.error("Worker startup error:", e);
+            setError(`Worker failed to start: ${e.message}`);
+            setIsDownloading(false);
+        };
+
         engine.current = new WebWorkerMLCEngine(worker);
       }
 
