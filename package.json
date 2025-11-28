@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
+    "@mlc-ai/web-llm": "^0.2.80",
     "@types/react-virtualized-auto-sizer": "^1.0.4",
     "@types/react-window": "^1.8.8",
     "jspdf": "^3.0.4",

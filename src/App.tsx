@@ -8,7 +8,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
-import { SubscriptionProvider } from './context/SubscriptionContext'; // IMPORTED
+import { SubscriptionProvider } from './context/SubscriptionContext';
+import { LocalLlmProvider } from './context/LocalLlmContext'; // IMPORTED
 import {
     TimelineView,
     AssetManager,
@@ -157,19 +158,21 @@ const App: React.FC = () => {
 
     return (
         <SubscriptionProvider>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={<ProjectLibrary />} />
-                    <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                        <Route index element={<DashboardPage />} />
-                        <Route path="timeline" element={<TimelinePage />} />
-                        <Route path="script" element={<ScriptEditorPage />} />
-                        <Route path="assets" element={<AssetsPage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                    </Route>
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </BrowserRouter>
+            <LocalLlmProvider>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/" element={<ProjectLibrary />} />
+                        <Route path="/project/:projectId" element={<WorkspaceLayout />}>
+                            <Route index element={<DashboardPage />} />
+                            <Route path="timeline" element={<TimelinePage />} />
+                            <Route path="script" element={<ScriptEditorPage />} />
+                            <Route path="assets" element={<AssetsPage />} />
+                            <Route path="settings" element={<SettingsPage />} />
+                        </Route>
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </BrowserRouter>
+            </LocalLlmProvider>
         </SubscriptionProvider>
     );
 };
