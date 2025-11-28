@@ -46,7 +46,8 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   const getStyles = () => {
     // Base styles: Courier font, large comfortable size, transparent background
-    const base = "block bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30";
+    // REMOVED: focus ring/border styles to keep it clean
+    const base = "block bg-transparent outline-none border-none ring-0 focus:ring-0 resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30";
     
     // Theme Colors
     const colors = isLightMode ? {
@@ -124,11 +125,11 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-       {/* Type Indicator - Visual Guide on the left */}
+       {/* Type Indicator - Moved further left (-left-40) to be outside paper area */}
        <div className={`
-          absolute -left-32 text-[9px] uppercase transition-all duration-200 select-none w-24 text-right pr-4 border-r font-sans
+          absolute -left-48 text-[10px] uppercase transition-all duration-200 select-none w-32 text-right pr-6 font-sans border-r
           ${styles.indicator}
-          ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'border-transparent opacity-0 group-hover:opacity-50'}
+          ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'border-transparent opacity-0 group-hover:opacity-30'}
           ${isLightMode && !isActive ? 'text-zinc-400' : ''}
           ${!isLightMode && !isActive ? 'text-[#444]' : ''}
        `}>
