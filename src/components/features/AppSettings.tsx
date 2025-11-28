@@ -90,7 +90,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-border bg-background">
+                <div className="flex border-b border-border bg-surface">
                     <button
                         onClick={() => setActiveTab('theme')}
                         className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'theme' ? 'text-primary border-b-2 border-primary bg-surface-secondary' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}

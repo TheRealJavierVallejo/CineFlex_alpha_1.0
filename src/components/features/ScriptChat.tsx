@@ -65,10 +65,10 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="flex flex-col h-full bg-[#18181B] w-full">
+    <div className="flex flex-col h-full bg-surface w-full">
       
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#121212]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             
@@ -80,7 +80,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
 
             <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap ${
               msg.role === 'user' 
-                ? 'bg-primary/20 text-white border border-primary/30' 
+                ? 'bg-primary/20 text-text-primary border border-primary/30' 
                 : 'bg-surface-secondary text-text-primary border border-border'
             }`}>
               {msg.content}
@@ -113,12 +113,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
               }
             }}
             placeholder="Ask for ideas, dialogue..."
-            className="w-full bg-[#0a0a0a] border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-white resize-none outline-none focus:border-primary h-[80px]"
+            className="w-full bg-surface-secondary border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-text-primary resize-none outline-none focus:border-primary h-[80px]"
           />
           <button 
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="absolute right-3 bottom-3 text-primary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="absolute right-3 bottom-3 text-primary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>

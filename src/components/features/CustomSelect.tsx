@@ -69,18 +69,18 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         </button>
 
         {isOpen && (
-          <div className="absolute top-full left-0 w-full mt-1 bg-[#09090b] border border-border shadow-xl rounded-sm z-50 max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 w-full mt-1 bg-surface border border-border shadow-xl rounded-sm z-50 max-h-60 overflow-y-auto">
 
             {/* Custom Options Section (Your added items) */}
             {customOptions.length > 0 && (
               <div className="border-b border-border pb-1 mb-1">
                 <div className="px-2 py-1 text-[10px] text-zinc-500 font-bold uppercase">Custom</div>
                 {customOptions.map(opt => (
-                  <div key={opt} className="flex items-center justify-between px-2 py-1.5 hover:bg-primary hover:text-white group cursor-pointer text-[12px] text-zinc-300" onClick={() => { onChange(opt); setIsOpen(false); }}>
+                  <div key={opt} className="flex items-center justify-between px-2 py-1.5 hover:bg-primary hover:text-white group cursor-pointer text-[12px] text-text-secondary hover:text-white" onClick={() => { onChange(opt); setIsOpen(false); }}>
                     <span>{opt}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); onDeleteCustom(opt); }}
-                      className="p-0.5 hover:bg-red-500 rounded text-zinc-500 group-hover:text-white"
+                      className="p-0.5 hover:bg-red-500 rounded text-text-muted group-hover:text-white"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -94,7 +94,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
               {options.map(opt => (
                 <div
                   key={opt}
-                  className={`px-2 py-1.5 hover:bg-primary hover:text-white cursor-pointer text-[12px] transition-colors ${value === opt ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`}
+                  className={`px-2 py-1.5 hover:bg-primary hover:text-white cursor-pointer text-[12px] transition-colors ${value === opt ? 'bg-surface-secondary text-text-primary' : 'text-text-secondary'}`}
                   onClick={() => { onChange(opt); setIsOpen(false); }}
                 >
                   {opt}
@@ -121,7 +121,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className="text-zinc-500 hover:text-white px-2"
+                  className="text-text-muted hover:text-text-primary px-2"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -129,7 +129,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             ) : (
               <button
                 onClick={() => setIsAdding(true)}
-                className="w-full text-left px-2 py-2 text-[11px] text-primary hover:bg-zinc-800 font-bold flex items-center gap-1 uppercase tracking-wide"
+                className="w-full text-left px-2 py-2 text-[11px] text-primary hover:bg-surface-secondary font-bold flex items-center gap-1 uppercase tracking-wide"
               >
                 <Plus className="w-3 h-3" /> Add Custom...
               </button>
