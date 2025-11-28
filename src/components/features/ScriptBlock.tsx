@@ -45,8 +45,9 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // NUCLEAR OPTION for removing borders: using ! prefixes and ring-0
-    const base = "block bg-transparent !outline-none !border-none !ring-0 !shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-none";
+    // NUCLEAR OPTION for removing borders: using specific class 'script-input-no-border'
+    // This class is targeted by the style tag below to force override defaults
+    const base = "script-input-no-border block bg-transparent resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30 w-full p-0 m-0 appearance-none";
     
     // Theme Colors
     const colors = isLightMode ? {
@@ -124,16 +125,40 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
+       {/* FORCE STYLES: This style tag ensures no external CSS can force a border on our inputs */}
+       <style>{`
+         .script-input-no-border {
+           outline: none !important;
+           border: none !important;
+           box-shadow: none !important;
+           ring: 0 !important;
+         }
+         .script-input-no-border:focus {
+           outline: none !important;
+           border: none !important;
+           box-shadow: none !important;
+           ring: 0 !important;
+         }
+         .script-input-no-border:focus-visible {
+           outline: none !important;
+           border: none !important;
+           box-shadow: none !important;
+           ring: 0 !important;
+         }
+       `}</style>
+
        {/* 
-         TYPE INDICATOR POSITIONING:
-         - The Script Page has 100px padding.
-         - left-[-230px] moves the start of the box 230px left.
-         - width is w-32 (128px).
-         - Right edge of indicator ends at -102px relative to text.
-         - Since paper starts at -100px, this places the indicator just barely (~2px) outside the paper edge.
+         TYPE INDICATOR POSITIONING CORRECTION:
+         - Paper Padding: 100px. Content starts at x=0 relative to this block.
+         - Paper Edge: -100px relative to this block.
+         - Indicator Width: w-32 (128px).
+         - Desired Gap: 12px outside paper.
+         - Target Right Edge of Indicator: -112px.
+         - Calculation: Left = TargetRight - Width = -112 - 128 = -240px.
+         - Result: -left-[240px].
        */}
        <div className={`
-          absolute -left-[230px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
+          absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
           ${styles.indicator}
           ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'border-transparent opacity-0 group-hover:opacity-30'}
           ${isLightMode && !isActive ? 'text-zinc-400' : ''}
@@ -152,7 +177,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
           }}
           onFocus={() => onFocus(element.id)}
           className={styles.input}
-          style={{ border: 'none', outline: 'none', boxShadow: 'none' }} // Inline fallback
+          style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }} 
           rows={1}
           placeholder={styles.placeholder}
           spellCheck={false}
