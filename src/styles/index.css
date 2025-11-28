@@ -5,61 +5,75 @@
    Visual Language: Sharp, Dense, Void-Like
    ============================================ */
 
-/* GLOBAL VARIABLES - Defined at top level for guaranteed availability */
+/* 1. DYNAMIC RUNTIME VARIABLES (Controlled by JS) */
 :root {
-  /* Background Colors */
-  --bg-app: #000000;
-  --bg-panel: #09090b;
-  --bg-surface: #09090b;
-  --bg-hover: #18181b;
-  --bg-active: #27272a;
-
-  --header-height: 48px;
-  --sidebar-width: 240px;
-  --sidebar-collapsed: 50px;
-
-  /* DYNAMIC ACCENT COLORS (Default: Blue 500) */
+  /* Theme Colors - Initial Defaults */
   --color-primary: #3b82f6;
   --color-primary-hover: #2563eb;
   --color-primary-glow: rgba(59, 130, 246, 0.5);
+
+  /* Backgrounds */
+  --bg-app: #000000;
+  --bg-panel: #09090b;
+  --bg-surface: #09090b;
   
+  --header-height: 48px;
+}
+
+/* 2. TAILWIND THEME CONFIGURATION */
+@theme {
+  /* Font Families */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+  --font-screenplay: 'Courier Prime', 'Courier New', monospace;
+
+  /* Color Palette Mappings */
+  
+  /* "primary" now points to the CSS variable we update in JS */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-glow: var(--color-primary-glow);
+  
+  /* UI Colors */
+  --color-background: var(--bg-app);
+  --color-surface: var(--bg-surface);
+  --color-surface-secondary: #050505;
+  --color-surface-hover: #18181b;
+  
+  --color-border: #27272a;
+  --color-border-subtle: #18181b;
+  --color-border-focus: var(--color-primary);
+
   /* Text Colors */
   --color-text-primary: #f4f4f5;
   --color-text-secondary: #a1a1aa;
   --color-text-muted: #52525b;
+
+  /* Border Radius */
+  --radius-none: 0px;
+  --radius-sm: 0px;    /* Razor Sharp */
+  --radius-DEFAULT: 1px;
+  --radius-md: 2px;    /* Hardware Feel */
+  --radius-lg: 2px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
   
-  /* Borders */
-  --color-border: #27272a;
+  /* Shadows */
+  --shadow-window: 0 0 0 1px #27272a;
+  --shadow-glow: 0 0 10px var(--color-primary-glow);
 }
 
-@theme {
-  --font-family-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
-  --font-family-mono: JetBrains Mono, Menlo, Monaco, Courier New, monospace;
-  --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
-
-  /* Map theme values to variables */
-  --color-background: var(--bg-app);
-  --color-surface: var(--bg-surface);
-  
-  --color-border: #27272a;
-  --color-border-subtle: #18181b;
-
-  --radius: 1px;
-}
-
+/* 3. BASE STYLES */
 @layer base {
-  * {
+  *, ::after, ::before {
     border-color: var(--color-border);
   }
 
   body {
-    background-color: var(--bg-app);
+    background-color: var(--color-background);
     color: var(--color-text-primary);
-    font-family: var(--font-family-sans);
-    font-size: 13px;
-    overflow: hidden;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
@@ -68,87 +82,31 @@
   }
 }
 
+/* 4. UTILITY COMPONENTS */
 @layer components {
-
-  /* ============================================
-     ONYX SCROLLBARS (Invisible or Needle-thin)
-     ============================================ */
+  /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    @apply w-1.5 h-1.5;
+    width: 6px;
+    height: 6px;
   }
-
   ::-webkit-scrollbar-track {
-    @apply bg-black;
+    background: transparent;
   }
-
   ::-webkit-scrollbar-thumb {
     @apply bg-zinc-800 hover:bg-zinc-700 transition-colors;
-    border-radius: 0;
-  }
-  
-  ::-webkit-scrollbar-corner {
-    @apply bg-black;
   }
 
-  /* ============================================
-     GLASSMORPHISM UTILITIES
-     ============================================ */
-  .glass-panel {
-    @apply bg-[#09090b]/90 backdrop-blur-sm border border-white/5;
-  }
-  
-  .glass-header {
-    @apply bg-black/80 backdrop-blur-md border-b border-border;
-  }
-
-  /* ============================================
-     STUDIO CARD (Industrial)
-     ============================================ */
-  .studio-card {
-    @apply bg-[#09090b] border border-border rounded-sm overflow-hidden;
-    box-shadow: none;
-  }
-  
+  /* Input Field Standard */
   .studio-input {
-    @apply w-full bg-[#000000] border border-border rounded-sm px-3 py-1.5 text-sm;
-    @apply outline-none transition-all duration-100 placeholder:text-zinc-700;
+    @apply w-full bg-black border border-border rounded-sm px-3 py-1.5 text-sm outline-none transition-all duration-100 placeholder:text-zinc-700;
     color: var(--color-text-primary);
   }
-  
   .studio-input:focus {
-    @apply bg-[#050505];
-    border-color: var(--color-primary);
+    @apply bg-[#050505] border-primary;
   }
-  
-  /* ============================================
-     BUTTONS (Sharp & Tactile)
-     ============================================ */
+
+  /* Button Standard */
   .app-btn {
-    @apply h-8 px-4 rounded-sm text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer select-none;
+    @apply h-8 px-4 rounded-sm text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer select-none border;
   }
-  
-  .app-btn-primary {
-    @apply text-white border;
-    background-color: var(--color-primary);
-    border-color: var(--color-primary);
-  }
-
-  .app-btn-primary:hover {
-    background-color: var(--color-primary-hover);
-  }
-  
-  .app-btn-secondary {
-    @apply bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300;
-  }
-
-  .focus-ring {
-    @apply outline-none ring-1 ring-offset-0;
-    --tw-ring-color: var(--color-primary);
-  }
-}
-
-@layer utilities {
-  .text-balance { text-wrap: balance; }
-  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }
