@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shot } from '../../../types';
 import { MODEL_OPTIONS } from '../../../constants';
-import { Eye, X, Maximize2, Upload, Loader2, Wand2, ImageIcon, GraduationCap, Zap } from 'lucide-react';
+import { Eye, X, Maximize2, Upload, Loader2, Wand2, ImageIcon, GraduationCap, Zap, Lock } from 'lucide-react';
 import Button from '../../ui/Button';
 
 interface ShotPreviewProps {
@@ -22,6 +22,7 @@ interface ShotPreviewProps {
     getAspectRatioStyle: (ratio: string) => React.CSSProperties;
     selectedAspectRatio: string;
     tier: 'free' | 'pro'; // RECEIVED TIER
+    viewMode: 'base' | 'pro'; // RECEIVED VIEW MODE
 }
 
 export const ShotPreview: React.FC<ShotPreviewProps> = ({
@@ -41,8 +42,12 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
     setIsFullscreen,
     getAspectRatioStyle,
     selectedAspectRatio,
-    tier
+    tier,
+    viewMode
 }) => {
+    // Determine if the "Generate" action is locked (User is Free AND looking at Pro View)
+    const isLocked = tier === 'free' && viewMode === 'pro';
+
     return (
         <div className="flex-1 media-bg flex flex-col relative">
             {/* HEADER */}
@@ -202,14 +207,14 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                     </Button>
                 ) : (
                     <Button
-                        variant="primary"
-                        icon={<Zap className="w-4 h-4" />}
+                        variant={isLocked ? "secondary" : "primary"}
+                        icon={isLocked ? <Lock className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                         onClick={onGenerate}
                         loading={isGenerating}
-                        disabled={!shot.description && !shot.sketchImage}
-                        className="px-8 bg-zinc-700 hover:bg-zinc-600 text-white border-zinc-600"
+                        disabled={(!shot.description && !shot.sketchImage) || isLocked}
+                        className={`px-8 ${isLocked ? 'opacity-70 cursor-not-allowed' : 'bg-zinc-700 hover:bg-zinc-600 text-white border-zinc-600'}`}
                     >
-                         {shot.generatedImage ? 'Regenerate (Fast)' : 'Fast Generate'}
+                         {isLocked ? 'Unlock Pro to Render' : (shot.generatedImage ? 'Regenerate (Fast)' : 'Fast Generate')}
                     </Button>
                 )}
             </div>

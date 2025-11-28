@@ -10,7 +10,7 @@ import { generateHybridImage } from '../../services/imageGen';
 import { analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
 import { MODEL_OPTIONS } from '../../constants';
-import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
+import { getCharacters, getOutfits, addToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
 import { VariationPicker } from '../features/VariationPicker';
 import { useSubscription } from '../../context/SubscriptionContext';
 
@@ -19,7 +19,6 @@ import { ShotDetailsForm } from './shot-editor/ShotDetailsForm';
 import { ShotPreview } from './shot-editor/ShotPreview';
 import { PromptPreviewModal } from './shot-editor/PromptPreviewModal';
 import { FullscreenOverlay } from './shot-editor/FullscreenOverlay';
-import { FeatureGate } from '../ui/FeatureGate';
 
 interface ShotEditorProps {
   project: Project;
@@ -44,6 +43,8 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const { tier, isPro } = useSubscription();
 
   // --- STATE ---
+  const [viewMode, setViewMode] = useState<'base' | 'pro'>(isPro ? 'pro' : 'base');
+  
   const [shot, setShot] = useState<Shot>(activeShot || {
     id: crypto.randomUUID(),
     sequence: project.shots.length + 1,
@@ -232,6 +233,12 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   }, [showToast]);
 
   const handleGenerate = async () => {
+    // BLOCK GENERATION IF IN LOCKED PRO MODE
+    if (tier === 'free' && viewMode === 'pro') {
+      showToast("Unlock Pro to use Studio features", 'info');
+      return;
+    }
+
     if (!shot.description?.trim() && !shot.sketchImage) {
       showToast("Please add a scene description or upload a sketch before rendering.", 'warning');
       return;
@@ -412,6 +419,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           setSelectedAspectRatio={setSelectedAspectRatio}
           selectedResolution={selectedResolution}
           setSelectedResolution={setSelectedResolution}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          tier={tier}
         />
 
         <ShotPreview
@@ -431,7 +441,8 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           setIsFullscreen={setIsFullscreen}
           getAspectRatioStyle={getAspectRatioStyle}
           selectedAspectRatio={selectedAspectRatio}
-          tier={tier} // PASSING TIER
+          tier={tier}
+          viewMode={viewMode}
         />
       </div>
 
