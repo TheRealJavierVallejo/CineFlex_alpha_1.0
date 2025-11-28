@@ -141,8 +141,14 @@
   /* ============================================
      LEGACY UTILS
      ============================================ */
+  /* Expanded styles to avoid recursive @apply error */
   .app-input {
-    @apply studio-input h-8;
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm text-text-primary h-8;
+    @apply outline-none transition-all duration-200;
+  }
+
+  .app-input:focus {
+    @apply border-primary ring-1 ring-primary/30 bg-black/40;
   }
   
   .app-btn {
