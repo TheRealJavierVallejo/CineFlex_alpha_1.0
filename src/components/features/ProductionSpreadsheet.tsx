@@ -115,12 +115,12 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   // --- EMPTY STATE CHECK ---
   if (project.shots.length === 0) {
       return (
-          <div className="flex flex-col h-full items-center justify-center bg-[#1E1E1E] text-center p-8 animate-in fade-in zoom-in-95 duration-500">
-              <div className="w-20 h-20 bg-[#252526] rounded-2xl flex items-center justify-center mb-6 border border-[#333] shadow-inner">
-                  <LayoutGrid className="w-10 h-10 text-[#505050]" />
+          <div className="flex flex-col h-full items-center justify-center bg-background text-center p-8 animate-in fade-in zoom-in-95 duration-500">
+              <div className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center mb-6 border border-border shadow-inner">
+                  <LayoutGrid className="w-8 h-8 text-text-muted" />
               </div>
-              <h2 className="text-xl font-bold text-[#E8E8E8] mb-2">Welcome to your Project</h2>
-              <p className="text-[#969696] max-w-md mb-8 leading-relaxed">
+              <h2 className="text-lg font-bold text-text-primary mb-2">Welcome to your Project</h2>
+              <p className="text-text-secondary max-w-md mb-8 leading-relaxed text-sm">
                   Your shot list is currently empty. To start visualizing your movie, you can either write/import a script or build scenes manually.
               </p>
               
@@ -147,15 +147,15 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#1E1E1E]">
+    <div className="flex flex-col h-full bg-background">
       
       {/* 1. TOOLBAR */}
-      <div className="h-14 border-b border-[#333] flex items-center justify-between px-4 bg-[#252526] shrink-0">
+      <div className="h-10 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 z-10">
          <div className="flex items-center gap-3 w-full">
              
              {/* Filter Icon */}
-             <div className="w-8 h-8 flex items-center justify-center bg-[#1E1E1E] rounded-md border border-[#333]">
-                <Filter className="w-4 h-4 text-[#007ACC]" />
+             <div className="w-7 h-7 flex items-center justify-center bg-surface-secondary rounded-sm border border-border">
+                <Filter className="w-3.5 h-3.5 text-primary" />
              </div>
 
              {/* Search Input */}
@@ -164,30 +164,30 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                   value={filterText}
                   onChange={e => setFilterText(e.target.value)}
                   placeholder="Search shots..." 
-                  className="bg-[#1E1E1E] border border-[#333] rounded-md h-8 pl-3 pr-8 text-xs text-[#E8E8E8] w-48 placeholder-[#606060] outline-none focus:border-[#007ACC] transition-all"
+                  className="bg-surface-secondary border border-border rounded-sm h-7 pl-2 pr-7 text-xs text-text-primary w-48 placeholder-text-muted outline-none focus:border-primary transition-all"
                 />
                 {filterText && (
-                   <button onClick={() => setFilterText('')} className="absolute right-2 top-2 text-[#606060] hover:text-white">
+                   <button onClick={() => setFilterText('')} className="absolute right-1 top-1.5 text-text-muted hover:text-white">
                       <Trash2 className="w-3 h-3" />
                    </button>
                 )}
              </div>
              
-             <div className="h-6 w-[1px] bg-[#3E3E42] mx-1" />
+             <div className="h-5 w-[1px] bg-border mx-1" />
 
              {/* Scene Filter */}
              <div className="relative">
                 <select 
                   value={filterScene}
                   onChange={e => setFilterScene(e.target.value)}
-                  className="h-8 bg-[#1E1E1E] border border-[#333] rounded-md text-xs text-[#E8E8E8] pl-2 pr-8 outline-none focus:border-[#007ACC] appearance-none cursor-pointer min-w-[140px]"
+                  className="h-7 bg-surface-secondary border border-border rounded-sm text-xs text-text-primary pl-2 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[140px]"
                 >
                    <option value="all">All Scenes</option>
                    {project.scenes.map(s => (
                       <option key={s.id} value={s.id}>{s.sequence}. {s.heading}</option>
                    ))}
                 </select>
-                <ChevronDown className="w-3 h-3 text-[#969696] absolute right-2 top-2.5 pointer-events-none" />
+                <ChevronDown className="w-3 h-3 text-text-muted absolute right-2 top-2 pointer-events-none" />
              </div>
 
              {/* Shot Type Filter */}
@@ -195,12 +195,12 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                 <select 
                   value={filterType}
                   onChange={e => setFilterType(e.target.value)}
-                  className="h-8 bg-[#1E1E1E] border border-[#333] rounded-md text-xs text-[#E8E8E8] pl-2 pr-8 outline-none focus:border-[#007ACC] appearance-none cursor-pointer min-w-[120px]"
+                  className="h-7 bg-surface-secondary border border-border rounded-sm text-xs text-text-primary pl-2 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[120px]"
                 >
                    <option value="all">All Shot Types</option>
                    {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <ChevronDown className="w-3 h-3 text-[#969696] absolute right-2 top-2.5 pointer-events-none" />
+                <ChevronDown className="w-3 h-3 text-text-muted absolute right-2 top-2 pointer-events-none" />
              </div>
 
              {/* Status Filter */}
@@ -208,7 +208,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                 <select 
                   value={filterStatus}
                   onChange={e => setFilterStatus(e.target.value)}
-                  className="h-8 bg-[#1E1E1E] border border-[#333] rounded-md text-xs text-[#E8E8E8] pl-2 pr-8 outline-none focus:border-[#007ACC] appearance-none cursor-pointer min-w-[130px]"
+                  className="h-7 bg-surface-secondary border border-border rounded-sm text-xs text-text-primary pl-2 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[130px]"
                 >
                    <option value="all">All Status</option>
                    <option value="missing_image">Missing Image</option>
@@ -216,33 +216,33 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                    <option value="script_linked">Script Linked</option>
                    <option value="no_script">Unlinked</option>
                 </select>
-                <ChevronDown className="w-3 h-3 text-[#969696] absolute right-2 top-2.5 pointer-events-none" />
+                <ChevronDown className="w-3 h-3 text-text-muted absolute right-2 top-2 pointer-events-none" />
              </div>
 
              <div className="flex-1" />
 
-             <div className="text-xs font-mono text-[#707070]">
+             <div className="text-[10px] font-mono text-text-muted">
                 {filteredShots.length} / {project.shots.length} SHOTS
              </div>
          </div>
       </div>
 
       {/* 2. TABLE HEADER */}
-      <div className="flex items-center h-9 bg-[#1E1E1E] border-b border-[#333] text-[10px] font-bold text-[#969696] uppercase select-none sticky top-0 z-10 tracking-wider">
-         <div className="w-10 flex justify-center cursor-pointer hover:text-white" onClick={toggleAll}>
-            {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-[#007ACC]" /> : <Square className="w-3.5 h-3.5" />}
+      <div className="flex items-center h-8 bg-surface-secondary border-b border-border text-[10px] font-bold text-text-secondary uppercase select-none sticky top-0 z-10 tracking-wider">
+         <div className="w-10 flex justify-center cursor-pointer hover:text-white transition-colors" onClick={toggleAll}>
+            {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
          </div>
          <div className="w-16 text-center">ID</div>
          <div className="w-16 text-center">Visual</div>
-         <div className="flex-1 px-3 border-l border-[#2A2A2A]">Scene Assignment</div>
-         <div className="w-32 px-2 border-l border-[#2A2A2A]">Shot Type</div>
-         <div className="w-24 px-2 border-l border-[#2A2A2A]">Aspect</div>
-         <div className="w-32 px-2 border-l border-[#2A2A2A]">Time</div>
-         <div className="w-16 text-center border-l border-[#2A2A2A]">Actions</div>
+         <div className="flex-1 px-3 border-l border-border">Scene Assignment</div>
+         <div className="w-32 px-2 border-l border-border">Shot Type</div>
+         <div className="w-24 px-2 border-l border-border">Aspect</div>
+         <div className="w-32 px-2 border-l border-border">Time</div>
+         <div className="w-16 text-center border-l border-border">Actions</div>
       </div>
 
       {/* 3. TABLE BODY */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
          {filteredShots.map((shot, idx) => {
             const sceneInfo = getSceneInfo(shot.sceneId);
             const isSelected = selectedIds.has(shot.id);
@@ -252,77 +252,76 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                <div 
                   key={shot.id} 
                   className={`
-                    flex items-center h-16 border-b border-[#252526] text-[12px] text-[#CCCCCC] transition-colors hover:bg-[#2A2D2E] group
-                    ${isSelected ? 'bg-[#2A3744] hover:bg-[#303F4F]' : ''}
+                    flex items-center h-12 border-b border-border/50 text-xs text-text-primary transition-colors hover:bg-surface-secondary group
+                    ${isSelected ? 'bg-primary/10 hover:bg-primary/20' : ''}
                   `}
                >
                   {/* Checkbox */}
                   <div className="w-10 flex justify-center cursor-pointer" onClick={() => toggleSelection(shot.id)}>
-                     {isSelected ? <CheckSquare className="w-4 h-4 text-[#007ACC]" /> : <Square className="w-4 h-4 text-[#505050]" />}
+                     {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5 text-text-muted" />}
                   </div>
 
                   {/* ID (Merged) */}
-                  <div className="w-16 text-center text-[#CCCCCC] text-[12px]">{idString}</div>
+                  <div className="w-16 text-center font-mono text-text-secondary text-[11px]">{idString}</div>
 
                   {/* Thumbnail */}
-                  <div className="w-16 p-1.5 h-full cursor-pointer relative" onClick={() => onEditShot(shot)}>
+                  <div className="w-16 p-1 h-full cursor-pointer relative flex items-center justify-center" onClick={() => onEditShot(shot)}>
                      {shot.generatedImage ? (
-                        <img src={shot.generatedImage} className="w-full h-full object-cover rounded-[2px] border border-[#333] group-hover:border-[#505050]" />
+                        <img src={shot.generatedImage} className="h-full w-auto object-contain rounded-sm border border-border group-hover:border-text-muted" />
                      ) : (
-                        <div className="w-full h-full bg-[#18181B] rounded-[2px] border border-[#333] flex items-center justify-center group-hover:border-[#505050]">
-                           <Film className="w-4 h-4 text-[#333]" />
+                        <div className="w-10 h-8 bg-surface rounded-sm border border-border flex items-center justify-center group-hover:border-text-muted">
+                           <Film className="w-3 h-3 text-text-muted" />
                         </div>
                      )}
                      {/* Hover Edit Hint */}
-                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white">
+                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
                         <Edit2 className="w-3 h-3" />
                      </div>
                   </div>
 
                   {/* Scene Dropdown (Assignment) */}
-                  <div className="flex-1 px-3 border-l border-[#2A2A2A] h-full flex items-center">
+                  <div className="flex-1 px-3 border-l border-border/50 h-full flex items-center">
                      <div className="w-full relative group/scene">
                          <select
                              value={shot.sceneId || ''}
                              onChange={(e) => onUpdateShot({ ...shot, sceneId: e.target.value })}
-                             className="w-full bg-transparent text-[#007ACC] font-medium outline-none text-[11px] cursor-pointer hover:text-white appearance-none uppercase"
+                             className="w-full bg-transparent text-primary font-medium outline-none text-[11px] cursor-pointer hover:text-white appearance-none uppercase tracking-wide"
                          >
                              {project.scenes.map(s => (
                                  <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>
                              ))}
                          </select>
-                         <Clapperboard className="w-3 h-3 absolute right-0 top-1/2 -translate-y-1/2 text-[#505050] group-hover/scene:text-white pointer-events-none" />
                      </div>
                   </div>
 
                   {/* Shot Type */}
-                  <div className="w-32 px-2 border-l border-[#2A2A2A] h-full flex items-center">
+                  <div className="w-32 px-2 border-l border-border/50 h-full flex items-center">
                      <select 
                         value={shot.shotType}
                         onChange={(e) => onUpdateShot({ ...shot, shotType: e.target.value })}
-                        className="w-full bg-transparent text-[#CCCCCC] outline-none text-[12px] cursor-pointer hover:text-white"
+                        className="w-full bg-transparent text-text-secondary outline-none text-[11px] cursor-pointer hover:text-text-primary"
                      >
                         {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                      </select>
                   </div>
 
                   {/* Aspect Ratio */}
-                  <div className="w-24 px-2 border-l border-[#2A2A2A] h-full flex items-center">
+                  <div className="w-24 px-2 border-l border-border/50 h-full flex items-center">
                      <select 
                         value={shot.aspectRatio || project.settings.aspectRatio}
                         onChange={(e) => onUpdateShot({ ...shot, aspectRatio: e.target.value })}
-                        className="w-full bg-transparent text-[#CCCCCC] outline-none text-[12px] cursor-pointer hover:text-white"
+                        className="w-full bg-transparent text-text-secondary outline-none text-[11px] cursor-pointer hover:text-text-primary"
                      >
                         {ASPECT_RATIOS.map(t => <option key={t} value={t}>{t}</option>)}
                      </select>
                   </div>
 
                   {/* Time of Day */}
-                  <div className="w-32 px-2 border-l border-[#2A2A2A] h-full flex items-center">
+                  <div className="w-32 px-2 border-l border-border/50 h-full flex items-center">
                      <select 
                         value={shot.timeOfDay || ''}
                         onChange={(e) => onUpdateShot({ ...shot, timeOfDay: e.target.value || undefined })}
-                        className="w-full bg-transparent text-[#CCCCCC] outline-none text-[12px] cursor-pointer hover:text-white"
+                        className="w-full bg-transparent text-text-secondary outline-none text-[11px] cursor-pointer hover:text-text-primary"
                      >
                         <option value="">Default</option>
                         {TIMES_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
@@ -330,11 +329,11 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="w-16 border-l border-[#2A2A2A] h-full flex items-center justify-center gap-1">
-                      <button onClick={() => onDuplicateShot(shot.id)} className="p-1.5 text-[#707070] hover:text-white hover:bg-[#333] rounded" title="Duplicate">
+                  <div className="w-16 border-l border-border/50 h-full flex items-center justify-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => onDuplicateShot(shot.id)} className="p-1 text-text-muted hover:text-white hover:bg-surface rounded-sm" title="Duplicate">
                          <Layers className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => onDeleteShot(shot.id)} className="p-1.5 text-[#707070] hover:text-[#F48771] hover:bg-[#3E1A1A] rounded" title="Delete">
+                      <button onClick={() => onDeleteShot(shot.id)} className="p-1 text-text-muted hover:text-error hover:bg-error/10 rounded-sm" title="Delete">
                          <Trash2 className="w-3.5 h-3.5" />
                       </button>
                   </div>
@@ -345,8 +344,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
       {/* 4. BULK ACTIONS BAR */}
       {selectedIds.size > 0 && (
-         <div className="h-12 bg-[#007ACC] text-white flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shrink-0 shadow-lg z-20">
-            <div className="font-bold text-sm flex items-center gap-2">
+         <div className="h-12 bg-primary text-white flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shrink-0 shadow-lg z-20">
+            <div className="font-bold text-xs flex items-center gap-2 uppercase tracking-wide">
                <CheckSquare className="w-4 h-4" />
                {selectedIds.size} Shots Selected
             </div>
@@ -357,7 +356,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                {/* Bulk Scene Move */}
                <select 
                   onChange={(e) => handleBulkUpdate('sceneId', e.target.value)}
-                  className="bg-white/10 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-white/20 max-w-[150px]"
+                  className="bg-black/20 border border-white/20 text-white text-xs h-7 rounded-sm px-2 outline-none cursor-pointer hover:bg-black/30 max-w-[150px]"
                   value="" 
                >
                   <option value="" disabled>Move to Scene...</option>
@@ -367,7 +366,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                {/* Bulk Type Change */}
                <select 
                   onChange={(e) => handleBulkUpdate('shotType', e.target.value)}
-                  className="bg-white/10 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-white/20"
+                  className="bg-black/20 border border-white/20 text-white text-xs h-7 rounded-sm px-2 outline-none cursor-pointer hover:bg-black/30"
                   value="" 
                >
                   <option value="" disabled>Set Shot Type...</option>
@@ -377,7 +376,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                {/* Bulk Time Change */}
                <select 
                   onChange={(e) => handleBulkUpdate('timeOfDay', e.target.value)}
-                  className="bg-white/10 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-white/20"
+                  className="bg-black/20 border border-white/20 text-white text-xs h-7 rounded-sm px-2 outline-none cursor-pointer hover:bg-black/30"
                   value=""
                >
                   <option value="" disabled>Set Time...</option>
@@ -388,7 +387,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                
                <button 
                   onClick={handleBulkDelete}
-                  className="bg-white/10 hover:bg-red-500 text-white px-3 h-7 rounded text-xs font-bold transition-colors flex items-center gap-2"
+                  className="bg-black/20 hover:bg-red-500 text-white px-3 h-7 rounded-sm text-xs font-bold transition-colors flex items-center gap-2"
                >
                   <Trash2 className="w-3 h-3" /> Delete Selection
                </button>
