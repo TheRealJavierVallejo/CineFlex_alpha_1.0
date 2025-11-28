@@ -52,12 +52,12 @@ export const ShotRow: React.FC<ShotRowProps> = ({
     return (
         <>
             <div
-                className="group/row flex border-b border-border/50 hover:bg-surface-secondary transition-colors relative min-h-[120px]"
+                className="group/row flex border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[120px]"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
                 {/* 1. VISUAL COLUMN */}
-                <div className="w-[240px] p-3 border-r border-border/50 flex flex-col gap-2 shrink-0 bg-background">
+                <div className="w-[240px] p-3 border-r border-border flex flex-col gap-2 shrink-0 bg-surface">
                     <div className="flex justify-between items-center">
                         <span className="text-[10px] font-mono font-bold text-text-secondary">SHOT {String(shot.sequence).padStart(2, '0')}</span>
                         <div className="flex gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
@@ -111,7 +111,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                               value={shot.description}
                               onChange={(e) => onUpdateShot(shot.id, { description: e.target.value })}
                               placeholder="// Describe shot action..."
-                              className="w-full bg-transparent text-sm text-text-secondary placeholder-text-muted outline-none resize-none font-mono h-full"
+                              className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full"
                               rows={2}
                            />
                         </div>
@@ -121,7 +121,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     <div className="space-y-3">
                         {linkedElements.map(el => (
                             <div key={el.id} className="relative group/element pl-3 border-l-2 border-primary/20 hover:border-primary transition-colors">
-                                <div className={getScriptStyle(el.type)}>
+                                <div className="font-mono text-sm leading-relaxed text-text-secondary">
                                     {el.character && <div className="font-bold uppercase text-xs mb-0.5 text-primary/70">{el.character}</div>}
                                     <div className="whitespace-pre-wrap">{el.content}</div>
                                 </div>

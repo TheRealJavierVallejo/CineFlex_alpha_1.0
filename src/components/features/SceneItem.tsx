@@ -55,7 +55,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                     p-3 pr-4 flex items-center gap-4 cursor-pointer select-none transition-all border-l-4
                     ${isExpanded 
                         ? 'bg-surface-secondary/80 border-b border-border border-l-primary' 
-                        : 'bg-surface hover:bg-surface-secondary border-l-border/50'}
+                        : 'bg-surface hover:bg-surface-secondary border-l-border'}
                 `}
                 onClick={(e) => {
                     // Don't toggle if clicking an input/button

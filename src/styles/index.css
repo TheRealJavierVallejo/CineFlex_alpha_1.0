@@ -30,7 +30,8 @@
   /* TYPOGRAPHY (High Legibility) */
   --color-text-primary: #EEEEEE;    /* Almost White */
   --color-text-secondary: #888888;  /* Neutral Grey */
-  --color-text-muted: #444444;      /* Dark Grey */
+  --color-text-tertiary: #555555;   /* Darker Grey */
+  --color-text-muted: #444444;      /* Muted Grey */
   
   --header-height: 48px;
 }
@@ -51,6 +52,7 @@
   /* TYPOGRAPHY */
   --color-text-primary: #09090B;    /* Zinc-950 */
   --color-text-secondary: #52525B;  /* Zinc-600 */
+  --color-text-tertiary: #71717A;   /* Zinc-500 */
   --color-text-muted: #A1A1AA;      /* Zinc-400 */
 }
 
@@ -76,6 +78,7 @@
   /* Text Mappings */
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
   --color-text-muted: var(--color-text-muted);
 
   /* Radius (Industrial/Sharp) */
