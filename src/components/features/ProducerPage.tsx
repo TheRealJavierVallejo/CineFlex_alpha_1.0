@@ -4,7 +4,7 @@ import { DashboardController } from './DashboardController';
 import { AssetManager } from './AssetManager';
 import { ShotEditor } from './ShotEditor';
 import { Shot } from '../../types';
-import { LayoutGrid, Users, FileSpreadsheet } from 'lucide-react';
+import { LayoutGrid, Users } from 'lucide-react';
 import { LazyWrapper } from './LazyComponents';
 
 type ProducerTab = 'shots' | 'assets';
@@ -16,7 +16,6 @@ export const ProducerPage: React.FC = () => {
         handleBulkUpdateShots, 
         handleDeleteShot, 
         handleDuplicateShot, 
-        handleAddShot: contextAddShot,
         showToast 
     } = useStudio();
 
@@ -28,17 +27,13 @@ export const ProducerPage: React.FC = () => {
         setEditingShot(shot);
     };
 
-    // Wrapper to create a shot and immediately edit it
+    // Wrapper to create a shot manually
     const handleAddShot = () => {
-        // We need a scene to add a shot. If no scenes, warn.
         if (project.scenes.length === 0) {
             showToast("Please create a scene in the Timeline first.", 'warning');
             return;
         }
         
-        // Create shot logic (duplicated from StudioLayout for local control if needed, 
-        // or we can use contextAddShot if we update StudioLayout to return the new shot)
-        // For now, let's create it manually to open the editor immediately.
         const newShot: Shot = {
             id: crypto.randomUUID(),
             sceneId: project.scenes[0].id,
@@ -60,29 +55,29 @@ export const ProducerPage: React.FC = () => {
     return (
         <div className="flex flex-col h-full w-full bg-background relative">
             
-            {/* SUB-NAVIGATION HEADER */}
-            <div className="h-12 border-b border-border flex items-center px-4 bg-surface shrink-0 gap-1">
+            {/* FLAT TOOLBAR HEADER */}
+            <div className="h-10 border-b border-border flex items-center px-2 bg-surface gap-px shrink-0">
                 <button
                     onClick={() => setActiveTab('shots')}
                     className={`
-                        h-8 px-4 rounded-md text-xs font-bold flex items-center gap-2 transition-all
+                        h-full px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-colors
                         ${activeTab === 'shots' 
-                            ? 'bg-surface-secondary text-primary shadow-sm border border-border' 
-                            : 'text-text-muted hover:text-text-primary hover:bg-white/5'}
+                            ? 'border-primary text-primary bg-primary/5' 
+                            : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-white/5'}
                     `}
                 >
-                    <LayoutGrid className="w-4 h-4" /> Production Board
+                    <LayoutGrid className="w-3.5 h-3.5" /> Production Board
                 </button>
                 <button
                     onClick={() => setActiveTab('assets')}
                     className={`
-                        h-8 px-4 rounded-md text-xs font-bold flex items-center gap-2 transition-all
+                        h-full px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-colors
                         ${activeTab === 'assets' 
-                            ? 'bg-surface-secondary text-primary shadow-sm border border-border' 
-                            : 'text-text-muted hover:text-text-primary hover:bg-white/5'}
+                            ? 'border-primary text-primary bg-primary/5' 
+                            : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-white/5'}
                     `}
                 >
-                    <Users className="w-4 h-4" /> Assets & Cast
+                    <Users className="w-3.5 h-3.5" /> Assets & Cast
                 </button>
             </div>
 
@@ -108,7 +103,7 @@ export const ProducerPage: React.FC = () => {
                 )}
             </div>
 
-            {/* MODAL EDITOR (For quick edits in Producer View) */}
+            {/* MODAL EDITOR */}
             {editingShot && (
                 <LazyWrapper fullHeight={false}>
                     <ShotEditor

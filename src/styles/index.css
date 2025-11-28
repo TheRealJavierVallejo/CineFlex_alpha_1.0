@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ============================================
-   CINESKETCH STUDIO - PRO NLE THEME
-   Refined for high-density professional workflows.
+   CINESKETCH STUDIO - PRO NLE THEME (HARDENED)
+   System Calibrated for Professional Density
    ============================================ */
 
 @theme {
@@ -12,17 +12,17 @@
   --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
 
   /* NLE Color Palette (Flat & Neutral) */
-  --color-background: #09090b; /* Zinc 950 */
+  --color-background: #09090b; /* Zinc 950 (Main Canvas) */
   
   --color-app: #09090b;
   --color-surface: #121212;    /* Main Panel Background */
-  --color-surface-secondary: #1E1E1E; /* Headers / Toolbars */
+  --color-surface-secondary: #18181B; /* Headers / Toolbars (Zinc 900) */
   --color-surface-hover: #27272a;
   
-  /* Borders - Subtle separation */
-  --color-border: #27272a;     /* Zinc 800 */
+  /* Borders - The Skeleton of the NLE */
+  --color-border: #27272a;     /* Zinc 800 (Structural) */
   --color-border-light: #3f3f46;
-  --color-border-focus: #3b82f6;
+  --color-border-focus: #3b82f6; /* Electric Blue */
 
   /* Text Colors */
   --color-text-primary: #e4e4e7;   /* Zinc 200 */
@@ -41,10 +41,10 @@
   --color-status-success: #22c55e;
   --color-status-info: #0ea5e9;
 
-  /* Shadows - Minimal usage in NLEs */
-  --shadow-window: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
-  --shadow-panel: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 10px rgba(59, 130, 246, 0.2);
+  /* Shadows - Minimal usage. Panels use Borders. */
+  --shadow-window: 0 0 0 1px #27272a, 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+  --shadow-popup: 0 0 0 1px #27272a, 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 10px rgba(59, 130, 246, 0.1);
 
   /* Pro Radius - Sharp & Precise */
   --radius: 3px; 
@@ -68,14 +68,14 @@
 
   /* Selection Color */
   ::selection {
-    background-color: rgba(59, 130, 246, 0.4);
+    background-color: rgba(59, 130, 246, 0.3);
     color: white;
   }
 }
 
 @layer components {
 
-  /* PRO SCROLLBARS */
+  /* PRO SCROLLBARS - Thin & Dark */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
@@ -83,7 +83,7 @@
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#3f3f46] rounded-full border-[2px] border-[#09090b];
+    @apply bg-[#3f3f46] border-[2px] border-[#09090b] rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-[#52525b];
@@ -94,26 +94,26 @@
 
   /* STUDIO COMPONENTS */
   
-  /* A rigid panel container */
+  /* Rigid Panel Container */
   .nle-panel {
     @apply bg-surface border border-border flex flex-col overflow-hidden;
   }
 
-  /* A header bar for panels */
+  /* Panel Header */
   .nle-header {
     @apply h-10 px-3 bg-surface-secondary border-b border-border flex items-center shrink-0 select-none;
   }
 
-  /* Standard Input field */
+  /* Standard Input Field - Flat & Dark */
   .nle-input,
   .studio-input {
-    @apply w-full bg-[#000000]/30 border border-border rounded px-2 py-1.5 text-xs text-text-primary;
+    @apply w-full bg-[#000000]/40 border border-border rounded-sm px-2 py-1.5 text-xs text-text-primary;
     @apply outline-none transition-colors focus:border-primary focus:bg-black;
   }
   
-  /* Standard Button */
+  /* Standard Button - Sharp */
   .nle-btn {
-    @apply h-7 px-3 rounded text-xs font-medium inline-flex items-center gap-2 transition-all cursor-pointer select-none;
+    @apply h-7 px-3 rounded-sm text-xs font-medium inline-flex items-center gap-2 transition-all cursor-pointer select-none;
   }
   
   .nle-btn-primary {
@@ -128,20 +128,16 @@
     @apply bg-[#27272a] hover:bg-[#3f3f46] text-text-primary border border-white/5;
   }
 
-  /* Utility grid for file browsing */
+  /* Utility Grid Item */
   .nle-grid-item {
-    @apply border border-transparent hover:bg-white/5 hover:border-white/10 rounded cursor-pointer transition-all;
+    @apply border border-transparent hover:bg-white/5 hover:border-white/10 rounded-sm cursor-pointer transition-all;
   }
   
   .nle-grid-item.selected {
     @apply bg-primary/20 border-primary text-white;
   }
 
-  /* Legacy overrides/compat */
-  .studio-card {
-    @apply bg-surface border border-border rounded shadow-none overflow-hidden;
-  }
-  
+  /* Custom Scrollbar Utility */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
