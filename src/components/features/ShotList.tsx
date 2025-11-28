@@ -1,19 +1,20 @@
 /*
- * 🎬 COMPONENT: SHOT LIST (Dashboard)
- * Premium Desktop UI - Dense Grid with Right-Click Menu
+ * 🎬 COMPONENT: SHOT LIST (Dashboard Grid)
+ * Premium Desktop UI - Uses Shared ShotCard
  */
 
 import React, { useState } from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
-import { Film, Camera, Layers, Trash2, Copy, Edit2 } from 'lucide-react';
+import { Film, Trash2, Copy, Edit2 } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
+import { ShotCard } from './ShotCard';
 
 interface ShotListProps {
   project: Project;
   onAddShot: () => void;
   onEditShot: (shot: Shot) => void;
   onDeleteShot: (shotId: string) => void;
-  onDuplicateShot?: (shotId: string) => void; // New prop
+  onDuplicateShot?: (shotId: string) => void; 
   showToast: ShowToastFn;
 }
 
@@ -65,70 +66,25 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
       )}
 
       {project.shots.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-[#505050] border-2 border-dashed border-[#333] rounded-[4px]">
-          <Film className="w-8 h-8 mb-2 opacity-30" />
-          <span className="text-sm">No shots in timeline</span>
-          <button onClick={onAddShot} className="text-[#007ACC] text-xs hover:underline mt-1">Create Shot</button>
+        <div className="h-full flex flex-col items-center justify-center text-text-muted border-2 border-dashed border-border rounded-md bg-surface/20">
+          <Film className="w-12 h-12 mb-4 opacity-20" />
+          <h3 className="text-lg font-bold text-text-primary mb-2">No shots found</h3>
+          <p className="text-sm mb-6">Try adjusting your filters or create a new shot.</p>
+          <button onClick={onAddShot} className="app-btn app-btn-primary">Create Shot</button>
         </div>
       ) : (
         /* Dense Grid */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-20">
-          {project.shots.map((shot, idx) => (
-            <div
-              key={shot.id}
-              onClick={() => onEditShot(shot)}
-              onContextMenu={(e) => handleContextMenu(e, shot.id)}
-              className="bg-[#252526] border border-[#333] rounded-[3px] overflow-hidden hover:border-[#007ACC] cursor-pointer transition-all group relative"
-            >
-              {/* Thumbnail */}
-              <div className="aspect-video bg-[#121212] relative">
-                {shot.generatedImage ? (
-                  <img src={shot.generatedImage} className="w-full h-full object-contain" />
-                ) : shot.sketchImage ? (
-                  <img src={shot.sketchImage} className="w-full h-full object-contain opacity-50 p-2" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-[#333]" />
-                  </div>
-                )}
-
-                <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] font-mono text-[#E8E8E8]">
-                  #{shot.sequence}
-                </div>
-
-                {/* Actions overlay - Hover Buttons still useful for quick access */}
-                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                   <button 
-                      onClick={(e) => {
-                         e.stopPropagation();
-                         onDeleteShot(shot.id);
-                      }}
-                      className="bg-black/80 hover:bg-red-900/80 text-white p-1 rounded-[2px] transition-colors"
-                      title="Delete Shot"
-                   >
-                      <Trash2 className="w-3 h-3 text-red-400" />
-                   </button>
-                </div>
-
-                {/* Stack Indicator */}
-                {shot.generationCandidates && shot.generationCandidates.length > 1 && (
-                  <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] text-[#A0A0A0] flex items-center gap-1">
-                    <Layers className="w-2.5 h-2.5" />
-                    <span>{shot.generationCandidates.length}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Meta */}
-              <div className="p-2 text-[11px]">
-                <div className="text-[#CCCCCC] truncate font-medium mb-1" title={shot.description}>
-                  {shot.description || "Untitled Shot"}
-                </div>
-                <div className="flex justify-between text-[#707070]">
-                  <span className="truncate max-w-[60%]">{shot.shotType}</span>
-                  <span className="font-mono">{shot.aspectRatio}</span>
-                </div>
-              </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pb-20">
+          {project.shots.map((shot) => (
+            <div key={shot.id} onContextMenu={(e) => handleContextMenu(e, shot.id)}>
+                <ShotCard 
+                    shot={shot}
+                    onClick={() => onEditShot(shot)}
+                    onDelete={(e) => {
+                        e.stopPropagation();
+                        onDeleteShot(shot.id);
+                    }}
+                />
             </div>
           ))}
         </div>
