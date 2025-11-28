@@ -15,6 +15,7 @@ import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
+import { FeatureGate } from '../ui/FeatureGate';
 
 export const ScriptPage: React.FC = () => {
     const { project, updateScriptElements, importScript } = useWorkspace();
@@ -241,8 +242,14 @@ export const ScriptPage: React.FC = () => {
             label: 'AI Writer',
             icon: <Sparkles className="w-5 h-5" />,
             content: (
-                <div className="h-full flex flex-col">
-                    <ScriptChat isOpen={true} onClose={() => { }} />
+                <div className="h-full flex flex-col relative">
+                    <FeatureGate 
+                        label="AI Writers Room" 
+                        description="Unlock the intelligent script assistant to brainstorm dialogue, plot twists, and formatting ideas."
+                        className="h-full"
+                    >
+                        <ScriptChat isOpen={true} onClose={() => { }} />
+                    </FeatureGate>
                 </div>
             )
         }

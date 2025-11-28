@@ -186,6 +186,14 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                         {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
+                                
+                                {tier === 'free' && (
+                                    <div className="flex items-center gap-2 text-[10px] text-primary bg-primary/10 p-2 rounded border border-primary/20">
+                                        <Sparkles className="w-3 h-3" />
+                                        <strong>Pro Feature:</strong> API Key is required for Pro generation & Copilot.
+                                    </div>
+                                )}
+
                                 <Button variant="primary" className="w-full h-10" onClick={saveApiKey}>
                                     Save Connection
                                 </Button>
