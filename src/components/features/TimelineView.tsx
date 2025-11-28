@@ -22,12 +22,12 @@ interface TimelineViewProps {
   project: Project;
   onUpdateProject: (project: Project) => void;
   onEditShot: (shot: Shot) => void;
-  importScript: (file: File) => Promise<void>; // Kept in interface for compatibility but unused in UI
+  importScript: (file: File) => Promise<void>;
   showToast: ShowToastFn;
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
-  const { tier } = useSubscription();
+  const { tier } = useSubscription(); // GET TIER
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -61,7 +61,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  // --- HANDLERS ---
+  // --- HANDLERS (Same as before) ---
   const handleExportPDF = async () => {
     if (project.scenes.length === 0) {
       showToast("Add scenes before exporting", 'warning');
@@ -70,6 +70,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setIsExporting(true);
     showToast("Generating PDF...", 'info');
     try {
+      // PASS TIER HERE
       await generateStoryboardPDF(project, tier);
       showToast("PDF Downloaded", 'success');
     } catch (e) {
@@ -201,12 +202,13 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     const updatedShots = project.shots.map(s => {
       if (s.id === pickerState.shotId) {
         const currentIds = s.linkedElementIds || [];
+        // Merge without duplicates
         const newIds = Array.from(new Set([...currentIds, ...idsToAdd]));
 
         return {
           ...s,
           linkedElementIds: newIds,
-          description: s.description || contentText
+          description: s.description || contentText // Only set if empty
         };
       }
       return s;
@@ -226,17 +228,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
   };
 
-  const handleTriggerAddShotManual = () => {
-      // Create a default scene if none exists, then open modal
-      if (project.scenes.length === 0) {
-          handleAddScene();
-      }
-      // If scenes exist (or we just added one), we typically show the list.
-      // For empty state action, we probably just want to add a scene.
-      // If the user clicks "Start Writing" (via EmptyProjectState onCreate) -> handleAddScene is called.
-  };
-
   // --- TOOL RAIL CONTENT ---
+  // Memoize filtered scenes to prevent recalculation on every render
   const filteredScenes = useMemo(() => {
     return project.scenes.filter(s => s.heading.toLowerCase().includes(sceneSearch.toLowerCase()));
   }, [project.scenes, sceneSearch]);
@@ -282,12 +275,15 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     }
   ];
 
-  if (project.scenes.length === 0) {
+  const hasContent = project.scenes.length > 0;
+
+  if (!hasContent) {
     return (
       <EmptyProjectState
         title="Empty Timeline"
         description="No scenes found. Please go to the Dashboard to set up your project or add a scene manually."
         onCreate={handleAddScene}
+        // Removed onImport here to enforce Dashboard workflow
       />
     );
   }
@@ -296,6 +292,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     <PageWithToolRail tools={tools} defaultTool={null}>
       <div className="h-full bg-background overflow-y-auto font-sans relative">
         <TimelineHeader
+          isUploadingScript={false}
+          onImportScript={() => {}}
           onAddScene={handleAddScene}
           onExportPDF={handleExportPDF}
           isExporting={isExporting}

@@ -3,6 +3,8 @@ import { Clapperboard, Download, Plus } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface TimelineHeaderProps {
+    isUploadingScript: boolean;
+    onImportScript: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onAddScene: () => void;
     onExportPDF: () => void;
     isExporting?: boolean;
