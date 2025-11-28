@@ -63,28 +63,28 @@ export const DashboardController: React.FC<DashboardControllerProps> = ({
         <div className="flex flex-col h-full bg-background">
             
             {/* 1. UNIFIED TOOLBAR */}
-            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 z-20">
+            <div className="nle-header justify-between">
                 <div className="flex items-center gap-3 flex-1">
                     
                     {/* View Switcher */}
-                    <div className="flex bg-surface-secondary rounded-lg p-1 border border-border">
+                    <div className="flex bg-black rounded p-0.5 border border-border">
                         <button 
                             onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-sm' : 'text-text-tertiary hover:text-text-primary'}`}
+                            className={`p-1 rounded transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-sm' : 'text-text-tertiary hover:text-text-primary'}`}
                             title="Grid View"
                         >
-                            <LayoutGrid className="w-4 h-4" />
+                            <LayoutGrid className="w-3.5 h-3.5" />
                         </button>
                         <button 
                             onClick={() => setViewMode('table')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-tertiary hover:text-text-primary'}`}
+                            className={`p-1 rounded transition-all ${viewMode === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-tertiary hover:text-text-primary'}`}
                             title="Spreadsheet View"
                         >
-                            <Table className="w-4 h-4" />
+                            <Table className="w-3.5 h-3.5" />
                         </button>
                     </div>
 
-                    <div className="h-6 w-[1px] bg-border mx-1" />
+                    <div className="h-4 w-[1px] bg-border mx-1" />
 
                     {/* Search Input */}
                     <div className="relative group max-w-[200px] w-full">
@@ -93,10 +93,10 @@ export const DashboardController: React.FC<DashboardControllerProps> = ({
                             value={filterText}
                             onChange={e => setFilterText(e.target.value)}
                             placeholder="Search shots..." 
-                            className="bg-surface-secondary border border-border rounded-md h-9 pl-8 pr-8 text-xs text-text-primary w-full placeholder-text-muted outline-none focus:border-primary transition-all focus:ring-1 focus:ring-primary/20"
+                            className="nle-input pl-8"
                         />
                         {filterText && (
-                            <button onClick={() => setFilterText('')} className="absolute right-2 top-2.5 text-text-muted hover:text-text-primary">
+                            <button onClick={() => setFilterText('')} className="absolute right-2 top-1.5 text-text-muted hover:text-text-primary">
                                 <Trash2 className="w-3 h-3" />
                             </button>
                         )}
@@ -107,27 +107,27 @@ export const DashboardController: React.FC<DashboardControllerProps> = ({
                         <select 
                             value={filterScene}
                             onChange={e => setFilterScene(e.target.value)}
-                            className="h-9 bg-surface-secondary border border-border rounded-md text-xs text-text-primary pl-3 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[140px] hover:border-text-muted transition-colors"
+                            className="nle-input min-w-[140px] appearance-none"
                         >
                             <option value="all">All Scenes</option>
                             {project.scenes.map(s => (
                                 <option key={s.id} value={s.id}>{s.sequence}. {s.heading}</option>
                             ))}
                         </select>
-                        <ChevronDown className="w-3 h-3 text-text-muted absolute right-2.5 top-3 pointer-events-none" />
+                        <ChevronDown className="w-3 h-3 text-text-muted absolute right-2.5 top-2 pointer-events-none" />
                     </div>
 
-                    {/* Filters (Combined for mobile/smaller screens later, mostly desktop optimization now) */}
+                    {/* Filters */}
                     <div className="relative hidden lg:block">
                         <select 
                             value={filterType}
                             onChange={e => setFilterType(e.target.value)}
-                            className="h-9 bg-surface-secondary border border-border rounded-md text-xs text-text-primary pl-3 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[120px] hover:border-text-muted transition-colors"
+                            className="nle-input min-w-[120px] appearance-none"
                         >
                             <option value="all">All Shot Types</option>
                             {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
-                        <ChevronDown className="w-3 h-3 text-text-muted absolute right-2.5 top-3 pointer-events-none" />
+                        <ChevronDown className="w-3 h-3 text-text-muted absolute right-2.5 top-2 pointer-events-none" />
                     </div>
                 </div>
 
