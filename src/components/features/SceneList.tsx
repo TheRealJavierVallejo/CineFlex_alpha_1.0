@@ -1,12 +1,11 @@
 import React from 'react';
-import { Scene, Shot, ScriptElement, Project, Location } from '../../types';
+import { Scene, Shot, ScriptElement, Project } from '../../types';
 import { SceneItem } from './SceneItem';
 
 interface SceneListProps {
     scenes: Scene[];
     shots: Shot[];
     scriptElements: ScriptElement[];
-    locations: Location[]; // NEW
     projectSettings: Project['settings'];
     onUpdateScene: (id: string, updates: Partial<Scene>) => void;
     onDeleteScene: (id: string) => void;
@@ -18,14 +17,13 @@ interface SceneListProps {
     onUnlinkElement: (shotId: string, elementId: string) => void;
     onEditShot: (shot: Shot) => void;
     onCreateAndLinkShot: (sceneId: string) => void;
-    onAddVisual: (shotId: string) => void;
+    onAddVisual: (shotId: string) => void; // NEW
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
     scenes,
     shots,
     scriptElements,
-    locations,
     projectSettings,
     onUpdateScene,
     onDeleteScene,
@@ -47,28 +45,26 @@ export const SceneList: React.FC<SceneListProps> = ({
                     .sort((a, b) => a.sequence - b.sequence);
 
                 return (
-                    <div key={scene.id} id={`scene-${scene.id}`}>
-                        <SceneItem
-                            scene={scene}
-                            index={index}
-                            totalScenes={scenes.length}
-                            shots={sceneShots}
-                            scriptElements={scriptElements}
-                            locations={locations}
-                            projectSettings={projectSettings}
-                            onUpdateScene={onUpdateScene}
-                            onDeleteScene={onDeleteScene}
-                            onMoveScene={onMoveScene}
-                            onAddShot={onAddShot}
-                            onUpdateShot={onUpdateShot}
-                            onDeleteShot={onDeleteShot}
-                            onLinkElement={onLinkElement}
-                            onUnlinkElement={onUnlinkElement}
-                            onEditShot={onEditShot}
-                            onCreateAndLinkShot={onCreateAndLinkShot}
-                            onAddVisual={onAddVisual}
-                        />
-                    </div>
+                    <SceneItem
+                        key={scene.id}
+                        scene={scene}
+                        index={index}
+                        totalScenes={scenes.length}
+                        shots={sceneShots}
+                        scriptElements={scriptElements}
+                        projectSettings={projectSettings}
+                        onUpdateScene={onUpdateScene}
+                        onDeleteScene={onDeleteScene}
+                        onMoveScene={onMoveScene}
+                        onAddShot={onAddShot}
+                        onUpdateShot={onUpdateShot}
+                        onDeleteShot={onDeleteShot}
+                        onLinkElement={onLinkElement}
+                        onUnlinkElement={onUnlinkElement}
+                        onEditShot={onEditShot}
+                        onCreateAndLinkShot={onCreateAndLinkShot}
+                        onAddVisual={onAddVisual}
+                    />
                 );
             })}
         </div>

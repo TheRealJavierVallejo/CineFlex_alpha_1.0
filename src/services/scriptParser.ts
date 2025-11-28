@@ -1,3 +1,4 @@
+
 /*
  * 📜 SERVICE: SCRIPT PARSER
  * 
@@ -49,12 +50,20 @@ const isTransition = (line: string): boolean => {
   return s.endsWith('TO:') || s.startsWith('>');
 };
 
-// Helper: Determine if a line is a parenthetical
-const isParenthetical = (line: string): boolean => {
-  const s = line.trim();
-  return s.startsWith('(') && s.endsWith(')');
+// Helper: Extract metadata from scene heading
+const extractLocation = (heading: string): string => {
+  // Remove INT./EXT. prefix and time suffix
+  let clean = heading.trim().replace(/^\.?\s*(INT\.|EXT\.|INT\/EXT\.|I\/E\.|INT\/EXT)\s*/i, '');
+  clean = clean.split(/\s+-\s+/)[0]; // Remove " - DAY"
+  return clean;
 };
 
+const extractTimeOfDay = (heading: string): string => {
+  const parts = heading.trim().split(/\s+-\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : '';
+};
+
+// 🖋️ FOUNTAIN PARSER IMPLEMENTATION
 // 🖋️ FOUNTAIN PARSER IMPLEMENTATION
 function parseFountain(text: string): ParsedScript {
   const lines = text.split(/\r?\n/);
@@ -127,78 +136,51 @@ function parseFountain(text: string): ParsedScript {
       continue;
     }
 
-    // 3. CHARACTER & DIALOGUE (Grouped logic, but split elements)
+    // 3. CHARACTER & DIALOGUE (Grouped)
+    // If line is uppercase and previous line was blank, it's likely a character
     if (lastLineWasBlank && isCharacter(line)) {
       const characterName = line.replace(/\s*\(CONT'D\)$/, '');
 
-      // A. Create Character Element
-      const charEl: ScriptElement = {
-        id: crypto.randomUUID(),
-        type: 'character',
-        content: characterName,
-        sceneId: currentScene?.id,
-        sequence: elementSequence++
-      };
-      elements.push(charEl);
-
-      // B. Look ahead for Dialogue / Parentheticals
+      // Look ahead for dialogue
+      let dialogueContent = '';
       let j = i + 1;
-      let currentDialogueBuffer = '';
 
-      // Helper to flush dialogue buffer
-      const flushDialogue = () => {
-        if (currentDialogueBuffer) {
-           elements.push({
-             id: crypto.randomUUID(),
-             type: 'dialogue',
-             content: currentDialogueBuffer,
-             character: characterName,
-             sceneId: currentScene?.id,
-             sequence: elementSequence++
-           });
-           currentDialogueBuffer = '';
-        }
-      };
-
+      // Skip parentheticals for now or include them? 
+      // User wants "Name of character speaking and actual dialogue saved as one asset"
+      // We will loop until we hit a blank line or another element type
       while (j < lines.length) {
         const nextLine = lines[j].trim();
-        if (!nextLine) {
-           // Blank line ends the dialogue block
-           break; 
-        }
+        if (!nextLine) break; // End of dialogue block
 
-        // If we hit another element type, stop
-        if (isCharacter(nextLine) || isSceneHeading(nextLine) || isTransition(nextLine)) break;
+        // If we hit another character or scene heading, stop
+        if (isCharacter(nextLine) || isSceneHeading(nextLine)) break;
 
-        // Check for Parenthetical
-        if (isParenthetical(nextLine)) {
-           flushDialogue(); // Push previous dialogue first
-           
-           // Push Parenthetical
-           elements.push({
-              id: crypto.randomUUID(),
-              type: 'parenthetical',
-              content: nextLine.replace(/[()]/g, ''), // Store without parens for clean editing
-              character: characterName,
-              sceneId: currentScene?.id,
-              sequence: elementSequence++
-           });
-        } else {
-           // Accumulate Dialogue
-           currentDialogueBuffer += (currentDialogueBuffer ? '\n' : '') + nextLine;
-        }
+        dialogueContent += (dialogueContent ? '\n' : '') + nextLine;
         j++;
       }
 
-      flushDialogue(); // Flush any remaining dialogue
-
       // Advance main loop index
       i = j - 1;
+
+      if (dialogueContent) {
+        const el: ScriptElement = {
+          id: crypto.randomUUID(),
+          type: 'dialogue',
+          content: dialogueContent,
+          character: characterName,
+          sceneId: currentScene?.id,
+          sequence: elementSequence++
+        };
+        elements.push(el);
+      }
+
       lastLineWasBlank = false;
       continue;
     }
 
     // 4. ACTION (Grouped by Block)
+    // If it's none of the above, it's action/description
+    // We want to group contiguous action lines into one block
     let actionContent = line;
     let k = i + 1;
 
@@ -225,6 +207,7 @@ function parseFountain(text: string): ParsedScript {
     };
     elements.push(el);
 
+    // Append to scene action notes for quick reference
     if (currentScene) {
       currentScene.actionNotes += (currentScene.actionNotes ? '\n\n' : '') + actionContent;
     }

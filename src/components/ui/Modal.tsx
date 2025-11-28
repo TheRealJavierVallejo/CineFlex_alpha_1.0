@@ -1,72 +1,127 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { createPortal } from 'react-dom';
 
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+export interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title?: string;
+    children: React.ReactNode;
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+    showCloseButton?: boolean;
+    closeOnBackdrop?: boolean;
+    closeOnEscape?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+const Modal: React.FC<ModalProps> = ({
+    isOpen,
+    onClose,
+    title,
+    children,
+    size = 'md',
+    showCloseButton = true,
+    closeOnBackdrop = true,
+    closeOnEscape = true,
+}) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+    const previousActiveElement = useRef<HTMLElement | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            previousActiveElement.current = document.activeElement as HTMLElement;
+
+            // Focus trap
+            const focusableElements = modalRef.current?.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+
+            if (focusableElements && focusableElements.length > 0) {
+                (focusableElements[0] as HTMLElement).focus();
+            }
+        } else {
+            previousActiveElement.current?.focus();
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (closeOnEscape && e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, onClose, closeOnEscape]);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const sizes = {
+        sm: 'max-w-md',
+        md: 'max-w-2xl',
+        lg: 'max-w-4xl',
+        xl: 'max-w-6xl',
+        full: 'max-w-[95vw] max-h-[95vh]',
     };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+    const handleBackdropClick = (e: React.MouseEvent) => {
+        if (closeOnBackdrop && e.target === e.currentTarget) {
+            onClose();
+        }
+    };
 
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-xl',
-    lg: 'max-w-3xl',
-    xl: 'max-w-5xl',
-    full: 'max-w-[95vw] h-[90vh]'
-  };
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200" 
-        onClick={onClose}
-      />
-      
-      {/* Modal Content */}
-      <div 
-        className={`
-          relative bg-[#09090b] border border-zinc-800 shadow-2xl w-full flex flex-col rounded-sm overflow-hidden
-          animate-in zoom-in-95 duration-200
-          ${sizeClasses[size]}
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
+            onClick={handleBackdropClick}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? 'modal-title' : undefined}
+        >
+            <div
+                ref={modalRef}
+                className={`
+          bg-app-panel border border-border rounded-md window-shadow
+          w-full ${sizes[size]} m-4
+          flex flex-col max-h-[90vh]
+          animate-slide-up
         `}
-      >
-        {/* Header */}
-        <div className="h-12 border-b border-zinc-800 bg-[#050505] flex items-center justify-between px-6 shrink-0">
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-            <span className="w-1 h-4 bg-primary block"></span>
-            {title}
-          </h2>
-          <button 
-            onClick={onClose}
-            className="text-zinc-500 hover:text-white transition-colors p-1"
-          >
-            <X className="w-5 h-5" />
-          </button>
+            >
+                {(title || showCloseButton) && (
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                        {title && (
+                            <h2 id="modal-title" className="text-lg font-semibold text-text-primary">
+                                {title}
+                            </h2>
+                        )}
+                        {showCloseButton && (
+                            <button
+                                onClick={onClose}
+                                className="ml-auto p-1 rounded hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
+                                aria-label="Close modal"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                )}
+                <div className="flex-1 overflow-y-auto p-4">
+                    {children}
+                </div>
+            </div>
         </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-black">
-          {children}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
+    );
 };
 
 export default Modal;
