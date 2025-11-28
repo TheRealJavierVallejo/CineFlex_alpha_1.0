@@ -1,4 +1,3 @@
-
 export const ERAS = [
   "Modern Day",
   "Cyberpunk Future",
@@ -104,3 +103,19 @@ export const THEME = {
     success: '#89D185'
   }
 };
+
+// 30-Color Palette (6 rows x 5 cols)
+export const UI_COLOR_PALETTE = [
+  // Zinc / Slate / Stone
+  "#71717a", "#64748b", "#78716c", "#a1a1aa", "#ffffff",
+  // Blue / Indigo / Cyan
+  "#3b82f6", "#2563eb", "#6366f1", "#06b6d4", "#0ea5e9",
+  // Purple / Pink / Rose
+  "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
+  // Red / Orange / Amber
+  "#ef4444", "#dc2626", "#f97316", "#ea580c", "#f59e0b",
+  // Emerald / Teal / Green
+  "#10b981", "#059669", "#14b8a6", "#0d9488", "#84cc16",
+  // Special / Neon
+  "#eab308", "#8b5cf6", "#f472b6", "#2dd4bf", "#fbbf24"
+];
