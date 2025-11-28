@@ -90,13 +90,10 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
   const handleBulkUpdate = (field: keyof Shot, value: any) => {
     if (selectedIds.size === 0) return;
-    
-    // Prepare batched updates
     const shotsToUpdate = project.shots
         .filter(s => selectedIds.has(s.id))
         .map(s => ({ ...s, [field]: value }));
 
-    // Send single transaction
     if (onBulkUpdateShots) {
         onBulkUpdateShots(shotsToUpdate);
         showToast(`Updated ${selectedIds.size} shots`, 'success');
@@ -137,9 +134,9 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                       variant="secondary" 
                       size="lg" 
                       icon={<Clapperboard className="w-4 h-4" />}
-                      onClick={() => navigate('timeline')}
+                      onClick={() => navigate('board')}
                   >
-                      Go to Timeline
+                      Go to Board
                   </Button>
               </div>
           </div>
@@ -151,84 +148,63 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
       
       {/* 1. TOOLBAR (Only shown if NOT embedded) */}
       {!embedded && (
-      <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0">
+      <div className="nle-header justify-between">
          <div className="flex items-center gap-3 w-full">
-             
-             {/* Filter Icon */}
-             <div className="w-8 h-8 flex items-center justify-center bg-surface-secondary rounded-md border border-border">
-                <Filter className="w-4 h-4 text-primary" />
+             <div className="w-8 h-8 flex items-center justify-center bg-surface-secondary rounded border border-border text-primary">
+                <Filter className="w-4 h-4" />
              </div>
 
-             {/* Search Input */}
              <div className="relative group">
                 <input 
                   value={filterText}
                   onChange={e => setFilterText(e.target.value)}
                   placeholder="Search shots..." 
-                  className="bg-surface-secondary border border-border rounded-md h-8 pl-3 pr-8 text-xs text-text-primary w-48 placeholder-text-muted outline-none focus:border-primary transition-all"
+                  className="nle-input w-48"
                 />
                 {filterText && (
-                   <button onClick={() => setFilterText('')} className="absolute right-2 top-2 text-text-muted hover:text-text-primary">
+                   <button onClick={() => setFilterText('')} className="absolute right-2 top-1.5 text-text-muted hover:text-text-primary">
                       <Trash2 className="w-3 h-3" />
                    </button>
                 )}
              </div>
              
-             <div className="h-6 w-[1px] bg-border mx-1" />
+             <div className="h-4 w-[1px] bg-border mx-1" />
 
-             {/* Scene Filter */}
-             <div className="relative">
-                <select 
-                  value={filterScene}
-                  onChange={e => setFilterScene(e.target.value)}
-                  className="h-8 bg-surface-secondary border border-border rounded-md text-xs text-text-primary pl-2 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[140px]"
-                >
-                   <option value="all">All Scenes</option>
-                   {project.scenes.map(s => (
-                      <option key={s.id} value={s.id}>{s.sequence}. {s.heading}</option>
-                   ))}
-                </select>
-                <ChevronDown className="w-3 h-3 text-text-muted absolute right-2 top-2.5 pointer-events-none" />
-             </div>
+             <select value={filterScene} onChange={e => setFilterScene(e.target.value)} className="nle-input w-36">
+                 <option value="all">All Scenes</option>
+                 {project.scenes.map(s => <option key={s.id} value={s.id}>{s.sequence}. {s.heading}</option>)}
+             </select>
              
-             {/* Shot Type Filter */}
-             <div className="relative">
-                <select 
-                  value={filterType}
-                  onChange={e => setFilterType(e.target.value)}
-                  className="h-8 bg-surface-secondary border border-border rounded-md text-xs text-text-primary pl-2 pr-8 outline-none focus:border-primary appearance-none cursor-pointer min-w-[120px]"
-                >
-                   <option value="all">All Shot Types</option>
-                   {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <ChevronDown className="w-3 h-3 text-text-muted absolute right-2 top-2.5 pointer-events-none" />
-             </div>
+             <select value={filterType} onChange={e => setFilterType(e.target.value)} className="nle-input w-32">
+                 <option value="all">All Types</option>
+                 {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+             </select>
 
              <div className="flex-1" />
 
              <div className="text-xs font-mono text-text-muted">
-                {filteredShots.length} / {project.shots.length} SHOTS
+                {filteredShots.length} SHOTS
              </div>
          </div>
       </div>
       )}
 
       {/* 2. TABLE HEADER */}
-      <div className="flex items-center h-9 bg-surface-secondary border-b border-border text-[10px] font-bold text-text-muted uppercase select-none sticky top-0 z-10 tracking-wider">
-         <div className="w-10 flex justify-center cursor-pointer hover:text-text-primary" onClick={toggleAll}>
+      <div className="flex items-center h-8 bg-surface-secondary border-b border-border text-[10px] font-bold text-text-tertiary uppercase select-none sticky top-0 z-10 tracking-wider">
+         <div className="w-10 flex justify-center cursor-pointer hover:text-white" onClick={toggleAll}>
             {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
          </div>
-         <div className="w-16 text-center">ID</div>
-         <div className="w-16 text-center">Visual</div>
+         <div className="w-16 text-center border-l border-border">ID</div>
+         <div className="w-14 text-center border-l border-border">Still</div>
          <div className="flex-1 px-3 border-l border-border">Scene Assignment</div>
-         <div className="w-32 px-2 border-l border-border">Shot Type</div>
+         <div className="w-32 px-2 border-l border-border">Type</div>
          <div className="w-24 px-2 border-l border-border">Aspect</div>
-         <div className="w-32 px-2 border-l border-border">Time</div>
-         <div className="w-16 text-center border-l border-border">Actions</div>
+         <div className="w-28 px-2 border-l border-border">Time</div>
+         <div className="w-14 text-center border-l border-border">Edit</div>
       </div>
 
       {/* 3. TABLE BODY */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0a0a0a]">
          {filteredShots.map((shot, idx) => {
             const sceneInfo = getSceneInfo(shot.sceneId);
             const isSelected = selectedIds.has(shot.id);
@@ -238,77 +214,70 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                <div 
                   key={shot.id} 
                   className={`
-                    flex items-center h-16 border-b border-border text-[12px] text-text-primary transition-colors hover:bg-surface-hover group
-                    ${isSelected ? 'bg-primary/10 hover:bg-primary/20' : ''}
+                    flex items-center h-10 border-b border-border text-xs text-text-primary transition-colors hover:bg-white/5 group
+                    ${isSelected ? 'bg-primary/10' : ''}
                   `}
                >
                   {/* Checkbox */}
                   <div className="w-10 flex justify-center cursor-pointer" onClick={() => toggleSelection(shot.id)}>
-                     {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-text-muted" />}
+                     {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5 text-text-muted" />}
                   </div>
 
-                  {/* ID (Merged) */}
-                  <div className="w-16 text-center text-text-primary text-[12px]">{idString}</div>
+                  {/* ID */}
+                  <div className="w-16 text-center font-mono text-[11px] text-text-secondary border-l border-border/50">{idString}</div>
 
                   {/* Thumbnail */}
-                  <div className="w-16 p-1.5 h-full cursor-pointer relative" onClick={() => onEditShot(shot)}>
+                  <div className="w-14 h-full p-0.5 border-l border-border/50 cursor-pointer" onClick={() => onEditShot(shot)}>
                      {shot.generatedImage ? (
-                        <img src={shot.generatedImage} className="w-full h-full object-cover rounded-[2px] border border-border group-hover:border-primary/50" />
+                        <img src={shot.generatedImage} className="w-full h-full object-cover rounded-[1px]" />
                      ) : (
-                        <div className="w-full h-full bg-surface rounded-[2px] border border-border flex items-center justify-center group-hover:border-primary/50">
-                           <Film className="w-4 h-4 text-text-muted" />
+                        <div className="w-full h-full bg-[#151515] flex items-center justify-center">
+                           <Film className="w-3 h-3 text-text-muted opacity-30" />
                         </div>
                      )}
-                     {/* Hover Edit Hint */}
-                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white">
-                        <Edit2 className="w-3 h-3" />
-                     </div>
                   </div>
 
-                  {/* Scene Dropdown (Assignment) */}
-                  <div className="flex-1 px-3 border-l border-border h-full flex items-center">
-                     <div className="w-full relative group/scene">
-                         <select
-                             value={shot.sceneId || ''}
-                             onChange={(e) => onUpdateShot({ ...shot, sceneId: e.target.value })}
-                             className="w-full bg-transparent text-primary font-medium outline-none text-[11px] cursor-pointer hover:text-white appearance-none uppercase"
-                         >
-                             {project.scenes.map(s => (
-                                 <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>
-                             ))}
-                         </select>
-                         <Clapperboard className="w-3 h-3 absolute right-0 top-1/2 -translate-y-1/2 text-text-muted group-hover/scene:text-white pointer-events-none" />
-                     </div>
+                  {/* Scene Dropdown */}
+                  <div className="flex-1 px-2 border-l border-border/50 h-full flex items-center min-w-0">
+                     <select
+                         value={shot.sceneId || ''}
+                         onChange={(e) => onUpdateShot({ ...shot, sceneId: e.target.value })}
+                         className="w-full bg-transparent text-primary font-medium outline-none text-[11px] cursor-pointer appearance-none uppercase truncate"
+                     >
+                         {project.scenes.map(s => (
+                             <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>
+                         ))}
+                     </select>
                   </div>
 
                   {/* Shot Type */}
-                  <div className="w-32 px-2 border-l border-border h-full flex items-center">
+                  <div className="w-32 px-2 border-l border-border/50 h-full flex items-center">
                      <select 
                         value={shot.shotType}
                         onChange={(e) => onUpdateShot({ ...shot, shotType: e.target.value })}
-                        className="w-full bg-transparent text-text-primary outline-none text-[12px] cursor-pointer hover:text-white"
+                        className="w-full bg-transparent text-text-secondary outline-none text-[11px] cursor-pointer hover:text-white truncate"
                      >
                         {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                      </select>
                   </div>
 
                   {/* Aspect Ratio */}
-                  <div className="w-24 px-2 border-l border-border h-full flex items-center">
+                  <div className="w-24 px-2 border-l border-border/50 h-full flex items-center">
                      <select 
                         value={shot.aspectRatio || project.settings.aspectRatio}
                         onChange={(e) => onUpdateShot({ ...shot, aspectRatio: e.target.value })}
-                        className="w-full bg-transparent text-text-primary outline-none text-[12px] cursor-pointer hover:text-white"
+                        className="w-full bg-transparent text-text-secondary outline-none text-[11px] cursor-pointer hover:text-white"
                      >
                         {ASPECT_RATIOS.map(t => <option key={t} value={t}>{t}</option>)}
                      </select>
                   </div>
 
                   {/* Time of Day */}
-                  <div className="w-32 px-2 border-l border-border h-full flex items-center">
+                  <div className="w-28 px-2 border-l border-border/50 h-full flex items-center">
                      <select 
                         value={shot.timeOfDay || ''}
                         onChange={(e) => onUpdateShot({ ...shot, timeOfDay: e.target.value || undefined })}
-                        className="w-full bg-transparent text-text-primary outline-none text-[12px] cursor-pointer hover:text-white"
+                        className="w-full bg-transparent text-text-secondary outline-none text-[11px] cursor-pointer hover:text-white truncate"
                      >
                         <option value="">Default</option>
                         {TIMES_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
@@ -316,67 +285,37 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="w-16 border-l border-border h-full flex items-center justify-center gap-1">
-                      <button onClick={() => onDuplicateShot(shot.id)} className="p-1.5 text-text-muted hover:text-white hover:bg-surface-hover rounded" title="Duplicate">
-                         <Layers className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => onDeleteShot(shot.id)} className="p-1.5 text-text-muted hover:text-status-error hover:bg-status-error/10 rounded" title="Delete">
-                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                  <div className="w-14 border-l border-border/50 h-full flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => onDuplicateShot(shot.id)} className="p-1 hover:text-white"><Layers className="w-3 h-3" /></button>
+                      <button onClick={() => onDeleteShot(shot.id)} className="p-1 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                   </div>
                </div>
             );
          })}
       </div>
 
-      {/* 4. BULK ACTIONS BAR (Shows in both modes if embedded, but this component handles its own selection state) */}
+      {/* 4. BULK ACTIONS BAR */}
       {selectedIds.size > 0 && (
-         <div className="h-12 bg-primary text-white flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shrink-0 shadow-lg z-20">
-            <div className="font-bold text-sm flex items-center gap-2">
-               <CheckSquare className="w-4 h-4" />
-               {selectedIds.size} Shots Selected
+         <div className="h-10 bg-primary text-white flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shrink-0 shadow-lg z-20">
+            <div className="font-bold text-xs flex items-center gap-2">
+               <CheckSquare className="w-3.5 h-3.5" />
+               {selectedIds.size} Selected
             </div>
             
             <div className="flex items-center gap-2">
-               <div className="h-4 w-[1px] bg-white/30 mx-2" />
-               
-               {/* Bulk Scene Move */}
-               <select 
-                  onChange={(e) => handleBulkUpdate('sceneId', e.target.value)}
-                  className="bg-black/20 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-black/30 max-w-[150px]"
-                  value="" 
-               >
-                  <option value="" disabled>Move to Scene...</option>
+               <div className="h-3 w-[1px] bg-white/30 mx-2" />
+               <select onChange={(e) => handleBulkUpdate('sceneId', e.target.value)} className="bg-black/20 border border-white/20 text-white text-[10px] h-6 rounded px-1 outline-none cursor-pointer max-w-[120px]" value="">
+                  <option value="" disabled>Move to...</option>
                   {project.scenes.map(s => <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>)}
                </select>
 
-               {/* Bulk Type Change */}
-               <select 
-                  onChange={(e) => handleBulkUpdate('shotType', e.target.value)}
-                  className="bg-black/20 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-black/30"
-                  value="" 
-               >
-                  <option value="" disabled>Set Shot Type...</option>
+               <select onChange={(e) => handleBulkUpdate('shotType', e.target.value)} className="bg-black/20 border border-white/20 text-white text-[10px] h-6 rounded px-1 outline-none cursor-pointer" value="">
+                  <option value="" disabled>Type...</option>
                   {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                </select>
 
-               {/* Bulk Time Change */}
-               <select 
-                  onChange={(e) => handleBulkUpdate('timeOfDay', e.target.value)}
-                  className="bg-black/20 border border-white/20 text-white text-xs h-7 rounded px-2 outline-none cursor-pointer hover:bg-black/30"
-                  value=""
-               >
-                  <option value="" disabled>Set Time...</option>
-                  {TIMES_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
-               </select>
-
-               <div className="h-4 w-[1px] bg-white/30 mx-2" />
-               
-               <button 
-                  onClick={handleBulkDelete}
-                  className="bg-black/20 hover:bg-red-500 text-white px-3 h-7 rounded text-xs font-bold transition-colors flex items-center gap-2"
-               >
-                  <Trash2 className="w-3 h-3" /> Delete Selection
+               <button onClick={handleBulkDelete} className="bg-black/20 hover:bg-red-600 text-white px-2 h-6 rounded text-[10px] font-bold transition-colors flex items-center gap-1">
+                  <Trash2 className="w-3 h-3" /> Delete
                </button>
             </div>
          </div>

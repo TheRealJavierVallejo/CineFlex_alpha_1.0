@@ -1,13 +1,13 @@
 /*
- * 👥 COMPONENT: ASSET MANAGER
- * Commercial Quality Update: Teal Theme & Gallery Grid & Locations
+ * 👥 COMPONENT: ASSET MANAGER (The Media Bin)
+ * Pro NLE Layout: Master-Detail Lists & Dense Grids
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Character, Outfit, ShowToastFn, ImageLibraryItem, Shot, Location } from '../../types';
 import { getCharacters, saveCharacters, getOutfits, saveOutfits, getImageLibrary, getLocations, saveLocations } from '../../services/storage';
 import { compressImage } from '../../services/image';
-import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Grid, Layout, Edit2, CheckCircle, FolderPlus, MapPin } from 'lucide-react';
+import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, CheckCircle, Edit2, MapPin, Search } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
@@ -75,18 +75,12 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       return projectShots.some(shot => shot.generatedImage === imageUrl);
    };
    
-   // Helper: Check usage of asset
    const getUsageCount = (type: 'character' | 'outfit' | 'location', id: string) => {
-       if (type === 'character') {
-           return projectShots.filter(s => s.characterIds?.includes(id)).length;
-       }
-       if (type === 'location') {
-           return projectShots.filter(s => s.locationId === id).length;
-       }
-       return 0; // Outfits not directly linked on shots yet in this version
+       if (type === 'character') return projectShots.filter(s => s.characterIds?.includes(id)).length;
+       if (type === 'location') return projectShots.filter(s => s.locationId === id).length;
+       return 0;
    };
 
-   // Calculate derived stats
    const usedImagesCount = library.filter(img => isImageUsed(img.url)).length;
 
    const handleUpdateAsset = async () => {
@@ -109,7 +103,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       setEditingItem(null);
    };
 
-   // --- CHARACTER ACTIONS ---
+   // --- ACTIONS ---
    const handleAddCharacter = async () => {
       if (!newCharName.trim()) return;
       const newChar: Character = { id: crypto.randomUUID(), name: newCharName, description: newCharDesc, referencePhotos: [] };
@@ -124,17 +118,14 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       const updated = characters.filter(c => c.id !== id);
       setCharacters(updated);
       await saveCharacters(projectId, updated);
-
       const updatedOutfits = outfits.filter(o => o.characterId !== id);
       setOutfits(updatedOutfits);
       await saveOutfits(projectId, updatedOutfits);
-
       if (selectedCharId === id) setSelectedCharId(null);
       setDeleteConfirm(null);
       showToast("Character removed", 'success');
    };
 
-   // --- OUTFIT ACTIONS ---
    const handleAddOutfit = async () => {
       if (!selectedCharId || !newOutfitName.trim()) return;
       const newOutfit: Outfit = { id: crypto.randomUUID(), characterId: selectedCharId, name: newOutfitName, description: newOutfitDesc, referencePhotos: [] };
@@ -153,7 +144,6 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       showToast("Outfit removed", 'success');
    };
 
-   // --- LOCATION ACTIONS ---
    const handleAddLocation = async () => {
       if (!newLocName.trim()) return;
       const newLoc: Location = { id: crypto.randomUUID(), name: newLocName, description: newLocDesc, referencePhotos: [] };
@@ -172,7 +162,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       showToast("Location removed", 'success');
    };
 
-   // --- IMAGE UPLOAD ---
+   // --- IMAGES ---
    const triggerImageUpload = (type: 'character' | 'outfit' | 'location', id: string) => {
       setUploadTarget({ type, id });
       fileInputRef.current?.click();
@@ -191,12 +181,10 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
              try {
                 const compressed = await compressImage(files[i]);
                 newPhotos.push(compressed);
-             } catch (err) {
-                 console.error("Failed to compress image", files[i].name, err);
-             }
+             } catch (err) { console.error(err); }
          }
 
-         if (newPhotos.length === 0) throw new Error("No valid images processed");
+         if (newPhotos.length === 0) throw new Error("No valid images");
 
          if (uploadTarget.type === 'character') {
             const updated = characters.map(c => c.id === uploadTarget.id ? { ...c, referencePhotos: [...(c.referencePhotos || []), ...newPhotos] } : c);
@@ -208,10 +196,9 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
             const updated = locations.map(l => l.id === uploadTarget.id ? { ...l, referencePhotos: [...(l.referencePhotos || []), ...newPhotos] } : l);
             setLocations(updated); await saveLocations(projectId, updated);
          }
-         showToast(`${newPhotos.length} photo(s) uploaded`, 'success');
+         showToast("Upload complete", 'success');
       } catch (e) { 
           showToast("Upload failed", 'error'); 
-          console.error(e);
       } finally { 
           setIsUploading(false); 
           setUploadTarget(null); 
@@ -233,49 +220,42 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       showToast("Photo deleted", 'info');
    };
 
-   if (isLoading) return <div className="p-8 text-center text-text-tertiary">Loading Assets...</div>;
+   if (isLoading) return <div className="h-full flex items-center justify-center text-text-muted"><Loader2 className="animate-spin mr-2" /> Loading Bin...</div>;
 
    return (
       <div className="flex flex-col h-full bg-background overflow-hidden">
          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
 
-         {/* Edit Modal */}
+         {/* Modals */}
          {editingItem && (
             <Modal isOpen={true} onClose={() => setEditingItem(null)} title={`Edit ${editingItem.type}`}>
                <div className="space-y-4">
                   <div>
                      <label className="block text-xs font-medium text-text-secondary mb-1">Name</label>
-                     <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary" />
+                     <input value={editName} onChange={(e) => setEditName(e.target.value)} className="nle-input" />
                   </div>
                   <div>
                      <label className="block text-xs font-medium text-text-secondary mb-1">Description</label>
-                     <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary min-h-[100px] resize-none" />
+                     <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="nle-input min-h-[100px] resize-none" />
                   </div>
                   <div className="flex gap-2 justify-end pt-2">
                      <Button variant="secondary" onClick={() => setEditingItem(null)}>Cancel</Button>
-                     <Button variant="primary" onClick={handleUpdateAsset}>Save Changes</Button>
+                     <Button variant="primary" onClick={handleUpdateAsset}>Save</Button>
                   </div>
                </div>
             </Modal>
          )}
 
-         {/* Delete Confirmation Modal */}
          {deleteConfirm && (
-            <Modal isOpen={true} onClose={() => setDeleteConfirm(null)} title="Delete Item?">
+            <Modal isOpen={true} onClose={() => setDeleteConfirm(null)} title="Delete Asset?">
                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-error/10 rounded-lg border border-error/20">
-                     <AlertTriangle className="w-5 h-5 text-error shrink-0" />
-                     <div className="text-sm text-text-primary">
-                        <p className="mb-1">Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
-                        
-                        {/* Usage Warning */}
+                  <div className="flex items-center gap-3 p-3 bg-red-900/20 rounded border border-red-900/50">
+                     <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                     <div className="text-sm">
+                        <p>Permanently delete <strong>{deleteConfirm.name}</strong>?</p>
                         {getUsageCount(deleteConfirm.type, deleteConfirm.id) > 0 && (
-                            <p className="text-error font-bold mt-2">
-                                Warning: This {deleteConfirm.type} is used in {getUsageCount(deleteConfirm.type, deleteConfirm.id)} shot(s).
-                            </p>
+                            <p className="text-red-400 font-bold mt-1">Warning: Used in {getUsageCount(deleteConfirm.type, deleteConfirm.id)} shot(s).</p>
                         )}
-                        
-                        {deleteConfirm.type === 'character' && <p className="text-xs text-text-secondary mt-1">This will also remove all associated outfits.</p>}
                      </div>
                   </div>
                   <div className="flex gap-2 justify-end">
@@ -284,133 +264,185 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                         if (deleteConfirm.type === 'character') handleDeleteCharacter(deleteConfirm.id);
                         else if (deleteConfirm.type === 'outfit') handleDeleteOutfit(deleteConfirm.id);
                         else handleDeleteLocation(deleteConfirm.id);
-                     }} className="bg-error hover:bg-error/90">Delete</Button>
+                     }} className="bg-red-600 hover:bg-red-700">Delete</Button>
                   </div>
                </div>
             </Modal>
          )}
 
          {previewImage && (
-            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-8 animate-in fade-in" onClick={() => setPreviewImage(null)}>
-               <img src={previewImage} className="max-w-full max-h-full object-contain shadow-2xl rounded" alt="Preview" />
-               <button onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 text-white p-2"><X className="w-8 h-8" /></button>
+            <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-8" onClick={() => setPreviewImage(null)}>
+               <img src={previewImage} className="max-w-full max-h-full object-contain rounded" alt="Preview" />
+               <button onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 text-white"><X className="w-8 h-8" /></button>
             </div>
          )}
 
-         {/* TOP NAVIGATION */}
-         <div className="h-12 border-b border-border flex items-center px-6 gap-6 bg-surface shrink-0">
-            <button onClick={() => setActiveTab('assets')} className={`h-full flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'assets' ? 'border-primary text-text-primary' : 'border-transparent text-text-tertiary hover:text-text-primary'}`}>
-               <User className="w-4 h-4" /> Cast & Wardrobe
+         {/* SUB-HEADER TABS */}
+         <div className="nle-header gap-4">
+            <button onClick={() => setActiveTab('assets')} className={`text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-colors ${activeTab === 'assets' ? 'text-primary' : 'text-text-secondary hover:text-white'}`}>
+               <User className="w-3.5 h-3.5" /> Cast & Wardrobe
             </button>
-            <button onClick={() => setActiveTab('locations')} className={`h-full flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'locations' ? 'border-primary text-text-primary' : 'border-transparent text-text-tertiary hover:text-text-primary'}`}>
-               <MapPin className="w-4 h-4" /> Locations
+            <div className="w-[1px] h-4 bg-border" />
+            <button onClick={() => setActiveTab('locations')} className={`text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-colors ${activeTab === 'locations' ? 'text-primary' : 'text-text-secondary hover:text-white'}`}>
+               <MapPin className="w-3.5 h-3.5" /> Locations
             </button>
-            <button onClick={() => setActiveTab('gallery')} className={`h-full flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'gallery' ? 'border-primary text-text-primary' : 'border-transparent text-text-tertiary hover:text-text-primary'}`}>
-               <ImageIcon className="w-4 h-4" /> Image Gallery
+            <div className="w-[1px] h-4 bg-border" />
+            <button onClick={() => setActiveTab('gallery')} className={`text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-colors ${activeTab === 'gallery' ? 'text-primary' : 'text-text-secondary hover:text-white'}`}>
+               <ImageIcon className="w-3.5 h-3.5" /> Gallery
             </button>
          </div>
 
-         {/* CONTENT AREA */}
+         {/* MAIN CONTENT */}
          <div className="flex-1 overflow-hidden">
-            {activeTab === 'gallery' ? (
-               <div className="h-full flex flex-col">
-                  {/* Gallery Section Switcher */}
-                  <div className="p-6 pb-0 flex items-center justify-between">
-                     <div className="flex gap-2">
-                        <button onClick={() => setGallerySection('all')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${gallerySection === 'all' ? 'bg-primary text-white' : 'bg-surface-secondary text-text-secondary hover:text-text-primary'}`}>All Images ({library.length})</button>
-                        <button onClick={() => setGallerySection('selected')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${gallerySection === 'selected' ? 'bg-primary text-white' : 'bg-surface-secondary text-text-secondary hover:text-text-primary'}`}><CheckCircle className="w-4 h-4" /> Selected Shots ({usedImagesCount})</button>
-                     </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-6">
-                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                        {(gallerySection === 'selected' ? library.filter(img => isImageUsed(img.url)) : library).map((item) => (
-                           <div key={item.id} className="aspect-video bg-black rounded-lg overflow-hidden group relative cursor-pointer" onClick={() => setPreviewImage(item.url)}>
-                              <img src={item.url} className="block w-full h-full object-contain transform scale-[1.01]" loading="lazy" />
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                                 <div className="text-xs text-white/80 line-clamp-2">{item.prompt}</div>
-                                 <div className="text-[10px] text-white/50 mt-1">{new Date(item.createdAt).toLocaleDateString()}</div>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-            ) : activeTab === 'locations' ? (
-               <div className="h-full flex flex-col p-6 overflow-y-auto">
-                  <div className="max-w-4xl mx-auto w-full space-y-8">
-                     {/* Add Location */}
-                     <div className="studio-card p-6">
-                        <h3 className="font-bold text-text-primary mb-4 flex items-center gap-2"><MapPin className="w-4 h-4" /> Add New Location</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                           <input className="studio-input" placeholder="Location Name (e.g. Abandoned Warehouse)" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
-                           <input className="studio-input md:col-span-2" placeholder="Description (e.g. Rusty pillars, puddles on floor)" value={newLocDesc} onChange={e => setNewLocDesc(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()} />
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                           <Button variant="primary" onClick={handleAddLocation} disabled={!newLocName}>Add Location</Button>
-                        </div>
-                     </div>
-
-                     {/* Location List */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {locations.map(loc => (
-                           <div key={loc.id} className="studio-card p-4 relative group">
-                               <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => setEditingItem({ type: 'location', id: loc.id, name: loc.name, description: loc.description })} className="text-text-tertiary hover:text-primary p-2"><Edit2 className="w-4 h-4" /></button>
-                                  <button onClick={() => setDeleteConfirm({ type: 'location', id: loc.id, name: loc.name })} className="text-text-tertiary hover:text-error p-2"><Trash2 className="w-4 h-4" /></button>
-                               </div>
-                               <h4 className="font-bold text-text-primary">{loc.name}</h4>
-                               <p className="text-sm text-text-secondary mb-4">{loc.description}</p>
-                               
-                               <div className="flex gap-2 border-t border-border pt-3 overflow-x-auto pb-1 scrollbar-hide">
-                                   <button onClick={() => triggerImageUpload('location', loc.id)} className="w-16 h-16 border border-dashed border-border rounded-lg flex items-center justify-center hover:bg-surface-secondary transition-colors shrink-0">
-                                      {isUploading && uploadTarget?.id === loc.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5 text-text-tertiary" />}
-                                   </button>
-                                   {loc.referencePhotos?.map((p, i) => (
-                                      <div key={i} className="relative w-16 h-16 group/img shrink-0">
-                                         <img src={p} className="w-full h-full object-cover rounded-lg border border-border cursor-pointer" onClick={() => setPreviewImage(p)} />
-                                         <button onClick={() => handleDeletePhoto('location', loc.id, i)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white rounded-lg"><X className="w-4 h-4" /></button>
-                                      </div>
-                                   ))}
-                               </div>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-            ) : (
+            
+            {/* 1. CAST & WARDROBE (MASTER-DETAIL) */}
+            {activeTab === 'assets' && (
                <div className="flex h-full">
-                  {/* ASSETS TAB (Characters & Outfits) - Preserved */}
-                  <div className="w-[40%] min-w-[320px] border-r border-border flex flex-col bg-surface">
-                     <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-surface-secondary">
-                        <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Cast List</span>
-                        <span className="text-xs text-text-tertiary">{characters.length} Actors</span>
-                     </div>
-                     <div className="p-6 border-b border-border space-y-3 bg-surface">
-                        <input className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Character Name" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
+                  {/* MASTER LIST (Characters) */}
+                  <div className="w-80 border-r border-border bg-surface flex flex-col">
+                     <div className="p-2 border-b border-border bg-surface-secondary space-y-2">
                         <div className="flex gap-2">
-                           <input value={newCharDesc} onChange={(e) => setNewCharDesc(e.target.value)} placeholder="Description" className="flex-1 bg-background border border-border rounded px-3 py-1.5 text-sm outline-none focus:border-primary" onKeyDown={(e) => e.key === 'Enter' && handleAddCharacter()} />
-                           <Button variant="primary" size="sm" icon={<Plus className="w-4 h-4" />} onClick={handleAddCharacter} disabled={newCharName.length === 0}>Add</Button>
+                           <input className="nle-input" placeholder="New Character Name" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
+                           <Button variant="primary" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={handleAddCharacter} disabled={!newCharName.trim()} />
                         </div>
                      </div>
                      <div className="flex-1 overflow-y-auto">
                         {characters.map(char => (
-                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} className={`p-4 border-b border-border cursor-pointer transition-colors group relative ${selectedCharId === char.id ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-surface-secondary border-l-4 border-l-transparent'}`}>
-                              <div className="flex justify-between items-start mb-3">
-                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedCharId === char.id ? 'bg-primary text-white' : 'bg-surface-secondary text-text-tertiary'}`}><User className="w-5 h-5" /></div>
-                                    <div><div className={`font-semibold text-sm ${selectedCharId === char.id ? 'text-primary' : 'text-text-primary'}`}>{char.name}</div><div className="text-xs text-text-secondary">{char.description}</div></div>
+                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} 
+                                className={`p-3 border-b border-border cursor-pointer flex items-center gap-3 transition-colors ${selectedCharId === char.id ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-white/5 border-l-2 border-l-transparent'}`}>
+                                <div className="w-8 h-8 rounded bg-surface-secondary flex items-center justify-center border border-border">
+                                   {char.referencePhotos?.[0] ? <img src={char.referencePhotos[0]} className="w-full h-full object-cover rounded" /> : <User className="w-4 h-4 text-text-tertiary" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                   <div className={`text-xs font-bold truncate ${selectedCharId === char.id ? 'text-primary' : 'text-text-primary'}`}>{char.name}</div>
+                                   <div className="text-[10px] text-text-tertiary truncate">{char.description || "No description"}</div>
+                                </div>
+                                {selectedCharId === char.id && (
+                                   <div className="flex gap-1">
+                                      <button onClick={(e) => { e.stopPropagation(); setEditingItem({ type: 'character', id: char.id, name: char.name, description: char.description }); }} className="p-1 hover:text-white text-text-tertiary"><Edit2 className="w-3 h-3" /></button>
+                                      <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'character', id: char.id, name: char.name }); }} className="p-1 hover:text-red-500 text-text-tertiary"><Trash2 className="w-3 h-3" /></button>
+                                   </div>
+                                )}
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* DETAIL VIEW (Photos & Wardrobe) */}
+                  <div className="flex-1 bg-background flex flex-col overflow-hidden">
+                     {!selectedCharId ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-text-tertiary opacity-50">
+                           <User className="w-12 h-12 mb-2" />
+                           <p>Select a character</p>
+                        </div>
+                     ) : (
+                        <div className="flex-1 overflow-y-auto p-6">
+                           {(() => {
+                              const char = characters.find(c => c.id === selectedCharId);
+                              if (!char) return null;
+                              return (
+                                 <div className="space-y-8 max-w-4xl mx-auto">
+                                    {/* HEADSHOTS */}
+                                    <div>
+                                       <div className="flex items-center justify-between mb-2">
+                                          <h3 className="text-sm font-bold text-text-secondary uppercase">Headshots / References</h3>
+                                          <button onClick={() => triggerImageUpload('character', char.id)} className="nle-btn nle-btn-secondary"><Upload className="w-3 h-3" /> Upload</button>
+                                       </div>
+                                       <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                                          {char.referencePhotos?.map((p, i) => (
+                                             <div key={i} className="relative w-24 h-24 shrink-0 group rounded overflow-hidden border border-border">
+                                                <img src={p} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImage(p)} />
+                                                <button onClick={() => handleDeletePhoto('character', char.id, i)} className="absolute top-1 right-1 bg-black/60 p-1 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
+                                             </div>
+                                          ))}
+                                          {(!char.referencePhotos || char.referencePhotos.length === 0) && (
+                                             <div className="w-24 h-24 border border-dashed border-border rounded flex items-center justify-center text-text-tertiary text-[10px] text-center p-2">
+                                                No photos
+                                             </div>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    {/* WARDROBE LIST */}
+                                    <div>
+                                       <div className="flex items-center justify-between mb-2 border-t border-border pt-6">
+                                          <h3 className="text-sm font-bold text-text-secondary uppercase">Wardrobe</h3>
+                                       </div>
+                                       
+                                       {/* Add Outfit Inline */}
+                                       <div className="flex gap-2 mb-4 bg-surface p-3 rounded border border-border">
+                                          <input placeholder="Outfit Name (e.g. Space Suit)" value={newOutfitName} onChange={e => setNewOutfitName(e.target.value)} className="nle-input flex-1" />
+                                          <input placeholder="Description" value={newOutfitDesc} onChange={e => setNewOutfitDesc(e.target.value)} className="nle-input flex-[2]" onKeyDown={e => e.key === 'Enter' && handleAddOutfit()} />
+                                          <Button variant="primary" size="sm" onClick={handleAddOutfit} disabled={!newOutfitName.trim()}>Add</Button>
+                                       </div>
+
+                                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                          {outfits.filter(o => o.characterId === char.id).map(outfit => (
+                                             <div key={outfit.id} className="bg-surface border border-border rounded p-3 flex flex-col gap-3 group relative hover:border-border-light transition-colors">
+                                                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => setEditingItem({ type: 'outfit', id: outfit.id, name: outfit.name, description: outfit.description })} className="p-1 hover:text-primary text-text-tertiary"><Edit2 className="w-3 h-3" /></button>
+                                                    <button onClick={() => setDeleteConfirm({ type: 'outfit', id: outfit.id, name: outfit.name })} className="p-1 hover:text-red-500 text-text-tertiary"><Trash2 className="w-3 h-3" /></button>
+                                                 </div>
+                                                 <div className="flex gap-3">
+                                                    <div className="w-10 h-10 bg-surface-secondary rounded flex items-center justify-center border border-border">
+                                                       <Shirt className="w-5 h-5 text-text-tertiary" />
+                                                    </div>
+                                                    <div>
+                                                       <div className="font-bold text-sm text-text-primary">{outfit.name}</div>
+                                                       <div className="text-xs text-text-secondary line-clamp-2">{outfit.description}</div>
+                                                    </div>
+                                                 </div>
+                                                 <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar pt-2 border-t border-border/50">
+                                                     <button onClick={() => triggerImageUpload('outfit', outfit.id)} className="w-10 h-10 border border-dashed border-border rounded flex items-center justify-center shrink-0 hover:border-primary hover:text-primary text-text-tertiary transition-colors"><Plus className="w-3 h-3" /></button>
+                                                     {outfit.referencePhotos?.map((p, i) => (
+                                                        <div key={i} className="relative w-10 h-10 shrink-0 group/img rounded overflow-hidden border border-border">
+                                                           <img src={p} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImage(p)} />
+                                                           <button onClick={() => handleDeletePhoto('outfit', outfit.id, i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"><X className="w-3 h-3 text-white" /></button>
+                                                        </div>
+                                                     ))}
+                                                 </div>
+                                             </div>
+                                          ))}
+                                       </div>
+                                    </div>
+                                 </div>
+                              );
+                           })()}
+                        </div>
+                     )}
+                  </div>
+               </div>
+            )}
+
+            {/* 2. LOCATIONS GRID */}
+            {activeTab === 'locations' && (
+               <div className="p-6 h-full overflow-y-auto">
+                  <div className="max-w-5xl mx-auto">
+                     <div className="bg-surface border border-border rounded p-4 mb-6 flex gap-3">
+                        <input className="nle-input w-48" placeholder="Location Name" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
+                        <input className="nle-input flex-1" placeholder="Description" value={newLocDesc} onChange={e => setNewLocDesc(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddLocation()} />
+                        <Button variant="primary" onClick={handleAddLocation} disabled={!newLocName.trim()}>Add Location</Button>
+                     </div>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {locations.map(loc => (
+                           <div key={loc.id} className="bg-surface border border-border rounded overflow-hidden flex flex-col group hover:border-border-light transition-colors">
+                              <div className="p-3 border-b border-border bg-surface-secondary flex justify-between items-start">
+                                 <div>
+                                    <div className="font-bold text-sm text-text-primary">{loc.name}</div>
+                                    <div className="text-xs text-text-tertiary line-clamp-1">{loc.description}</div>
                                  </div>
                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={(e) => { e.stopPropagation(); setEditingItem({ type: 'character', id: char.id, name: char.name, description: char.description }); }} className="text-text-tertiary hover:text-primary p-2"><Edit2 className="w-4 h-4" /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'character', id: char.id, name: char.name }); }} className="text-text-tertiary hover:text-error p-2"><Trash2 className="w-4 h-4" /></button>
+                                    <button onClick={() => setEditingItem({ type: 'location', id: loc.id, name: loc.name, description: loc.description })} className="p-1 hover:text-white text-text-tertiary"><Edit2 className="w-3 h-3" /></button>
+                                    <button onClick={() => setDeleteConfirm({ type: 'location', id: loc.id, name: loc.name })} className="p-1 hover:text-red-500 text-text-tertiary"><Trash2 className="w-3 h-3" /></button>
                                  </div>
                               </div>
-                              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                 <button onClick={(e) => { e.stopPropagation(); triggerImageUpload('character', char.id); }} className="w-10 h-10 border border-dashed border-border rounded-md flex items-center justify-center text-text-tertiary hover:text-primary hover:border-primary shrink-0 transition-colors">{isUploading && uploadTarget?.id === char.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}</button>
-                                 {char.referencePhotos?.map((p, i) => (
-                                    <div key={i} className="relative w-10 h-10 shrink-0 group/img">
-                                       <img src={p} className="w-full h-full object-cover rounded-md border border-border cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewImage(p); }} />
-                                       <button onClick={(e) => { e.stopPropagation(); handleDeletePhoto('character', char.id, i); }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white rounded-md"><X className="w-3 h-3" /></button>
+                              <div className="p-3 flex gap-2 overflow-x-auto custom-scrollbar">
+                                 <button onClick={() => triggerImageUpload('location', loc.id)} className="w-20 h-20 border border-dashed border-border rounded flex items-center justify-center shrink-0 hover:border-primary hover:text-primary text-text-tertiary transition-colors"><Plus className="w-5 h-5" /></button>
+                                 {loc.referencePhotos?.map((p, i) => (
+                                    <div key={i} className="relative w-20 h-20 shrink-0 group/img rounded overflow-hidden border border-border">
+                                       <img src={p} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImage(p)} />
+                                       <button onClick={() => handleDeletePhoto('location', loc.id, i)} className="absolute top-1 right-1 bg-black/60 p-1 rounded text-white opacity-0 group-hover/img:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
                                     </div>
                                  ))}
                               </div>
@@ -418,43 +450,27 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                         ))}
                      </div>
                   </div>
-                  <div className="flex-1 bg-background flex flex-col">
-                     <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-surface-secondary">
-                        <div className="flex items-center gap-2"><span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Wardrobe</span>{selectedCharId && <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded font-medium">{characters.find(c => c.id === selectedCharId)?.name}</span>}</div>
-                     </div>
-                     {!selectedCharId ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-text-tertiary"><Shirt className="w-12 h-12 mb-4 opacity-20" /><p>Select a character to manage wardrobe</p></div>
-                     ) : (
-                        <div className="flex-1 overflow-y-auto p-8">
-                           <div className="studio-card p-4 mb-6">
-                              <div className="space-y-2">
-                                 <input value={newOutfitName} onChange={(e) => setNewOutfitName(e.target.value)} placeholder="Outfit name" className="studio-input" />
-                                 <input value={newOutfitDesc} onChange={(e) => setNewOutfitDesc(e.target.value)} placeholder="Description" className="studio-input" onKeyDown={(e) => e.key === 'Enter' && handleAddOutfit()} />
-                                 <Button variant="primary" onClick={() => handleAddOutfit()} disabled={!newOutfitName} className="w-full">Add Outfit</Button>
+               </div>
+            )}
+
+            {/* 3. GALLERY GRID (MASONRY-ISH) */}
+            {activeTab === 'gallery' && (
+               <div className="flex flex-col h-full">
+                  <div className="nle-header gap-3 border-b-0 border-t-0 bg-background">
+                     <button onClick={() => setGallerySection('all')} className={`text-xs px-3 py-1 rounded transition-colors ${gallerySection === 'all' ? 'bg-primary text-white' : 'bg-surface border border-border text-text-secondary'}`}>All Images ({library.length})</button>
+                     <button onClick={() => setGallerySection('selected')} className={`text-xs px-3 py-1 rounded transition-colors ${gallerySection === 'selected' ? 'bg-primary text-white' : 'bg-surface border border-border text-text-secondary'}`}>Used ({usedImagesCount})</button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4">
+                     <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                        {(gallerySection === 'selected' ? library.filter(img => isImageUsed(img.url)) : library).map((item) => (
+                           <div key={item.id} className="aspect-video bg-black relative group border border-transparent hover:border-primary cursor-pointer rounded-sm overflow-hidden" onClick={() => setPreviewImage(item.url)}>
+                              <img src={item.url} className="w-full h-full object-cover" loading="lazy" />
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                 <p className="text-[10px] text-white line-clamp-2">{item.prompt}</p>
                               </div>
                            </div>
-                           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                              {outfits.filter(o => o.characterId === selectedCharId).map(outfit => (
-                                 <div key={outfit.id} className="studio-card p-4 relative group">
-                                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <button onClick={() => setEditingItem({ type: 'outfit', id: outfit.id, name: outfit.name, description: outfit.description })} className="text-text-tertiary hover:text-primary p-2"><Edit2 className="w-4 h-4" /></button>
-                                       <button onClick={() => setDeleteConfirm({ type: 'outfit', id: outfit.id, name: outfit.name })} className="text-text-tertiary hover:text-error p-2"><Trash2 className="w-4 h-4" /></button>
-                                    </div>
-                                    <div className="flex items-center gap-3 mb-3">
-                                       <div className="w-10 h-10 bg-surface-secondary rounded-lg flex items-center justify-center text-text-tertiary"><Shirt className="w-5 h-5" /></div>
-                                       <div><div className="text-text-primary font-medium text-sm">{outfit.name}</div><div className="text-xs text-text-secondary">{outfit.description}</div></div>
-                                    </div>
-                                    <div className="flex gap-2 mt-2 pt-2 border-t border-border">
-                                       <button onClick={() => triggerImageUpload('outfit', outfit.id)} className="w-12 h-12 border border-dashed border-border rounded-lg flex items-center justify-center hover:bg-surface-secondary transition-colors">{isUploading && uploadTarget?.id === outfit.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 text-text-tertiary" />}</button>
-                                       {outfit.referencePhotos?.map((p, i) => (
-                                          <div key={i} className="relative w-12 h-12 group/img"><img src={p} className="w-full h-full object-cover rounded-lg border border-border cursor-pointer" onClick={() => setPreviewImage(p)} /><button onClick={() => handleDeletePhoto('outfit', outfit.id, i)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white rounded-lg"><X className="w-3 h-3" /></button></div>
-                                       ))}
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                     )}
+                        ))}
+                     </div>
                   </div>
                </div>
             )}
