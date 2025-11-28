@@ -1,90 +1,90 @@
 @import "tailwindcss";
 
 /* ============================================
-   ONYX - INDUSTRIAL HARDWARE THEME
-   Visual Language: Sharp, Dense, Void-Like
+   CINEFLEX STUDIO - COMMAND SYSTEM v4
+   Philosophy: Void Backgrounds, Electric Accents
    ============================================ */
 
-/* 1. DYNAMIC RUNTIME VARIABLES (Controlled by JS) */
+/* 1. RUNTIME VARIABLES */
 :root {
-  /* Theme Colors - Initial Defaults */
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-primary-glow: rgba(59, 130, 246, 0.5);
+  /* COMMAND COLOR (Default: Cinema Red) */
+  --color-primary: #E11D48;
+  --color-primary-hover: #BE123C;
+  --color-primary-glow: rgba(225, 29, 72, 0.3);
 
-  /* Backgrounds */
-  --bg-app: #000000;
-  --bg-panel: #09090b;
-  --bg-surface: #09090b;
+  /* VOID HIERARCHY (Strictly Grayscale) */
+  --bg-app: #030303;        /* The Void (Main Background) */
+  --bg-panel: #0A0A0A;      /* The Stage (Panels/Modals) */
+  --bg-surface: #111111;    /* The Object (Cards/Inputs) */
+  --bg-surface-hover: #1A1A1A;
+
+  /* BORDERS (Subtle Division) */
+  --color-border: #222222;
+  --color-border-subtle: #161616;
+  --color-border-focus: var(--color-primary);
+
+  /* TYPOGRAPHY (High Legibility) */
+  --color-text-primary: #EEEEEE;    /* Almost White */
+  --color-text-secondary: #888888;  /* Neutral Grey */
+  --color-text-muted: #444444;      /* Dark Grey */
   
   --header-height: 48px;
 }
 
-/* 2. TAILWIND THEME CONFIGURATION */
+/* 2. TAILWIND CONFIGURATION */
 @theme {
-  /* Font Families */
+  /* Fonts */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Menlo', monospace;
   --font-screenplay: 'Courier Prime', 'Courier New', monospace;
 
-  /* Color Palette Mappings */
-  
-  /* "primary" now points to the CSS variable we update in JS */
+  /* Color Mappings */
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
   --color-primary-glow: var(--color-primary-glow);
   
-  /* UI Colors */
   --color-background: var(--bg-app);
-  --color-surface: var(--bg-surface);
-  --color-surface-secondary: #050505;
-  --color-surface-hover: #18181b;
+  --color-surface: var(--bg-panel);
+  --color-surface-secondary: var(--bg-surface);
   
-  --color-border: #27272a;
-  --color-border-subtle: #18181b;
-  --color-border-focus: var(--color-primary);
+  --color-border: var(--color-border);
+  
+  /* Text Mappings */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
 
-  /* Text Colors */
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #52525b;
-
-  /* Border Radius */
-  --radius-none: 0px;
-  --radius-sm: 0px;    /* Razor Sharp */
-  --radius-DEFAULT: 1px;
-  --radius-md: 2px;    /* Hardware Feel */
-  --radius-lg: 2px;
-  --radius-xl: 4px;
-  --radius-2xl: 4px;
+  /* Radius (Industrial/Sharp) */
+  --radius-sm: 2px;
+  --radius-DEFAULT: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 9999px;
   
   /* Shadows */
-  --shadow-window: 0 0 0 1px #27272a;
-  --shadow-glow: 0 0 10px var(--color-primary-glow);
+  --shadow-glow: 0 0 15px var(--color-primary-glow);
+  --shadow-void: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* 3. BASE STYLES */
+/* 3. COMPONENT UTILITIES */
 @layer base {
-  *, ::after, ::before {
-    border-color: var(--color-border);
-  }
-
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
+    letter-spacing: -0.01em; /* Tighter, modern tracking */
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Selection State */
   ::selection {
     background-color: var(--color-primary);
-    color: white;
+    color: #ffffff;
   }
 }
 
-/* 4. UTILITY COMPONENTS */
 @layer components {
-  /* Custom Scrollbar */
+  /* Minimal Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -93,25 +93,18 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-800 hover:bg-zinc-700 transition-colors;
+    background-color: #222;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #333;
   }
 
-  /* Light Scrollbar for White Paper Views */
-  .custom-scrollbar-light::-webkit-scrollbar-thumb {
-    @apply bg-zinc-300 hover:bg-zinc-400;
-  }
-
-  /* Input Field Standard */
+  /* Studio Input - "Command Line" feel */
   .studio-input {
-    @apply w-full bg-black border border-border rounded-sm px-3 py-1.5 text-sm outline-none transition-all duration-100 placeholder:text-zinc-700;
-    color: var(--color-text-primary);
+    @apply w-full bg-surface border border-border rounded px-3 py-2 text-sm outline-none transition-all duration-200 text-text-primary placeholder:text-text-muted;
   }
   .studio-input:focus {
-    @apply bg-[#050505] border-primary;
-  }
-
-  /* Button Standard */
-  .app-btn {
-    @apply h-8 px-4 rounded-sm text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer select-none border;
+    @apply border-primary ring-1 ring-primary/20 bg-[#0F0F0F];
   }
 }

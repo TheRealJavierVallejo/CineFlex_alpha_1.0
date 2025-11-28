@@ -92,30 +92,37 @@ export const DEFAULT_WORLD_SETTINGS = {
 // --- PRO DESIGN SYSTEM CONSTANTS ---
 export const THEME = {
   colors: {
-    app: '#18181B',
-    panel: '#1E1E1E',
-    border: '#333333',
-    text: '#CCCCCC',
-    accent: '#007ACC',
-    selection: '#264F78',
-    error: '#F48771',
-    warning: '#CCA700',
-    success: '#89D185'
+    app: '#030303',
+    panel: '#0A0A0A',
+    border: '#222222',
+    text: '#EEEEEE',
+    accent: '#E11D48',
   }
 };
 
-// 30-Color Palette (6 rows x 5 cols)
+// "Director's Choice" Palette - High Voltage Colors
 export const UI_COLOR_PALETTE = [
-  // Zinc / Slate / Stone
-  "#71717a", "#64748b", "#78716c", "#a1a1aa", "#ffffff",
-  // Blue / Indigo / Cyan
-  "#3b82f6", "#2563eb", "#6366f1", "#06b6d4", "#0ea5e9",
-  // Purple / Pink / Rose
-  "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
-  // Red / Orange / Amber
-  "#ef4444", "#dc2626", "#f97316", "#ea580c", "#f59e0b",
-  // Emerald / Teal / Green
-  "#10b981", "#059669", "#14b8a6", "#0d9488", "#84cc16",
-  // Special / Neon
-  "#eab308", "#8b5cf6", "#f472b6", "#2dd4bf", "#fbbf24"
+  // Row 1: The Monochromes (Clean)
+  "#FFFFFF", // Pure White
+  "#A1A1AA", // Zinc
+  "#52525B", // Gunmetal
+  "#27272A", // Graphite
+  
+  // Row 2: The Voltage (High Energy)
+  "#E11D48", // Cinema Red
+  "#EF4444", // Alert Red
+  "#F97316", // Safety Orange
+  "#F59E0B", // Amber Signal
+  
+  // Row 3: The Studio (Cool & Tech)
+  "#3B82F6", // Reference Blue
+  "#6366F1", // Indigo
+  "#8B5CF6", // Electric Violet
+  "#D946EF", // Neon Fuchsia
+  
+  // Row 4: The Elements (Natural/SciFi)
+  "#14B8A6", // Teal
+  "#10B981", // Emerald
+  "#84CC16", // Lime
+  "#06B6D4", // Cyan
 ];
