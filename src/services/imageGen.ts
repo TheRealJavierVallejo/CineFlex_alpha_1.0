@@ -24,17 +24,25 @@ export const generateHybridImage = async (
     // Strictly follows user inputs: Description + Aspect Ratio + Negative Prompt
     
     // A. Aspect Ratio Logic
-    // Convert string ratio (e.g. "16:9") to pixels
+    // Convert string ratio (e.g. "16:9" or "2.39:1") to pixels
     let width = 1280;
     let height = 720;
     
     if (options.aspectRatio) {
-        const [w, h] = options.aspectRatio.split(':').map(Number);
-        if (!isNaN(w) && !isNaN(h)) {
-            // Normalize to ~1 megapixel max for speed
-            const scale = Math.sqrt(1000000 / (w * h));
-            width = Math.round(w * scale);
-            height = Math.round(h * scale);
+        const parts = options.aspectRatio.split(':').map(Number);
+        
+        // Handle standard "W:H" and decimal "2.39:1"
+        const wRatio = parts[0];
+        const hRatio = parts.length > 1 ? parts[1] : 1;
+
+        if (!isNaN(wRatio) && !isNaN(hRatio)) {
+            // Target roughly 1 Megapixel (1,000,000 pixels) for fast generation
+            // Formula: Scale = sqrt(TargetPixels / (W * H))
+            const targetPixels = 1000000; 
+            const scale = Math.sqrt(targetPixels / (wRatio * hRatio));
+            
+            width = Math.round(wRatio * scale);
+            height = Math.round(hRatio * scale);
         }
     }
 
@@ -53,6 +61,7 @@ export const generateHybridImage = async (
     
     // D. Construct URL
     // Model: 'flux' is generally better for cinematic text adherence
+    // We explicitly set 'nologo=true' to keep it clean (though 'Student Preview' is added by UI)
     const encodedPrompt = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${seed}&model=flux${negativeParam}`;
 
