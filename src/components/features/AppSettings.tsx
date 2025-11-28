@@ -33,7 +33,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
             localStorage.setItem('cinesketch_api_key', apiKey.trim());
             showToast("API Key saved securely", 'success');
         } else {
-            localStorage.removeItem(KEYS.ACTIVE_PROJECT_ID); // Fix usage if needed or just use key string
+            localStorage.removeItem('cinesketch_active_project_id'); 
             localStorage.removeItem('cinesketch_api_key');
             showToast("API Key removed", 'info');
         }
@@ -67,10 +67,10 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[#0A0A0A] border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                 
                 {/* Header */}
-                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-[#0A0A0A] shrink-0">
+                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
                     <span className="font-bold text-text-primary text-sm tracking-widest uppercase">Studio Settings</span>
                     <button onClick={onClose} className="p-1 hover:bg-white/10 rounded text-text-secondary hover:text-white transition-colors">
                         <X className="w-5 h-5" />
@@ -78,7 +78,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-border bg-[#050505]">
+                <div className="flex border-b border-border bg-background">
                     <button
                         onClick={() => setActiveTab('theme')}
                         className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'theme' ? 'text-primary border-b-2 border-primary bg-white/5' : 'text-text-secondary hover:text-white hover:bg-white/5'}`}
@@ -94,7 +94,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 </div>
 
                 {/* Content */}
-                <div className="p-8 bg-[#030303] min-h-[320px]">
+                <div className="p-8 bg-background min-h-[320px]">
                     {activeTab === 'theme' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-200">
                             <div>
@@ -168,7 +168,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-border bg-[#0A0A0A] flex justify-end">
+                <div className="p-4 border-t border-border bg-surface flex justify-end">
                     <Button variant="secondary" onClick={onClose}>Done</Button>
                 </div>
             </div>

@@ -132,7 +132,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
 
             {/* SHOT LIST (Lego Blocks) - Only render if expanded */}
             {isExpanded && (
-                <div className="bg-[#121212] min-h-[100px] animate-in slide-in-from-top-1 fade-in duration-200 border-t border-border">
+                <div className="bg-surface-secondary min-h-[100px] animate-in slide-in-from-top-1 fade-in duration-200 border-t border-border">
                     {shots.length > 0 ? (
                         <div className="flex flex-col">
                             {shots.map(shot => (

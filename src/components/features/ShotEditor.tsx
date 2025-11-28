@@ -393,7 +393,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
               <span className="font-bold text-text-primary text-sm flex items-center gap-2">
                 <Eye className="w-4 h-4 text-primary" /> Generated Prompt Preview
               </span>
-              <button onClick={() => setShowPromptPreview(false)} className="text-text-tertiary hover:text-text-primary" aria-label="Close Preview">
+              <button onClick={() => setShowPromptPreview(false)} className="text-text-muted hover:text-text-primary" aria-label="Close Preview">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -451,7 +451,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 <span>Editor</span>
               </h2>
             </div>
-            <div className="text-xs text-text-tertiary font-mono">{shot.id.substring(0, 6)}</div>
+            <div className="text-xs text-text-muted font-mono">{shot.id.substring(0, 6)}</div>
           </div>
 
 
@@ -465,7 +465,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     ref={descriptionRef}
                     value={shot.description}
                     onChange={e => setShot(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full bg-surface-secondary border border-border rounded-lg px-3 py-3 text-sm outline-none focus:border-primary resize-none h-32 leading-relaxed text-text-primary placeholder:text-text-tertiary/50"
+                    className="w-full bg-surface-secondary border border-border rounded-lg px-3 py-3 text-sm outline-none focus:border-primary resize-none h-32 leading-relaxed text-text-primary placeholder:text-text-muted"
                     placeholder="Describe the action, subject, camera angle, and lighting..."
                   />
                 </div>
@@ -484,7 +484,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                             <option key={loc.id} value={loc.id}>{loc.name}</option>
                          ))}
                       </select>
-                      <MapPin className="absolute right-3 top-2.5 w-4 h-4 text-text-tertiary pointer-events-none" />
+                      <MapPin className="absolute right-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" />
                    </div>
                    {activeLocation && (
                       <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded text-xs text-text-secondary flex items-start gap-2">
@@ -547,7 +547,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                         onClick={() => setShot(prev => ({ ...prev, shotType: t }))}
                         className={`px-3 py-1.5 rounded text-xs font-medium transition-all border ${shot.shotType === t
                           ? 'bg-primary text-white border-primary shadow-md'
-                          : 'bg-surface-secondary border-border text-text-secondary hover:border-text-tertiary'
+                          : 'bg-surface-secondary border-border text-text-secondary hover:border-text-primary'
                           }`}
                       >
                         {t}
@@ -604,7 +604,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 <div className={`space-y-2 transition-opacity ${noCharacters ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="text-xs text-text-secondary mb-2">Select characters to include in the scene.</div>
                   {characters.length === 0 ? (
-                    <div className="text-center text-text-tertiary py-4 text-sm border border-dashed border-border rounded">No characters in project</div>
+                    <div className="text-center text-text-muted py-4 text-sm border border-dashed border-border rounded">No characters in project</div>
                   ) : (
                     characters.map(char => (
                       <div
@@ -617,10 +617,10 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                         }}
                         className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${shot.characterIds.includes(char.id)
                           ? 'bg-primary/10 border-primary'
-                          : 'bg-surface-secondary border-border hover:border-text-tertiary'
+                          : 'bg-surface-secondary border-border hover:border-text-muted'
                           }`}
                       >
-                        <div className={`w-4 h-4 rounded-full border mr-3 flex items-center justify-center ${shot.characterIds.includes(char.id) ? 'border-primary bg-primary' : 'border-text-tertiary'
+                        <div className={`w-4 h-4 rounded-full border mr-3 flex items-center justify-center ${shot.characterIds.includes(char.id) ? 'border-primary bg-primary' : 'border-text-muted'
                           }`}>
                           {shot.characterIds.includes(char.id) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                         </div>
@@ -655,7 +655,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     >
                       {shot.sketchImage ? (
                         <img src={shot.sketchImage} className="w-full h-full object-contain p-1" alt="Sketch" />
-                      ) : <Upload className="w-5 h-5 text-text-tertiary" />}
+                      ) : <Upload className="w-5 h-5 text-text-muted" />}
                       <input id="sketch-upload" type="file" onChange={handleSketchUpload} className="hidden" />
                     </div>
                     <div className="flex-1 text-xs text-text-tertiary py-1">
@@ -674,7 +674,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                           <img src={shot.referenceImage} className="w-full h-full object-cover" alt="Reference" />
                           <button onClick={() => setShot(prev => ({ ...prev, referenceImage: undefined }))} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white"><Trash2 className="w-4 h-4" /></button>
                         </>
-                      ) : <Upload className="w-4 h-4 text-text-tertiary" />}
+                      ) : <Upload className="w-4 h-4 text-text-muted" />}
                       <input type="file" onChange={handleReferenceUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
                     <div className="flex-1 space-y-2">
@@ -716,7 +716,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
         {/* RIGHT COLUMN: PREVIEW */}
         <div className="flex-1 bg-black flex flex-col relative">
-          <div className="h-14 border-b border-white/10 flex items-center justify-between px-6 shrink-0 bg-surface">
+          <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>

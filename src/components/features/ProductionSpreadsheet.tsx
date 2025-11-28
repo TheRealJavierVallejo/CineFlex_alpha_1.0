@@ -127,14 +127,14 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
             <div className="p-4 space-y-6">
                 {/* Search */}
                 <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Search</label>
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Search</label>
                     <div className="relative">
-                        <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-zinc-500" />
+                        <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-text-muted" />
                         <input 
                             value={filterText}
                             onChange={e => setFilterText(e.target.value)}
                             placeholder="Keywords..."
-                            className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-white outline-none focus:border-primary placeholder:text-zinc-600"
+                            className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-text-primary outline-none focus:border-primary placeholder:text-text-muted"
                         />
                     </div>
                 </div>
@@ -143,11 +143,11 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                 <CollapsibleSection title="Filtering" defaultOpen icon={<Filter className="w-3.5 h-3.5" />}>
                     <div className="space-y-3 pt-2">
                         <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-400">By Status</label>
+                            <label className="text-[10px] text-text-muted">By Status</label>
                             <select 
                                 value={filterStatus}
                                 onChange={e => setFilterStatus(e.target.value)}
-                                className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
+                                className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 px-2 text-xs text-text-secondary outline-none focus:border-primary cursor-pointer"
                             >
                                 <option value="all">Show All</option>
                                 <option value="missing_image">Missing Image</option>
@@ -158,11 +158,11 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-400">By Scene</label>
+                            <label className="text-[10px] text-text-muted">By Scene</label>
                             <select 
                                 value={filterScene}
                                 onChange={e => setFilterScene(e.target.value)}
-                                className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
+                                className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 px-2 text-xs text-text-secondary outline-none focus:border-primary cursor-pointer"
                             >
                                 <option value="all">All Scenes</option>
                                 {project.scenes.map(s => (
@@ -172,11 +172,11 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-400">By Shot Type</label>
+                            <label className="text-[10px] text-text-muted">By Shot Type</label>
                             <select 
                                 value={filterType}
                                 onChange={e => setFilterType(e.target.value)}
-                                className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
+                                className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 px-2 text-xs text-text-secondary outline-none focus:border-primary cursor-pointer"
                             >
                                 <option value="all">All Types</option>
                                 {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -188,13 +188,13 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                 {/* Stats */}
                 <CollapsibleSection title="Statistics" defaultOpen icon={<BarChart3 className="w-3.5 h-3.5" />}>
                     <div className="grid grid-cols-2 gap-2 pt-2">
-                        <div className="bg-[#18181b] p-2 rounded-sm border border-border text-center">
-                            <div className="text-xl font-bold text-white">{project.shots.length}</div>
-                            <div className="text-[9px] text-zinc-500 uppercase">Total Shots</div>
+                        <div className="bg-surface-secondary p-2 rounded-sm border border-border text-center">
+                            <div className="text-xl font-bold text-text-primary">{project.shots.length}</div>
+                            <div className="text-[9px] text-text-muted uppercase">Total Shots</div>
                         </div>
-                        <div className="bg-[#18181b] p-2 rounded-sm border border-border text-center">
+                        <div className="bg-surface-secondary p-2 rounded-sm border border-border text-center">
                             <div className="text-xl font-bold text-primary">{project.shots.filter(s => s.generatedImage).length}</div>
-                            <div className="text-[9px] text-zinc-500 uppercase">Rendered</div>
+                            <div className="text-[9px] text-text-muted uppercase">Rendered</div>
                         </div>
                     </div>
                 </CollapsibleSection>
@@ -248,7 +248,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         
         {/* 1. TABLE HEADER */}
         <div className="flex items-center h-8 bg-surface-secondary border-b border-border text-[10px] font-bold text-text-secondary uppercase select-none sticky top-0 z-10 tracking-wider pl-10">
-            <div className="w-10 flex justify-center cursor-pointer hover:text-white transition-colors" onClick={toggleAll}>
+            <div className="w-10 flex justify-center cursor-pointer hover:text-text-primary transition-colors" onClick={toggleAll}>
                 {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
             </div>
             <div className="w-16 text-center">ID</div>
@@ -299,7 +299,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                             <select
                                 value={shot.sceneId || ''}
                                 onChange={(e) => onUpdateShot({ ...shot, sceneId: e.target.value })}
-                                className="w-full bg-transparent text-primary font-medium outline-none text-[11px] cursor-pointer hover:text-white appearance-none uppercase tracking-wide"
+                                className="w-full bg-transparent text-text-primary font-medium outline-none text-[11px] cursor-pointer hover:text-text-secondary appearance-none uppercase tracking-wide"
                             >
                                 {project.scenes.map(s => (
                                     <option key={s.id} value={s.id} className="text-black">{s.sequence}. {s.heading}</option>
@@ -340,7 +340,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                     </div>
 
                     <div className="w-16 border-l border-border/50 h-full flex items-center justify-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => onDuplicateShot(shot.id)} className="p-1 text-text-muted hover:text-white hover:bg-surface rounded-sm" title="Duplicate">
+                        <button onClick={() => onDuplicateShot(shot.id)} className="p-1 text-text-muted hover:text-text-primary hover:bg-surface rounded-sm" title="Duplicate">
                             <Layers className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => onDeleteShot(shot.id)} className="p-1 text-text-muted hover:text-error hover:bg-error/10 rounded-sm" title="Delete">

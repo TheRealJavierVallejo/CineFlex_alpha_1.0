@@ -20,14 +20,14 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="flex items-center justify-between mb-0 sticky top-0 z-20 bg-[#09090b]/95 backdrop-blur border-b border-zinc-800 h-14 px-6">
+        <div className="flex items-center justify-between mb-0 sticky top-0 z-20 bg-surface/95 backdrop-blur border-b border-border h-14 px-6">
             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center">
+                <div className="w-8 h-8 bg-background border border-border flex items-center justify-center">
                     <Clapperboard className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                    <h2 className="text-sm font-bold text-white uppercase tracking-widest">Timeline Sequence</h2>
-                    <p className="text-[10px] text-zinc-500 font-mono">MASTER_EDIT_V01</p>
+                    <h2 className="text-sm font-bold text-text-primary uppercase tracking-widest">Timeline Sequence</h2>
+                    <p className="text-[10px] text-text-secondary font-mono">MASTER_EDIT_V01</p>
                 </div>
             </div>
 
@@ -50,7 +50,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                     Export PDF
                 </Button>
 
-                <div className="h-4 w-[1px] bg-zinc-800 mx-2"></div>
+                <div className="h-4 w-[1px] bg-border mx-2"></div>
 
                 <Button
                     variant="secondary"

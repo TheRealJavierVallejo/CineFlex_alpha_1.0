@@ -65,21 +65,21 @@ export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, proj
       showToast("Location added", 'success');
    };
 
-   if (isLoading) return <div className="p-4 text-xs text-zinc-500">Loading...</div>;
+   if (isLoading) return <div className="p-4 text-xs text-text-muted">Loading...</div>;
 
    return (
       <div className="p-4 space-y-6">
          {/* Tab Switcher */}
-         <div className="flex bg-[#18181b] rounded-sm p-0.5 border border-border">
+         <div className="flex bg-surface-secondary rounded-sm p-0.5 border border-border">
             <button 
                 onClick={() => setActiveTab('assets')} 
-                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors ${activeTab === 'assets' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-white'}`}
+                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors ${activeTab === 'assets' ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'}`}
             >
                 Cast
             </button>
             <button 
                 onClick={() => setActiveTab('locations')} 
-                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors ${activeTab === 'locations' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-white'}`}
+                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors ${activeTab === 'locations' ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'}`}
             >
                 Locations
             </button>
@@ -94,17 +94,17 @@ export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, proj
                 
                 <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
                     {characters.map(char => (
-                       <div key={char.id} className="p-2 rounded-sm bg-[#18181b] border border-border flex items-center justify-between group">
+                       <div key={char.id} className="p-2 rounded-sm bg-surface-secondary border border-border flex items-center justify-between group">
                           <div className="flex items-center gap-2 overflow-hidden">
-                             <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center shrink-0 border border-zinc-800">
-                                {char.referencePhotos?.[0] ? <img src={char.referencePhotos[0]} className="w-full h-full object-cover rounded-full" /> : <User className="w-3 h-3 text-zinc-600" />}
+                             <div className="w-6 h-6 bg-surface rounded-full flex items-center justify-center shrink-0 border border-border">
+                                {char.referencePhotos?.[0] ? <img src={char.referencePhotos[0]} className="w-full h-full object-cover rounded-full" /> : <User className="w-3 h-3 text-text-muted" />}
                              </div>
-                             <span className="text-xs font-medium text-zinc-300 truncate">{char.name}</span>
+                             <span className="text-xs font-medium text-text-primary truncate">{char.name}</span>
                           </div>
-                          <span className="text-[9px] text-zinc-600 font-mono">{projectShots.filter(s => s.characterIds.includes(char.id)).length} shots</span>
+                          <span className="text-[9px] text-text-muted font-mono">{projectShots.filter(s => s.characterIds.includes(char.id)).length} shots</span>
                        </div>
                     ))}
-                    {characters.length === 0 && <div className="text-[10px] text-zinc-600 italic text-center py-2">No characters yet</div>}
+                    {characters.length === 0 && <div className="text-[10px] text-text-muted italic text-center py-2">No characters yet</div>}
                 </div>
             </div>
          )}
@@ -118,14 +118,14 @@ export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, proj
                 
                 <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
                     {locations.map(loc => (
-                       <div key={loc.id} className="p-2 rounded-sm bg-[#18181b] border border-border flex items-center justify-between">
+                       <div key={loc.id} className="p-2 rounded-sm bg-surface-secondary border border-border flex items-center justify-between">
                           <div className="flex items-center gap-2 overflow-hidden">
-                             <MapPin className="w-3 h-3 text-zinc-600 shrink-0" />
-                             <span className="text-xs font-medium text-zinc-300 truncate">{loc.name}</span>
+                             <MapPin className="w-3 h-3 text-text-muted shrink-0" />
+                             <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
                           </div>
                        </div>
                     ))}
-                    {locations.length === 0 && <div className="text-[10px] text-zinc-600 italic text-center py-2">No locations yet</div>}
+                    {locations.length === 0 && <div className="text-[10px] text-text-muted italic text-center py-2">No locations yet</div>}
                 </div>
             </div>
          )}
@@ -146,7 +146,7 @@ export const AssetManager: React.FC<AssetManagerProps> = (props) => {
 
    return (
     <PageWithToolRail tools={tools} defaultTool="manager">
-      <div className="flex flex-col h-full bg-black items-center justify-center text-zinc-600">
+      <div className="flex flex-col h-full bg-background items-center justify-center text-text-muted">
           <Package className="w-16 h-16 mb-4 opacity-20" />
           <p className="text-sm font-mono uppercase tracking-widest">Select an Asset Tool</p>
       </div>

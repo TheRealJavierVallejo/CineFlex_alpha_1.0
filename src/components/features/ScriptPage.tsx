@@ -211,17 +211,17 @@ export const ScriptPage: React.FC = () => {
         icon: <AlignLeft className="w-5 h-5" />,
         content: (
             <div className="p-4 space-y-4">
-                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Scenes</div>
+                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">Scenes</div>
                 <div className="space-y-1">
-                    {headings.length === 0 && <div className="text-zinc-600 italic text-xs">No scenes detected.</div>}
+                    {headings.length === 0 && <div className="text-text-muted italic text-xs">No scenes detected.</div>}
                     {headings.map((h, i) => (
                         <button 
                             key={h.id}
                             onClick={() => scrollToElement(h.id)}
-                            className="w-full text-left px-2 py-2 rounded-sm hover:bg-[#18181b] flex gap-2 group transition-colors"
+                            className="w-full text-left px-2 py-2 rounded-sm hover:bg-surface-secondary flex gap-2 group transition-colors"
                         >
-                            <span className="text-[10px] font-mono text-zinc-600 font-bold w-4 mt-0.5">{i + 1}.</span>
-                            <span className="text-xs text-zinc-400 font-medium leading-tight group-hover:text-white">{h.content || "UNTITLED SCENE"}</span>
+                            <span className="text-[10px] font-mono text-text-muted font-bold w-4 mt-0.5">{i + 1}.</span>
+                            <span className="text-xs text-text-secondary font-medium leading-tight group-hover:text-text-primary">{h.content || "UNTITLED SCENE"}</span>
                         </button>
                     ))}
                 </div>
@@ -242,27 +242,27 @@ export const ScriptPage: React.FC = () => {
 
   return (
     <PageWithToolRail tools={tools} defaultTool={null}>
-        <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+        <div className={`relative h-full flex flex-col bg-surface-secondary overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
         
         {/* Toolbar */}
         {hasElements && (
-            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
+            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-background border-border' : ''}`}>
             <div className="flex items-center gap-2 text-text-primary font-medium pl-2">
                 <FileText className="w-4 h-4 text-primary" />
                 <span>Screenplay Editor</span>
             </div>
             <div className="flex items-center gap-4">
-                <div className="flex items-center bg-[#252526] rounded border border-border p-0.5">
-                    <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3.5 h-3.5" /></button>
+                <div className="flex items-center bg-surface-secondary rounded border border-border p-0.5">
+                    <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-surface text-text-secondary hover:text-text-primary disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3.5 h-3.5" /></button>
                     <div className="w-[1px] h-4 bg-border mx-1" />
-                    <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3.5 h-3.5" /></button>
+                    <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-surface text-text-secondary hover:text-text-primary disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3.5 h-3.5" /></button>
                 </div>
                 
                 <div className="flex items-center gap-2">
                     {isSyncing ? (
                         <span className="text-xs text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</span>
                     ) : (
-                        <span className="text-xs text-text-tertiary flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
+                        <span className="text-xs text-text-muted flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
                     )}
                 </div>
                 
@@ -271,7 +271,7 @@ export const ScriptPage: React.FC = () => {
                 {/* Paper Mode Switch */}
                 <button 
                     onClick={() => setIsLightMode(!isLightMode)}
-                    className="p-1.5 rounded text-text-tertiary hover:text-white hover:bg-[#2A2D2E] transition-colors"
+                    className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
                     title={isLightMode ? "Switch to Dark Paper" : "Switch to Light Paper"}
                 >
                     {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -279,7 +279,7 @@ export const ScriptPage: React.FC = () => {
                 
                 <button 
                     onClick={() => setIsZenMode(!isZenMode)}
-                    className={`p-1.5 rounded transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-tertiary hover:text-white hover:bg-[#2A2D2E]'}`}
+                    className={`p-1.5 rounded transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
                     title={isZenMode ? "Exit Zen Mode (Esc)" : "Enter Zen Mode"}
                 >
                     {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -291,7 +291,7 @@ export const ScriptPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden relative">
             <div 
             ref={containerRef}
-            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#111111]" 
+            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-surface-secondary" 
             onClick={(e) => {
                 if (e.target === containerRef.current && hasElements) {
                     setActiveElementId(elements[elements.length - 1].id);
@@ -304,7 +304,7 @@ export const ScriptPage: React.FC = () => {
                         w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
                         ${isLightMode 
                             ? 'bg-white border-zinc-200 shadow-zinc-900/10' 
-                            : 'bg-[#1E1E1E] border-[#333]'}
+                            : 'bg-surface border-border'}
                     `}
                 >
                     <div className="flex flex-col">
