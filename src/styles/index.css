@@ -133,7 +133,15 @@
      LEGACY UTILS (Preserved for compatibility)
      ============================================ */
   .app-input {
-    @apply studio-input h-8;
+    /* Manually duplicated from studio-input to avoid recursive apply error */
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm h-8;
+    @apply outline-none transition-all duration-200;
+    color: var(--text-primary);
+  }
+
+  .app-input:focus {
+    @apply ring-1 ring-[#3b82f6]/30 bg-black/40;
+    border-color: var(--primary);
   }
   
   .app-btn {
