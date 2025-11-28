@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { ArrowUp, ArrowDown, Trash2, Plus, Type, ChevronDown, MapPin, GripVertical } from 'lucide-react';
 import { Scene, Shot, ScriptElement, Project, Location } from '../../types';
 import Button from '../ui/Button';
 import { ShotRow } from './ShotRow';
+import { DebouncedInput } from '../ui/DebouncedInput';
 
 interface SceneItemProps {
     scene: Scene;
@@ -25,7 +26,7 @@ interface SceneItemProps {
     onAddVisual: (shotId: string) => void; 
 }
 
-export const SceneItem: React.FC<SceneItemProps> = ({
+export const SceneItem: React.FC<SceneItemProps> = memo(({
     scene,
     index,
     totalScenes,
@@ -82,9 +83,9 @@ export const SceneItem: React.FC<SceneItemProps> = ({
 
                 {/* Heading & Metadata */}
                 <div className="flex-1 flex flex-col justify-center min-w-0">
-                    <input
+                    <DebouncedInput
                         value={scene.heading}
-                        onChange={(e) => onUpdateScene(scene.id, { heading: e.target.value.toUpperCase() })}
+                        onChange={(val) => onUpdateScene(scene.id, { heading: val.toUpperCase() })}
                         className="bg-transparent text-text-primary font-bold text-lg font-mono outline-none placeholder-text-tertiary w-full tracking-wide truncate focus:text-primary transition-colors"
                         placeholder="INT. SCENE HEADING - DAY"
                         aria-label="Scene Heading"
@@ -189,4 +190,13 @@ export const SceneItem: React.FC<SceneItemProps> = ({
             )}
         </div>
     );
-};
+}, (prev, next) => {
+    // Optimize re-renders
+    return (
+        prev.scene.id === next.scene.id &&
+        prev.scene.heading === next.scene.heading &&
+        prev.scene.locationId === next.scene.locationId &&
+        prev.shots === next.shots && // Array ref equality check is usually enough here if state is immutable
+        prev.index === next.index
+    );
+});

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Shot, ScriptElement } from '../../types';
-import { Film, Trash2, Plus, MessageSquare, Type, X, Image as ImageIcon, Eraser, MoreHorizontal, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Plus, Type, X, Edit2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
+import { LazyImage } from '../ui/LazyImage';
+import { DebouncedInput } from '../ui/DebouncedInput';
 
 interface ShotRowProps {
     shot: Shot;
@@ -15,7 +17,8 @@ interface ShotRowProps {
     onAddVisual: (shotId: string) => void;
 }
 
-export const ShotRow: React.FC<ShotRowProps> = ({
+// Memoized Component
+export const ShotRow: React.FC<ShotRowProps> = memo(({
     shot,
     linkedElements,
     onUpdateShot,
@@ -25,37 +28,16 @@ export const ShotRow: React.FC<ShotRowProps> = ({
     onEditShot,
     onAddVisual
 }) => {
-    const [isHovered, setIsHovered] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    // Helper to get script style based on type
-    const getScriptStyle = (type: ScriptElement['type']) => {
-        const base = "font-mono text-sm leading-relaxed text-text-secondary";
-        switch (type) {
-            case 'scene_heading': return `${base} font-bold uppercase text-text-primary`;
-            case 'character': return `${base} font-bold uppercase text-text-secondary`;
-            case 'dialogue': return `${base} text-text-primary`;
-            case 'parenthetical': return `${base} italic text-text-muted`;
-            case 'transition': return `${base} font-bold uppercase text-right text-text-muted`;
-            default: return `${base}`; // Action
-        }
-    };
-
-    const handleDeleteStill = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onUpdateShot(shot.id, {
-            generatedImage: undefined,
-            generationCandidates: []
-        });
+    // Optimized Description Update
+    const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onUpdateShot(shot.id, { description: e.target.value });
     };
 
     return (
         <>
-            <div
-                className="group/row flex border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[120px]"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            >
+            <div className="group/row flex border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[120px]">
                 {/* 1. VISUAL COLUMN */}
                 <div className="w-[240px] p-3 border-r border-border flex flex-col gap-2 shrink-0 bg-surface">
                     <div className="flex justify-between items-center">
@@ -72,7 +54,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     </div>
 
                     <div
-                        className="aspect-video w-full media-bg border border-border relative group/visual cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                        className="aspect-video w-full border border-border relative group/visual cursor-pointer hover:border-primary transition-colors rounded-sm overflow-hidden bg-background"
                         onClick={() => {
                             if (shot.generatedImage) {
                                 onEditShot(shot);
@@ -81,17 +63,22 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                             }
                         }}
                     >
-                        {shot.generatedImage ? (
-                            <>
-                                <img src={shot.generatedImage} className="w-full h-full object-cover" alt={`Shot ${shot.sequence}`} />
-                                <div className="absolute inset-0 media-control opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    <span className="text-[10px] uppercase font-bold text-white tracking-widest border border-white px-2 py-1">Edit Visual</span>
+                        <LazyImage 
+                            src={shot.generatedImage} 
+                            className="w-full h-full"
+                            placeholder={
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-text-muted group-hover/visual:text-text-secondary transition-colors">
+                                    <Plus className="w-6 h-6" />
+                                    <span className="text-[9px] uppercase tracking-widest">Empty Frame</span>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-text-muted group-hover/visual:text-text-secondary transition-colors">
-                                <Plus className="w-6 h-6" />
-                                <span className="text-[9px] uppercase tracking-widest">Empty Frame</span>
+                            }
+                        />
+
+                        {shot.generatedImage && (
+                            <div className="absolute inset-0 media-control opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <span className="text-[10px] uppercase font-bold text-white tracking-widest border border-white px-2 py-1 flex items-center gap-2">
+                                    <Edit2 className="w-3 h-3"/> Edit
+                                </span>
                             </div>
                         )}
                     </div>
@@ -107,9 +94,10 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     {/* Description Input (if no linked script) */}
                     {linkedElements.length === 0 && (
                         <div className="mb-2">
+                            {/* Standard textarea but could be optimized if typing lags, though textarea debouncing needs a custom component */}
                             <textarea
                                 value={shot.description}
-                                onChange={(e) => onUpdateShot(shot.id, { description: e.target.value })}
+                                onChange={handleDescriptionChange}
                                 placeholder="// Describe shot action..."
                                 className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full"
                                 rows={2}
@@ -179,4 +167,15 @@ export const ShotRow: React.FC<ShotRowProps> = ({
             )}
         </>
     );
-};
+}, (prev, next) => {
+    // Custom comparison function for performance
+    return (
+        prev.shot.id === next.shot.id &&
+        prev.shot.description === next.shot.description &&
+        prev.shot.generatedImage === next.shot.generatedImage &&
+        prev.shot.sequence === next.shot.sequence &&
+        prev.linkedElements.length === next.linkedElements.length &&
+        // Shallow compare linked elements IDs to avoid deep compare
+        prev.linkedElements.every((el, i) => el.id === next.linkedElements[i].id)
+    );
+});

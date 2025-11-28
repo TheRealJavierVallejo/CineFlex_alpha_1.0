@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
 import { Film, Camera, Layers, Trash2, Copy, Edit2 } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
+import { LazyImage } from '../ui/LazyImage';
 
 interface ShotListProps {
   project: Project;
@@ -81,18 +82,18 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
               className="bg-surface border border-border rounded-sm overflow-hidden hover:border-primary cursor-pointer transition-all group relative"
             >
               {/* Thumbnail */}
-              <div className="aspect-video media-bg relative">
-                {shot.generatedImage ? (
-                  <img src={shot.generatedImage} className="w-full h-full object-contain" />
-                ) : shot.sketchImage ? (
-                  <img src={shot.sketchImage} className="w-full h-full object-contain opacity-50 p-2" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-zinc-700" />
-                  </div>
-                )}
+              <div className="aspect-video relative bg-background">
+                <LazyImage
+                    src={shot.generatedImage || shot.sketchImage}
+                    className="w-full h-full"
+                    placeholder={
+                        <div className="w-full h-full flex items-center justify-center">
+                            <Camera className="w-5 h-5 text-zinc-700" />
+                        </div>
+                    }
+                />
 
-                <div className="absolute top-1 left-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10">
+                <div className="absolute top-1 left-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10 z-10">
                   #{shot.sequence}
                 </div>
 
@@ -112,7 +113,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
 
                 {/* Stack Indicator */}
                 {shot.generationCandidates && shot.generationCandidates.length > 1 && (
-                  <div className="absolute bottom-1 right-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] text-zinc-400 flex items-center gap-1 border border-white/10">
+                  <div className="absolute bottom-1 right-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] text-zinc-400 flex items-center gap-1 border border-white/10 z-10">
                     <Layers className="w-2.5 h-2.5" />
                     <span>{shot.generationCandidates.length}</span>
                   </div>
