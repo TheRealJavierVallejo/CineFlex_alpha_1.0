@@ -1,12 +1,13 @@
 /*
  * 💾 SERVICE: STORAGE (The Memory Bank)
  * Refactored for Detached Blob Storage (High Performance) & Zod Validation
+ * NOW INCLUDES: Garbage Collection, Schema Migration, and Sanitization
  */
 
 import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
-import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema, ScriptElementSchema } from './schemas';
+import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema } from './schemas';
 import { z } from 'zod';
 
 const KEYS = {
@@ -39,7 +40,6 @@ const openDB = (): Promise<IDBDatabase> => {
   });
 };
 
-// Generic DB Get
 const dbGet = async <T>(storeName: string, key: string): Promise<T | null> => {
   try {
     const db = await openDB();
@@ -56,7 +56,6 @@ const dbGet = async <T>(storeName: string, key: string): Promise<T | null> => {
   }
 };
 
-// Generic DB Set
 const dbSet = async (storeName: string, key: string, value: any): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -68,7 +67,6 @@ const dbSet = async (storeName: string, key: string, value: any): Promise<void> 
   });
 };
 
-// Generic DB Delete
 const dbDelete = async (storeName: string, key: string): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -80,8 +78,18 @@ const dbDelete = async (storeName: string, key: string): Promise<void> => {
   });
 };
 
-// --- HYDRATION ENGINE (The Magic Part) ---
-// These functions convert Base64/URLs <-> DB References
+const dbGetAllKeys = async (storeName: string): Promise<IDBValidKey[]> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAllKeys();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+    });
+};
+
+// --- HYDRATION ENGINE ---
 
 const REF_PREFIX = '{{IMG::';
 const REF_SUFFIX = '}}';
@@ -90,57 +98,39 @@ const isImageRef = (str: string) => str.startsWith(REF_PREFIX) && str.endsWith(R
 const extractIdFromRef = (ref: string) => ref.substring(REF_PREFIX.length, ref.length - REF_SUFFIX.length);
 const createRef = (id: string) => `${REF_PREFIX}${id}${REF_SUFFIX}`;
 
-/**
- * Saves an image string (Base64 or Blob URL) to the Image Store and returns a Reference ID.
- */
 const persistImage = async (dataUrlOrBlobUrl: string, existingId?: string): Promise<string> => {
-  // If it's already a reference, ignore
   if (isImageRef(dataUrlOrBlobUrl)) return dataUrlOrBlobUrl;
-
-  // If it's empty, return empty
   if (!dataUrlOrBlobUrl) return dataUrlOrBlobUrl;
 
   const id = existingId || crypto.randomUUID();
   let blob: Blob;
 
   try {
-    // Convert Base64 or Blob URL to Blob
     const response = await fetch(dataUrlOrBlobUrl);
     blob = await response.blob();
-
-    // Save Blob to IDB
     await dbSet(IMAGE_STORE_NAME, id, blob);
-
-    // Return the reference tag
     return createRef(id);
   } catch (e) {
     console.error("Failed to persist image", e);
-    return dataUrlOrBlobUrl; // Fallback: keep original string if save fails
+    return dataUrlOrBlobUrl;
   }
 };
 
-/**
- * Loads a Reference ID from the Image Store and returns a usable Blob URL.
- */
 const hydrateImage = async (ref: string): Promise<string> => {
-  if (!isImageRef(ref)) return ref; // Already a normal string
-
+  if (!isImageRef(ref)) return ref;
   const id = extractIdFromRef(ref);
   try {
     const blob = await dbGet<Blob>(IMAGE_STORE_NAME, id);
     if (blob) {
       return URL.createObjectURL(blob);
     }
-    return ''; // Image missing
+    return '';
   } catch (e) {
     console.error("Failed to hydrate image", id, e);
     return '';
   }
 };
 
-/**
- * Deep traverses an object, finds images, and persists them.
- */
 const dehydrateObject = async (obj: any): Promise<any> => {
   if (!obj) return obj;
   if (typeof obj !== 'object') return obj;
@@ -150,22 +140,17 @@ const dehydrateObject = async (obj: any): Promise<any> => {
   }
 
   const newObj: any = { ...obj };
-
-  // Common fields that contain images
   const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
   const arrayImageFields = ['generationCandidates', 'referencePhotos'];
 
   for (const key of Object.keys(newObj)) {
     if (imageFields.includes(key) && typeof newObj[key] === 'string') {
-      // Persist single image
       newObj[key] = await persistImage(newObj[key]);
     }
     else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
-      // Persist array of images
       newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(img)));
     }
     else if (typeof newObj[key] === 'object') {
-      // Recurse
       newObj[key] = await dehydrateObject(newObj[key]);
     }
   }
@@ -173,9 +158,6 @@ const dehydrateObject = async (obj: any): Promise<any> => {
   return newObj;
 };
 
-/**
- * Deep traverses an object, finds references, and loads them.
- */
 const hydrateObject = async (obj: any): Promise<any> => {
   if (!obj) return obj;
   if (typeof obj !== 'object') return obj;
@@ -188,12 +170,10 @@ const hydrateObject = async (obj: any): Promise<any> => {
 
   for (const key of Object.keys(newObj)) {
     const val = newObj[key];
-
     if (typeof val === 'string' && isImageRef(val)) {
       newObj[key] = await hydrateImage(val);
     }
     else if (Array.isArray(val)) {
-      // Check if array contains strings that are refs
       if (val.length > 0 && typeof val[0] === 'string' && isImageRef(val[0])) {
         newObj[key] = await Promise.all(val.map((v: string) => hydrateImage(v)));
       } else {
@@ -210,9 +190,7 @@ const hydrateObject = async (obj: any): Promise<any> => {
 
 // --- PUBLIC API ---
 
-const getStorageKey = (projectId: string, suffix: string) => {
-  return `${KEYS.PROJECT_PREFIX}${projectId}_${suffix}`;
-};
+const getStorageKey = (projectId: string, suffix: string) => `${KEYS.PROJECT_PREFIX}${projectId}_${suffix}`;
 
 export const getProjectsList = (): ProjectMetadata[] => {
   try {
@@ -234,6 +212,44 @@ export const setActiveProjectId = (id: string | null) => {
   else localStorage.removeItem(KEYS.ACTIVE_PROJECT_ID);
 };
 
+// --- MIGRATION & SANITIZATION ---
+
+const sanitizeForExport = (project: Project): Project => {
+    // 1. Remove volatile state
+    const cleanProject = { ...project };
+    
+    // Clear generation flags
+    cleanProject.shots = cleanProject.shots.map(s => ({
+        ...s,
+        generationInProgress: false
+    }));
+    
+    // Future sanitization steps can go here
+    return cleanProject;
+};
+
+const migrateProject = (rawProject: any): Project => {
+    // V1 -> V2 Migration
+    if (!rawProject.shots) rawProject.shots = [];
+    if (!rawProject.scenes) rawProject.scenes = [];
+    
+    // Ensure Script File structure exists
+    if (rawProject.scriptFile === undefined) rawProject.scriptFile = undefined;
+    
+    // Ensure all shots have basic defaults if missing
+    rawProject.shots = rawProject.shots.map((s: any) => ({
+        ...s,
+        shotType: s.shotType || 'Wide Shot',
+        styleStrength: s.styleStrength ?? 100,
+        controlType: s.controlType || 'depth',
+        characterIds: s.characterIds || [],
+        generationCandidates: s.generationCandidates || []
+    }));
+
+    return rawProject as Project;
+};
+
+
 export const createNewProject = async (name: string): Promise<string> => {
   const projectId = crypto.randomUUID();
   const now = Date.now();
@@ -242,9 +258,9 @@ export const createNewProject = async (name: string): Promise<string> => {
     id: projectId,
     name: name,
     settings: { ...DEFAULT_WORLD_SETTINGS, customEras: [], customStyles: [], customTimes: [], customLighting: [], customLocations: [] },
-    scenes: [], // START EMPTY
+    scenes: [],
     shots: [],
-    scriptElements: [], // START EMPTY
+    scriptElements: [],
     createdAt: now,
     lastModified: now
   };
@@ -264,8 +280,8 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'settings'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'shots'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'scenes'));
-  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptElements')); // DELETE SCRIPT
-  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptFile')); // DELETE SCRIPT FILE INFO
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptElements'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptFile'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'characters'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'outfits'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'locations'));
@@ -277,6 +293,9 @@ export const deleteProject = async (projectId: string) => {
   saveProjectsList(updatedList);
 
   if (getActiveProjectId() === projectId) setActiveProjectId(null);
+  
+  // Trigger GC after delete to clean up images
+  garbageCollect();
 };
 
 // --- DATA ACCESS ---
@@ -286,7 +305,7 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
   const scriptKey = getStorageKey(projectId, 'scriptElements');
-  const scriptFileKey = getStorageKey(projectId, 'scriptFile'); // KEY ADDED
+  const scriptFileKey = getStorageKey(projectId, 'scriptFile');
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   const [settings, shots, scenes, scriptElements, scriptFile, metadata] = await Promise.all([
@@ -294,13 +313,12 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     dbGet<Shot[]>(STORE_NAME, shotsKey),
     dbGet<Scene[]>(STORE_NAME, scenesKey),
     dbGet<ScriptElement[]>(STORE_NAME, scriptKey),
-    dbGet<any>(STORE_NAME, scriptFileKey), // LOAD SCRIPT FILE INFO
+    dbGet<any>(STORE_NAME, scriptFileKey),
     dbGet<any>(STORE_NAME, metadataKey)
   ]);
 
   if (!metadata && !settings) return null;
 
-  // 1. Construct Raw Object
   const rawProject = {
     id: projectId,
     name: metadata?.name || 'Untitled',
@@ -308,25 +326,19 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     shots: shots || [],
     scenes: scenes || [],
     scriptElements: scriptElements || [],
-    scriptFile: scriptFile || undefined, // Use loaded file info
+    scriptFile: scriptFile || undefined,
     createdAt: metadata?.createdAt || Date.now(),
     lastModified: metadata?.lastModified || Date.now()
   };
 
-  // 2. VALIDATE & HEAL (Zod)
-  const parseResult = ProjectSchema.safeParse(rawProject);
-
-  if (!parseResult.success) {
-    console.warn(`Project ${projectId} schema validation failed. Auto-healing enabled.`, parseResult.error);
-  }
-
-  const healedProject = parseResult.success ? parseResult.data : rawProject;
-
-  // 3. HYDRATE (Blobs)
+  // VALIDATE & HEAL (Migration)
+  const healedProject = migrateProject(rawProject);
+  
+  // HYDRATE
   console.log(`💧 Hydrating Project: ${healedProject.name}`);
   const hydratedProject = await hydrateObject(healedProject);
 
-  return hydratedProject as Project;
+  return hydratedProject;
 };
 
 export const saveProjectData = async (projectId: string, project: Project) => {
@@ -334,7 +346,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
   const scriptKey = getStorageKey(projectId, 'scriptElements');
-  const scriptFileKey = getStorageKey(projectId, 'scriptFile'); // KEY ADDED
+  const scriptFileKey = getStorageKey(projectId, 'scriptFile');
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   const metadata = {
@@ -345,7 +357,6 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     shotCount: project.shots.length
   };
 
-  // DEHYDRATE: Turn Blobs into References
   const dehydratedProject = await dehydrateObject(project);
 
   await Promise.all([
@@ -353,7 +364,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     dbSet(STORE_NAME, shotsKey, dehydratedProject.shots),
     dbSet(STORE_NAME, scenesKey, dehydratedProject.scenes),
     dbSet(STORE_NAME, scriptKey, dehydratedProject.scriptElements),
-    dbSet(STORE_NAME, scriptFileKey, dehydratedProject.scriptFile), // SAVE SCRIPT FILE INFO
+    dbSet(STORE_NAME, scriptFileKey, dehydratedProject.scriptFile),
     dbSet(STORE_NAME, metadataKey, metadata)
   ]);
 
@@ -367,7 +378,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
 
 export const saveProjectDataDebounced = debounce(saveProjectData, 1000);
 
-// --- ASSETS (Characters/Outfits) ---
+// --- ASSETS ---
 
 export const getCharacters = async (projectId: string): Promise<Character[]> => {
   const data = await dbGet<Character[]>(STORE_NAME, getStorageKey(projectId, 'characters'));
@@ -380,8 +391,6 @@ export const getCharacters = async (projectId: string): Promise<Character[]> => 
 export const saveCharacters = async (projectId: string, chars: Character[]) => {
   const dehydrated = await dehydrateObject(chars);
   await dbSet(STORE_NAME, getStorageKey(projectId, 'characters'), dehydrated);
-
-  // Update count
   const list = getProjectsList();
   const index = list.findIndex(p => p.id === projectId);
   if (index !== -1) {
@@ -402,8 +411,6 @@ export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
   const dehydrated = await dehydrateObject(outfits);
   await dbSet(STORE_NAME, getStorageKey(projectId, 'outfits'), dehydrated);
 };
-
-// --- LOCATIONS ---
 
 export const getLocations = async (projectId: string): Promise<Location[]> => {
   const data = await dbGet<Location[]>(STORE_NAME, getStorageKey(projectId, 'locations'));
@@ -451,10 +458,53 @@ export const toggleImageFavorite = async (projectId: string, imageId: string) =>
   await saveImageLibrary(projectId, updated);
 };
 
+// --- GARBAGE COLLECTION ---
+
+export const garbageCollect = async () => {
+  console.log("🧹 Starting Garbage Collection...");
+  const projects = getProjectsList();
+  const validRefs = new Set<string>();
+
+  // 1. SCAN ALL PROJECTS
+  for (const meta of projects) {
+    const keys = [
+      getStorageKey(meta.id, 'shots'),
+      getStorageKey(meta.id, 'characters'),
+      getStorageKey(meta.id, 'outfits'),
+      getStorageKey(meta.id, 'locations'),
+      getStorageKey(meta.id, 'library')
+    ];
+
+    for (const key of keys) {
+      const data = await dbGet<any>(STORE_NAME, key);
+      const str = JSON.stringify(data);
+      // Regex find all {{IMG::uuid}}
+      const regex = /{{IMG::([a-zA-Z0-9-]+)}}/g;
+      let match;
+      while ((match = regex.exec(str)) !== null) {
+        validRefs.add(match[1]); // The UUID
+      }
+    }
+  }
+
+  // 2. SCAN IMAGE STORE
+  const allImageIds = await dbGetAllKeys(IMAGE_STORE_NAME);
+  let deletedCount = 0;
+
+  for (const id of allImageIds) {
+    if (!validRefs.has(id.toString())) {
+      await dbDelete(IMAGE_STORE_NAME, id.toString());
+      deletedCount++;
+    }
+  }
+
+  console.log(`✨ Garbage Collection Complete. Removed ${deletedCount} orphaned images.`);
+};
+
+
 // --- EXPORT / IMPORT ---
 
 export const exportProjectToJSON = async (projectId: string): Promise<string> => {
-  // For export, we actually want to RE-HYDRATE everything back to Base64
   const project = await getProjectData(projectId);
   const characters = await getCharacters(projectId);
   const outfits = await getOutfits(projectId);
@@ -463,7 +513,8 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
 
   if (!project) throw new Error("Project not found");
 
-  // We need to convert Blob URLs back to Base64 for the export file
+  const cleanProject = sanitizeForExport(project);
+
   const convertBlobUrlToBase64 = async (blobUrl: string): Promise<string> => {
     if (!blobUrl || !blobUrl.startsWith('blob:')) return blobUrl;
     const response = await fetch(blobUrl);
@@ -495,13 +546,12 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
     return newObj;
   };
 
-  const portableProject = await deepConvertToBase64(project);
+  const portableProject = await deepConvertToBase64(cleanProject);
   const portableCharacters = await deepConvertToBase64(characters);
   const portableOutfits = await deepConvertToBase64(outfits);
   const portableLocations = await deepConvertToBase64(locations);
   const portableLibrary = await deepConvertToBase64(library);
 
-  // Validate on Export to ensure we aren't creating broken files
   const exportData: ProjectExport = {
     version: 2,
     metadata: {
@@ -515,7 +565,7 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
     project: portableProject,
     characters: portableCharacters,
     outfits: portableOutfits,
-    locations: portableLocations, // Included
+    locations: portableLocations,
     library: portableLibrary
   };
 
@@ -525,8 +575,6 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
 export const importProjectFromJSON = async (jsonString: string): Promise<string> => {
   try {
     const rawData = JSON.parse(jsonString);
-
-    // 1. VALIDATE IMPORTED DATA
     const parseResult = ProjectExportSchema.safeParse(rawData);
 
     if (!parseResult.success) {
@@ -537,17 +585,19 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
     const data = parseResult.data;
     const projectId = data.project.id;
 
-    // Ensure backwards compat for Scene Architecture (extra safety check)
     if (!data.project.scenes || data.project.scenes.length === 0) {
       const defId = crypto.randomUUID();
       data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '' }];
       data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
     }
 
-    await saveProjectData(projectId, data.project as Project);
+    // SANITIZE IMPORT
+    const cleanProject = migrateProject(data.project);
+
+    await saveProjectData(projectId, cleanProject);
     await saveCharacters(projectId, data.characters as Character[] || []);
     await saveOutfits(projectId, data.outfits as Outfit[] || []);
-    await saveLocations(projectId, data.locations as Location[] || []); // Save locations
+    await saveLocations(projectId, data.locations as Location[] || []);
     await saveImageLibrary(projectId, data.library as ImageLibraryItem[] || []);
 
     const list = getProjectsList();

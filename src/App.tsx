@@ -12,16 +12,16 @@ import {
     TimelineView,
     AssetManager,
     ProjectSettings,
-    ShotList, // Keeping import just in case, though unused in new dashboard
     ScriptPage,
+    ProductionSpreadsheet,
     LazyWrapper
 } from './components/features/LazyComponents';
-import { ProductionSpreadsheet } from './components/features/ProductionSpreadsheet';
+
+import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
 // --- ADAPTER COMPONENTS ---
 
 const DashboardPage = () => {
-    // Using the exposed handlers from WorkspaceLayout
     const {
         project,
         handleUpdateShot,
@@ -33,40 +33,46 @@ const DashboardPage = () => {
 
     return (
         <div className="absolute inset-0 overflow-hidden">
-            <LazyWrapper>
-                <ProductionSpreadsheet
-                    project={project}
-                    onUpdateShot={handleUpdateShot}
-                    onEditShot={handleEditShot}
-                    onDeleteShot={handleDeleteShot}
-                    onDuplicateShot={handleDuplicateShot}
-                    showToast={showToast}
-                />
-            </LazyWrapper>
+            <ErrorBoundary>
+                <LazyWrapper>
+                    <ProductionSpreadsheet
+                        project={project}
+                        onUpdateShot={handleUpdateShot}
+                        onEditShot={handleEditShot}
+                        onDeleteShot={handleDeleteShot}
+                        onDuplicateShot={handleDuplicateShot}
+                        showToast={showToast}
+                    />
+                </LazyWrapper>
+            </ErrorBoundary>
         </div>
     );
 };
 
 const ScriptEditorPage = () => {
     return (
-        <LazyWrapper>
-            <ScriptPage />
-        </LazyWrapper>
+        <ErrorBoundary>
+            <LazyWrapper>
+                <ScriptPage />
+            </LazyWrapper>
+        </ErrorBoundary>
     );
 };
 
 const TimelinePage = () => {
     const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useWorkspace();
     return (
-        <LazyWrapper>
-            <TimelineView
-                project={project}
-                onUpdateProject={handleUpdateProject}
-                onEditShot={handleEditShot}
-                importScript={importScript} // Pass the centralized importer
-                showToast={showToast}
-            />
-        </LazyWrapper>
+        <ErrorBoundary>
+            <LazyWrapper>
+                <TimelineView
+                    project={project}
+                    onUpdateProject={handleUpdateProject}
+                    onEditShot={handleEditShot}
+                    importScript={importScript}
+                    showToast={showToast}
+                />
+            </LazyWrapper>
+        </ErrorBoundary>
     );
 };
 
@@ -74,13 +80,15 @@ const AssetsPage = () => {
     const { project, showToast } = useWorkspace();
     return (
         <div className="absolute inset-0">
-            <LazyWrapper>
-                <AssetManager
-                    projectId={project.id}
-                    projectShots={project.shots}
-                    showToast={showToast}
-                />
-            </LazyWrapper>
+            <ErrorBoundary>
+                <LazyWrapper>
+                    <AssetManager
+                        projectId={project.id}
+                        projectShots={project.shots}
+                        showToast={showToast}
+                    />
+                </LazyWrapper>
+            </ErrorBoundary>
         </div>
     );
 };
@@ -88,7 +96,6 @@ const AssetsPage = () => {
 const SettingsPage = () => {
     const { project, handleUpdateProject, handleUpdateSettings, showToast } = useWorkspace();
 
-    // Helpers for custom settings array manipulation
     const addCustomSetting = (field: any, value: string) => {
         const currentList = (project.settings as any)[field] || [];
         if (!currentList.includes(value)) {
@@ -105,39 +112,33 @@ const SettingsPage = () => {
 
     return (
         <div className="absolute inset-0 p-8">
-            <LazyWrapper>
-                <ProjectSettings
-                    project={project}
-                    onUpdateProject={handleUpdateProject}
-                    onUpdateSettings={handleUpdateSettings}
-                    onAddCustom={addCustomSetting}
-                    onRemoveCustom={removeCustomSetting}
-                    showToast={showToast}
-                />
-            </LazyWrapper>
+            <ErrorBoundary>
+                <LazyWrapper>
+                    <ProjectSettings
+                        project={project}
+                        onUpdateProject={handleUpdateProject}
+                        onUpdateSettings={handleUpdateSettings}
+                        onAddCustom={addCustomSetting}
+                        onRemoveCustom={removeCustomSetting}
+                        showToast={showToast}
+                    />
+                </LazyWrapper>
+            </ErrorBoundary>
         </div>
     );
 };
 
-import { getContrastColor, getGlowColor } from './utils/themeUtils';
-
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
-    // Apply saved theme on mount
     useEffect(() => {
-        // 1. Accent Color
         const savedColor = localStorage.getItem('cinesketch_theme_color');
         if (savedColor) {
             const root = document.documentElement;
             root.style.setProperty('--color-primary', savedColor);
-            root.style.setProperty('--color-primary-hover', savedColor); // Ideally darken this slightly
-
-            // Use smart contrast utility
+            root.style.setProperty('--color-primary-hover', savedColor);
             const foreground = getContrastColor(savedColor);
             root.style.setProperty('--color-primary-foreground', foreground);
-
-            // Apply glow
             try {
                 const glow = getGlowColor(savedColor, 0.5);
                 root.style.setProperty('--color-primary-glow', glow);
@@ -145,8 +146,6 @@ const App: React.FC = () => {
                 console.warn("Failed to apply theme glow", e);
             }
         }
-
-        // 2. Light/Dark Mode
         const savedMode = localStorage.getItem('cinesketch_theme_mode');
         if (savedMode === 'light') {
             document.documentElement.classList.add('light');
@@ -158,20 +157,14 @@ const App: React.FC = () => {
     return (
         <BrowserRouter>
             <Routes>
-                {/* Project Selection / Library */}
                 <Route path="/" element={<ProjectLibrary />} />
-
-                {/* Main Workspace Layout */}
                 <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                    {/* Dashboard is back as Index, but now it's a Spreadsheet */}
                     <Route index element={<DashboardPage />} />
                     <Route path="timeline" element={<TimelinePage />} />
                     <Route path="script" element={<ScriptEditorPage />} />
                     <Route path="assets" element={<AssetsPage />} />
                     <Route path="settings" element={<SettingsPage />} />
                 </Route>
-
-                {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>
