@@ -3,16 +3,17 @@ import { Outlet, useParams, useNavigate, useLocation, useOutletContext, NavLink 
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
-import { CommandPalette } from '../components/CommandPalette'; // CHANGED
+import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
 import SaveStatusIndicator from '../components/ui/SaveStatusIndicator';
-import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film } from 'lucide-react';
+import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film, Sparkles, GraduationCap } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
 import { syncScriptToScenes } from '../services/scriptUtils';
 import { StorageWarning } from '../components/ui/StorageWarning';
+import { useSubscription } from '../context/SubscriptionContext'; // IMPORTED
 
 // Context type for child routes
 export interface WorkspaceContextType {
@@ -34,12 +35,13 @@ export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
+    const { tier } = useSubscription(); // GET TIER
 
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
-    const [showCommandPalette, setShowCommandPalette] = useState(false); // CHANGED
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
     // Auto-save with debouncing
@@ -345,10 +347,19 @@ export const WorkspaceLayout: React.FC = () => {
 
             {/* 3. STATUS BAR (Minimal) */}
             <footer className="h-6 bg-background border-t border-border flex items-center justify-between px-4 text-[9px] font-mono select-none shrink-0 text-text-secondary uppercase tracking-wider">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5">
-                        <Box className="w-3 h-3 opacity-50" /> v3.1 PRO
+                        <Box className="w-3 h-3 opacity-50" /> v3.2 HYBRID
                     </span>
+                    {tier === 'pro' ? (
+                        <span className="flex items-center gap-1.5 text-primary font-bold">
+                            <Sparkles className="w-3 h-3" /> PRO STUDIO
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5 text-text-muted">
+                            <GraduationCap className="w-3 h-3" /> STUDENT TIER
+                        </span>
+                    )}
                 </div>
                 <div>
                     RAM: OPTIMAL
@@ -368,7 +379,6 @@ export const WorkspaceLayout: React.FC = () => {
                 </LazyWrapper>
             )}
 
-            {/* CHANGED: Replaced KeyboardShortcutsPanel with CommandPalette */}
             <CommandPalette 
                 isOpen={showCommandPalette} 
                 onClose={() => setShowCommandPalette(false)} 

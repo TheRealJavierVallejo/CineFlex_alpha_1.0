@@ -6,21 +6,20 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../types';
-// CHANGED: Import Hybrid Generation
 import { generateHybridImage } from '../../services/imageGen';
 import { analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
 import { MODEL_OPTIONS } from '../../constants';
 import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
 import { VariationPicker } from '../features/VariationPicker';
-import { useSubscription } from '../../context/SubscriptionContext'; // IMPORTED
+import { useSubscription } from '../../context/SubscriptionContext';
 
 // Sub-components
 import { ShotDetailsForm } from './shot-editor/ShotDetailsForm';
 import { ShotPreview } from './shot-editor/ShotPreview';
 import { PromptPreviewModal } from './shot-editor/PromptPreviewModal';
 import { FullscreenOverlay } from './shot-editor/FullscreenOverlay';
-import { FeatureGate } from '../ui/FeatureGate'; // IMPORTED
+import { FeatureGate } from '../ui/FeatureGate';
 
 interface ShotEditorProps {
   project: Project;
@@ -42,7 +41,7 @@ const LOADING_MESSAGES = [
 ];
 
 export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, onClose, activeShot, showToast }) => {
-  const { tier, isPro } = useSubscription(); // GET TIER
+  const { tier, isPro } = useSubscription();
 
   // --- STATE ---
   const [shot, setShot] = useState<Shot>(activeShot || {
@@ -248,15 +247,6 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       const effectiveShot = noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot;
       const effectiveChars = noCharacters ? [] : activeChars;
 
-      // PRO FEATURE: Batch Generation
-      if (variationCount > 1 && isPro) {
-        // ... (Batch logic code omitted for brevity as it is Pro only)
-        // For simplicity in this diff, I'm assuming batch only works if isPro
-        // Ideally we would warn user if they try to do batch in Free mode
-      } 
-      
-      // SINGLE GENERATION (Works for Both)
-      // Use new Hybrid Generator
       const img = await generateHybridImage(
           tier,
           effectiveShot,
@@ -430,6 +420,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           setIsFullscreen={setIsFullscreen}
           getAspectRatioStyle={getAspectRatioStyle}
           selectedAspectRatio={selectedAspectRatio}
+          tier={tier} // PASSING TIER
         />
       </div>
 

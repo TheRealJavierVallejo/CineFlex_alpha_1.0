@@ -7,11 +7,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Character, Outfit, ShowToastFn, ImageLibraryItem, Shot, Location } from '../../types';
 import { getCharacters, saveCharacters, getOutfits, saveOutfits, getImageLibrary, getLocations, saveLocations } from '../../services/storage';
 import { compressImage } from '../../services/image';
-import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, Edit2, MapPin, Package } from 'lucide-react';
+import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, Edit2, MapPin, Package, AlertCircle } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
+import { useSubscription } from '../../context/SubscriptionContext'; // IMPORTED
 
 interface AssetManagerProps {
    projectId: string;
@@ -21,6 +22,7 @@ interface AssetManagerProps {
 
 // --- REUSABLE PANEL CONTENT ---
 export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, projectShots, showToast }) => {
+   const { isPro } = useSubscription(); // CHECK TIER
    const [characters, setCharacters] = useState<Character[]>([]);
    const [outfits, setOutfits] = useState<Outfit[]>([]);
    const [locations, setLocations] = useState<Location[]>([]);
@@ -84,6 +86,15 @@ export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, proj
                 Locations
             </button>
          </div>
+         
+         {!isPro && activeTab === 'assets' && (
+             <div className="p-3 bg-surface border border-border rounded-sm flex gap-2 items-start text-text-muted text-[10px]">
+                 <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-text-secondary" />
+                 <div>
+                     <strong className="text-text-secondary">Student Mode:</strong> Characters are for script organization only. To enforce visual consistency across shots, upgrade to Pro.
+                 </div>
+             </div>
+         )}
 
          {activeTab === 'assets' && (
             <div className="space-y-4">

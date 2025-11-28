@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shot } from '../../../types';
 import { MODEL_OPTIONS } from '../../../constants';
-import { Eye, X, Maximize2, Upload, Loader2, Wand2, ImageIcon } from 'lucide-react';
+import { Eye, X, Maximize2, Upload, Loader2, Wand2, ImageIcon, GraduationCap, Zap } from 'lucide-react';
 import Button from '../../ui/Button';
 
 interface ShotPreviewProps {
@@ -21,6 +21,7 @@ interface ShotPreviewProps {
     setIsFullscreen: (value: boolean) => void;
     getAspectRatioStyle: (ratio: string) => React.CSSProperties;
     selectedAspectRatio: string;
+    tier: 'free' | 'pro'; // RECEIVED TIER
 }
 
 export const ShotPreview: React.FC<ShotPreviewProps> = ({
@@ -39,35 +40,56 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
     onGenerate,
     setIsFullscreen,
     getAspectRatioStyle,
-    selectedAspectRatio
+    selectedAspectRatio,
+    tier
 }) => {
     return (
         <div className="flex-1 media-bg flex flex-col relative">
             <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
-                        <div className="flex bg-surface-secondary rounded border border-border p-0.5">
-                            {[1, 2, 4].map(v => (
-                                <button
-                                    key={v}
-                                    onClick={() => setVariationCount(v)}
-                                    className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
-                                >
-                                    {v}
-                                </button>
-                            ))}
+                    {/* TIER-BASED UI: VARIATIONS */}
+                    {tier === 'pro' ? (
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
+                            <div className="flex bg-surface-secondary rounded border border-border p-0.5">
+                                {[1, 2, 4].map(v => (
+                                    <button
+                                        key={v}
+                                        onClick={() => setVariationCount(v)}
+                                        className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
+                                    >
+                                        {v}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
-                        <select
-                            value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
-                            className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
-                        >
-                            {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                        </select>
-                    </div>
+                    ) : (
+                        <div className="flex items-center gap-2 opacity-50 cursor-not-allowed" title="Variations are available in Pro">
+                             <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
+                             <div className="text-xs font-mono text-text-tertiary border border-border px-2 py-0.5 rounded bg-surface-secondary">1 (Free)</div>
+                        </div>
+                    )}
+
+                    <div className="h-4 w-[1px] bg-border" />
+                    
+                    {/* TIER-BASED UI: MODEL SELECTION */}
+                    {tier === 'pro' ? (
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
+                            <select
+                                value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
+                                className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
+                            >
+                                {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <GraduationCap className="w-3.5 h-3.5 text-text-muted" />
+                            <span className="text-xs font-bold text-text-secondary">Student Mode</span>
+                        </div>
+                    )}
+
                     <div className="h-4 w-[1px] bg-border" />
                     <button
                         onClick={onShowPromptPreview}
@@ -119,6 +141,13 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                                 </a>
                             </div>
                         )}
+                        
+                        {/* Free Tier Watermark (Optional Visual Aid) */}
+                        {tier === 'free' && shot.generatedImage && (
+                           <div className="absolute bottom-4 right-4 pointer-events-none opacity-50">
+                               <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/50 px-2 py-1 rounded border border-white/20">Student Preview</span>
+                           </div>
+                        )}
                     </div>
                 </div>
 
@@ -159,16 +188,29 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                     Save Draft
                 </Button>
 
-                <Button
-                    variant="primary"
-                    icon={<Wand2 className="w-4 h-4" />}
-                    onClick={onGenerate}
-                    loading={isGenerating}
-                    disabled={!shot.description}
-                    className="px-8 shadow-lg shadow-blue-900/20"
-                >
-                    {shot.generatedImage ? 'Regenerate' : 'Generate Shot'}
-                </Button>
+                {tier === 'pro' ? (
+                    <Button
+                        variant="primary"
+                        icon={<Wand2 className="w-4 h-4" />}
+                        onClick={onGenerate}
+                        loading={isGenerating}
+                        disabled={!shot.description && !shot.sketchImage}
+                        className="px-8 shadow-lg shadow-blue-900/20"
+                    >
+                        {shot.generatedImage ? 'Regenerate' : 'Generate Shot'}
+                    </Button>
+                ) : (
+                    <Button
+                        variant="primary"
+                        icon={<Zap className="w-4 h-4" />}
+                        onClick={onGenerate}
+                        loading={isGenerating}
+                        disabled={!shot.description && !shot.sketchImage}
+                        className="px-8 bg-zinc-700 hover:bg-zinc-600 text-white border-zinc-600"
+                    >
+                         {shot.generatedImage ? 'Regenerate (Fast)' : 'Fast Generate'}
+                    </Button>
+                )}
             </div>
         </div>
     );
