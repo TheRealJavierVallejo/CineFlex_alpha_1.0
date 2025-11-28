@@ -1,63 +1,49 @@
 import React from 'react';
-import { AlertTriangle, Database } from 'lucide-react';
-import { StorageQuota, formatBytes } from '../../utils/storageQuota';
+import { AlertTriangle, HardDrive } from 'lucide-react';
+import { useStorageQuota, formatBytes } from '../../utils/storageQuota';
+import { garbageCollect } from '../../services/storage';
 
-interface StorageWarningProps {
-    quota: StorageQuota;
-    onDismiss?: () => void;
-}
+export const StorageWarning: React.FC = () => {
+    const { quota, loading } = useStorageQuota();
 
-export const StorageWarning: React.FC<StorageWarningProps> = ({ quota, onDismiss }) => {
-    if (!quota.isNearLimit) return null;
+    if (loading || !quota || !quota.isNearLimit) return null;
 
-    const severity = quota.isCritical ? 'critical' : 'warning';
-    const bgColor = severity === 'critical' ? 'bg-red-900/20' : 'bg-yellow-900/20';
-    const borderColor = severity === 'critical' ? 'border-red-500/50' : 'border-yellow-500/50';
-    const textColor = severity === 'critical' ? 'text-red-400' : 'text-yellow-400';
+    const handleCleanup = async () => {
+        if (confirm("Run garbage collection? This will remove orphaned images to free up space.")) {
+            await garbageCollect();
+            window.location.reload(); // Simple reload to refresh quota state
+        }
+    };
 
     return (
-        <div className={`${bgColor} border ${borderColor} rounded-lg p-4 mb-4`}>
-            <div className="flex items-start gap-3">
-                <div className={`shrink-0 ${textColor}`}>
-                    {severity === 'critical' ? (
-                        <AlertTriangle className="w-5 h-5" />
-                    ) : (
-                        <Database className="w-5 h-5" />
-                    )}
+        <div className={`
+            fixed bottom-4 left-4 z-50 p-4 rounded-md shadow-lg border backdrop-blur-md flex items-center gap-4 max-w-sm animate-in slide-in-from-bottom-4
+            ${quota.isCritical ? 'bg-red-900/90 border-red-500 text-white' : 'bg-yellow-900/90 border-yellow-500 text-yellow-100'}
+        `}>
+            <div className="p-2 bg-white/10 rounded-full">
+                {quota.isCritical ? <AlertTriangle className="w-5 h-5" /> : <HardDrive className="w-5 h-5" />}
+            </div>
+            
+            <div className="flex-1">
+                <h4 className="text-xs font-bold uppercase tracking-wider mb-1">
+                    {quota.isCritical ? 'Storage Critical' : 'Storage Warning'}
+                </h4>
+                <p className="text-xs opacity-90 mb-2">
+                    {formatBytes(quota.usage)} used of {formatBytes(quota.quota)} ({Math.round(quota.percentUsed)}%)
+                </p>
+                <div className="w-full h-1 bg-black/20 rounded-full overflow-hidden">
+                    <div 
+                        className="h-full bg-white transition-all duration-500" 
+                        style={{ width: `${quota.percentUsed}%` }} 
+                    />
                 </div>
-
-                <div className="flex-1">
-                    <h3 className={`font-semibold ${textColor} mb-1`}>
-                        {severity === 'critical' ? 'Storage Almost Full' : 'Storage Running Low'}
-                    </h3>
-                    <p className="text-sm text-text-secondary mb-2">
-                        You're using {formatBytes(quota.usage)} of {formatBytes(quota.quota)} ({Math.round(quota.percentUsed)}%).
-                        {severity === 'critical'
-                            ? ' Please free up space by deleting unused projects or images.'
-                            : ' Consider cleaning up old data to prevent issues.'}
-                    </p>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-2">
-                        <div
-                            className={`h-full transition-all ${severity === 'critical' ? 'bg-red-500' : 'bg-yellow-500'}`}
-                            style={{ width: `${Math.min(quota.percentUsed, 100)}%` }}
-                        />
-                    </div>
-                </div>
-
-                {onDismiss && (
-                    <button
-                        onClick={onDismiss}
-                        className="shrink-0 text-text-muted hover:text-text-primary"
-                        aria-label="Dismiss"
-                    >
-                        ×
-                    </button>
-                )}
+                <button 
+                    onClick={handleCleanup}
+                    className="mt-2 text-[10px] underline font-bold hover:text-white"
+                >
+                    Run Cleanup Tool
+                </button>
             </div>
         </div>
     );
 };
-
-export default StorageWarning;

@@ -12,6 +12,7 @@ import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
 import { syncScriptToScenes } from '../services/scriptUtils';
+import { StorageWarning } from '../components/ui/StorageWarning';
 
 // Context type for child routes
 export interface WorkspaceContextType {
@@ -268,6 +269,7 @@ export const WorkspaceLayout: React.FC = () => {
     return (
         <div className="h-screen w-screen bg-background text-text-primary flex flex-col overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
             <ToastContainer toasts={toasts} onClose={closeToast} />
+            <StorageWarning />
 
             {/* 1. HEADER (Command Center) */}
             <header className="h-12 bg-background border-b border-border flex items-center justify-between px-4 select-none shrink-0 z-30 relative">
