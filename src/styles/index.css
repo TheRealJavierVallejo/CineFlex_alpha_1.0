@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ============================================
-   CINEFLEX STUDIO - COMMAND SYSTEM v4
-   Philosophy: Void Backgrounds, Electric Accents
+   CINEFLEX STUDIO - COMMAND SYSTEM v4.1
+   Philosophy: Soft Charcoal & Silver Paper
    ============================================ */
 
 /* 1. RUNTIME VARIABLES */
@@ -15,20 +15,21 @@
   /* CONTRAST FOREGROUND (Auto-calculated: White or Black) */
   --color-primary-foreground: #FFFFFF;
 
-  /* VOID HIERARCHY (Strictly Grayscale) - DARK MODE DEFAULT */
-  --bg-app: #030303;
-  /* The Void (Main Background) */
-  --bg-panel: #0A0A0A;
-  /* The Stage (Panels/Modals) */
-  --bg-surface: #111111;
-  /* The Object (Cards/Inputs) */
-  --bg-surface-hover: #1A1A1A;
-  --bg-surface-secondary: #111111;
-  /* Input backgrounds */
+  /* DARK MODE: SOFT CHARCOAL (Lifted from Void) */
+  /* Reduced contrast strain by moving from #030303 to #0C0C0E */
+  --bg-app: #0C0C0E;
+  
+  --bg-panel: #141416;
+  /* Slightly lighter panels */
+  --bg-surface: #1C1C1F;
+  /* Cards/Elements */
+  --bg-surface-hover: #27272A;
+  --bg-surface-secondary: #222225;
+  /* Inputs */
 
   /* BORDERS (Subtle Division) */
-  --color-border: #222222;
-  --color-border-subtle: #161616;
+  --color-border: #2A2A2D;
+  --color-border-subtle: #202022;
   --color-border-focus: var(--color-primary);
 
   /* TYPOGRAPHY (High Legibility) */
@@ -53,21 +54,22 @@
 
 /* LIGHT MODE OVERRIDES */
 :root.light {
-  /* PAPER HIERARCHY */
-  --bg-app: #F4F4F5;
-  /* Zinc-100 (Main Background) */
-  --bg-panel: #FFFFFF;
-  /* White (Panels) */
+  /* LIGHT MODE: SILVER PAPER (Reduced Glare) */
+  /* Darkened background from #F4F4F5 to #E4E4E7 to reduce eye strain */
+  --bg-app: #E4E4E7;
+  
+  --bg-panel: #F8F8FA;
+  /* Off-white panels */
   --bg-surface: #FFFFFF;
-  /* White (Cards) */
-  --bg-surface-hover: #FAFAFA;
-  --bg-surface-secondary: #F4F4F5;
-  /* Inputs darker than surface in light mode */
+  /* Pure white cards */
+  --bg-surface-hover: #F4F4F5;
+  --bg-surface-secondary: #F0F0F3;
+  /* Inputs */
 
   /* BORDERS */
-  --color-border: #E4E4E7;
-  /* Zinc-200 */
-  --color-border-subtle: #F4F4F5;
+  --color-border: #D4D4D8;
+  /* Darker borders for better definition */
+  --color-border-subtle: #E4E4E7;
 
   /* TYPOGRAPHY */
   --color-text-primary: #09090B;
