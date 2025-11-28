@@ -229,28 +229,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         }
     ];
 
-    // If we have scenes but no shots (e.g. just imported script but haven't made shots), show standard empty table view
-    // The previous check handled the "Complete New Project" state. 
-    // This return is for "Project initialized but empty shot list".
-    if (project.shots.length === 0) {
-         return (
-             <PageWithToolRail tools={tools} defaultTool={null}>
-                <div className="flex flex-col h-full items-center justify-center bg-background text-center p-8">
-                    <div className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center mb-6 border border-border shadow-inner">
-                        <LayoutGrid className="w-8 h-8 text-text-muted" />
-                    </div>
-                    <h2 className="text-lg font-bold text-text-primary mb-2">Ready for Shots</h2>
-                    <p className="text-text-secondary max-w-md mb-8 leading-relaxed text-sm">
-                        You have {project.scenes.length} scenes. Create shots in the Timeline or use the Script Editor.
-                    </p>
-                    <div className="flex gap-4">
-                        <Button variant="primary" size="lg" icon={<FileText className="w-4 h-4" />} onClick={() => navigate('script')}>Open Script Editor</Button>
-                        <Button variant="secondary" size="lg" icon={<Clapperboard className="w-4 h-4" />} onClick={() => navigate('timeline')}>Go to Timeline</Button>
-                    </div>
-                </div>
-            </PageWithToolRail>
-         );
-    }
+    // NOTE: Removed the 'Ready for Shots' splash screen block here.
+    // It will now fall through to the PageWithToolRail render below, showing an empty table.
 
     return (
         <PageWithToolRail tools={tools} defaultTool={null}>
