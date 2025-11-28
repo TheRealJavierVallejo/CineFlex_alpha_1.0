@@ -1,7 +1,7 @@
 /*
  * 📜 COMPONENT: SCRIPT PICKER
  * Selection Modal for linking script lines to shots
- * Theme: White Paper / Standard Screenplay Format
+ * Theme: Dark Mode / Professional Screenplay Format
  */
 
 import React, { useMemo } from 'react';
@@ -68,51 +68,49 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     }, [scriptElements, sceneId]);
 
     const getElementClasses = (type: ScriptElement['type']) => {
-        // Strict screenplay formatting styles
-        const base = "font-screenplay text-base leading-relaxed text-black transition-colors";
+        // Strict screenplay formatting styles - DARK MODE MATCH
+        const base = "font-screenplay text-[17px] leading-relaxed transition-colors duration-200";
         
         switch (type) {
             case 'scene_heading':
-                return `${base} font-bold uppercase py-6 mb-6 mt-4 border-b border-black/5 block w-full`;
+                return `${base} font-bold uppercase pt-8 pb-4 border-b border-white/5 mb-4 block w-full text-[#E8E8E8] text-left`;
             case 'action':
-                return `${base} text-left mb-4 block w-full`;
+                return `${base} text-left mb-4 block w-full text-[#CCCCCC]`;
             case 'character':
-                return `${base} font-bold uppercase text-center mt-6 w-[60%] mx-auto tracking-widest block`;
+                return `${base} font-bold uppercase text-center mt-4 w-full max-w-[22rem] mx-auto tracking-widest block text-[#E8E8E8]`;
             case 'dialogue':
-                return `${base} text-center w-[70%] mx-auto mb-4 block`;
+                return `${base} text-left w-full max-w-[34rem] mx-auto mb-2 block text-[#CCCCCC]`;
             case 'parenthetical':
-                return `${base} italic text-center w-[50%] mx-auto -mt-0 mb-0 block`;
+                return `${base} italic text-left w-full max-w-[20rem] mx-auto mb-0 block text-[#969696] text-sm`;
             case 'transition':
-                return `${base} font-bold uppercase text-right mt-4 mb-4 block`;
+                return `${base} font-bold uppercase text-right mt-4 mb-4 block text-[#E8E8E8] pr-12`;
             default:
-                return `${base}`;
+                return `${base} text-[#CCCCCC]`;
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
             <div 
-                className="bg-zinc-100 w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
+                className="bg-[#1E1E1E] border border-[#333] w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="h-12 border-b border-zinc-300 flex items-center justify-between px-8 bg-zinc-200 shrink-0">
-                    <h3 className="font-bold text-zinc-700 flex items-center gap-2 text-xs uppercase tracking-widest font-sans">
-                        <Type className="w-4 h-4 text-zinc-600" />
+                <div className="h-12 border-b border-[#333] flex items-center justify-between px-8 bg-[#18181B] shrink-0">
+                    <h3 className="font-bold text-[#E8E8E8] flex items-center gap-2 text-xs uppercase tracking-widest font-sans">
+                        <Type className="w-4 h-4 text-primary" />
                         Select Script Element
                     </h3>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-black transition-colors">
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content - The "White Page" */}
-                <div className="overflow-y-auto p-12 flex-1 bg-white font-screenplay shadow-inner custom-scrollbar-light">
+                {/* Content - Dark Editor Look */}
+                <div className="overflow-y-auto p-12 flex-1 bg-[#111111] font-screenplay shadow-inner">
                     {groups.length > 0 ? (
-                        <div className="max-w-3xl mx-auto pl-20 pr-12 min-h-full bg-white relative">
+                        <div className="max-w-[850px] mx-auto pl-20 pr-12 min-h-full bg-[#1E1E1E] border border-[#333] relative p-[100px] shadow-2xl">
                             {groups.map((group, idx) => {
-                                // Check if *all* items in block are used, or *any*? Usually if the dialogue is used, the whole block is 'linked'.
-                                // We'll say if ANY part of the block is linked, show linked status.
                                 const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                 const isHeading = group.items[0].type === 'scene_heading';
 
@@ -122,7 +120,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                         className={`
                                             relative group transition-opacity duration-200
                                             ${isHeading ? 'pointer-events-none' : 'cursor-pointer'}
-                                            ${isLinked ? 'opacity-40 grayscale' : 'hover:text-blue-900'}
+                                            ${isLinked ? 'opacity-30 grayscale' : 'hover:bg-white/5 rounded-sm -mx-4 px-4'}
                                         `}
                                         onClick={() => !isLinked && !isHeading && onSelect(group.items)}
                                     >
@@ -135,9 +133,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
                                         {/* Hover Arrow (Left Margin) */}
                                         {!isLinked && !isHeading && (
-                                            <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="flex items-center gap-1 text-blue-600 font-sans font-bold text-[10px] uppercase tracking-wider bg-white/0">
-                                                    Add <ArrowRight className="w-4 h-4" />
+                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1 text-primary font-sans font-bold text-[10px] uppercase tracking-wider">
+                                                    Link <ArrowRight className="w-3 h-3" />
                                                 </div>
                                             </div>
                                         )}
@@ -145,7 +143,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                         {/* Linked Label (Left Margin) */}
                                         {isLinked && (
                                             <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4">
-                                                 <div className="text-zinc-400 font-sans font-bold text-[9px] uppercase tracking-wider">
+                                                 <div className="text-zinc-600 font-sans font-bold text-[9px] uppercase tracking-wider">
                                                     Linked
                                                 </div>
                                             </div>
@@ -155,21 +153,21 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                             })}
                         </div>
                     ) : (
-                        <div className="text-center py-32 text-zinc-400">
-                            <p className="mb-2 font-mono text-sm uppercase tracking-widest">Page is Blank</p>
-                            <p className="text-xs font-sans text-zinc-500">Add content in the Script Editor to see it here.</p>
+                        <div className="text-center py-32 text-zinc-600">
+                            <p className="mb-2 font-mono text-sm uppercase tracking-widest text-zinc-500">Page is Blank</p>
+                            <p className="text-xs font-sans text-zinc-700">Add content in the Script Editor to see it here.</p>
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="h-14 px-8 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
-                    <div className="text-[10px] text-zinc-400 font-sans uppercase tracking-wider">
+                <div className="h-14 px-8 border-t border-[#333] bg-[#18181B] flex items-center justify-between shrink-0">
+                    <div className="text-[10px] text-zinc-500 font-sans uppercase tracking-wider">
                         Click text to link to shot
                     </div>
                     <button 
                         onClick={onClose}
-                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-zinc-600 hover:text-black transition-colors hover:bg-zinc-200 rounded-sm"
+                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-zinc-400 hover:text-white transition-colors hover:bg-white/5 rounded-sm border border-transparent hover:border-[#333]"
                     >
                         Cancel
                     </button>
