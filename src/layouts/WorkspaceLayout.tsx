@@ -233,15 +233,15 @@ export const WorkspaceLayout: React.FC = () => {
         importScript, updateScriptElements, showToast
     };
 
-    const NavTab = ({ to, icon: Icon, label, exact = false }: { to: string, icon: any, label: string, exact?: boolean }) => (
+    const SegmentedTab = ({ to, icon: Icon, label, exact = false }: { to: string, icon: any, label: string, exact?: boolean }) => (
         <NavLink 
             to={to} 
             end={exact}
             className={({ isActive }) => `
-                h-full px-4 flex items-center gap-2 border-b-2 transition-all text-xs font-bold uppercase tracking-wider
+                flex items-center gap-2 px-6 py-1.5 rounded-sm transition-all text-[11px] font-bold uppercase tracking-widest
                 ${isActive 
-                    ? 'border-primary text-white bg-white/5' 
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'}
+                    ? 'bg-[#27272a] text-white shadow-sm' 
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}
             `}
         >
             <Icon className="w-3.5 h-3.5" />
@@ -254,39 +254,56 @@ export const WorkspaceLayout: React.FC = () => {
             <ToastContainer toasts={toasts} onClose={closeToast} />
 
             {/* 1. HEADER (Command Center) */}
-            <header className="h-12 bg-[#050505] border-b border-border flex items-center justify-between px-0 select-none shrink-0 z-30 relative">
+            <header className="h-12 bg-[#050505] border-b border-border flex items-center justify-between px-4 select-none shrink-0 z-30 relative">
                 
-                {/* LEFT: Branding & Project */}
-                <div className="flex items-center h-full px-4 gap-4">
-                    <div className="flex items-center gap-3 cursor-pointer group h-full" onClick={() => navigate('/')}>
-                         {/* CINEFLEX ICON */}
-                        <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-primary transition-colors rounded-full">
+                {/* LEFT: Branding, Dashboard, Project */}
+                <div className="flex items-center h-full gap-4">
+                    {/* Library Back Link */}
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+                         <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-primary transition-colors rounded-full">
                              <Film className="w-4 h-4 text-zinc-400 group-hover:text-primary transition-colors" />
                         </div>
-                        <span className="font-bold tracking-tight text-sm text-zinc-100 group-hover:text-white transition-colors">CineFlex</span>
+                        <span className="font-bold tracking-tight text-sm text-zinc-100 group-hover:text-white transition-colors hidden md:inline">CineFlex</span>
                     </div>
                     
                     <div className="h-4 w-[1px] bg-zinc-800" />
                     
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                        <span className="text-text-primary font-medium truncate max-w-[150px]">{project.name}</span>
+                    {/* Dashboard Button (Icon Only) */}
+                    <NavLink 
+                        to="." 
+                        end
+                        className={({ isActive }) => `
+                            w-8 h-8 flex items-center justify-center rounded-sm transition-all
+                            ${isActive ? 'bg-zinc-800 text-primary' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}
+                        `}
+                        title="Dashboard"
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                    </NavLink>
+
+                    <div className="h-4 w-[1px] bg-zinc-800" />
+
+                    <div className="text-xs text-text-muted font-medium truncate max-w-[200px]">
+                        {project.name}
                     </div>
                 </div>
 
-                {/* CENTER: Navigation Tabs */}
-                <nav className="flex items-center h-full absolute left-1/2 -translate-x-1/2">
-                    <NavTab to="." exact icon={LayoutGrid} label="Dashboard" />
-                    <NavTab to="timeline" icon={Clapperboard} label="Timeline" />
-                    <NavTab to="script" icon={FileText} label="Script" />
-                </nav>
-                
-                {/* RIGHT: Status */}
-                <div className="flex items-center gap-4 px-4 h-full text-xs text-zinc-500 font-mono">
-                    {saveStatus === 'saving' ? (
-                        <span className="flex items-center gap-2 text-primary animate-pulse"><div className="w-1.5 h-1.5 bg-primary rounded-full" /> SYNCING</span>
-                    ) : (
-                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-zinc-700 rounded-full" /> READY</span>
-                    )}
+                {/* RIGHT: Switcher & Status */}
+                <div className="flex items-center gap-6">
+                    {/* Segmented Control Switcher */}
+                    <nav className="flex items-center p-1 bg-[#18181b] border border-zinc-800 rounded-sm gap-1">
+                        <SegmentedTab to="script" icon={FileText} label="Script" />
+                        <SegmentedTab to="timeline" icon={Clapperboard} label="Timeline" />
+                    </nav>
+
+                    {/* Status Indicator */}
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-600 font-mono uppercase tracking-wider min-w-[60px] justify-end">
+                        {saveStatus === 'saving' ? (
+                            <span className="flex items-center gap-2 text-primary animate-pulse">SAVING</span>
+                        ) : (
+                            <span className="flex items-center gap-2">SAVED</span>
+                        )}
+                    </div>
                 </div>
             </header>
 
