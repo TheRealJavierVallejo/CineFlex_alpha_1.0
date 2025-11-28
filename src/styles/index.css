@@ -114,8 +114,10 @@
      ============================================ */
   .studio-card {
     /* Replaced border-border with explicit border-color to fix build error */
-    @apply bg-surface border rounded-lg shadow-panel overflow-hidden;
+    /* Replaced shadow-panel with explicit box-shadow */
+    @apply bg-surface border rounded-lg overflow-hidden;
     border-color: var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
   
   .studio-input {
@@ -139,7 +141,9 @@
   }
   
   .app-btn-primary {
-    @apply bg-primary hover:bg-primary-hover text-white shadow-glow;
+    /* Replaced shadow-glow with explicit box-shadow */
+    @apply bg-primary hover:bg-primary-hover text-white;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
   }
   
   .app-btn-secondary {
