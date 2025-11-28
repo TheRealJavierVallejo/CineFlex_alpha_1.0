@@ -45,11 +45,10 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // NUCLEAR OPTION for removing borders: using specific class 'script-input-no-border'
-    // Removed placeholder:opacity-30 to make text more visible (controlled by color now)
-    const base = "script-input-no-border block bg-transparent !outline-none !border-none !ring-0 !shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-none";
+    // NUCLEAR OPTION for removing borders: added border-0, outline-none, ring-0 explicitly in tailwind + style tag override below
+    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
     
-    // Theme Colors - Increased contrast for placeholders
+    // Theme Colors - Darkened placeholders for better readability
     const colors = isLightMode ? {
         heading: "text-black",
         action: "text-black",
@@ -57,7 +56,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         dialogue: "text-zinc-900",
         parenthetical: "text-zinc-600",
         transition: "text-black",
-        placeholder: "placeholder:text-zinc-300"
+        placeholder: "placeholder:text-zinc-400" // Darker grey for light mode
     } : {
         heading: "text-[#E8E8E8]",
         action: "text-[#E8E8E8]",
@@ -65,8 +64,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         dialogue: "text-[#E8E8E8]",
         parenthetical: "text-[#AAAAAA]",
         transition: "text-[#E8E8E8]",
-        // Lighter grey for better readability on dark background (approx #666)
-        placeholder: "placeholder:text-[#666666]" 
+        placeholder: "placeholder:text-[#555]" // Slightly lighter for dark mode
     };
 
     switch (element.type) {
@@ -81,28 +79,28 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         return {
            container: "pb-4",
            input: `${base} text-left ${colors.action} ${colors.placeholder}`,
-           placeholder: "Describe the action in the scene...",
+           placeholder: "Describe action...",
            indicator: "top-1"
         };
       case 'character':
         return {
            container: "pt-4 pb-0",
            input: `${base} max-w-[22rem] mx-auto font-bold uppercase tracking-widest text-center ${colors.character} ${colors.placeholder}`,
-           placeholder: "CHARACTER NAME",
+           placeholder: "CHARACTER",
            indicator: "top-5"
         };
       case 'dialogue':
         return {
            container: "pb-2",
            input: `${base} max-w-[24rem] mx-auto text-left ${colors.dialogue} ${colors.placeholder}`,
-           placeholder: "What does the character say?",
+           placeholder: "Dialogue",
            indicator: "top-0"
         };
       case 'parenthetical':
         return {
            container: "pb-0",
            input: `${base} max-w-[16rem] mx-auto italic text-left ${colors.parenthetical} ${colors.placeholder}`,
-           placeholder: "(emotion or action)",
+           placeholder: "(parenthetical)",
            indicator: "top-0"
         };
       case 'transition':
@@ -126,42 +124,34 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-       {/* FORCE STYLES: This style tag ensures no external CSS can force a border on our inputs */}
+       {/* FORCE STYLES: Explicitly forcing border-width to 0 and transparent */}
        <style>{`
          .script-input-no-border {
            outline: none !important;
-           border: none !important;
+           border-width: 0px !important;
+           border-style: none !important;
+           border-color: transparent !important;
            box-shadow: none !important;
-           ring: 0 !important;
+           background-image: none !important;
+           --tw-ring-color: transparent !important;
          }
-         .script-input-no-border:focus {
-           outline: none !important;
-           border: none !important;
-           box-shadow: none !important;
-           ring: 0 !important;
-         }
+         .script-input-no-border:focus,
+         .script-input-no-border:active,
          .script-input-no-border:focus-visible {
            outline: none !important;
-           border: none !important;
+           border-width: 0px !important;
+           border-style: none !important;
+           border-color: transparent !important;
            box-shadow: none !important;
+           background-image: none !important;
            ring: 0 !important;
          }
-         /* Native placeholder styling for broader support */
+         /* Ensure placeholder opacity is sufficient */
          .script-input-no-border::placeholder {
-            opacity: 1 !important; /* Ensure our custom color opacity takes precedence */
+            opacity: 1 !important; 
          }
        `}</style>
 
-       {/* 
-         TYPE INDICATOR POSITIONING:
-         - Paper Padding: 100px. Content starts at x=0 relative to this block.
-         - Paper Edge: -100px relative to this block.
-         - Indicator Width: w-32 (128px).
-         - Desired Gap: 12px outside paper.
-         - Target Right Edge of Indicator: -112px.
-         - Calculation: Left = TargetRight - Width = -112 - 128 = -240px.
-         - Result: -left-[240px].
-       */}
        <div className={`
           absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
           ${styles.indicator}
@@ -182,7 +172,13 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
           }}
           onFocus={() => onFocus(element.id)}
           className={styles.input}
-          style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }} 
+          style={{ 
+             border: '0px solid transparent', 
+             outline: 'none', 
+             boxShadow: 'none', 
+             background: 'transparent',
+             resize: 'none'
+          }} 
           rows={1}
           placeholder={styles.placeholder}
           spellCheck={false}
