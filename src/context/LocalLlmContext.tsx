@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
+// Explicit Vite Worker Import (More reliable than new URL)
+import LLMWorker from '../workers/llm.worker?worker';
 
 // Constants
-// Using Llama-3-8B-Instruct. This is ~4GB. 
-// WebLLM handles caching automatically via browser Cache API.
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
 
 interface LocalLlmContextType {
@@ -53,24 +53,30 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Initialize the worker if not exists
       if (!engine.current) {
-        const worker = new Worker(new URL('../workers/llm.worker.ts', import.meta.url), { type: 'module' });
+        // Use the imported worker constructor
+        const worker = new LLMWorker();
         engine.current = new WebWorkerMLCEngine(worker);
       }
 
       // Define callback
       const onProgress = (report: InitProgressReport) => {
-        // Report.progress is 0-1
         const percent = Math.round(report.progress * 100);
         setDownloadProgress(percent);
         setDownloadText(report.text);
       };
 
-      // CORRECT FIX: Set callback on the engine instance directly
-      // This keeps the function on the main thread and doesn't try to send it to the worker
       engine.current.setInitProgressCallback(onProgress);
 
-      // Reload without passing the callback in options
-      await engine.current.reload(SELECTED_MODEL);
+      // SAFETY TIMEOUT: If nothing happens in 30 seconds, fail.
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Engine timed out. Check your internet connection or try refreshing.")), 30000)
+      );
+
+      // Race the reload against the timeout
+      await Promise.race([
+        engine.current.reload(SELECTED_MODEL),
+        timeoutPromise
+      ]);
 
       setIsReady(true);
       setIsDownloading(false);
