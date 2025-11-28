@@ -8,7 +8,7 @@ import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../t
 import { generateShotImage, generateBatchShotImages, analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
 import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, TIMES_OF_DAY } from '../../constants';
-import { X, Wand2, RefreshCw, Copy, Eye, Image as ImageIcon, Maximize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, Camera, Users, Settings, ArrowLeft, MapPin } from 'lucide-react';
+import { X, Wand2, RefreshCw, Copy, Eye, Image as ImageIcon, Maximize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, Camera, Users, Settings, ArrowLeft, MapPin, FileText } from 'lucide-react';
 import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
 import Button from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
