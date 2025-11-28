@@ -95,13 +95,13 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         const firstScene: Scene = {
             id: sceneId,
             sequence: 1,
-            heading: 'INT. SCENE 1 - DAY',
+            heading: 'INT. EXAMPLE - DAY',
             actionNotes: ''
         };
         const firstElement: ScriptElement = {
             id: crypto.randomUUID(),
             type: 'scene_heading',
-            content: 'INT. SCENE 1 - DAY',
+            content: 'INT. EXAMPLE - DAY',
             sceneId: sceneId,
             sequence: 1
         };

@@ -190,8 +190,8 @@ export const ScriptPage: React.FC = () => {
     const handleStartWriting = () => {
         // Initialize project if starting fresh
         const sceneId = crypto.randomUUID();
-        const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. SCENE 1 - DAY', actionNotes: '' };
-        const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. SCENE 1 - DAY', sceneId, sequence: 1 };
+        const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. EXAMPLE - DAY', actionNotes: '' };
+        const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. EXAMPLE - DAY', sceneId, sequence: 1 };
 
         // Save to global project state to unlock other views
         handleUpdateProject({

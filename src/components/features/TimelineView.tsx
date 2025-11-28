@@ -84,8 +84,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   const handleStartWriting = () => {
       // Initialize with 1 Scene and 1 Script Element
       const sceneId = crypto.randomUUID();
-      const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. SCENE 1 - DAY', actionNotes: '' };
-      const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. SCENE 1 - DAY', sceneId, sequence: 1 };
+      const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. EXAMPLE - DAY', actionNotes: '' };
+      const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. EXAMPLE - DAY', sceneId, sequence: 1 };
 
       onUpdateProject({
           ...project,
