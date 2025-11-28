@@ -247,6 +247,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       const effectiveShot = noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot;
       const effectiveChars = noCharacters ? [] : activeChars;
 
+      // Use new Hybrid Generator
       const img = await generateHybridImage(
           tier,
           effectiveShot,
@@ -261,6 +262,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           }
       );
 
+      // Determine correct model name for metadata
+      const finalModelName = tier === 'free' ? 'Student Draft (Pollinations)' : selectedModel;
+
       const imageId = crypto.randomUUID();
       await addToImageLibrary(project.id, {
           id: imageId,
@@ -269,11 +273,18 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           createdAt: Date.now(),
           shotId: shot.id,
           prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation, selectedAspectRatio),
-          model: selectedModel,
+          model: finalModelName, // Use the correct name here
           aspectRatio: selectedAspectRatio,
           isFavorite: true
       });
-      const updated = { ...shot, generatedImage: img, generationCandidates: [img, ...(shot.generationCandidates || [])] };
+      
+      const updated = { 
+          ...shot, 
+          generatedImage: img, 
+          generationCandidates: [img, ...(shot.generationCandidates || [])],
+          model: finalModelName // Update shot model too
+      };
+      
       setShot(updated);
       onUpdateShot(updated);
       showToast(tier === 'free' ? "Draft image generated" : "Pro render successful", 'success');

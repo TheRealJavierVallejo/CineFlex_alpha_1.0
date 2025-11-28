@@ -6,9 +6,10 @@
 import React from 'react';
 import { Project, WorldSettings, ShowToastFn } from '../../types';
 import { CustomSelect } from '../features/CustomSelect';
-import { ERAS, CINEMATIC_STYLES, LIGHTING_STYLES } from '../../constants';
+import { ERAS, CINEMATIC_STYLES, LIGHTING_STYLES, IMAGE_RESOLUTIONS } from '../../constants';
 import { Settings, Sliders } from 'lucide-react';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
+import { FeatureGate } from '../ui/FeatureGate'; // IMPORTED
 
 interface ProjectSettingsProps {
   project: Project;
@@ -69,6 +70,38 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
             onAddCustom={(val) => onAddCustom('customLighting', val)}
             onDeleteCustom={(val) => onRemoveCustom('customLighting', val)}
           />
+        </div>
+
+        {/* PRO SETTINGS GATE */}
+        <div className="space-y-4 pt-4 border-t border-border">
+            <FeatureGate label="Pro Configuration">
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Global Resolution</label>
+                        <select 
+                            value={project.settings.imageResolution || '2048x2048'}
+                            onChange={(e) => onUpdateSettings('imageResolution', e.target.value)}
+                            className="studio-input"
+                        >
+                            {IMAGE_RESOLUTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Default Batch Size</label>
+                        <div className="flex bg-surface-secondary rounded border border-border p-0.5">
+                            {[1, 2, 4].map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => onUpdateSettings('variationCount', v)}
+                                    className={`flex-1 py-1 text-xs font-medium rounded transition-colors ${project.settings.variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
+                                >
+                                    {v}x
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </FeatureGate>
         </div>
       </div>
     </div>
