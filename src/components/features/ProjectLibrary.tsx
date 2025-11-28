@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, Search, FileText, Film, Users, Clock, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, FileText, Loader2 } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
 
 export const ProjectLibrary: React.FC = () => {
@@ -24,7 +24,6 @@ export const ProjectLibrary: React.FC = () => {
       loadProjects();
    }, []);
 
-   // --- Toast Helper for Library ---
    const showToast: ShowToastFn = (message, type = 'info', action) => {
        const id = Date.now();
        setToasts(prev => [...prev, { id, message, type, action }]);
@@ -107,113 +106,130 @@ export const ProjectLibrary: React.FC = () => {
    };
 
    return (
-      <div className="h-screen w-screen bg-[#1E1E1E] text-[#CCCCCC] flex flex-col font-sans">
+      <div className="h-screen w-screen bg-background text-text-primary flex flex-col font-sans selection:bg-primary/30 selection:text-white">
          <ToastContainer toasts={toasts} onClose={closeToast} />
 
          {/* Toolbar */}
-         <div className="h-12 border-b border-[#333] flex items-center justify-between px-4 bg-[#252526]">
-            <div className="flex items-center gap-4">
-               <div className="font-bold text-[#E8E8E8] text-sm tracking-wide flex items-center gap-2">
-                  <div className="w-3 h-3 bg-[#007ACC] rounded-sm" /> CINESKETCH
+         <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0 z-10">
+            <div className="flex items-center gap-6">
+               <div className="font-bold text-text-primary text-sm tracking-wide flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
+                     <div className="w-3 h-3 bg-white rounded-sm" />
+                  </div>
+                  <span className="text-base tracking-tight">CineSketch Studio</span>
                </div>
-               <div className="h-4 w-[1px] bg-[#333]" />
+               
+               <div className="h-6 w-[1px] bg-border" />
+               
                <form onSubmit={handleCreate} className="flex items-center gap-2">
                   <input
-                     className="app-input w-48"
+                     className="studio-input w-64 h-9 bg-background focus:bg-surface-secondary transition-colors"
                      placeholder="New Project Name..."
                      value={newProjectName}
                      onChange={e => setNewProjectName(e.target.value)}
                   />
-                  <button type="submit" disabled={!newProjectName.trim()} className="app-btn app-btn-primary">
-                     <Plus className="w-3.5 h-3.5" /> Create
+                  <button 
+                    type="submit" 
+                    disabled={!newProjectName.trim() || isCreating} 
+                    className="h-9 px-4 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:shadow-none"
+                  >
+                     {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create
                   </button>
                </form>
             </div>
 
-            <div className="flex items-center gap-2">
-               <button onClick={() => fileInputRef.current?.click()} className="app-btn app-btn-secondary">
-                  <Upload className="w-3.5 h-3.5" /> Import
+            <div className="flex items-center gap-3">
+               <button onClick={() => fileInputRef.current?.click()} className="h-9 px-4 rounded-md bg-surface-secondary hover:bg-surface hover:text-white border border-border text-text-secondary text-sm font-medium flex items-center gap-2 transition-all">
+                  <Upload className="w-4 h-4" /> Import Project
                </button>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
             </div>
          </div>
 
          {/* Data Table Header */}
-         <div className="flex items-center px-4 h-8 bg-[#1E1E1E] border-b border-[#333] text-xs font-bold text-[#969696] uppercase tracking-wider select-none">
+         <div className="flex items-center px-6 h-10 bg-surface-secondary border-b border-border text-xs font-bold text-text-secondary uppercase tracking-wider select-none shrink-0">
             <div className="flex-[2] pl-2">Project Name</div>
             <div className="flex-1">Shots</div>
             <div className="flex-1">Cast</div>
             <div className="flex-1">Last Modified</div>
-            <div className="w-20 text-center">Actions</div>
+            <div className="w-24 text-center">Actions</div>
          </div>
 
          {/* Table Body */}
-         <div className="flex-1 overflow-y-auto bg-[#18181B]">
-            {projects.length === 0 ? (
-               <div className="flex flex-col items-center justify-center h-full text-[#505050]">
-                  <FileText className="w-12 h-12 mb-2 opacity-20" />
-                  <p className="text-sm">No projects found</p>
-               </div>
-            ) : (
-               <div className="flex flex-col">
-                  {projects.map(proj => (
-                     <div
-                        key={proj.id}
-                        onClick={() => setSelection(proj.id)}
-                        onDoubleClick={() => openProject(proj.id)}
-                        className={`
-                       group flex items-center px-4 h-9 border-b border-[#252526] cursor-default text-[13px] transition-colors
-                       ${selection === proj.id ? 'bg-[#094771] text-white' : 'hover:bg-[#2A2D2E] text-[#CCCCCC]'}
-                    `}
-                     >
-                        <div className="flex-[2] pl-2 font-medium flex items-center gap-2 truncate">
-                           <FileText className={`w-3.5 h-3.5 ${selection === proj.id ? 'text-white' : 'text-[#007ACC]'}`} />
-                           {proj.name}
+         <div className="flex-1 overflow-y-auto bg-background p-6">
+            <div className="max-w-[1920px] mx-auto">
+                {projects.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+                    <div className="w-16 h-16 bg-surface-secondary rounded-2xl flex items-center justify-center mb-4 border border-border">
+                        <FileText className="w-8 h-8 opacity-20" />
+                    </div>
+                    <p className="text-sm">No projects found</p>
+                    <p className="text-xs mt-2 opacity-50">Create one above to get started</p>
+                </div>
+                ) : (
+                <div className="flex flex-col rounded-lg border border-border overflow-hidden bg-surface shadow-sm">
+                    {projects.map(proj => (
+                        <div
+                            key={proj.id}
+                            onClick={() => setSelection(proj.id)}
+                            onDoubleClick={() => openProject(proj.id)}
+                            className={`
+                        group flex items-center px-6 h-12 border-b border-border last:border-0 cursor-default text-sm transition-all
+                        ${selection === proj.id ? 'bg-primary/10 text-text-primary' : 'hover:bg-surface-secondary/50 text-text-secondary hover:text-text-primary'}
+                        `}
+                        >
+                            <div className="flex-[2] pl-2 font-medium flex items-center gap-3 truncate">
+                            <div className={`p-1.5 rounded ${selection === proj.id ? 'bg-primary/20 text-primary' : 'bg-surface-secondary text-text-tertiary group-hover:text-text-primary'}`}>
+                                <FileText className="w-4 h-4" />
+                            </div>
+                            {proj.name}
+                            </div>
+                            <div className="flex-1 opacity-70 group-hover:opacity-100 transition-opacity">{proj.shotCount} shots</div>
+                            <div className="flex-1 opacity-70 group-hover:opacity-100 transition-opacity">{proj.characterCount || 0} characters</div>
+                            <div className="flex-1 opacity-50 group-hover:opacity-100 transition-opacity font-mono text-xs">
+                            {new Date(proj.lastModified).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </div>
+                            <div className="w-24 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => handleExport(proj.id, proj.name, e)} className="p-2 hover:bg-background rounded-md text-text-tertiary hover:text-text-primary transition-colors" title="Export JSON">
+                                <Download className="w-4 h-4" />
+                            </button>
+                            <button onClick={(e) => handleDelete(proj.id, proj.name, e)} className="p-2 hover:bg-error/10 rounded-md text-text-tertiary hover:text-error transition-colors" title="Delete Project">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                            </div>
                         </div>
-                        <div className="flex-1 text-[#969696] group-hover:text-[#CCCCCC]">{proj.shotCount}</div>
-                        <div className="flex-1 text-[#969696] group-hover:text-[#CCCCCC]">{proj.characterCount || 0}</div>
-                        <div className="flex-1 text-[#969696] group-hover:text-[#CCCCCC] font-mono text-xs">
-                           {new Date(proj.lastModified).toLocaleDateString()}
-                        </div>
-                        <div className="w-20 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                           <button onClick={(e) => handleExport(proj.id, proj.name, e)} className="p-1 hover:bg-white/10 rounded" title="Export">
-                              <Download className="w-3.5 h-3.5" />
-                           </button>
-                           <button onClick={(e) => handleDelete(proj.id, proj.name, e)} className="p-1 hover:bg-red-500/20 hover:text-red-400 rounded" title="Delete">
-                              <Trash2 className="w-3.5 h-3.5" />
-                           </button>
-                        </div>
-                     </div>
-                  ))}
-               </div>
-            )}
+                    ))}
+                </div>
+                )}
+            </div>
          </div>
 
          {/* Status Footer */}
-         <div className="h-6 bg-[#007ACC] text-white text-[11px] flex items-center px-3 font-medium select-none">
-            {projects.length} Projects Loaded
+         <div className="h-8 bg-surface border-t border-border text-[11px] flex items-center px-6 font-medium select-none text-text-tertiary justify-between shrink-0">
+            <span>v3.0.0 (Pro Studio)</span>
+            <span>{projects.length} Projects Loaded</span>
          </div>
 
          {/* Delete Confirmation Modal */}
          {confirmDelete && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in" onClick={() => setConfirmDelete(null)}>
-               <div className="bg-[#252526] border border-[#333] rounded-lg p-6 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-lg font-bold text-white mb-2">Delete Project?</h3>
-                  <p className="text-[#CCCCCC] text-sm mb-4">
-                     Are you sure you want to permanently delete "{confirmDelete.name}"? This action cannot be undone.
+               <div className="bg-surface border border-border rounded-lg p-6 w-96 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-lg font-bold text-text-primary mb-2">Delete Project?</h3>
+                  <p className="text-text-secondary text-sm mb-6 leading-relaxed">
+                     Are you sure you want to permanently delete <strong className="text-text-primary">{confirmDelete.name}</strong>? This action cannot be undone.
                   </p>
                   <div className="flex gap-2 justify-end">
                      <button
                         onClick={() => setConfirmDelete(null)}
-                        className="px-4 py-2 rounded bg-[#3C3C3C] hover:bg-[#505050] text-white text-sm transition-colors"
+                        className="px-4 py-2 rounded-md bg-surface-secondary hover:bg-surface border border-border text-text-primary text-sm transition-colors font-medium"
                      >
                         Cancel
                      </button>
                      <button
                         onClick={confirmDeletion}
-                        className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white text-sm transition-colors"
+                        className="px-4 py-2 rounded-md bg-error hover:bg-error/90 text-white text-sm transition-colors font-medium shadow-lg shadow-red-900/20"
                      >
-                        Delete
+                        Delete Project
                      </button>
                   </div>
                </div>
