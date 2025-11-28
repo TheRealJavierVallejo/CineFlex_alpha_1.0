@@ -276,7 +276,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   }
 
   return (
-    <PageWithToolRail tools={tools} defaultTool="navigator">
+    <PageWithToolRail tools={tools} defaultTool={null}>
         <div className="h-full bg-background overflow-y-auto font-sans relative">
             <TimelineHeader
                 isUploadingScript={isUploadingScript}

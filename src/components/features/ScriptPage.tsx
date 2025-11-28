@@ -241,7 +241,7 @@ export const ScriptPage: React.FC = () => {
   ];
 
   return (
-    <PageWithToolRail tools={tools} defaultTool="outline">
+    <PageWithToolRail tools={tools} defaultTool={null}>
         <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
         
         {/* Toolbar */}

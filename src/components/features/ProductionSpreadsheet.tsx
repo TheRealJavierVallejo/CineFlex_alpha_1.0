@@ -243,7 +243,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   }
 
   return (
-    <PageWithToolRail tools={tools} defaultTool="filters">
+    <PageWithToolRail tools={tools} defaultTool={null}>
         <div className="flex flex-col h-full bg-background">
         
         {/* 1. TABLE HEADER */}
