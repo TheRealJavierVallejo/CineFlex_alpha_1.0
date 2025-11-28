@@ -1,23 +1,69 @@
 /*
  * 🎬 COMPONENT: SHOT LIST (Dashboard)
- * Premium Desktop UI - Dense Grid
+ * Premium Desktop UI - Dense Grid with Right-Click Menu
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
-import { Film, Camera, Layers, Trash2 } from 'lucide-react';
+import { Film, Camera, Layers, Trash2, Copy, Edit2 } from 'lucide-react';
+import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 
 interface ShotListProps {
   project: Project;
   onAddShot: () => void;
   onEditShot: (shot: Shot) => void;
   onDeleteShot: (shotId: string) => void;
+  onDuplicateShot?: (shotId: string) => void; // New prop
   showToast: ShowToastFn;
 }
 
-export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditShot, onDeleteShot, showToast }) => {
+export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditShot, onDeleteShot, onDuplicateShot, showToast }) => {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shotId: string } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, shotId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, shotId });
+  };
+
+  const getMenuItems = (): ContextMenuItem[] => {
+    if (!contextMenu) return [];
+    return [
+      {
+        label: "Edit Shot",
+        icon: <Edit2 className="w-4 h-4" />,
+        action: () => {
+           const shot = project.shots.find(s => s.id === contextMenu.shotId);
+           if (shot) onEditShot(shot);
+        }
+      },
+      {
+        label: "Duplicate",
+        icon: <Copy className="w-4 h-4" />,
+        action: () => {
+           if (onDuplicateShot) onDuplicateShot(contextMenu.shotId);
+        }
+      },
+      {
+        label: "Delete",
+        icon: <Trash2 className="w-4 h-4" />,
+        action: () => onDeleteShot(contextMenu.shotId),
+        variant: 'danger',
+        separator: true
+      }
+    ];
+  };
+
   return (
     <div className="h-full">
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getMenuItems()}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
       {project.shots.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-[#505050] border-2 border-dashed border-[#333] rounded-[4px]">
           <Film className="w-8 h-8 mb-2 opacity-30" />
@@ -31,6 +77,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
             <div
               key={shot.id}
               onClick={() => onEditShot(shot)}
+              onContextMenu={(e) => handleContextMenu(e, shot.id)}
               className="bg-[#252526] border border-[#333] rounded-[3px] overflow-hidden hover:border-[#007ACC] cursor-pointer transition-all group relative"
             >
               {/* Thumbnail */}
@@ -49,7 +96,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
                   #{shot.sequence}
                 </div>
 
-                {/* Actions overlay */}
+                {/* Actions overlay - Hover Buttons still useful for quick access */}
                 <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                    <button 
                       onClick={(e) => {
@@ -63,8 +110,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
                    </button>
                 </div>
 
-                {/* Stack Indicator - moved to bottom right if needed, or keep next to actions if space allows. 
-                    Putting it bottom right to avoid conflict. */}
+                {/* Stack Indicator */}
                 {shot.generationCandidates && shot.generationCandidates.length > 1 && (
                   <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] text-[#A0A0A0] flex items-center gap-1">
                     <Layers className="w-2.5 h-2.5" />

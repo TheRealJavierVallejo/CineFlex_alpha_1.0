@@ -1,327 +1,144 @@
 @import "tailwindcss";
 
 /* ============================================
-   CINESKETCH STUDIO - DESIGN SYSTEM
-   Professional Desktop Application Styles
+   ONYX - INDUSTRIAL HARDWARE THEME
+   Visual Language: Sharp, Dense, Void-Like
    ============================================ */
 
 @theme {
-  /* Font Families */
   --font-family-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
   --font-family-mono: JetBrains Mono, Menlo, Monaco, Courier New, monospace;
   --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
 
-  /* VS Code inspired color palette */
-  --color-app: #18181B;
-  --color-app-panel: #1E1E1E;
-  --color-app-hover: #2A2D2E;
-  --color-app-active: #37373D;
+  /* ONYX Color Palette */
+  --color-background: #000000;
+  --color-surface: #09090b;
+  
+  /* NOTE: Primary colors are now defined in :root for dynamic theming */
+  
+  --color-border: #27272a;
+  --color-border-focus: var(--color-primary);
+  --color-border-subtle: #18181b;
 
-  --color-border: #333333;
-  --color-border-focus: #007ACC;
-  --color-border-subtle: #252526;
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #52525b;
 
-  --color-text-primary: #CCCCCC;
-  --color-text-secondary: #969696;
-  --color-text-muted: #6E7681;
-  --color-text-inverse: #FFFFFF;
-
-  --color-accent: #007ACC;
-  --color-accent-hover: #0062A3;
-  --color-accent-light: #4FC3F7;
-
-  --color-status-error: #F48771;
-  --color-status-warning: #CCA700;
-  --color-status-success: #89D185;
-  --color-status-info: #75BEFF;
-
-  /* Font Sizes with line heights */
-  --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-lg: 14px;
-  --font-size-xl: 16px;
-  --font-size-2xl: 18px;
-
-  /* Spacing */
-  --spacing-18: 4.5rem;
-  --spacing-88: 22rem;
-
-  /* Border Radius */
-  --radius-sm: 3px;
-  --radius: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-
-  /* Animations */
-  --animate-slide-up: slideUp 0.2s ease-out;
-  --animate-slide-down: slideDown 0.2s ease-out;
-  --animate-fade-in: fadeIn 0.15s ease-out;
-  --animate-shimmer: shimmer 2s infinite;
-
-  /* Keyframes */
-  @keyframes slideUp {
-    0% {
-      transform: translateY(10px);
-      opacity: 0;
-    }
-
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideDown {
-    0% {
-      transform: translateY(-10px);
-      opacity: 0;
-    }
-
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-    }
-
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-
-    100% {
-      background-position: 1000px 0;
-    }
-  }
+  --radius: 1px;
 }
 
 @layer base {
-
-  /* CSS Custom Properties for legacy support */
   :root {
     /* Background Colors */
-    --bg-app: #18181B;
-    --bg-panel: #1E1E1E;
-    --bg-hover: #2A2D2E;
-    --bg-active: #37373D;
+    --bg-app: #000000;
+    --bg-panel: #09090b;
+    --bg-surface: #09090b;
+    --bg-hover: #18181b;
+    --bg-active: #27272a;
 
-    /* Border Colors */
-    --border: #333333;
-    --border-focus: #007ACC;
-    --border-subtle: #252526;
-
-    /* Text Colors */
-    --text-primary: #CCCCCC;
-    --text-secondary: #969696;
-    --text-muted: #6E7681;
-
-    /* Accent Colors */
-    --accent: #007ACC;
-    --accent-hover: #0062A3;
-    --accent-text: #FFFFFF;
-
-    /* Status Colors */
-    --error: #F48771;
-    --warning: #CCA700;
-    --success: #89D185;
-    --info: #75BEFF;
-
-    /* Layout */
-    --radius: 3px;
-    --header-height: 36px;
-    --status-bar-height: 22px;
+    --header-height: 48px;
     --sidebar-width: 240px;
-    --sidebar-collapsed: 48px;
+    --sidebar-collapsed: 50px;
+
+    /* DYNAMIC ACCENT COLORS (Default: Blue 500) */
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-primary-glow: rgba(59, 130, 246, 0.5);
   }
 
-  /* Global Resets */
   * {
-    border-color: var(--color-border, #333333);
+    border-color: var(--color-border);
   }
 
   body {
-    background-color: var(--color-app, #18181B);
-    color: var(--color-text-primary, #CCCCCC);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
     font-family: var(--font-family-sans);
-    font-size: var(--font-size-base, 13px);
+    font-size: 13px;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    user-select: none;
   }
 
-  /* Selectable Text Areas */
-  .selectable {
-    user-select: text;
+  ::selection {
+    background-color: var(--color-primary);
+    color: white;
   }
 }
 
 @layer components {
 
   /* ============================================
-     CUSTOM SCROLLBARS
+     ONYX SCROLLBARS (Invisible or Needle-thin)
      ============================================ */
   ::-webkit-scrollbar {
-    @apply w-2.5 h-2.5;
+    @apply w-1.5 h-1.5;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-app;
+    @apply bg-black;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#424242] rounded-full;
-    border: 2px solid var(--bg-app);
+    @apply bg-zinc-800 hover:bg-zinc-700 transition-colors;
+    border-radius: 0;
   }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-[#4F4F4F];
+  
+  ::-webkit-scrollbar-corner {
+    @apply bg-black;
   }
 
   /* ============================================
-     NATIVE APP UTILITIES
+     GLASSMORPHISM UTILITIES
      ============================================ */
-  .app-region-drag {
-    -webkit-app-region: drag;
+  .glass-panel {
+    @apply bg-[#09090b]/90 backdrop-blur-sm border border-white/5;
   }
-
-  .app-no-drag {
-    -webkit-app-region: no-drag;
+  
+  .glass-header {
+    @apply bg-black/80 backdrop-blur-md border-b border-border;
   }
 
   /* ============================================
-     LEGACY BUTTON CLASSES (for gradual migration)
+     STUDIO CARD (Industrial)
+     ============================================ */
+  .studio-card {
+    @apply bg-[#09090b] border border-border rounded-sm overflow-hidden;
+    box-shadow: none;
+  }
+  
+  .studio-input {
+    @apply w-full bg-[#000000] border border-border rounded-sm px-3 py-1.5 text-sm;
+    @apply outline-none transition-all duration-100 placeholder:text-zinc-700;
+    color: var(--color-text-primary);
+  }
+  
+  .studio-input:focus {
+    @apply border-primary bg-[#050505];
+  }
+  
+  /* ============================================
+     BUTTONS (Sharp & Tactile)
      ============================================ */
   .app-btn {
-    @apply h-7 px-3 rounded-sm text-sm font-medium;
-    @apply inline-flex items-center gap-1.5;
-    @apply transition-all duration-100;
-    @apply select-none cursor-default;
+    @apply h-8 px-4 rounded-sm text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer select-none;
   }
-
-  .app-btn:active {
-    @apply translate-y-px;
-  }
-
+  
   .app-btn-primary {
-    @apply bg-accent text-white;
+    @apply text-white bg-primary hover:bg-primary/90 border border-primary;
   }
-
-  .app-btn-primary:hover {
-    @apply bg-accent-hover;
-  }
-
+  
   .app-btn-secondary {
-    @apply bg-[#2D2D30] border border-border text-text-primary;
+    @apply bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300;
   }
 
-  .app-btn-secondary:hover {
-    @apply bg-[#3E3E42];
-  }
-
-  .app-btn-ghost {
-    @apply bg-transparent text-text-secondary;
-  }
-
-  .app-btn-ghost:hover {
-    @apply bg-white/5 text-text-primary;
-  }
-
-  /* ============================================
-     LEGACY INPUT CLASSES
-     ============================================ */
-  .app-input {
-    @apply bg-[#252526] border border-border;
-    @apply text-text-primary text-sm h-7 px-2;
-    @apply rounded-sm outline-none;
-    @apply transition-colors duration-100;
-  }
-
-  .app-input:focus {
-    @apply border-border-focus;
-  }
-
-  /* ============================================
-     WINDOW & PANEL SHADOWS
-     ============================================ */
-  .window-shadow {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
-
-  .panel-shadow {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  /* ============================================
-     FOCUS STYLES
-     ============================================ */
   .focus-ring {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-app;
-  }
-
-  /* ============================================
-     ANIMATIONS
-     ============================================ */
-  .animate-toast-in {
-    animation: slideUp 0.2s ease-out;
-  }
-
-  .animate-modal-in {
-    animation: fadeIn 0.15s ease-out;
-  }
-
-  /* ============================================
-     SKELETON LOADER
-     ============================================ */
-  .skeleton {
-    @apply bg-gradient-to-r from-[#2A2A2A] via-[#333333] to-[#2A2A2A];
-    @apply bg-[length:1000px_100%];
-    @apply animate-shimmer;
+    @apply outline-none ring-1 ring-primary ring-offset-0;
   }
 }
 
 @layer utilities {
-
-  /* Text Utilities */
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* Truncate with tooltip */
-  .truncate-tooltip {
-    @apply truncate;
-    @apply cursor-help;
-  }
-
-  /* Hide scrollbar but keep functionality */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Glass morphism effect */
-  .glass {
-    @apply bg-white/5 backdrop-blur-sm;
-    @apply border border-white/10;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-gradient-to-r from-accent to-accent-light;
-    @apply bg-clip-text text-transparent;
-  }
+  .text-balance { text-wrap: balance; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }

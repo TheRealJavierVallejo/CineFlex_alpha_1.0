@@ -3,10 +3,10 @@
  * Refactored for Detached Blob Storage (High Performance) & Zod Validation
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
-import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema } from './schemas';
+import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema } from './schemas';
 import { z } from 'zod';
 
 const KEYS = {
@@ -236,15 +236,15 @@ export const setActiveProjectId = (id: string | null) => {
 
 export const createNewProject = async (name: string): Promise<string> => {
   const projectId = crypto.randomUUID();
-  const sceneId = crypto.randomUUID();
   const now = Date.now();
 
   const newProject: Project = {
     id: projectId,
     name: name,
     settings: { ...DEFAULT_WORLD_SETTINGS, customEras: [], customStyles: [], customTimes: [], customLighting: [], customLocations: [] },
-    scenes: [{ id: sceneId, sequence: 1, heading: 'INT. UNTITLED SCENE - DAY', actionNotes: '' }],
+    scenes: [], // START EMPTY
     shots: [],
+    scriptElements: [], // START EMPTY
     createdAt: now,
     lastModified: now
   };
@@ -266,6 +266,7 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'scenes'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'characters'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'outfits'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'locations')); // Added
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'metadata'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'library'));
 
@@ -306,25 +307,15 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
   };
 
   // 2. VALIDATE & HEAL (Zod)
-  // This step fills in default values for any missing fields from old schema versions
   const parseResult = ProjectSchema.safeParse(rawProject);
   
   if (!parseResult.success) {
       console.warn(`Project ${projectId} schema validation failed. Auto-healing enabled.`, parseResult.error);
-      // We continue with the raw project if Zod completely fails, but safeParse + defaults usually fixes it.
-      // However, creating a new "Healed" object from the parsed output is better if successful.
   }
   
   const healedProject = parseResult.success ? parseResult.data : rawProject;
 
-  // 3. LEGACY MIGRATION (Manual)
-  if (!healedProject.scenes || healedProject.scenes.length === 0) {
-     const defId = crypto.randomUUID();
-     healedProject.scenes = [{ id: defId, sequence: 1, heading: 'INT. IMPORTED SCENE - DAY', actionNotes: '' }];
-     healedProject.shots = healedProject.shots.map(s => ({ ...s, sceneId: s.sceneId || defId }));
-  }
-
-  // 4. HYDRATE (Blobs)
+  // 3. HYDRATE (Blobs)
   console.log(`💧 Hydrating Project: ${healedProject.name}`);
   const hydratedProject = await hydrateObject(healedProject);
   
@@ -370,11 +361,8 @@ export const saveProjectDataDebounced = debounce(saveProjectData, 1000);
 export const getCharacters = async (projectId: string): Promise<Character[]> => {
   const data = await dbGet<Character[]>(STORE_NAME, getStorageKey(projectId, 'characters'));
   const raw = data || [];
-  
-  // Validate and Heal
   const parsed = z.array(CharacterSchema).safeParse(raw);
   const healed = parsed.success ? parsed.data : raw;
-
   return await hydrateObject(healed);
 };
 
@@ -402,6 +390,21 @@ export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
 export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
   const dehydrated = await dehydrateObject(outfits);
   await dbSet(STORE_NAME, getStorageKey(projectId, 'outfits'), dehydrated);
+};
+
+// --- LOCATIONS ---
+
+export const getLocations = async (projectId: string): Promise<Location[]> => {
+  const data = await dbGet<Location[]>(STORE_NAME, getStorageKey(projectId, 'locations'));
+  const raw = data || [];
+  const parsed = z.array(LocationSchema).safeParse(raw);
+  const healed = parsed.success ? parsed.data : raw;
+  return await hydrateObject(healed);
+};
+
+export const saveLocations = async (projectId: string, locations: Location[]) => {
+  const dehydrated = await dehydrateObject(locations);
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'locations'), dehydrated);
 };
 
 // --- IMAGE LIBRARY ---
@@ -441,10 +444,11 @@ export const toggleImageFavorite = async (projectId: string, imageId: string) =>
 
 export const exportProjectToJSON = async (projectId: string): Promise<string> => {
   // For export, we actually want to RE-HYDRATE everything back to Base64
-  // So the JSON file is self-contained (portable)
   const project = await getProjectData(projectId);
   const characters = await getCharacters(projectId);
   const outfits = await getOutfits(projectId);
+  const locations = await getLocations(projectId); // Added
+  const library = await getImageLibrary(projectId);
 
   if (!project) throw new Error("Project not found");
 
@@ -483,9 +487,11 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const portableProject = await deepConvertToBase64(project);
   const portableCharacters = await deepConvertToBase64(characters);
   const portableOutfits = await deepConvertToBase64(outfits);
+  const portableLocations = await deepConvertToBase64(locations);
+  const portableLibrary = await deepConvertToBase64(library);
 
   // Validate on Export to ensure we aren't creating broken files
-  const exportData = {
+  const exportData: ProjectExport = {
     version: 2,
     metadata: {
       id: project.id,
@@ -497,11 +503,11 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
     },
     project: portableProject,
     characters: portableCharacters,
-    outfits: portableOutfits
+    outfits: portableOutfits,
+    locations: portableLocations, // Included
+    library: portableLibrary
   };
 
-  // We could strictly validate export here, but sometimes we want to allow 
-  // users to export broken projects to fix them elsewhere.
   return JSON.stringify(exportData, null, 2);
 };
 
@@ -510,20 +516,14 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
     const rawData = JSON.parse(jsonString);
     
     // 1. VALIDATE IMPORTED DATA
-    // This is the most critical step. We check if the uploaded JSON matches our Schema.
-    // If fields are missing, Zod fills them with defaults.
     const parseResult = ProjectExportSchema.safeParse(rawData);
     
     if (!parseResult.success) {
        console.error("Import Validation Failed:", parseResult.error);
-       // We throw specifically so the UI knows it's a format issue
        throw new Error("Invalid Project File. Data is corrupted or outdated.");
     }
     
     const data = parseResult.data;
-
-    // The imported data contains Base64 strings.
-    // saveProjectData will automatically DEHYDRATE them into the Image Store!
     const projectId = data.project.id;
 
     // Ensure backwards compat for Scene Architecture (extra safety check)
@@ -536,6 +536,8 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
     await saveProjectData(projectId, data.project as Project);
     await saveCharacters(projectId, data.characters as Character[] || []);
     await saveOutfits(projectId, data.outfits as Outfit[] || []);
+    await saveLocations(projectId, data.locations as Location[] || []); // Save locations
+    await saveImageLibrary(projectId, data.library as ImageLibraryItem[] || []);
 
     const list = getProjectsList();
     const filtered = list.filter(p => p.id !== projectId);

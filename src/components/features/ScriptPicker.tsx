@@ -27,7 +27,8 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
         const elements = scriptElements
             .filter(el => {
                 if (el.sceneId !== sceneId) return false;
-                return el.type === 'action' || el.type === 'dialogue';
+                // Allow Action, Dialogue AND Parentheticals
+                return el.type === 'action' || el.type === 'dialogue' || el.type === 'parenthetical';
             })
             .sort((a, b) => a.sequence - b.sequence);
 
@@ -76,24 +77,27 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                             {sceneElements.map(el => (
                                 <div key={el.id} className="relative group/element">
                                     <div className={`${getElementStyle(el.type)} leading-relaxed transition-opacity ${el.isUsed ? 'opacity-40' : 'opacity-100'}`}>
+                                        
+                                        {/* Auto-display character name if linked */}
                                         {el.character && (
-                                            <div className="font-bold uppercase text-center mb-1">
+                                            <div className="font-bold uppercase text-center mb-1 text-primary/80">
                                                 {el.character}
                                             </div>
                                         )}
+                                        
                                         {el.content}
                                     </div>
 
                                     {/* Add Button - Only on next available */}
-                                    {el.isNextAvailable && (
+                                    {!el.isUsed && (
                                         <button
                                             onClick={() => onSelect(el)}
-                                            className="absolute -right-16 top-0 flex items-center gap-1 px-2 py-1 rounded bg-primary text-white text-xs font-sans hover:bg-primary/80 transition-colors"
+                                            className="absolute -right-16 top-1/2 -translate-y-1/2 flex items-center gap-1 px-3 py-1.5 rounded bg-primary text-white text-xs font-sans hover:bg-primary/80 transition-colors opacity-0 group-hover/element:opacity-100 shadow-lg"
                                         >
                                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                             </svg>
-                                            Add
+                                            Link
                                         </button>
                                     )}
                                 </div>
@@ -102,7 +106,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                     ) : (
                         <div className="text-center py-8 text-text-tertiary">
                             <p>No script elements found in this scene.</p>
-                            <p className="text-xs mt-2">Import a script to get started.</p>
+                            <p className="text-xs mt-2">Write your script in the Script Tab to see elements here.</p>
                         </div>
                     )}
                 </div>

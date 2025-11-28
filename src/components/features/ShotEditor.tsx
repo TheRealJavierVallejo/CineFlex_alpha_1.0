@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Shot, Project, Character, Outfit, ShowToastFn } from '../../types';
+import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../types';
 import { generateShotImage, generateBatchShotImages, analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
-import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, VARIATION_COUNTS, TIMES_OF_DAY } from '../../constants';
-import { X, Wand2, Film, RefreshCw, Download, Copy, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize2, Minimize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, HelpCircle, Eye, FileText, Camera, Users, Settings, ArrowLeft } from 'lucide-react';
-import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary } from '../../services/storage';
+import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, TIMES_OF_DAY } from '../../constants';
+import { X, Wand2, RefreshCw, Copy, Eye, Image as ImageIcon, Maximize2, Upload, Loader2, Trash2, RotateCcw, Ban, Info, Camera, Users, Settings, ArrowLeft, MapPin } from 'lucide-react';
+import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
 import Button from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { VariationPicker } from '../features/VariationPicker';
@@ -21,6 +21,17 @@ interface ShotEditorProps {
   activeShot: Shot | null;
   showToast: ShowToastFn;
 }
+
+const LOADING_MESSAGES = [
+  "Calibrating lenses...",
+  "Setting up lighting...",
+  "Directing actors...",
+  "Scouting location...",
+  "Adjusting aperture...",
+  "Applying color grade...",
+  "Developing film...",
+  "Focusing camera..."
+];
 
 export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, onClose, activeShot, showToast }) => {
   // --- STATE ---
@@ -40,11 +51,16 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     referenceStrength: 50,
     timeOfDay: undefined,
     negativePrompt: '',
-    styleStrength: 100
+    styleStrength: 100,
+    locationId: undefined // Explicitly init
   });
+  
   const [characters, setCharacters] = useState<Character[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]); // New State
+
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
@@ -65,6 +81,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   const activeChars = characters.filter(c => shot.characterIds.includes(c.id));
+  const activeLocation = locations.find(l => l.id === shot.locationId);
 
   // --- KEYBOARD & FOCUS ---
   useEffect(() => {
@@ -84,15 +101,28 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showPromptPreview]);
 
+  // Loading Message Cycler
+  useEffect(() => {
+    let interval: any;
+    if (isGenerating) {
+       interval = setInterval(() => {
+          setLoadingMsgIndex(prev => (prev + 1) % LOADING_MESSAGES.length);
+       }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
   // Load assets
   useEffect(() => {
     const loadAssets = async () => {
-      const [chars, outfs] = await Promise.all([
+      const [chars, outfs, locs] = await Promise.all([
         getCharacters(project.id),
-        getOutfits(project.id)
+        getOutfits(project.id),
+        getLocations(project.id)
       ]);
       setCharacters(chars);
       setOutfits(outfs);
+      setLocations(locs);
     };
     loadAssets();
   }, [project.id]);
@@ -197,15 +227,20 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     }
 
     setIsGenerating(true);
-    showToast("Starting render...", 'info');
-
+    // Removed toast here to reduce noise, UI has spinner
+    
     try {
+      // Common Payload Construction
+      const effectiveShot = noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot;
+      const effectiveChars = noCharacters ? [] : activeChars;
+
       if (variationCount > 1) {
         const images = await generateBatchShotImages(
-          noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot,
+          effectiveShot,
           project,
-          noCharacters ? [] : activeChars,
+          effectiveChars,
           outfits,
+          activeLocation, // NEW
           {
             model: selectedModel,
             aspectRatio: selectedAspectRatio,
@@ -221,7 +256,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             url: img,
             createdAt: Date.now(),
             shotId: shot.id,
-            prompt: constructPrompt(shot, project, noCharacters ? [] : activeChars, outfits, selectedAspectRatio),
+            prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation, selectedAspectRatio),
             model: selectedModel,
             aspectRatio: selectedAspectRatio
         }));
@@ -234,10 +269,11 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
         showToast("Batch complete", 'success');
       } else {
         const img = await generateShotImage(
-          noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot,
+          effectiveShot,
           project,
-          noCharacters ? [] : activeChars,
+          effectiveChars,
           outfits,
+          activeLocation, // NEW
           {
             model: selectedModel,
             aspectRatio: selectedAspectRatio,
@@ -253,12 +289,12 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           url: img,
           createdAt: Date.now(),
           shotId: shot.id,
-          prompt: constructPrompt(shot, project, noCharacters ? [] : activeChars, outfits, selectedAspectRatio),
+          prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation, selectedAspectRatio),
           model: selectedModel,
           aspectRatio: selectedAspectRatio,
           isFavorite: true // Auto-mark as selected since it's used in a shot
         });
-        const updated = { ...shot, generatedImage: img, generationCandidates: [img] };
+        const updated = { ...shot, generatedImage: img, generationCandidates: [img, ...(shot.generationCandidates || [])] }; // Add to history
         setShot(updated);
         onUpdateShot(updated);
         showToast("Render successful", 'success');
@@ -293,7 +329,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   };
 
   const handleCopyPrompt = () => {
-    const txt = constructPrompt(shot, project, activeChars, outfits, selectedAspectRatio);
+    const txt = constructPrompt(shot, project, activeChars, outfits, activeLocation, selectedAspectRatio);
     navigator.clipboard.writeText(txt);
     showToast("Prompt copied to clipboard", 'success');
   };
@@ -317,20 +353,6 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       setIsGeneratingPrompt(false);
     }
   };
-
-  const handleDownloadImage = () => {
-    if (shot.generatedImage) {
-      const link = document.createElement('a');
-      link.href = shot.generatedImage;
-      link.download = `shot_${shot.sequence}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast("Image downloaded!", 'success');
-    }
-  };
-
-
 
   const getAspectRatioStyle = (ratio: string) => {
     if (ratio === 'Match Reference' && detectedReferenceRatio) {
@@ -386,7 +408,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 </div>
               )}
               <pre className="whitespace-pre-wrap font-mono text-xs text-text-secondary leading-relaxed selection:bg-primary/30 selection:text-white">
-                {constructPrompt(shot, project, activeChars, outfits, selectedAspectRatio)}
+                {constructPrompt(shot, project, activeChars, outfits, activeLocation, selectedAspectRatio)}
               </pre>
             </div>
             <div className="p-4 border-t border-border bg-surface-secondary flex justify-end">
@@ -422,36 +444,69 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
         {/* LEFT COLUMN: CONTROLS */}
         <div className="w-[400px] flex flex-col border-r border-border bg-surface-secondary">
-          <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-surface">
+          <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
             <div>
-              <h2 className="text-text-primary font-bold text-base">Shot #{shot.sequence}</h2>
-              <div className="text-text-tertiary text-xs font-mono">ID: {shot.id.substring(0, 6)}</div>
+              <h2 className="text-text-primary font-bold text-base flex items-center gap-2">
+                <span className="text-text-tertiary text-xs font-normal">SHOT #{shot.sequence}</span>
+                <span>Editor</span>
+              </h2>
             </div>
+            <div className="text-xs text-text-tertiary font-mono">{shot.id.substring(0, 6)}</div>
           </div>
 
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-surface">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
             {/* Shot Details Section */}
             <CollapsibleSection title="Shot Details" icon={<FileText className="w-4 h-4" />} defaultOpen={true}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-2">Description</label>
+                  <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Prompt / Description</label>
                   <textarea
                     ref={descriptionRef}
                     value={shot.description}
                     onChange={e => setShot(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary resize-none h-32 leading-relaxed"
-                    placeholder="Describe the action, subject, and environment..."
+                    className="w-full bg-surface-secondary border border-border rounded-lg px-3 py-3 text-sm outline-none focus:border-primary resize-none h-32 leading-relaxed text-text-primary placeholder:text-text-tertiary/50"
+                    placeholder="Describe the action, subject, camera angle, and lighting..."
                   />
                 </div>
 
+                {/* Location Selection (NEW) */}
                 <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-2">Notes (Optional)</label>
+                   <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Location / Set</label>
+                   <div className="relative">
+                      <select 
+                        value={shot.locationId || ''} 
+                        onChange={(e) => setShot(prev => ({...prev, locationId: e.target.value || undefined}))}
+                        className="studio-input appearance-none pr-8 cursor-pointer"
+                      >
+                         <option value="">No specific location (Use Prompt)</option>
+                         {locations.map(loc => (
+                            <option key={loc.id} value={loc.id}>{loc.name}</option>
+                         ))}
+                      </select>
+                      <MapPin className="absolute right-3 top-2.5 w-4 h-4 text-text-tertiary pointer-events-none" />
+                   </div>
+                   {activeLocation && (
+                      <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded text-xs text-text-secondary flex items-start gap-2">
+                         <Info className="w-3 h-3 mt-0.5 shrink-0 text-primary" />
+                         <div>
+                            <span className="font-semibold text-primary block">Using Reference:</span>
+                            <span className="opacity-80">{activeLocation.description}</span>
+                            {activeLocation.referencePhotos && activeLocation.referencePhotos.length > 0 && (
+                               <div className="mt-1 text-[10px] text-text-tertiary">{activeLocation.referencePhotos.length} reference photos active</div>
+                            )}
+                         </div>
+                      </div>
+                   )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Notes</label>
                   <input
                     value={shot.notes}
                     onChange={e => setShot(prev => ({ ...prev, notes: e.target.value }))}
-                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary"
-                    placeholder="Lighting cues, camera movement..."
+                    className="studio-input"
+                    placeholder="Director's notes (optional)..."
                   />
                 </div>
               </div>
@@ -466,7 +521,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     <select
                       value={selectedAspectRatio}
                       onChange={(e) => setSelectedAspectRatio(e.target.value)}
-                      className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm outline-none focus:border-primary"
+                      className="studio-input"
                     >
                       {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
@@ -476,7 +531,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     <select
                       value={selectedResolution}
                       onChange={(e) => setSelectedResolution(e.target.value)}
-                      className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm outline-none focus:border-primary"
+                      className="studio-input"
                     >
                       {IMAGE_RESOLUTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
@@ -492,7 +547,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                         onClick={() => setShot(prev => ({ ...prev, shotType: t }))}
                         className={`px-3 py-1.5 rounded text-xs font-medium transition-all border ${shot.shotType === t
                           ? 'bg-primary text-white border-primary shadow-md'
-                          : 'bg-background border-border text-text-secondary hover:border-text-tertiary'
+                          : 'bg-surface-secondary border-border text-text-secondary hover:border-text-tertiary'
                           }`}
                       >
                         {t}
@@ -506,7 +561,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                   <select
                     value={shot.timeOfDay || ''}
                     onChange={(e) => setShot(prev => ({ ...prev, timeOfDay: e.target.value === '' ? undefined : e.target.value }))}
-                    className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm outline-none focus:border-primary"
+                    className="studio-input"
                   >
                     <option value="">Use Project Default ({project.settings.timeOfDay})</option>
                     {TIMES_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
@@ -524,7 +579,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                     max="100"
                     value={shot.styleStrength ?? 100}
                     onChange={(e) => setShot(prev => ({ ...prev, styleStrength: parseInt(e.target.value) }))}
-                    className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
+                    className="w-full h-1.5 bg-surface-secondary border border-border rounded-lg appearance-none cursor-pointer accent-primary"
                   />
                 </div>
               </div>
@@ -549,7 +604,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 <div className={`space-y-2 transition-opacity ${noCharacters ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="text-xs text-text-secondary mb-2">Select characters to include in the scene.</div>
                   {characters.length === 0 ? (
-                    <div className="text-center text-text-tertiary py-4 text-sm">No characters in project</div>
+                    <div className="text-center text-text-tertiary py-4 text-sm border border-dashed border-border rounded">No characters in project</div>
                   ) : (
                     characters.map(char => (
                       <div
@@ -562,7 +617,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                         }}
                         className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${shot.characterIds.includes(char.id)
                           ? 'bg-primary/10 border-primary'
-                          : 'bg-background border-border hover:border-text-tertiary'
+                          : 'bg-surface-secondary border-border hover:border-text-tertiary'
                           }`}
                       >
                         <div className={`w-4 h-4 rounded-full border mr-3 flex items-center justify-center ${shot.characterIds.includes(char.id) ? 'border-primary bg-primary' : 'border-text-tertiary'
@@ -586,7 +641,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                   <input
                     value={shot.negativePrompt || ''}
                     onChange={e => setShot(prev => ({ ...prev, negativePrompt: e.target.value }))}
-                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary"
+                    className="studio-input"
                     placeholder="e.g., blurry, low quality, text"
                   />
                 </div>
@@ -595,7 +650,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                   <label className="block text-xs font-semibold text-text-secondary mb-2">Sketch Reference</label>
                   <div className="flex gap-3">
                     <div
-                      className="w-20 h-20 bg-background border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors cursor-pointer overflow-hidden"
+                      className="w-20 h-20 bg-surface-secondary border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors cursor-pointer overflow-hidden"
                       onClick={() => document.getElementById('sketch-upload')?.click()}
                     >
                       {shot.sketchImage ? (
@@ -613,7 +668,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 <div>
                   <label className="block text-xs font-semibold text-text-secondary mb-2">Reference Image (ControlNet)</label>
                   <div className="flex gap-3">
-                    <div className="w-20 h-20 bg-background border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors overflow-hidden">
+                    <div className="w-20 h-20 bg-surface-secondary border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors overflow-hidden">
                       {shot.referenceImage ? (
                         <>
                           <img src={shot.referenceImage} className="w-full h-full object-cover" alt="Reference" />
@@ -623,7 +678,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                       <input type="file" onChange={handleReferenceUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
                     <div className="flex-1 space-y-2">
-                      <div className="flex bg-background rounded p-0.5 border border-border w-fit">
+                      <div className="flex bg-surface-secondary rounded p-0.5 border border-border w-fit">
                         {['depth', 'canny'].map(t => (
                           <button
                             key={t}
@@ -644,9 +699,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-2">
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     icon={<RotateCcw className="w-3 h-3" />}
                     onClick={handleResetDefaults}
@@ -660,17 +715,17 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
         </div>
 
         {/* RIGHT COLUMN: PREVIEW */}
-        <div className="flex-1 bg-[#121212] flex flex-col relative">
-          <div className="h-16 border-b border-border flex items-center justify-between px-6 shrink-0">
+        <div className="flex-1 bg-black flex flex-col relative">
+          <div className="h-14 border-b border-white/10 flex items-center justify-between px-6 shrink-0 bg-surface">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-text-secondary uppercase">Variations:</label>
+                <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
                 <div className="flex bg-surface-secondary rounded border border-border p-0.5">
                   {[1, 2, 4].map(v => (
                     <button
                       key={v}
                       onClick={() => setVariationCount(v)}
-                      className={`w-8 h-6 text-xs font-medium rounded ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary'}`}
+                      className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
                     >
                       {v}
                     </button>
@@ -678,20 +733,21 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-text-secondary uppercase">Model:</label>
+                <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
                 <select
                   value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
-                  className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary"
+                  className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
                 >
                   {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
+              <div className="h-4 w-[1px] bg-border" />
               <button
                 onClick={() => setShowPromptPreview(true)}
-                className="p-1.5 hover:bg-surface-secondary rounded text-text-tertiary hover:text-text-primary transition-colors"
+                className="p-1.5 hover:bg-surface-secondary rounded text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-2 text-xs"
                 title="Preview Generated Prompt"
               >
-                <Eye className="w-4 h-4" />
+                <Eye className="w-3.5 h-3.5" /> <span className="hidden xl:inline">Prompt</span>
               </button>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-surface-secondary rounded-full text-text-tertiary hover:text-text-primary transition-colors">
@@ -699,22 +755,24 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             </button>
           </div>
 
-          <div className="flex-1 flex items-center justify-center p-8 overflow-hidden bg-[#0a0a0a]">
-            <div className="relative w-full max-w-4xl flex items-center justify-center shadow-2xl" style={{ maxHeight: '100%' }}>
-              <div className="relative bg-black group rounded-sm overflow-hidden" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '70vh' }}>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden bg-black/50">
+            {/* Main Image */}
+            <div className="relative w-full max-w-5xl flex items-center justify-center flex-1" style={{ maxHeight: '100%' }}>
+              <div className="relative bg-[#050505] group rounded-md overflow-hidden border border-white/5 shadow-2xl" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '65vh' }}>
                 {shot.generatedImage ? (
                   <img src={shot.generatedImage} className="block w-full h-full object-contain border-none outline-none m-0 p-0 bg-transparent transform scale-[1.01]" alt="Rendered Shot" />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-border">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20">
                     {isGenerating ? (
-                      <div className="flex flex-col items-center gap-3 animate-pulse">
-                        <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                        <div className="text-xs font-mono text-primary">RENDERING...</div>
+                      <div className="flex flex-col items-center gap-4 animate-pulse">
+                        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                        <div className="text-sm font-mono text-primary animate-pulse tracking-wide">{LOADING_MESSAGES[loadingMsgIndex]}</div>
                       </div>
                     ) : (
                       <>
-                        <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
-                        <div className="text-sm font-mono opacity-40">NO RENDER AVAILABLE</div>
+                        <ImageIcon className="w-20 h-20 mb-6 opacity-20" />
+                        <div className="text-sm font-mono opacity-40 uppercase tracking-widest">Viewport Empty</div>
+                        <div className="text-xs opacity-30 mt-2">Enter prompt and click Generate</div>
                       </>
                     )}
                   </div>
@@ -724,25 +782,45 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                       onClick={() => setIsFullscreen(true)}
-                      className="p-2 bg-black/50 hover:bg-primary text-white rounded backdrop-blur-sm transition-colors"
+                      className="p-2 bg-black/60 hover:bg-primary text-white rounded backdrop-blur-sm transition-colors border border-white/10"
                       aria-label="Maximize"
                     >
                       <Maximize2 className="w-4 h-4" />
                     </button>
-                    <a href={shot.generatedImage} download={`shot_${shot.sequence}.png`} className="p-2 bg-black/50 hover:bg-primary text-white rounded backdrop-blur-sm transition-colors" aria-label="Download Image">
+                    <a href={shot.generatedImage} download={`shot_${shot.sequence}.png`} className="p-2 bg-black/60 hover:bg-primary text-white rounded backdrop-blur-sm transition-colors border border-white/10" aria-label="Download Image">
                       <Upload className="w-4 h-4 rotate-180" />
                     </a>
                   </div>
                 )}
               </div>
             </div>
+            
+            {/* Version History Filmstrip (NEW) */}
+            {shot.generationCandidates && shot.generationCandidates.length > 0 && (
+               <div className="w-full max-w-5xl h-24 mt-6 flex gap-3 overflow-x-auto p-3 bg-surface border border-border rounded-lg shrink-0 shadow-lg">
+                  {shot.generationCandidates.map((url, idx) => (
+                     <div 
+                        key={idx} 
+                        onClick={() => setShot(prev => ({...prev, generatedImage: url}))}
+                        className={`
+                           h-full aspect-video bg-black rounded cursor-pointer border-2 transition-all relative group/thumb
+                           ${shot.generatedImage === url ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-border'}
+                        `}
+                     >
+                        <img src={url} className="w-full h-full object-cover opacity-70 group-hover/thumb:opacity-100 transition-opacity" />
+                        <div className="absolute bottom-1 right-1 bg-black/60 px-1 rounded text-[8px] text-white font-mono">v{idx + 1}</div>
+                     </div>
+                  ))}
+               </div>
+            )}
           </div>
 
           {/* FOOTER */}
-          <div className="p-4 border-t border-border flex justify-end gap-3 bg-surface-secondary">
+          <div className="h-16 p-4 border-t border-border flex justify-end gap-3 bg-surface z-10 shrink-0">
             <Button
-              variant="secondary"
+              variant="ghost"
               onClick={onClose}
+              className="text-text-secondary hover:text-text-primary"
             >
               Cancel
             </Button>
@@ -760,9 +838,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
               onClick={handleGenerate}
               loading={isGenerating}
               disabled={!shot.description}
-              className="px-6"
+              className="px-8 shadow-lg shadow-blue-900/20"
             >
-              {shot.generatedImage ? 'Regenerate' : 'Generate Now'}
+              {shot.generatedImage ? 'Regenerate' : 'Generate Shot'}
             </Button>
           </div>
         </div>

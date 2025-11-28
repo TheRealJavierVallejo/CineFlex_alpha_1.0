@@ -3,7 +3,7 @@
  * Routing & Entry Point
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
@@ -12,24 +12,34 @@ import {
   TimelineView,
   AssetManager,
   ProjectSettings,
-  ShotList,
+  ShotList, // Keeping import just in case, though unused in new dashboard
+  ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
+import { ProductionSpreadsheet } from './components/features/ProductionSpreadsheet';
 
 // --- ADAPTER COMPONENTS ---
-// These wrappers extract data from the WorkspaceContext and pass it to the legacy feature components.
-// This allows us to keep the feature components pure and testable.
 
 const DashboardPage = () => {
-    const { project, handleAddShot, handleEditShot, handleDeleteShot, showToast } = useWorkspace();
+    // Using the exposed handlers from WorkspaceLayout
+    const { 
+        project, 
+        handleUpdateShot, 
+        handleEditShot, 
+        handleDeleteShot, 
+        handleDuplicateShot, 
+        showToast 
+    } = useWorkspace();
+
     return (
-        <div className="absolute inset-0 overflow-y-auto p-6">
+        <div className="absolute inset-0 overflow-hidden">
             <LazyWrapper>
-                <ShotList
+                <ProductionSpreadsheet
                     project={project}
-                    onAddShot={handleAddShot}
+                    onUpdateShot={handleUpdateShot}
                     onEditShot={handleEditShot}
                     onDeleteShot={handleDeleteShot}
+                    onDuplicateShot={handleDuplicateShot}
                     showToast={showToast}
                 />
             </LazyWrapper>
@@ -37,14 +47,23 @@ const DashboardPage = () => {
     );
 };
 
+const ScriptEditorPage = () => {
+    return (
+        <LazyWrapper>
+            <ScriptPage />
+        </LazyWrapper>
+    );
+};
+
 const TimelinePage = () => {
-    const { project, handleUpdateProject, handleEditShot, showToast } = useWorkspace();
+    const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useWorkspace();
     return (
         <LazyWrapper>
             <TimelineView
                 project={project}
                 onUpdateProject={handleUpdateProject}
                 onEditShot={handleEditShot}
+                importScript={importScript} // Pass the centralized importer
                 showToast={showToast}
             />
         </LazyWrapper>
@@ -103,6 +122,21 @@ const SettingsPage = () => {
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
+  // Apply saved theme on mount
+  useEffect(() => {
+    const savedColor = localStorage.getItem('cinesketch_theme_color');
+    if (savedColor) {
+        document.documentElement.style.setProperty('--color-primary', savedColor);
+        document.documentElement.style.setProperty('--color-primary-hover', savedColor);
+        
+        // Convert to RGB for glow
+        const r = parseInt(savedColor.slice(1, 3), 16);
+        const g = parseInt(savedColor.slice(3, 5), 16);
+        const b = parseInt(savedColor.slice(5, 7), 16);
+        document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
         <Routes>
@@ -111,8 +145,10 @@ const App: React.FC = () => {
 
             {/* Main Workspace Layout */}
             <Route path="/project/:projectId" element={<WorkspaceLayout />}>
+                {/* Dashboard is back as Index, but now it's a Spreadsheet */}
                 <Route index element={<DashboardPage />} />
                 <Route path="timeline" element={<TimelinePage />} />
+                <Route path="script" element={<ScriptEditorPage />} />
                 <Route path="assets" element={<AssetsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
             </Route>

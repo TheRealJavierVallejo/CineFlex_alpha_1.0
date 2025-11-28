@@ -12,34 +12,42 @@ export default {
                 mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
             },
             colors: {
-                // VS Code inspired color palette
+                // "ONYX" Palette - Obsidian & Industrial
+                background: '#000000', // Pure Void Black
+                
                 app: {
-                    DEFAULT: '#18181B',
-                    panel: '#1E1E1E',
-                    hover: '#2A2D2E',
-                    active: '#37373D',
+                    DEFAULT: '#000000',
+                    panel: '#09090b',   // Zinc 950 (Panels)
+                    hover: '#18181b',   // Zinc 900
+                    active: '#27272a',  // Zinc 800
                 },
+                
+                surface: {
+                    DEFAULT: '#09090b', // Zinc 950
+                    secondary: '#050505', // Almost Black
+                    hover: '#18181b',
+                    border: '#27272a',
+                },
+
                 border: {
-                    DEFAULT: '#333333',
-                    focus: '#007ACC',
-                    subtle: '#252526',
+                    DEFAULT: '#27272a', // Zinc 800
+                    focus: 'var(--color-primary)',   // Dynamic
+                    subtle: '#18181b',
                 },
+
                 text: {
-                    primary: '#CCCCCC',
-                    secondary: '#969696',
-                    muted: '#6E7681',
-                    inverse: '#FFFFFF',
+                    primary: '#f4f4f5',   // Zinc 100
+                    secondary: '#a1a1aa', // Zinc 400
+                    muted: '#52525b',     // Zinc 600
+                    inverse: '#000000',
                 },
-                accent: {
-                    DEFAULT: '#007ACC',
-                    hover: '#0062A3',
-                    light: '#4FC3F7',
-                },
-                status: {
-                    error: '#F48771',
-                    warning: '#CCA700',
-                    success: '#89D185',
-                    info: '#75BEFF',
+
+                // Electric Blue Accent (ONYX Slash) - NOW DYNAMIC
+                primary: {
+                    DEFAULT: 'var(--color-primary)',
+                    hover: 'var(--color-primary-hover)',
+                    foreground: '#FFFFFF',
+                    glow: 'var(--color-primary-glow)'
                 },
             },
             fontSize: {
@@ -50,44 +58,21 @@ export default {
                 'xl': ['16px', { lineHeight: '24px' }],
                 '2xl': ['18px', { lineHeight: '28px' }],
             },
-            spacing: {
-                '18': '4.5rem',
-                '88': '22rem',
-            },
             borderRadius: {
-                'sm': '3px',
-                DEFAULT: '3px',
-                'md': '4px',
-                'lg': '6px',
+                'none': '0',
+                'sm': '0px',    // RAZOR SHARP
+                DEFAULT: '1px', // MICROSCOPIC SOFTNESS
+                'md': '2px',    // HARDWARE FEEL
+                'lg': '2px',    
+                'xl': '4px',    
+                '2xl': '4px',  
+                'full': '9999px', // Avatars only
             },
             boxShadow: {
-                'window': '0 0 0 1px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.4)',
-                'panel': '0 2px 8px rgba(0,0,0,0.3)',
-                'focus': '0 0 0 2px #007ACC',
-            },
-            animation: {
-                'slide-up': 'slideUp 0.2s ease-out',
-                'slide-down': 'slideDown 0.2s ease-out',
-                'fade-in': 'fadeIn 0.15s ease-out',
-                'shimmer': 'shimmer 2s infinite',
-            },
-            keyframes: {
-                slideUp: {
-                    '0%': { transform: 'translateY(10px)', opacity: '0' },
-                    '100%': { transform: 'translateY(0)', opacity: '1' },
-                },
-                slideDown: {
-                    '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                    '100%': { transform: 'translateY(0)', opacity: '1' },
-                },
-                fadeIn: {
-                    '0%': { opacity: '0' },
-                    '100%': { opacity: '1' },
-                },
-                shimmer: {
-                    '0%': { backgroundPosition: '-1000px 0' },
-                    '100%': { backgroundPosition: '1000px 0' },
-                },
+                'window': '0 0 0 1px #27272a',
+                'panel': '0 1px 0 0 #27272a',
+                'glow': '0 0 10px var(--color-primary-glow)',
+                'focus': '0 0 0 1px var(--color-primary)',
             },
         },
     },

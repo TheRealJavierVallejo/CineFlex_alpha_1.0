@@ -7,17 +7,21 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { Shot, Project, Character, Outfit } from '../types';
+import { Shot, Project, Character, Outfit, ScriptElement, Location } from '../types';
 import { constructPrompt } from './promptBuilder';
 
 // Helper to check for API Key
-export const hasApiKey = () => !!import.meta.env.VITE_GEMINI_API_KEY;
+export const hasApiKey = () => {
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const localKey = localStorage.getItem('cinesketch_api_key');
+  return !!(envKey || localKey);
+};
 
 const getClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('cinesketch_api_key');
 
   if (!apiKey) {
-    throw new Error("API Key not found. Please set VITE_GEMINI_API_KEY in your .env.local file and restart the dev server.");
+    throw new Error("API Key not found. Please set VITE_GEMINI_API_KEY in .env or enter it in Project Settings.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -28,12 +32,13 @@ export const generateShotImage = async (
   project: Project,
   activeCharacters: Character[],
   activeOutfits: Outfit[],
+  activeLocation: Location | undefined, // NEW
   options: { model: string; aspectRatio: string; imageSize?: string }
 ): Promise<string> => {
   const ai = getClient();
 
   // 1. Construct Prompt using shared logic
-  let prompt = constructPrompt(shot, project, activeCharacters, activeOutfits, options.aspectRatio, options.model);
+  let prompt = constructPrompt(shot, project, activeCharacters, activeOutfits, activeLocation, options.aspectRatio, options.model);
 
   // --- DEBUG LOGGING ---
   console.group("🎨 GENERATING PROMPT");
@@ -43,7 +48,8 @@ export const generateShotImage = async (
     aspectRatio: options.aspectRatio,
     styleStrength: shot.styleStrength,
     timeOverride: shot.timeOfDay,
-    negative: shot.negativePrompt
+    negative: shot.negativePrompt,
+    location: activeLocation?.name
   });
   console.groupEnd();
 
@@ -74,7 +80,17 @@ export const generateShotImage = async (
       }
     });
 
-    // C. Add Sketch
+    // C. Add Location Reference Photos (NEW)
+    if (activeLocation && activeLocation.referencePhotos && activeLocation.referencePhotos.length > 0) {
+       activeLocation.referencePhotos.forEach(photo => {
+          const match = photo.match(/^data:(.+);base64,(.+)$/);
+          if (match) {
+            contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+          }
+       });
+    }
+
+    // D. Add Sketch
     if (shot.sketchImage) {
       const base64Data = shot.sketchImage.split(',')[1] || shot.sketchImage;
       const mimeMatch = shot.sketchImage.match(/^data:(.+);base64,/);
@@ -82,7 +98,7 @@ export const generateShotImage = async (
       contents.parts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
     }
 
-    // D. Reference Image Control (Depth/Canny)
+    // E. Reference Image Control (Depth/Canny)
     if (shot.referenceImage) {
       const refBase64 = shot.referenceImage.split(',')[1] || shot.referenceImage;
       const mimeMatch = shot.referenceImage.match(/^data:(.+);base64,/);
@@ -90,10 +106,10 @@ export const generateShotImage = async (
       contents.parts.push({ inlineData: { mimeType: mimeType, data: refBase64 } });
     }
 
-    // Add text prompt
+    // F. Add text prompt
     contents.parts.push({ text: prompt });
 
-    // F. Configuration
+    // G. Configuration
     const apiAspectRatio = options.aspectRatio === 'Match Reference' ? undefined : options.aspectRatio;
     const imageConfig: any = apiAspectRatio ? { aspectRatio: apiAspectRatio } : {};
 
@@ -115,7 +131,7 @@ export const generateShotImage = async (
   } catch (error: any) {
     console.error("Gemini Image Gen Error:", error);
     if (error.message?.includes('403') || error.status === 403) {
-      throw new Error(`Permission Denied. Please try using 'Gemini (Fast)' for this request.`);
+      throw new Error(`Permission Denied. Please check your API Key permissions.`);
     }
     throw error;
   }
@@ -127,11 +143,12 @@ export const generateBatchShotImages = async (
   project: Project,
   activeCharacters: Character[],
   activeOutfits: Outfit[],
+  activeLocation: Location | undefined, // NEW
   options: { model: string; aspectRatio: string; imageSize?: string },
   count: number = 1
 ): Promise<string[]> => {
   const promises = Array(count).fill(null).map(() =>
-    generateShotImage(shot, project, activeCharacters, activeOutfits, options)
+    generateShotImage(shot, project, activeCharacters, activeOutfits, activeLocation, options)
   );
   try {
     const results = await Promise.all(promises);
@@ -163,5 +180,64 @@ export const analyzeSketch = async (sketchBase64: string): Promise<string> => {
   }
 };
 
-// Re-export constructPrompt for convenience, though imports should ideally update
+// --- SCRIPT ASSISTANT (CHAT) ---
+export const chatWithScript = async (
+  message: string,
+  history: { role: 'user' | 'model'; content: string }[],
+  scriptContext: ScriptElement[],
+  characters: Character[]
+): Promise<string> => {
+  const ai = getClient();
+  try {
+    // 1. Convert Script Elements to readable text format (Fountain-ish)
+    // Limit to last 50 elements to avoid token limits, but prioritize current scene
+    const scriptText = scriptContext.slice(-50).map(el => {
+      if (el.type === 'scene_heading') return `\n${el.content}`;
+      if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
+      if (el.type === 'dialogue') return `${el.content}`;
+      if (el.type === 'parenthetical') return `(${el.content})`;
+      return `${el.content}`;
+    }).join('\n');
+
+    const charText = characters.map(c => `${c.name}: ${c.description}`).join('\n');
+
+    const systemPrompt = `
+      You are a professional screenwriter's assistant in a virtual writer's room.
+      
+      CONTEXT:
+      The script so far (last snippet):
+      ---
+      ${scriptText}
+      ---
+
+      CHARACTERS:
+      ${charText}
+
+      TASK:
+      Answer the user's request. You can suggest dialogue, improve formatting, brainstorming plot points, or provide feedback.
+      Keep answers concise and helpful for a writer in the flow. If suggesting dialogue, use standard screenplay format.
+    `;
+
+    // 2. Prepare history for API
+    const contents = [
+      { role: 'user', parts: [{ text: systemPrompt }] }, // System instruction as first user msg
+      ...history.map(h => ({
+        role: h.role,
+        parts: [{ text: h.content }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: contents as any
+    });
+
+    return response.text || "I couldn't generate a response.";
+  } catch (error) {
+    console.error("Script Chat Error", error);
+    return "Sorry, I encountered an error connecting to the AI. Check your API Key.";
+  }
+};
+
 export { constructPrompt };
