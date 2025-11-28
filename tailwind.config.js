@@ -75,11 +75,14 @@ export default {
                 '88': '22rem',
             },
             borderRadius: {
-                'sm': '4px',
-                DEFAULT: '6px',
-                'md': '8px',
-                'lg': '10px',
-                'xl': '12px',
+                'none': '0',
+                'sm': '2px',    // Was 4px - Super sharp for tiny elements
+                DEFAULT: '3px', // Was 6px - Standard button/input radius
+                'md': '4px',    // Was 8px - Slightly softer for panels
+                'lg': '6px',    // Was 10px - Modals/Cards
+                'xl': '8px',    // Was 12px - Outer containers
+                '2xl': '12px',  // Only for major floating windows
+                'full': '9999px',
             },
             boxShadow: {
                 'window': '0 20px 50px -12px rgba(0, 0, 0, 0.5)',

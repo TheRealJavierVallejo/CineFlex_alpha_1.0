@@ -2,7 +2,7 @@
 
 /* ============================================
    CINESKETCH STUDIO - CINEMA DARK THEME
-   Phase 1: Dark Room Aesthetic
+   Phase 2: Pro Precision (Sharp Corners)
    ============================================ */
 
 @theme {
@@ -11,13 +11,12 @@
   --font-family-mono: JetBrains Mono, Menlo, Monaco, Courier New, monospace;
   --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
 
-  /* Colors - Mapping to Tailwind Config logic */
-  --color-background: #09090b; /* Zinc 950 */
-  --color-surface: #18181b;    /* Zinc 900 */
+  /* Colors */
+  --color-background: #09090b;
+  --color-surface: #18181b;
+  --color-primary: #3b82f6;
   
-  --color-primary: #3b82f6;    /* Electric Blue */
-  
-  --radius: 6px;
+  --radius: 3px; /* Updated from 6px for sharper look */
 }
 
 @layer base {
@@ -35,9 +34,9 @@
     --border-subtle: #18181b;
 
     /* Text Colors */
-    --text-primary: #e4e4e7;   /* Zinc 200 */
-    --text-secondary: #a1a1aa; /* Zinc 400 */
-    --text-muted: #71717a;     /* Zinc 500 */
+    --text-primary: #e4e4e7;   
+    --text-secondary: #a1a1aa; 
+    --text-muted: #71717a;     
 
     /* Accent Colors */
     --primary: #3b82f6;
@@ -65,7 +64,6 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Selection Color (Cinema Blue) */
   ::selection {
     background-color: rgba(59, 130, 246, 0.3);
     color: white;
@@ -75,7 +73,7 @@
 @layer components {
 
   /* ============================================
-     CINEMA SCROLLBARS (Thin & Dark)
+     CINEMA SCROLLBARS (Thin & Sharp)
      ============================================ */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
@@ -86,14 +84,13 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full transition-colors;
+    @apply bg-white/10 rounded-sm transition-colors; /* Changed to rounded-sm */
   }
 
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-white/20;
   }
   
-  /* Corner for dual scrollbars */
   ::-webkit-scrollbar-corner {
     @apply bg-transparent;
   }
@@ -110,38 +107,37 @@
   }
 
   /* ============================================
-     STUDIO CARD (Elevated Surface)
+     STUDIO CARD (Sharper Surface)
      ============================================ */
   .studio-card {
-    @apply bg-[#18181b] border rounded-lg overflow-hidden;
+    /* Changed rounded-lg to rounded-md for tighter corners */
+    @apply bg-[#18181b] border rounded-md overflow-hidden;
     border-color: var(--border);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   }
   
   .studio-input {
-    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm;
+    /* Removed rounded-lg, using default (3px) */
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-1.5 text-sm;
     @apply outline-none transition-all duration-200;
     color: var(--text-primary);
   }
   
   .studio-input:focus {
-    @apply ring-1 ring-[#3b82f6]/30 bg-black/40;
-    border-color: var(--primary);
+    @apply ring-1 ring-[#3b82f6]/30 bg-black/40 border-primary;
   }
   
   /* ============================================
-     LEGACY UTILS (Preserved for compatibility)
+     LEGACY UTILS
      ============================================ */
   .app-input {
-    /* Manually duplicated from studio-input to avoid recursive apply error */
-    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm h-8;
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-1.5 text-sm h-8;
     @apply outline-none transition-all duration-200;
     color: var(--text-primary);
   }
 
   .app-input:focus {
-    @apply ring-1 ring-[#3b82f6]/30 bg-black/40;
-    border-color: var(--primary);
+    @apply ring-1 ring-[#3b82f6]/30 bg-black/40 border-primary;
   }
   
   .app-btn {
@@ -151,7 +147,8 @@
   .app-btn-primary {
     @apply text-white;
     background-color: var(--primary);
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    /* Reduced glow radius for sharper feel */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
   }
 
   .app-btn-primary:hover {
@@ -164,7 +161,7 @@
   }
 
   .focus-ring {
-    @apply outline-none ring-2 ring-[#3b82f6]/50 ring-offset-1 ring-offset-[#09090b];
+    @apply outline-none ring-1 ring-[#3b82f6] ring-offset-1 ring-offset-[#09090b];
   }
 }
 
