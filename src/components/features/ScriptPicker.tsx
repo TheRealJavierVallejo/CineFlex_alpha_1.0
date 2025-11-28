@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { Type, X, Plus, MoveRight } from 'lucide-react';
+import { Type, X, ArrowRight } from 'lucide-react';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -98,9 +98,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                         
                                         {/* Hover Indicator: Floating in the left margin only */}
                                         {!isUsed && (
-                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="flex items-center gap-1 text-blue-600 font-sans font-bold text-[10px] uppercase tracking-wider bg-white px-1">
-                                                    Add <Plus className="w-4 h-4" />
+                                            <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1 text-blue-600 font-sans font-bold text-[10px] uppercase tracking-wider bg-white/0">
+                                                    Add <ArrowRight className="w-4 h-4" />
                                                 </div>
                                             </div>
                                         )}

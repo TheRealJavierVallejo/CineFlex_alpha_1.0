@@ -96,6 +96,11 @@
     @apply bg-zinc-800 hover:bg-zinc-700 transition-colors;
   }
 
+  /* Light Scrollbar for White Paper Views */
+  .custom-scrollbar-light::-webkit-scrollbar-thumb {
+    @apply bg-zinc-300 hover:bg-zinc-400;
+  }
+
   /* Input Field Standard */
   .studio-input {
     @apply w-full bg-black border border-border rounded-sm px-3 py-1.5 text-sm outline-none transition-all duration-100 placeholder:text-zinc-700;
