@@ -253,13 +253,7 @@ export const ScriptPage: React.FC = () => {
             icon: <Sparkles className="w-5 h-5" />,
             content: (
                 <div className="h-full flex flex-col relative">
-                    <FeatureGate 
-                        label="AI Writers Room" 
-                        description="Unlock the intelligent script assistant to brainstorm dialogue, plot twists, and formatting ideas."
-                        className="h-full"
-                    >
-                        <ScriptChat isOpen={true} onClose={() => { }} />
-                    </FeatureGate>
+                    <ScriptChat isOpen={true} onClose={() => { }} />
                 </div>
             )
         }
