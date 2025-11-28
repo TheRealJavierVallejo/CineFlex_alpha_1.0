@@ -33,7 +33,9 @@ export const ScriptPage: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
-  const [isLightMode, setIsLightMode] = useState(false); // NEW: Paper Mode State
+  
+  // Independent Paper State: Defaults to False (Grey/Dark Paper) regardless of App Theme
+  const [isLightMode, setIsLightMode] = useState(false); 
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
