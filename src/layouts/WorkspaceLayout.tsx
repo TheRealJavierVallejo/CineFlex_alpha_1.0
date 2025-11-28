@@ -3,7 +3,7 @@ import { Outlet, useParams, useNavigate, useLocation, useOutletContext, NavLink 
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
-import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
+import { CommandPalette } from '../components/CommandPalette'; // CHANGED
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
 import SaveStatusIndicator from '../components/ui/SaveStatusIndicator';
@@ -39,11 +39,11 @@ export const WorkspaceLayout: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
-    const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
+    const [showCommandPalette, setShowCommandPalette] = useState(false); // CHANGED
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
     // Auto-save with debouncing
-    const { saveStatus, lastSavedAt } = useAutoSave(
+    const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
         project,
         useCallback(async (data: Project | null) => {
             if (data?.id) {
@@ -64,14 +64,14 @@ export const WorkspaceLayout: React.FC = () => {
     useKeyboardShortcut({
         key: 'k',
         meta: true,
-        callback: (e) => { e.preventDefault(); setShowShortcutsPanel(true); },
-        description: 'Open keyboard shortcuts',
+        callback: (e) => { e.preventDefault(); setShowCommandPalette(true); },
+        description: 'Open Command Palette',
     });
 
     useKeyboardShortcut({
         key: '?',
-        callback: () => setShowShortcutsPanel(true),
-        description: 'Open keyboard shortcuts',
+        callback: () => setShowCommandPalette(true),
+        description: 'Open Command Palette',
     });
 
     const showToast: ShowToastFn = (message, type = 'info', action) => {
@@ -81,6 +81,17 @@ export const WorkspaceLayout: React.FC = () => {
 
     const closeToast = (id: number) => {
         setToasts(prev => prev.filter(t => t.id !== id));
+    };
+
+    const toggleTheme = () => {
+        const isLight = document.documentElement.classList.contains('light');
+        if (isLight) {
+            document.documentElement.classList.remove('light');
+            localStorage.setItem('cinesketch_theme_mode', 'dark');
+        } else {
+            document.documentElement.classList.add('light');
+            localStorage.setItem('cinesketch_theme_mode', 'light');
+        }
     };
 
     useEffect(() => {
@@ -357,7 +368,15 @@ export const WorkspaceLayout: React.FC = () => {
                 </LazyWrapper>
             )}
 
-            <KeyboardShortcutsPanel isOpen={showShortcutsPanel} onClose={() => setShowShortcutsPanel(false)} />
+            {/* CHANGED: Replaced KeyboardShortcutsPanel with CommandPalette */}
+            <CommandPalette 
+                isOpen={showCommandPalette} 
+                onClose={() => setShowCommandPalette(false)} 
+                project={project}
+                onAddShot={handleAddShot}
+                onSave={saveNow}
+                toggleTheme={toggleTheme}
+            />
         </div>
     );
 };
