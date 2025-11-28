@@ -6,8 +6,8 @@ interface TimelineHeaderProps {
     isUploadingScript: boolean;
     onImportScript: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onAddScene: () => void;
-    onExportPDF: () => void; 
-    isExporting?: boolean; 
+    onExportPDF: () => void; // New Prop
+    isExporting?: boolean; // New Prop
 }
 
 export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
@@ -20,58 +20,53 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="nle-header justify-between z-20">
-            {/* Left: Identity */}
-            <div className="flex items-center gap-2">
-                <div className="p-1 bg-primary/10 rounded-sm">
-                    <Clapperboard className="w-3.5 h-3.5 text-primary" />
+        <div className="flex items-center justify-between mb-8 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b border-border">
+            <h2 className="text-lg font-bold text-text-primary tracking-wide flex items-center gap-3">
+                <div className="p-2 bg-surface-secondary rounded border border-border">
+                    <Clapperboard className="w-5 h-5 text-primary" aria-hidden="true" />
                 </div>
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Master Timeline</span>
-                <div className="h-3 w-[1px] bg-border mx-2"></div>
-                <div className="text-[10px] text-text-tertiary font-mono">SEQ_01</div>
-            </div>
+                SEQUENCE EDITOR
+            </h2>
 
-            {/* Right: Actions */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
                 <input
                     ref={fileInputRef}
                     type="file"
                     accept=".fountain,.txt"
                     onChange={onImportScript}
                     className="hidden"
+                    id="script-upload"
                 />
 
                 <Button
                     variant="ghost"
-                    size="sm"
-                    icon={<Download className="w-3 h-3" />}
+                    size="md"
+                    icon={<Download className="w-4 h-4" />}
                     onClick={onExportPDF}
                     loading={isExporting}
-                    title="Export Storyboard PDF"
                 >
-                    Export
+                    Export PDF
                 </Button>
 
-                <div className="h-3 w-[1px] bg-border mx-1"></div>
+                <div className="h-6 w-[1px] bg-border mx-2"></div>
 
                 <Button
                     variant="secondary"
-                    size="sm"
-                    icon={<Upload className="w-3 h-3" />}
+                    size="md"
+                    icon={<Upload className="w-4 h-4" />}
                     loading={isUploadingScript}
                     onClick={() => fileInputRef.current?.click()}
-                    title="Import Fountain/Text Script"
                 >
-                    Import Script
+                    {isUploadingScript ? 'Parsing...' : 'Import Script'}
                 </Button>
 
                 <Button
                     variant="primary"
-                    size="sm"
-                    icon={<Plus className="w-3 h-3" />}
+                    size="md"
+                    icon={<Plus className="w-4 h-4" />}
                     onClick={onAddScene}
                 >
-                    Add Scene
+                    New Scene
                 </Button>
             </div>
         </div>

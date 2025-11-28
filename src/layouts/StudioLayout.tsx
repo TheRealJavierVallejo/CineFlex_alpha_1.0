@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useParams, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
-import { SideNav } from '../components/layout/SideNav';
+import { Dock } from '../components/layout/Dock';
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts';
-import { Loader2, Share, Save, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Share } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
 import { syncScriptToScenes } from '../services/scriptUtils';
@@ -39,24 +38,10 @@ export const StudioLayout: React.FC = () => {
     const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
-    // Keyboard Shortcuts (Panel Toggle)
+    // Keyboard Shortcuts
     useKeyboardShortcut({
         key: 'k', meta: true, callback: (e) => { e.preventDefault(); setShowShortcutsPanel(true); }
     });
-
-    // Global Shortcuts
-    useGlobalShortcuts(project, (p) => handleUpdateProject(p));
-
-    // Listen for manual save events
-    useEffect(() => {
-        const onManualSave = () => {
-            setSaveStatus('saving');
-            showToast("Project saved", 'success');
-            setTimeout(() => setSaveStatus('saved'), 500);
-        };
-        window.addEventListener('app-save', onManualSave);
-        return () => window.removeEventListener('app-save', onManualSave);
-    }, []);
 
     const showToast: ShowToastFn = (message, type = 'info', action) => {
         const id = Date.now();
@@ -98,7 +83,7 @@ export const StudioLayout: React.FC = () => {
         setSaveStatus('saving');
         setProject(updated);
         if (updated.id) await saveProjectData(updated.id, updated);
-        setTimeout(() => setSaveStatus('saved'), 800);
+        setTimeout(() => setSaveStatus('saved'), 500);
     };
 
     const handleUpdateSettings = (key: keyof WorldSettings, value: any) => {
@@ -138,7 +123,11 @@ export const StudioLayout: React.FC = () => {
         handleUpdateProject(syncedProject);
     };
 
-    const handleAddShot = () => {};
+    // --- SHOT LOGIC ---
+
+    const handleAddShot = () => {
+        // Placeholder for now, specific views handle this differently
+    };
 
     const handleUpdateShot = (shot: Shot) => {
         if (!project) return;
@@ -161,27 +150,14 @@ export const StudioLayout: React.FC = () => {
     };
 
     const handleDuplicateShot = (shotId: string) => {
-        if (!project) return;
-        const sourceShot = project.shots.find(s => s.id === shotId);
-        if (!sourceShot) return;
-        
-        const sceneShots = project.shots.filter(s => s.sceneId === sourceShot.sceneId);
-        const maxSeq = Math.max(...sceneShots.map(s => s.sequence));
-
-        const newShot: Shot = {
-            ...sourceShot,
-            id: crypto.randomUUID(),
-            sequence: maxSeq + 1,
-            generatedImage: undefined,
-            generationCandidates: [],
-            description: `${sourceShot.description} (Copy)`
-        };
-        
-        handleUpdateProject({ ...project, shots: [...project.shots, newShot] });
-        showToast("Shot duplicated", 'success');
+        // Implementation passed to child
     };
 
-    const handleEditShot = (shot: Shot) => {};
+    // This is passed to child components to handle local UI state (like opening the Inspector)
+    const handleEditShot = (shot: Shot) => {
+         // In the new layout, this will be handled by the Director view locally
+    };
+
 
     if (isLoading || !project) {
         return (
@@ -198,45 +174,45 @@ export const StudioLayout: React.FC = () => {
     };
 
     return (
-        <div className="flex h-screen w-screen bg-background text-text-primary font-sans overflow-hidden">
+        <div className="h-screen w-screen bg-black text-text-primary flex flex-col overflow-hidden font-sans">
             <ToastContainer toasts={toasts} onClose={closeToast} />
-            
-            {/* 1. VERTICAL ACTIVITY BAR (Rigid) */}
-            <SideNav />
 
-            {/* 2. MAIN WORKSPACE AREA */}
-            <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
-                
-                {/* TOP BAR: Project Context */}
-                <div className="h-10 flex items-center justify-between px-4 bg-surface-secondary border-b border-border shrink-0 select-none">
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-text-primary tracking-wide">{project.name}</span>
-                        <div className="h-3 w-px bg-border"></div>
-                        <div className="flex items-center gap-1.5">
-                             <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${saveStatus === 'saving' ? 'bg-yellow-500' : 'bg-green-500'}`} />
-                             <span className="text-[9px] uppercase font-mono text-text-tertiary">
-                                {saveStatus === 'saving' ? 'SAVING...' : 'SYNCED'}
-                             </span>
+            {/* MINIMAL TOP BAR (Project Context) */}
+            {/* UPDATED: Removed absolute positioning so it doesn't overlap content */}
+            <div className="h-12 flex items-center justify-between px-6 z-40 bg-background border-b border-border shrink-0">
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className="text-text-tertiary hover:text-white transition-colors"
+                        title="Back to Projects"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-sm font-bold text-white/80 tracking-wide">{project.name}</h1>
+                        <div className="flex items-center gap-2">
+                             <div className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'saving' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                             <span className="text-[10px] uppercase font-mono text-text-tertiary">{saveStatus === 'saving' ? 'SAVING...' : 'SYNCED'}</span>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="text-[9px] text-text-tertiary font-mono hidden md:block">
-                            CMD+K
-                        </div>
-                        <button className="flex items-center gap-2 px-2 py-1 bg-white/5 hover:bg-white/10 border border-border rounded-sm text-[10px] font-bold transition-colors">
-                            <Share className="w-3 h-3" /> EXPORT
-                        </button>
                     </div>
                 </div>
 
-                {/* CONTENT VIEWPORT */}
-                <main className="flex-1 overflow-hidden relative">
-                    <ErrorBoundary key={location.pathname}>
-                        <Outlet context={contextValue} />
-                    </ErrorBoundary>
-                </main>
+                <div>
+                    <button className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-full text-xs font-bold transition-colors">
+                        <Share className="w-3 h-3" /> Export
+                    </button>
+                </div>
             </div>
+
+            {/* MAIN STAGE */}
+            <main className="flex-1 relative z-0 overflow-hidden">
+                <ErrorBoundary key={location.pathname}>
+                    <Outlet context={contextValue} />
+                </ErrorBoundary>
+            </main>
+
+            {/* FLOATING DOCK */}
+            <Dock />
 
             <KeyboardShortcutsPanel isOpen={showShortcutsPanel} onClose={() => setShowShortcutsPanel(false)} />
         </div>

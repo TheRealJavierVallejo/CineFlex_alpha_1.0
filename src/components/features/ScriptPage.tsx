@@ -1,6 +1,6 @@
 /*
  * 🎬 PAGE: SCRIPT EDITOR
- * Optimized for Pro NLE Layout
+ * Optimized for Pro Writers: Zero-Latency Typing & Advanced Editing Logic
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -18,6 +18,7 @@ import { EmptyProjectState } from './EmptyProjectState';
 export const ScriptPage: React.FC = () => {
   const { project, updateScriptElements, importScript } = useStudio();
   
+  // --- 1. HISTORY STATE (Undo/Redo) ---
   const { 
       state: elements, 
       set: setElements, 
@@ -31,11 +32,12 @@ export const ScriptPage: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isZenMode, setIsZenMode] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false); // New Zen Mode State
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
 
+  // --- 2. SYNC ENGINE ---
   const debouncedSync = useCallback(
       debounce((currentElements: ScriptElement[]) => {
           setIsSyncing(true);
@@ -48,14 +50,20 @@ export const ScriptPage: React.FC = () => {
   );
 
   useEffect(() => {
+    // A. Standard Sync
     if (project.scriptElements && project.scriptElements.length > 0) {
        if (elements.length === 0) setElements(project.scriptElements);
        return;
     }
+    // B. Auto-Hydrate from Scenes
     if (project.scenes.length > 0 && elements.length === 0) {
-        setElements(generateScriptFromScenes(project.scenes));
+        console.log("Hydrating script from scenes...");
+        const generated = generateScriptFromScenes(project.scenes);
+        setElements(generated);
     }
   }, [project.scriptElements, project.scenes]); 
+
+  // --- 3. EDITING LOGIC ---
 
   const updateLocal = (newElements: ScriptElement[]) => {
       const enriched = enrichScriptElements(newElements);
@@ -189,38 +197,38 @@ export const ScriptPage: React.FC = () => {
   const hasElements = elements.length > 0;
 
   return (
-    <div className={`relative h-full flex flex-col bg-[#09090b] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+    <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
       
       {/* Toolbar */}
       {hasElements && (
-        <div className={`h-10 border-b border-border bg-surface flex items-center justify-between px-4 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
-           <div className="flex items-center gap-2 text-text-primary font-medium text-xs">
-               <FileText className="w-3.5 h-3.5 text-primary" />
-               <span className="uppercase tracking-wide font-bold">Script Editor</span>
+        <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
+           <div className="flex items-center gap-2 text-text-primary font-medium">
+               <FileText className="w-4 h-4 text-primary" />
+               <span>Screenplay Editor</span>
            </div>
-           <div className="flex items-center gap-3">
-               <div className="flex items-center bg-[#252526] rounded-sm border border-border p-0.5">
-                  <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3 h-3" /></button>
-                  <div className="w-[1px] h-3 bg-border mx-1" />
-                  <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3 h-3" /></button>
+           <div className="flex items-center gap-4">
+               <div className="flex items-center bg-[#252526] rounded border border-border p-0.5">
+                  <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3.5 h-3.5" /></button>
+                  <div className="w-[1px] h-4 bg-border mx-1" />
+                  <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-[#3E3E42] text-text-tertiary hover:text-white disabled:opacity-30 rounded-sm transition-colors" title="Redo"><Redo className="w-3.5 h-3.5" /></button>
                </div>
                
-               <div className="flex items-center gap-2 min-w-[60px] justify-end">
+               <div className="flex items-center gap-2">
                   {isSyncing ? (
-                      <span className="text-[9px] text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving</span>
+                      <span className="text-xs text-primary flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</span>
                   ) : (
-                      <span className="text-[9px] text-text-tertiary flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
+                      <span className="text-xs text-text-tertiary flex items-center gap-1"><Save className="w-3 h-3" /> Saved</span>
                   )}
                </div>
                
-               <div className="h-3 w-[1px] bg-border" />
+               <div className="h-4 w-[1px] bg-border" />
                
                <button 
                   onClick={() => setIsZenMode(!isZenMode)}
-                  className={`p-1 rounded-sm transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-tertiary hover:text-white hover:bg-[#2A2D2E]'}`}
+                  className={`p-1.5 rounded transition-colors ${isZenMode ? 'bg-primary text-white' : 'text-text-tertiary hover:text-white hover:bg-[#2A2D2E]'}`}
                   title={isZenMode ? "Exit Zen Mode (Esc)" : "Enter Zen Mode"}
                >
-                  {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                </button>
 
                <Button variant={isChatOpen ? "primary" : "secondary"} size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={() => setIsChatOpen(!isChatOpen)}>
@@ -233,7 +241,7 @@ export const ScriptPage: React.FC = () => {
       <div className="flex-1 flex overflow-hidden relative">
         <div 
           ref={containerRef}
-          className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#09090b]" 
+          className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#111111]" 
           style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
           onClick={(e) => {
               if (e.target === containerRef.current && hasElements) {
@@ -242,7 +250,7 @@ export const ScriptPage: React.FC = () => {
           }}
         >
           {hasElements ? (
-              <div className="w-full max-w-[850px] bg-[#121212] shadow-[0_0_0_1px_#27272a] min-h-[1100px] h-fit flex-none p-[100px] relative transition-transform">
+              <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border border-[#333] relative transition-transform">
                  <div className="flex flex-col">
                     {elements.map(element => (
                        <ScriptBlock 

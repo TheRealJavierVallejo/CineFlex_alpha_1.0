@@ -1,72 +1,84 @@
 @import "tailwindcss";
 
 /* ============================================
-   CINESKETCH STUDIO - PRO NLE THEME (HARDENED)
-   System Calibrated for Professional Density
+   CINESKETCH STUDIO - CINEMA DARK THEME
+   Phase 1: Dark Room Aesthetic
    ============================================ */
 
 @theme {
   /* Font Families */
-  --font-family-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-family-mono: "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-family-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+  --font-family-mono: JetBrains Mono, Menlo, Monaco, Courier New, monospace;
   --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
 
-  /* NLE Color Palette (Flat & Neutral) */
-  --color-background: #09090b; /* Zinc 950 (Main Canvas) */
+  /* Colors */
+  --color-background: #09090b; /* Zinc 950 */
   
   --color-app: #09090b;
-  --color-surface: #121212;    /* Main Panel Background */
-  --color-surface-secondary: #18181B; /* Headers / Toolbars (Zinc 900) */
+  --color-app-panel: #18181b;
+  --color-app-hover: #27272a;
+  --color-app-active: #3f3f46;
+
+  --color-surface: #18181b;    /* Zinc 900 */
+  --color-surface-secondary: #0f0f10;
   --color-surface-hover: #27272a;
   
-  /* Borders - The Skeleton of the NLE */
-  --color-border: #27272a;     /* Zinc 800 (Structural) */
-  --color-border-light: #3f3f46;
-  --color-border-focus: #3b82f6; /* Electric Blue */
+  /* Border Colors */
+  --color-border: #27272a;
+  --color-border-focus: #3b82f6;
+  --color-border-subtle: #18181b;
 
   /* Text Colors */
   --color-text-primary: #e4e4e7;   /* Zinc 200 */
   --color-text-secondary: #a1a1aa; /* Zinc 400 */
   --color-text-tertiary: #71717a;  /* Zinc 500 */
-  --color-text-muted: #52525b;     /* Zinc 600 */
+  --color-text-muted: #71717a;     /* Zinc 500 */
+  --color-text-inverse: #000000;
 
-  /* Primary Accent (Electric Blue) */
-  --color-primary: #3b82f6;        
-  --color-primary-hover: #2563eb; 
+  /* Primary Accent */
+  --color-primary: #3b82f6;        /* Blue 500 */
+  --color-primary-hover: #2563eb;  /* Blue 600 */
   --color-primary-foreground: #FFFFFF;
   
-  /* Semantic Colors */
+  /* Status Colors */
   --color-status-error: #ef4444;
   --color-status-warning: #eab308;
   --color-status-success: #22c55e;
   --color-status-info: #0ea5e9;
 
-  /* Shadows - Minimal usage. Panels use Borders. */
-  --shadow-window: 0 0 0 1px #27272a, 0 20px 50px -12px rgba(0, 0, 0, 0.5);
-  --shadow-popup: 0 0 0 1px #27272a, 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 10px rgba(59, 130, 246, 0.1);
+  /* Shadows */
+  --shadow-window: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+  --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.3);
+  --shadow-focus: 0 0 0 2px rgba(59, 130, 246, 0.5);
 
-  /* Pro Radius - Sharp & Precise */
-  --radius: 3px; 
+  --radius: 6px;
 }
 
 @layer base {
   :root {
+    /* Legacy Variables for JS/Backward Compat if needed */
     --bg-app: #09090b;
-    --bg-panel: #121212;
+    --bg-panel: #18181b;
     --border: #27272a;
+  }
+
+  /* Global Resets */
+  * {
+    border-color: var(--color-border);
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
     font-family: var(--font-family-sans);
-    font-size: 13px; /* Standard Desktop App Size */
+    font-size: 13px;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Selection Color */
+  /* Selection Color (Cinema Blue) */
   ::selection {
     background-color: rgba(59, 130, 246, 0.3);
     color: white;
@@ -75,80 +87,101 @@
 
 @layer components {
 
-  /* PRO SCROLLBARS - Thin & Dark */
+  /* ============================================
+     CINEMA SCROLLBARS (Thin & Dark)
+     ============================================ */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
+
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#3f3f46] border-[2px] border-[#09090b] rounded-full;
+    @apply bg-white/10 rounded-full transition-colors;
   }
+
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-[#52525b];
+    @apply bg-white/20;
   }
+  
+  /* Corner for dual scrollbars */
   ::-webkit-scrollbar-corner {
     @apply bg-transparent;
   }
 
-  /* STUDIO COMPONENTS */
+  /* ============================================
+     GLASSMORPHISM UTILITIES
+     ============================================ */
+  .glass-panel {
+    @apply bg-[#18181b]/80 backdrop-blur-md border border-white/5;
+  }
   
-  /* Rigid Panel Container */
-  .nle-panel {
-    @apply bg-surface border border-border flex flex-col overflow-hidden;
+  .glass-header {
+    @apply bg-[#09090b]/80 backdrop-blur-md border-b border-white/5;
   }
 
-  /* Panel Header */
-  .nle-header {
-    @apply h-10 px-3 bg-surface-secondary border-b border-border flex items-center shrink-0 select-none;
+  /* ============================================
+     STUDIO CARD (Elevated Surface)
+     ============================================ */
+  .studio-card {
+    @apply bg-surface border border-border rounded-lg shadow-panel overflow-hidden;
   }
-
-  /* Standard Input Field - Flat & Dark */
-  .nle-input,
+  
   .studio-input {
-    @apply w-full bg-[#000000]/40 border border-border rounded-sm px-2 py-1.5 text-xs text-text-primary;
-    @apply outline-none transition-colors focus:border-primary focus:bg-black;
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm text-text-primary;
+    @apply outline-none transition-all duration-200;
   }
   
-  /* Standard Button - Sharp */
-  .nle-btn {
-    @apply h-7 px-3 rounded-sm text-xs font-medium inline-flex items-center gap-2 transition-all cursor-pointer select-none;
+  .studio-input:focus {
+    @apply border-primary ring-1 ring-primary/30 bg-black/40;
   }
   
-  .nle-btn-primary {
-    @apply bg-primary hover:bg-primary-hover text-white shadow-sm;
-  }
-  
-  .nle-btn-ghost {
-    @apply hover:bg-white/5 text-text-secondary hover:text-text-primary;
+  /* ============================================
+     LEGACY UTILS
+     ============================================ */
+  /* Expanded styles to avoid recursive @apply error */
+  .app-input {
+    @apply w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm text-text-primary h-8;
+    @apply outline-none transition-all duration-200;
   }
 
-  .nle-btn-secondary {
-    @apply bg-[#27272a] hover:bg-[#3f3f46] text-text-primary border border-white/5;
-  }
-
-  /* Utility Grid Item */
-  .nle-grid-item {
-    @apply border border-transparent hover:bg-white/5 hover:border-white/10 rounded-sm cursor-pointer transition-all;
+  .app-input:focus {
+    @apply border-primary ring-1 ring-primary/30 bg-black/40;
   }
   
-  .nle-grid-item.selected {
-    @apply bg-primary/20 border-primary text-white;
+  .app-btn {
+    @apply h-8 px-3 rounded text-sm font-medium inline-flex items-center gap-2 transition-all cursor-pointer;
   }
-
+  
+  .app-btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-white shadow-glow;
+  }
+  
+  .app-btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 text-text-primary border border-white/5;
+  }
+  
   /* Custom Scrollbar Utility */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #3f3f46;
-    border-radius: 4px;
-    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }
