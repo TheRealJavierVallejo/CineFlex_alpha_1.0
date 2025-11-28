@@ -65,11 +65,12 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setDownloadText(report.text);
       };
 
-      // RELOAD WITH CALLBACK
-      // This automatically checks cache. If cached, it verifies (fast). If not, it downloads.
-      await engine.current.reload(SELECTED_MODEL, {
-        initProgressCallback: onProgress
-      });
+      // CORRECT FIX: Set callback on the engine instance directly
+      // This keeps the function on the main thread and doesn't try to send it to the worker
+      engine.current.setInitProgressCallback(onProgress);
+
+      // Reload without passing the callback in options
+      await engine.current.reload(SELECTED_MODEL);
 
       setIsReady(true);
       setIsDownloading(false);
