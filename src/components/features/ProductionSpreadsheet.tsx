@@ -6,7 +6,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Project, Shot, ShowToastFn } from '../../types';
+import { Project, Shot, ShowToastFn, Scene, ScriptElement } from '../../types';
 import { FileText, Clapperboard, LayoutGrid, Sliders, Package, Settings, Upload } from 'lucide-react';
 import Button from '../ui/Button';
 import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
@@ -73,7 +73,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         return scene ? { sequence: scene.sequence, heading: scene.heading } : { sequence: '?', heading: 'Deleted Scene' };
     }, [project.scenes]);
 
-    // --- ONBOARDING HANDLER ---
+    // --- ONBOARDING HANDLERS ---
     const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -90,6 +90,29 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     };
     
     const handleStartWriting = () => {
+        // Initialize with 1 Scene and 1 Script Element so the project is no longer "Empty"
+        const sceneId = crypto.randomUUID();
+        const firstScene: Scene = {
+            id: sceneId,
+            sequence: 1,
+            heading: 'INT. SCENE 1 - DAY',
+            actionNotes: ''
+        };
+        const firstElement: ScriptElement = {
+            id: crypto.randomUUID(),
+            type: 'scene_heading',
+            content: 'INT. SCENE 1 - DAY',
+            sceneId: sceneId,
+            sequence: 1
+        };
+
+        handleUpdateProject({
+            ...project,
+            scenes: [firstScene],
+            scriptElements: [firstElement]
+        });
+
+        // Redirect to Script Editor
         navigate('script');
     };
 

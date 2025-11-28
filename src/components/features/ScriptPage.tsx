@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
-import { ScriptElement } from '../../types';
+import { ScriptElement, Scene } from '../../types';
 import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
@@ -17,7 +17,7 @@ import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { FeatureGate } from '../ui/FeatureGate';
 
 export const ScriptPage: React.FC = () => {
-    const { project, updateScriptElements } = useWorkspace(); // Removed importScript
+    const { project, updateScriptElements, importScript, handleUpdateProject } = useWorkspace(); // Added handleUpdateProject
 
     // --- 1. HISTORY STATE (Undo/Redo) ---
     const {
@@ -32,6 +32,7 @@ export const ScriptPage: React.FC = () => {
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     // --- PAPER THEME LOGIC ---
     // Check Global Theme (This is static per session unless we listen to changes, but usually settings requires navigation)
@@ -186,11 +187,30 @@ export const ScriptPage: React.FC = () => {
         }
     };
 
-    const handleAddFirstElement = () => {
-        const newId = crypto.randomUUID();
-        const el: ScriptElement = { id: newId, type: 'scene_heading', content: '', sequence: 1 };
-        updateLocal([el]);
-        setActiveElementId(newId);
+    const handleStartWriting = () => {
+        // Initialize project if starting fresh
+        const sceneId = crypto.randomUUID();
+        const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. SCENE 1 - DAY', actionNotes: '' };
+        const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. SCENE 1 - DAY', sceneId, sequence: 1 };
+
+        // Save to global project state to unlock other views
+        handleUpdateProject({
+            ...project,
+            scenes: [firstScene],
+            scriptElements: [firstElement]
+        });
+
+        // Set local state
+        setElements([firstElement]);
+        setActiveElementId(firstElement.id);
+    };
+
+    const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsImporting(true);
+        await importScript(file);
+        setIsImporting(false);
     };
 
     const hasElements = elements.length > 0;
@@ -336,8 +356,9 @@ export const ScriptPage: React.FC = () => {
                             <EmptyProjectState
                                 title="Script Workspace"
                                 description="Your project has no script yet. Start writing!"
-                                onCreate={handleAddFirstElement}
-                                // No onImport prop means no upload button
+                                onImport={handleImportScript}
+                                onCreate={handleStartWriting}
+                                isImporting={isImporting}
                             />
                         )}
                     </div>

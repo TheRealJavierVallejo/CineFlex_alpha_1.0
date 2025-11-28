@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem, Location } from '../../types';
 import Button from '../ui/Button';
 import { TimelineHeader } from './TimelineHeader';
@@ -15,8 +16,8 @@ import { getLocations } from '../../services/storage';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { Hash, Search } from 'lucide-react';
-// IMPORT CONTEXT
 import { useSubscription } from '../../context/SubscriptionContext';
+import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
 
 interface TimelineViewProps {
   project: Project;
@@ -27,12 +28,16 @@ interface TimelineViewProps {
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
-  const { tier } = useSubscription(); // GET TIER
+  const navigate = useNavigate();
+  const { importScript } = useOutletContext<WorkspaceContextType>();
+  const { tier } = useSubscription(); 
+  
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
   const [sceneSearch, setSceneSearch] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
 
   // Unified Modal State
   const [imageModalState, setImageModalState] = useState<{
@@ -61,6 +66,35 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  // --- ONBOARDING HANDLERS ---
+  const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsImporting(true);
+      try {
+          await importScript(file);
+          navigate('/project/' + project.id + '/script');
+      } catch (err) {
+          console.error(err);
+      } finally {
+          setIsImporting(false);
+      }
+  };
+
+  const handleStartWriting = () => {
+      // Initialize with 1 Scene and 1 Script Element
+      const sceneId = crypto.randomUUID();
+      const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. SCENE 1 - DAY', actionNotes: '' };
+      const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. SCENE 1 - DAY', sceneId, sequence: 1 };
+
+      onUpdateProject({
+          ...project,
+          scenes: [firstScene],
+          scriptElements: [firstElement]
+      });
+      navigate('/project/' + project.id + '/script');
+  };
+
   // --- HANDLERS (Same as before) ---
   const handleExportPDF = async () => {
     if (project.scenes.length === 0) {
@@ -70,7 +104,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setIsExporting(true);
     showToast("Generating PDF...", 'info');
     try {
-      // PASS TIER HERE
       await generateStoryboardPDF(project, tier);
       showToast("PDF Downloaded", 'success');
     } catch (e) {
@@ -281,9 +314,10 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     return (
       <EmptyProjectState
         title="Empty Timeline"
-        description="No scenes found. Please go to the Dashboard to set up your project or add a scene manually."
-        onCreate={handleAddScene}
-        // Removed onImport here to enforce Dashboard workflow
+        description="To begin, please upload an existing screenplay or start writing from scratch."
+        onImport={handleScriptUpload}
+        onCreate={handleStartWriting}
+        isImporting={isImporting}
       />
     );
   }
