@@ -46,10 +46,10 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   const getStyles = () => {
     // NUCLEAR OPTION for removing borders: using specific class 'script-input-no-border'
-    // This class is targeted by the style tag below to force override defaults
-    const base = "script-input-no-border block bg-transparent resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30 w-full p-0 m-0 appearance-none";
+    // Removed placeholder:opacity-30 to make text more visible (controlled by color now)
+    const base = "script-input-no-border block bg-transparent !outline-none !border-none !ring-0 !shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-none";
     
-    // Theme Colors
+    // Theme Colors - Increased contrast for placeholders
     const colors = isLightMode ? {
         heading: "text-black",
         action: "text-black",
@@ -65,7 +65,8 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         dialogue: "text-[#E8E8E8]",
         parenthetical: "text-[#AAAAAA]",
         transition: "text-[#E8E8E8]",
-        placeholder: "placeholder:text-[#444]"
+        // Lighter grey for better readability on dark background (approx #666)
+        placeholder: "placeholder:text-[#666666]" 
     };
 
     switch (element.type) {
@@ -73,35 +74,35 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         return {
            container: "pt-6 pb-2 group/heading",
            input: `${base} font-bold uppercase tracking-wide text-left ${colors.heading} ${colors.placeholder}`,
-           placeholder: "INT. SCENE HEADING - DAY",
+           placeholder: "INT./EXT. SCENE LOCATION - DAY",
            indicator: "top-7"
         };
       case 'action':
         return {
            container: "pb-4",
            input: `${base} text-left ${colors.action} ${colors.placeholder}`,
-           placeholder: "Action description...",
+           placeholder: "Describe the action in the scene...",
            indicator: "top-1"
         };
       case 'character':
         return {
            container: "pt-4 pb-0",
            input: `${base} max-w-[22rem] mx-auto font-bold uppercase tracking-widest text-center ${colors.character} ${colors.placeholder}`,
-           placeholder: "CHARACTER",
+           placeholder: "CHARACTER NAME",
            indicator: "top-5"
         };
       case 'dialogue':
         return {
            container: "pb-2",
            input: `${base} max-w-[24rem] mx-auto text-left ${colors.dialogue} ${colors.placeholder}`,
-           placeholder: "Dialogue...",
+           placeholder: "What does the character say?",
            indicator: "top-0"
         };
       case 'parenthetical':
         return {
            container: "pb-0",
            input: `${base} max-w-[16rem] mx-auto italic text-left ${colors.parenthetical} ${colors.placeholder}`,
-           placeholder: "(parenthetical)",
+           placeholder: "(emotion or action)",
            indicator: "top-0"
         };
       case 'transition':
@@ -145,10 +146,14 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
            box-shadow: none !important;
            ring: 0 !important;
          }
+         /* Native placeholder styling for broader support */
+         .script-input-no-border::placeholder {
+            opacity: 1 !important; /* Ensure our custom color opacity takes precedence */
+         }
        `}</style>
 
        {/* 
-         TYPE INDICATOR POSITIONING CORRECTION:
+         TYPE INDICATOR POSITIONING:
          - Paper Padding: 100px. Content starts at x=0 relative to this block.
          - Paper Edge: -100px relative to this block.
          - Indicator Width: w-32 (128px).
