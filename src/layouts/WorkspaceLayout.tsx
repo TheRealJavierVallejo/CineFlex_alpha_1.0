@@ -6,7 +6,7 @@ import { Sidebar } from '../components/features/Sidebar';
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { Command, ChevronRight, Plus, Box, Loader2 } from 'lucide-react';
+import { Box, Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
@@ -219,10 +219,10 @@ export const WorkspaceLayout: React.FC = () => {
 
     if (isLoading || !project) {
         return (
-            <div className="h-screen w-screen bg-background flex items-center justify-center">
+            <div className="h-screen w-screen bg-black flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4 text-text-secondary">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <span className="text-sm">Loading Project...</span>
+                    <span className="text-sm font-mono tracking-widest uppercase">Initializing ONYX...</span>
                 </div>
             </div>
         );
@@ -238,53 +238,58 @@ export const WorkspaceLayout: React.FC = () => {
         <div className="h-screen w-screen bg-background text-text-primary flex flex-col overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
             <ToastContainer toasts={toasts} onClose={closeToast} />
 
-            {/* 1. GLASS HEADER */}
+            {/* 1. GLASS HEADER (ONYX STYLE) */}
             <header className="h-12 glass-header flex items-center justify-between px-4 app-region-drag select-none shrink-0 z-30">
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm text-text-primary">
-                        <div className="w-6 h-6 bg-gradient-to-br from-primary to-blue-600 rounded flex items-center justify-center shadow-glow">
-                            <Command className="w-3.5 h-3.5 text-white" />
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+                         {/* ONYX ICON: Square with Slash */}
+                        <div className="w-6 h-6 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden group-hover:border-primary transition-colors">
+                             <div className="absolute inset-0 bg-primary/20 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                             <div className="w-[1px] h-[140%] bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45"></div>
                         </div>
-                        <span className="font-bold tracking-tight">CineSketch</span>
+                        <span className="font-bold tracking-tight text-sm text-zinc-100 group-hover:text-white transition-colors">ONYX</span>
                     </div>
-                    <div className="h-4 w-[1px] bg-white/10" />
-                    <div className="flex items-center gap-1 text-sm text-text-secondary app-no-drag">
-                        <button onClick={() => navigate('/')} className="hover:text-text-primary transition-colors">Projects</button>
-                        <ChevronRight className="w-3 h-3 text-text-muted" />
+                    
+                    <div className="h-4 w-[1px] bg-zinc-800" />
+                    
+                    <div className="flex items-center gap-2 text-xs text-text-muted app-no-drag">
+                        <span className="uppercase tracking-wider font-mono">PROJECT</span>
+                        <span className="text-zinc-600">/</span>
                         <span className="text-text-primary font-medium">{project.name}</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 app-no-drag">
-                    <button onClick={handleAddShot} className="app-btn app-btn-primary h-8 px-4 rounded-full">
-                        <Plus className="w-4 h-4" /> <span className="text-xs font-bold">New Shot</span>
-                    </button>
+                
+                {/* Right Side: Status or User - Clean, no buttons */}
+                <div className="flex items-center gap-3 app-no-drag text-xs text-zinc-500 font-mono">
+                    {saveStatus === 'saving' ? (
+                        <span className="flex items-center gap-2 text-primary animate-pulse"><div className="w-1.5 h-1.5 bg-primary rounded-full" /> SYNCING</span>
+                    ) : (
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-zinc-700 rounded-full" /> READY</span>
+                    )}
                 </div>
             </header>
 
             {/* 2. MAIN WORKSPACE */}
             <div className="flex-1 flex overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 bg-background relative overflow-hidden shadow-inner">
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
+                <main className="flex-1 bg-black relative overflow-hidden">
+                    {/* Subtle noise/gradient for depth */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 to-transparent pointer-events-none z-10" />
                     <ErrorBoundary key={location.pathname}>
                         <Outlet context={contextValue} />
                     </ErrorBoundary>
                 </main>
             </div>
 
-            {/* 3. STATUS BAR */}
-            <footer className="h-6 bg-surface border-t border-border flex items-center justify-between px-4 text-[10px] select-none shrink-0 text-text-secondary">
+            {/* 3. STATUS BAR (Minimal) */}
+            <footer className="h-6 bg-[#050505] border-t border-border flex items-center justify-between px-4 text-[9px] font-mono select-none shrink-0 text-zinc-600 uppercase tracking-wider">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5">
-                        <Box className="w-3 h-3 opacity-70" /> Workspace Ready
+                        <Box className="w-3 h-3 opacity-50" /> v3.0.1 PRO
                     </span>
                 </div>
-                <div className="flex items-center gap-4">
-                    {saveStatus === 'saving' ? (
-                        <span className="flex items-center gap-1 text-primary"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>
-                    ) : (
-                        <span className="text-text-muted">Saved</span>
-                    )}
+                <div>
+                   RAM: OPTIMAL
                 </div>
             </footer>
 

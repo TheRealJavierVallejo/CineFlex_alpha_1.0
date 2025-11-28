@@ -1,6 +1,6 @@
 /*
  * 🧭 COMPONENT: SIDEBAR (Command Rail)
- * Premium Desktop UI - Updated for React Router
+ * ONYX Edition: Rectangular, Sharp, Technical
  */
 
 import React, { useState } from 'react';
@@ -16,19 +16,23 @@ export const Sidebar: React.FC = () => {
         to={to}
         end={exact}
         className={({ isActive }) => `
-          w-full h-10 flex items-center gap-3 px-3 mb-1 rounded-md transition-all duration-200 group relative overflow-hidden
+          w-full h-10 flex items-center gap-4 px-0 mb-1 transition-all duration-100 group relative
           ${isActive 
-            ? 'bg-primary/10 text-primary font-medium shadow-[inset_3px_0_0_0_rgba(59,130,246,1)]' 
-            : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}
+            ? 'bg-white/5 text-primary border-l-2 border-primary' 
+            : 'text-text-muted hover:text-text-primary hover:bg-white/5 border-l-2 border-transparent'}
         `}
         title={label}
       >
         {({ isActive }) => (
             <>
-                <Icon className={`w-5 h-5 shrink-0 transition-all duration-300 ${isActive ? 'text-primary drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]' : 'text-text-muted group-hover:text-text-primary'}`} />
+                <div className="flex items-center justify-center w-12 shrink-0">
+                    <Icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-text-muted group-hover:text-text-primary'}`} />
+                </div>
                 
                 {!isCollapsed && (
-                <span className="text-sm truncate animate-in fade-in slide-in-from-left-2 duration-300 delay-75">{label}</span>
+                <span className={`text-xs font-medium uppercase tracking-wider truncate animate-in fade-in slide-in-from-left-1 duration-200 ${isActive ? 'text-text-primary' : 'text-text-secondary'}`}>
+                    {label}
+                </span>
                 )}
             </>
         )}
@@ -39,12 +43,12 @@ export const Sidebar: React.FC = () => {
   return (
     <aside 
       className={`
-        relative bg-surface border-r border-border flex flex-col transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] z-20 shadow-xl
-        ${isCollapsed ? 'w-[56px]' : 'w-[240px]'}
+        relative bg-[#050505] border-r border-border flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-20
+        ${isCollapsed ? 'w-[50px]' : 'w-[200px]'}
       `}
     >
       {/* Activity Bar Top */}
-      <div className="flex flex-col gap-1 p-3 pt-4">
+      <div className="flex flex-col gap-0 pt-4">
         {/* The index route is technically "", so we link to "." */}
         <NavItem to="." exact icon={LayoutGrid} label="Dashboard" />
         <NavItem to="timeline" icon={Clapperboard} label="Timeline" />
@@ -55,15 +59,15 @@ export const Sidebar: React.FC = () => {
       <div className="flex-1" />
 
       {/* Settings & Toggle Bottom */}
-      <div className="p-3 flex flex-col gap-1 border-t border-border bg-surface-secondary/30 backdrop-blur-sm">
-        <NavItem to="settings" icon={Settings} label="Settings" />
+      <div className="flex flex-col gap-0 border-t border-border bg-[#050505]">
+        <NavItem to="settings" icon={Settings} label="Config" />
         
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full h-10 flex items-center justify-center rounded-md text-text-muted hover:bg-white/5 hover:text-text-primary transition-colors mt-2"
+          className="w-full h-10 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors"
           title={isCollapsed ? "Expand" : "Collapse"}
         >
-          {isCollapsed ? <ChevronRight className="w-5 h-5 transition-transform duration-300" /> : <ChevronLeft className="w-5 h-5 transition-transform duration-300" />}
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
 

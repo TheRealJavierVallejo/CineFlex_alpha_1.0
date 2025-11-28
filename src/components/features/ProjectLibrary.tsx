@@ -1,6 +1,6 @@
 /*
  * 📂 COMPONENT: PROJECT LIBRARY (Data Table)
- * Premium Desktop UI - High Density Table & Sharp Corners
+ * ONYX Edition: Sharp, Technical, Branding Update
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -106,25 +106,27 @@ export const ProjectLibrary: React.FC = () => {
    };
 
    return (
-      <div className="h-screen w-screen bg-background text-text-primary flex flex-col font-sans selection:bg-primary/30 selection:text-white">
+      <div className="h-screen w-screen bg-black text-text-primary flex flex-col font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
          <ToastContainer toasts={toasts} onClose={closeToast} />
 
          {/* Toolbar */}
-         <div className="h-12 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0 z-10">
-            <div className="flex items-center gap-6">
-               <div className="font-bold text-text-primary text-sm tracking-wide flex items-center gap-3">
-                  {/* Sharper Logo Icon */}
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-700 rounded-md flex items-center justify-center shadow-lg shadow-blue-900/20">
-                     <div className="w-3 h-3 bg-white rounded-[1px]" />
+         <div className="h-14 border-b border-border flex items-center justify-between px-8 bg-[#050505] shrink-0 z-10">
+            <div className="flex items-center gap-8">
+               
+               {/* ONYX BRANDING */}
+               <div className="flex items-center gap-3 select-none">
+                  {/* Icon: Square with Slash */}
+                  <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden">
+                      <div className="w-[1px] h-[150%] bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45"></div>
                   </div>
-                  <span className="text-base tracking-tight font-semibold">CineSketch Studio</span>
+                  <span className="text-xl tracking-tight font-bold text-white">ONYX</span>
                </div>
                
-               <div className="h-5 w-[1px] bg-border" />
+               <div className="h-8 w-[1px] bg-zinc-800" />
                
-               <form onSubmit={handleCreate} className="flex items-center gap-2">
+               <form onSubmit={handleCreate} className="flex items-center gap-0">
                   <input
-                     className="studio-input w-64 h-8 bg-background focus:bg-surface-secondary transition-colors"
+                     className="w-64 h-9 bg-black border border-border border-r-0 rounded-l-sm px-3 text-sm focus:border-primary outline-none transition-colors"
                      placeholder="New Project Name..."
                      value={newProjectName}
                      onChange={e => setNewProjectName(e.target.value)}
@@ -132,7 +134,7 @@ export const ProjectLibrary: React.FC = () => {
                   <button 
                     type="submit" 
                     disabled={!newProjectName.trim() || isCreating} 
-                    className="h-8 px-4 rounded bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:shadow-none"
+                    className="h-9 px-4 rounded-r-sm bg-zinc-900 border border-border hover:bg-zinc-800 hover:text-white text-zinc-400 text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                      {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create
                   </button>
@@ -140,15 +142,15 @@ export const ProjectLibrary: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-               <button onClick={() => fileInputRef.current?.click()} className="h-8 px-3 rounded bg-surface-secondary hover:bg-surface hover:text-white border border-border text-text-secondary text-xs font-medium flex items-center gap-2 transition-all">
-                  <Upload className="w-3.5 h-3.5" /> Import Project
+               <button onClick={() => fileInputRef.current?.click()} className="h-9 px-4 rounded-sm bg-black border border-border hover:border-zinc-600 text-zinc-400 hover:text-white text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all">
+                  <Upload className="w-3.5 h-3.5" /> Import
                </button>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
             </div>
          </div>
 
          {/* Data Table Header */}
-         <div className="flex items-center px-6 h-9 bg-surface-secondary border-b border-border text-[11px] font-bold text-text-secondary uppercase tracking-wider select-none shrink-0">
+         <div className="flex items-center px-8 h-10 bg-[#09090b] border-b border-border text-[10px] font-bold text-zinc-500 uppercase tracking-widest select-none shrink-0">
             <div className="flex-[2] pl-2">Project Name</div>
             <div className="flex-1">Shots</div>
             <div className="flex-1">Cast</div>
@@ -157,44 +159,41 @@ export const ProjectLibrary: React.FC = () => {
          </div>
 
          {/* Table Body */}
-         <div className="flex-1 overflow-y-auto bg-background p-6">
-            <div className="max-w-[1920px] mx-auto">
+         <div className="flex-1 overflow-y-auto bg-black p-0">
+            <div className="w-full">
                 {projects.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 text-text-muted">
-                    <div className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center mb-4 border border-border">
+                <div className="flex flex-col items-center justify-center py-32 text-zinc-700">
+                    <div className="w-20 h-20 bg-[#050505] rounded-sm flex items-center justify-center mb-6 border border-zinc-900">
                         <FileText className="w-8 h-8 opacity-20" />
                     </div>
-                    <p className="text-sm">No projects found</p>
-                    <p className="text-xs mt-2 opacity-50">Create one above to get started</p>
+                    <p className="text-sm font-mono uppercase tracking-widest">No projects found</p>
                 </div>
                 ) : (
-                <div className="flex flex-col rounded-md border border-border overflow-hidden bg-surface shadow-sm">
+                <div className="flex flex-col">
                     {projects.map(proj => (
                         <div
                             key={proj.id}
                             onClick={() => setSelection(proj.id)}
                             onDoubleClick={() => openProject(proj.id)}
                             className={`
-                        group flex items-center px-6 h-10 border-b border-border last:border-0 cursor-default text-sm transition-all
-                        ${selection === proj.id ? 'bg-primary/10 text-text-primary' : 'hover:bg-surface-secondary/50 text-text-secondary hover:text-text-primary'}
+                        group flex items-center px-8 h-12 border-b border-border/50 cursor-pointer text-sm transition-colors
+                        ${selection === proj.id ? 'bg-primary/5 text-white' : 'hover:bg-[#09090b] text-zinc-400 hover:text-zinc-200'}
                         `}
                         >
-                            <div className="flex-[2] pl-2 font-medium flex items-center gap-3 truncate">
-                            <div className={`p-1 rounded-sm ${selection === proj.id ? 'bg-primary/20 text-primary' : 'bg-surface-secondary text-text-tertiary group-hover:text-text-primary'}`}>
-                                <FileText className="w-3.5 h-3.5" />
+                            <div className="flex-[2] pl-2 font-medium flex items-center gap-4 truncate">
+                            <div className={`w-2 h-2 rounded-full ${selection === proj.id ? 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'bg-zinc-800 group-hover:bg-zinc-600'}`} />
+                            <span className="font-mono">{proj.name}</span>
                             </div>
-                            {proj.name}
-                            </div>
-                            <div className="flex-1 opacity-70 group-hover:opacity-100 transition-opacity text-xs">{proj.shotCount} shots</div>
-                            <div className="flex-1 opacity-70 group-hover:opacity-100 transition-opacity text-xs">{proj.characterCount || 0} characters</div>
-                            <div className="flex-1 opacity-50 group-hover:opacity-100 transition-opacity font-mono text-[10px]">
+                            <div className="flex-1 opacity-60 group-hover:opacity-100 transition-opacity text-xs font-mono">{proj.shotCount} shots</div>
+                            <div className="flex-1 opacity-60 group-hover:opacity-100 transition-opacity text-xs font-mono">{proj.characterCount || 0} characters</div>
+                            <div className="flex-1 opacity-40 group-hover:opacity-100 transition-opacity font-mono text-[10px]">
                             {new Date(proj.lastModified).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                             </div>
-                            <div className="w-24 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => handleExport(proj.id, proj.name, e)} className="p-1.5 hover:bg-background rounded text-text-tertiary hover:text-text-primary transition-colors" title="Export JSON">
+                            <div className="w-24 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => handleExport(proj.id, proj.name, e)} className="p-1.5 hover:bg-white/10 rounded-sm text-zinc-500 hover:text-white transition-colors" title="Export JSON">
                                 <Download className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={(e) => handleDelete(proj.id, proj.name, e)} className="p-1.5 hover:bg-error/10 rounded text-text-tertiary hover:text-error transition-colors" title="Delete Project">
+                            <button onClick={(e) => handleDelete(proj.id, proj.name, e)} className="p-1.5 hover:bg-red-500/20 rounded-sm text-zinc-500 hover:text-red-500 transition-colors" title="Delete Project">
                                 <Trash2 className="w-3.5 h-3.5" />
                             </button>
                             </div>
@@ -206,31 +205,34 @@ export const ProjectLibrary: React.FC = () => {
          </div>
 
          {/* Status Footer */}
-         <div className="h-7 bg-surface border-t border-border text-[10px] flex items-center px-6 font-medium select-none text-text-tertiary justify-between shrink-0">
-            <span>v3.0.0 (Pro Studio)</span>
-            <span>{projects.length} Projects Loaded</span>
+         <div className="h-8 bg-[#050505] border-t border-border text-[9px] flex items-center px-8 font-mono select-none text-zinc-600 uppercase tracking-widest justify-between shrink-0">
+            <span>ONYX SYSTEM v3.1</span>
+            <span>{projects.length} PROJECTS INDEXED</span>
          </div>
 
          {/* Delete Confirmation Modal */}
          {confirmDelete && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in" onClick={() => setConfirmDelete(null)}>
-               <div className="bg-surface border border-border rounded-lg p-6 w-96 shadow-2xl" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-base font-bold text-text-primary mb-2">Delete Project?</h3>
-                  <p className="text-text-secondary text-sm mb-6 leading-relaxed">
-                     Are you sure you want to permanently delete <strong className="text-text-primary">{confirmDelete.name}</strong>? This action cannot be undone.
+            <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setConfirmDelete(null)}>
+               <div className="bg-[#09090b] border border-border rounded-sm p-6 w-96 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <Trash2 className="w-4 h-4 text-red-500" /> Confirm Deletion
+                  </h3>
+                  <p className="text-zinc-400 text-xs mb-8 leading-relaxed font-mono">
+                     Permanently delete project <strong className="text-white">"{confirmDelete.name}"</strong>? <br/>
+                     This action is irreversible.
                   </p>
-                  <div className="flex gap-2 justify-end">
+                  <div className="flex gap-3 justify-end">
                      <button
                         onClick={() => setConfirmDelete(null)}
-                        className="px-4 py-2 rounded bg-surface-secondary hover:bg-surface border border-border text-text-primary text-xs uppercase font-bold tracking-wide transition-colors"
+                        className="px-4 py-2 rounded-sm border border-border text-zinc-400 hover:text-white hover:border-zinc-500 text-xs uppercase font-bold tracking-wide transition-colors"
                      >
                         Cancel
                      </button>
                      <button
                         onClick={confirmDeletion}
-                        className="px-4 py-2 rounded bg-error hover:bg-error/90 text-white text-xs uppercase font-bold tracking-wide transition-colors shadow-lg shadow-red-900/20"
+                        className="px-4 py-2 rounded-sm bg-red-900/50 hover:bg-red-900 border border-red-900 hover:border-red-500 text-red-100 text-xs uppercase font-bold tracking-wide transition-colors"
                      >
-                        Delete Project
+                        Delete
                      </button>
                   </div>
                </div>
