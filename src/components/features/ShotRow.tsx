@@ -4,7 +4,7 @@ import { Plus, Type, X, Edit2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import { LazyImage } from '../ui/LazyImage';
-import { DebouncedInput } from '../ui/DebouncedInput';
+import { DebouncedTextarea } from '../ui/DebouncedTextarea';
 
 interface ShotRowProps {
     shot: Shot;
@@ -29,11 +29,6 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
     onAddVisual
 }) => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-    // Optimized Description Update
-    const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        onUpdateShot(shot.id, { description: e.target.value });
-    };
 
     return (
         <>
@@ -93,14 +88,12 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                 <div className="flex-1 p-4 flex flex-col justify-center">
                     {/* Description Input (if no linked script) */}
                     {linkedElements.length === 0 && (
-                        <div className="mb-2">
-                            {/* Standard textarea but could be optimized if typing lags, though textarea debouncing needs a custom component */}
-                            <textarea
+                        <div className="mb-2 h-full">
+                            <DebouncedTextarea
                                 value={shot.description}
-                                onChange={handleDescriptionChange}
+                                onChange={(val) => onUpdateShot(shot.id, { description: val })}
                                 placeholder="// Describe shot action..."
-                                className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full"
-                                rows={2}
+                                className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full min-h-[60px]"
                             />
                         </div>
                     )}
@@ -175,7 +168,6 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
         prev.shot.generatedImage === next.shot.generatedImage &&
         prev.shot.sequence === next.shot.sequence &&
         prev.linkedElements.length === next.linkedElements.length &&
-        // Shallow compare linked elements IDs to avoid deep compare
         prev.linkedElements.every((el, i) => el.id === next.linkedElements[i].id)
     );
 });
