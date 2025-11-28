@@ -43,63 +43,67 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // UPDATED: Using 'font-screenplay' (Courier Prime)
-    const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[17px] leading-relaxed transition-colors duration-200 placeholder:opacity-30";
+    // Base styles: Courier font, large comfortable size, transparent background
+    const base = "block bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[17px] leading-relaxed transition-colors duration-200 placeholder:opacity-30";
     
-    // Formatting Logic: Using Max-Width + Auto Margins for proper flow
+    // FORMATTING STRATEGY:
+    // Instead of padding, we use max-width + mx-auto to create the "column" effect.
+    // This allows text to wrap naturally within the constrained width.
+    
     switch (element.type) {
       case 'scene_heading':
         return {
            container: "pt-8 pb-4 border-b border-white/5 mb-4 group/heading",
-           // Bold, Uppercase, Standard Left Align
-           input: `${base} font-bold uppercase tracking-wider text-[#E8E8E8]`,
+           // Full width, Bold, Uppercase
+           input: `${base} w-full font-bold uppercase tracking-wider text-[#E8E8E8] text-left`,
            placeholder: "INT. SCENE HEADING - DAY",
            indicator: "top-10"
         };
       case 'action':
         return {
            container: "pb-4",
-           // Standard Left Align
-           input: `${base} text-[#CCCCCC]`,
+           // Full width
+           input: `${base} w-full text-[#CCCCCC] text-left`,
            placeholder: "Action...",
            indicator: "top-1"
         };
       case 'character':
         return {
            container: "pt-4 pb-0",
-           // Centered Box, Centered Text (Width ~40%)
-           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8] text-center max-w-[22rem] mx-auto`,
+           // Narrow centered column (~33 characters wide), Centered Text
+           input: `${base} w-full max-w-[22rem] mx-auto font-bold uppercase tracking-widest text-[#E8E8E8] text-center`,
            placeholder: "CHARACTER",
            indicator: "top-5"
         };
       case 'dialogue':
         return {
            container: "pb-2",
-           // Centered Box, Left Align Text (Width ~35rem / 60%)
-           input: `${base} text-[#CCCCCC] text-left max-w-[35rem] mx-auto`,
+           // Medium centered column (~40-45 characters wide), Left Aligned Text
+           // This width (approx 34rem or 540px) is standard for 12pt Courier dialogue
+           input: `${base} w-full max-w-[34rem] mx-auto text-[#CCCCCC] text-left`,
            placeholder: "Dialogue...",
            indicator: "top-1"
         };
       case 'parenthetical':
         return {
            container: "pb-0",
-           // Centered Box, Left Align Text (Width ~20rem)
-           input: `${base} italic text-sm text-[#969696] text-left max-w-[20rem] mx-auto`,
+           // Narrower than dialogue (~25 characters wide), Left Aligned
+           input: `${base} w-full max-w-[20rem] mx-auto italic text-sm text-[#969696] text-left`,
            placeholder: "(parenthetical)",
            indicator: "top-0.5"
         };
       case 'transition':
         return {
            container: "pt-4 pb-4",
-           // Right Aligned
-           input: `${base} font-bold uppercase tracking-widest text-right text-[#E8E8E8] pr-12`,
+           // Full width, Right Aligned
+           input: `${base} w-full font-bold uppercase tracking-widest text-right text-[#E8E8E8] pr-12`,
            placeholder: "CUT TO:",
            indicator: "top-6"
         };
       default:
         return {
            container: "pb-2",
-           input: `${base} text-[#CCCCCC]`,
+           input: `${base} w-full text-[#CCCCCC]`,
            placeholder: "",
            indicator: "top-2"
         };
