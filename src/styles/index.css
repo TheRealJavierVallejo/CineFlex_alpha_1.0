@@ -10,10 +10,19 @@
   --font-family-mono: JetBrains Mono, Menlo, Monaco, Courier New, monospace;
   --font-family-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
 
+  /* ONYX Color Palette */
   --color-background: #000000;
   --color-surface: #09090b;
   --color-primary: #3b82f6;
   
+  --color-border: #27272a;
+  --color-border-focus: #3b82f6;
+  --color-border-subtle: #18181b;
+
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #52525b;
+
   --radius: 1px;
 }
 
@@ -26,33 +35,18 @@
     --bg-hover: #18181b;
     --bg-active: #27272a;
 
-    /* Border Colors */
-    --border: #27272a;
-    --border-focus: #3b82f6;
-    --border-subtle: #18181b;
-
-    /* Text Colors */
-    --text-primary: #f4f4f5;   
-    --text-secondary: #a1a1aa; 
-    --text-muted: #52525b;     
-
-    /* Accent Colors */
-    --primary: #3b82f6;
-    --primary-hover: #2563eb;
-    --accent: #3b82f6;
-    
     --header-height: 48px;
     --sidebar-width: 240px;
-    --sidebar-collapsed: 50px; /* Slimmer for technical feel */
+    --sidebar-collapsed: 50px;
   }
 
   * {
-    border-color: var(--border);
+    border-color: var(--color-border);
   }
 
   body {
-    background-color: var(--bg-app);
-    color: var(--text-primary);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
     font-family: var(--font-family-sans);
     font-size: 13px;
     overflow: hidden;
@@ -104,13 +98,13 @@
      ============================================ */
   .studio-card {
     @apply bg-[#09090b] border border-border rounded-sm overflow-hidden;
-    box-shadow: none; /* Flat look */
+    box-shadow: none;
   }
   
   .studio-input {
     @apply w-full bg-[#000000] border border-border rounded-sm px-3 py-1.5 text-sm;
     @apply outline-none transition-all duration-100 placeholder:text-zinc-700;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
   }
   
   .studio-input:focus {
@@ -125,7 +119,7 @@
   }
   
   .app-btn-primary {
-    @apply text-white bg-primary hover:bg-primary-hover border border-primary;
+    @apply text-white bg-primary hover:bg-blue-600 border border-primary;
   }
   
   .app-btn-secondary {
