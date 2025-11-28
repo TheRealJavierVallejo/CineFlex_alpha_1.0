@@ -5,7 +5,7 @@ import { getProjectData, saveProjectData, setActiveProjectId } from '../services
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Users, Settings, Film } from 'lucide-react';
+import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
@@ -241,7 +241,7 @@ export const WorkspaceLayout: React.FC = () => {
                 h-full px-4 flex items-center gap-2 border-b-2 transition-all text-xs font-bold uppercase tracking-wider
                 ${isActive 
                     ? 'border-primary text-white bg-white/5' 
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'}
             `}
         >
             <Icon className="w-3.5 h-3.5" />
@@ -278,8 +278,6 @@ export const WorkspaceLayout: React.FC = () => {
                     <NavTab to="." exact icon={LayoutGrid} label="Dashboard" />
                     <NavTab to="timeline" icon={Clapperboard} label="Timeline" />
                     <NavTab to="script" icon={FileText} label="Script" />
-                    <NavTab to="assets" icon={Users} label="Assets" />
-                    <NavTab to="settings" icon={Settings} label="Config" />
                 </nav>
                 
                 {/* RIGHT: Status */}

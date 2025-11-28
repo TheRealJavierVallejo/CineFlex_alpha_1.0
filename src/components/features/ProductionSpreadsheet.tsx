@@ -5,13 +5,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Project, Shot, ShowToastFn } from '../../types';
+import { Project, Shot, ShowToastFn, WorldSettings } from '../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../constants';
-import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Layers, Clapperboard, FileText, LayoutGrid, Search, BarChart3, Sliders } from 'lucide-react';
+import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Layers, Clapperboard, FileText, LayoutGrid, Search, BarChart3, Sliders, Package, Settings } from 'lucide-react';
 import Button from '../ui/Button';
 import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
+import { ProjectSettingsPanel } from './ProjectSettings';
+import { AssetManagerPanel } from './AssetManager';
 
 interface ProductionSpreadsheetProps {
   project: Project;
@@ -31,7 +33,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   showToast
 }) => {
   const navigate = useNavigate();
-  const { handleBulkUpdateShots } = useOutletContext<WorkspaceContextType>();
+  const { handleBulkUpdateShots, handleUpdateProject, handleUpdateSettings } = useOutletContext<WorkspaceContextType>();
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
@@ -40,6 +42,21 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [filterScene, setFilterScene] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Helpers for Project Settings panel
+  const addCustomSetting = (field: any, value: string) => {
+    const currentList = (project.settings as any)[field] || [];
+    if (!currentList.includes(value)) {
+        const map: any = { 'customEras': 'era', 'customStyles': 'cinematicStyle', 'customTimes': 'timeOfDay', 'customLighting': 'lighting' };
+        const updated = { ...project, settings: { ...project.settings, [field]: [...currentList, value], [map[field]]: value } };
+        handleUpdateProject(updated);
+    }
+  };
+
+  const removeCustomSetting = (field: any, value: string) => {
+    const updated = { ...project, settings: { ...project.settings, [field]: (project.settings as any)[field].filter((i: string) => i !== value) } };
+    handleUpdateProject(updated);
+  };
 
   // --- HELPER: Get Scene Info ---
   const getSceneInfo = (sceneId?: string) => {
@@ -182,6 +199,27 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                     </div>
                 </CollapsibleSection>
             </div>
+          )
+      },
+      {
+          id: 'assets',
+          label: 'Asset Manager',
+          icon: <Package className="w-5 h-5" />,
+          content: <AssetManagerPanel projectId={project.id} projectShots={project.shots} showToast={showToast} />
+      },
+      {
+          id: 'config',
+          label: 'Project Settings',
+          icon: <Settings className="w-5 h-5" />,
+          content: (
+              <ProjectSettingsPanel 
+                  project={project}
+                  onUpdateProject={handleUpdateProject}
+                  onUpdateSettings={handleUpdateSettings}
+                  onAddCustom={addCustomSetting}
+                  onRemoveCustom={removeCustomSetting}
+                  showToast={showToast}
+              />
           )
       }
   ];
