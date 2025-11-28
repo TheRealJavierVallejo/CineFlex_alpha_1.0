@@ -443,7 +443,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       >
 
         {/* LEFT COLUMN: CONTROLS */}
-        <div className="w-[400px] flex flex-col border-r border-border bg-surface-secondary">
+        <div className="w-[400px] flex flex-col border-r border-border bg-surface">
           <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
             <div>
               <h2 className="text-text-primary font-bold text-base flex items-center gap-2">
@@ -455,7 +455,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
           </div>
 
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-surface">
             {/* Shot Details Section */}
             <CollapsibleSection title="Shot Details" icon={<FileText className="w-4 h-4 text-primary" />} defaultOpen={true}>
               <div className="space-y-4">

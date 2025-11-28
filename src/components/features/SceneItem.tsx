@@ -150,7 +150,7 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                             ))}
 
                             {/* Add Shot Button - Always at bottom */}
-                            <div className="p-3 flex justify-center border-t border-border/10 bg-surface/30">
+                            <div className="p-3 flex justify-center border-t border-border/10 bg-surface/50">
                                 <Button
                                     variant="ghost"
                                     size="sm"
