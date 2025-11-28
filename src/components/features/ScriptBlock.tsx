@@ -46,8 +46,8 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   const getStyles = () => {
     // Base styles: Courier font, large comfortable size, transparent background
-    // REMOVED: focus ring/border styles to keep it clean
-    const base = "block bg-transparent outline-none border-none ring-0 focus:ring-0 resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30";
+    // STRICTLY REMOVED ALL BORDERS/RINGS via !important-like utility classes
+    const base = "block bg-transparent outline-none focus:outline-none border-none focus:border-none ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30 w-full p-0 m-0 appearance-none";
     
     // Theme Colors
     const colors = isLightMode ? {
@@ -72,49 +72,49 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
       case 'scene_heading':
         return {
            container: "pt-6 pb-2 group/heading",
-           input: `${base} w-full font-bold uppercase tracking-wide text-left ${colors.heading} ${colors.placeholder}`,
+           input: `${base} font-bold uppercase tracking-wide text-left ${colors.heading} ${colors.placeholder}`,
            placeholder: "INT. SCENE HEADING - DAY",
            indicator: "top-7"
         };
       case 'action':
         return {
            container: "pb-4",
-           input: `${base} w-full text-left ${colors.action} ${colors.placeholder}`,
+           input: `${base} text-left ${colors.action} ${colors.placeholder}`,
            placeholder: "Action description...",
            indicator: "top-1"
         };
       case 'character':
         return {
            container: "pt-4 pb-0",
-           input: `${base} w-full max-w-[22rem] mx-auto font-bold uppercase tracking-widest text-center ${colors.character} ${colors.placeholder}`,
+           input: `${base} max-w-[22rem] mx-auto font-bold uppercase tracking-widest text-center ${colors.character} ${colors.placeholder}`,
            placeholder: "CHARACTER",
            indicator: "top-5"
         };
       case 'dialogue':
         return {
            container: "pb-2",
-           input: `${base} w-full max-w-[24rem] mx-auto text-left ${colors.dialogue} ${colors.placeholder}`,
+           input: `${base} max-w-[24rem] mx-auto text-left ${colors.dialogue} ${colors.placeholder}`,
            placeholder: "Dialogue...",
            indicator: "top-0"
         };
       case 'parenthetical':
         return {
            container: "pb-0",
-           input: `${base} w-full max-w-[16rem] mx-auto italic text-left ${colors.parenthetical} ${colors.placeholder}`,
+           input: `${base} max-w-[16rem] mx-auto italic text-left ${colors.parenthetical} ${colors.placeholder}`,
            placeholder: "(parenthetical)",
            indicator: "top-0"
         };
       case 'transition':
         return {
            container: "pt-4 pb-4",
-           input: `${base} w-full font-bold uppercase tracking-widest text-right pr-0 ${colors.transition} ${colors.placeholder}`,
+           input: `${base} font-bold uppercase tracking-widest text-right pr-0 ${colors.transition} ${colors.placeholder}`,
            placeholder: "CUT TO:",
            indicator: "top-6"
         };
       default:
         return {
            container: "pb-2",
-           input: `${base} w-full ${colors.action} ${colors.placeholder}`,
+           input: `${base} ${colors.action} ${colors.placeholder}`,
            placeholder: "",
            indicator: "top-2"
         };
@@ -125,9 +125,14 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-       {/* Type Indicator - Moved further left (-left-40) to be outside paper area */}
+       {/* Type Indicator 
+           - Moved to -left-[112px]. 
+           - Page padding is 100px. 
+           - This places the indicator 12px outside the paper edge (112 - 100 = 12px gap).
+           - "Just barely off the page"
+       */}
        <div className={`
-          absolute -left-48 text-[10px] uppercase transition-all duration-200 select-none w-32 text-right pr-6 font-sans border-r
+          absolute -left-[112px] text-[10px] uppercase transition-all duration-200 select-none w-24 text-right pr-3 font-sans border-r
           ${styles.indicator}
           ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'border-transparent opacity-0 group-hover:opacity-30'}
           ${isLightMode && !isActive ? 'text-zinc-400' : ''}
