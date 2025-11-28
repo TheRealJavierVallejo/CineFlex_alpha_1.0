@@ -9,7 +9,6 @@ import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { chatWithScript } from '../../services/gemini';
 import { getCharacters } from '../../services/storage';
 import { Character } from '../../types';
-import Button from '../ui/Button';
 
 interface Message {
   id: string;
@@ -32,14 +31,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load characters for context
   useEffect(() => {
     if (isOpen) {
       getCharacters(project.id).then(setCharacters);
     }
   }, [isOpen, project.id]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -53,18 +50,9 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      // Prepare history for API (exclude IDs)
       const history = messages.map(m => ({ role: m.role, content: m.content }));
-      
       const elements = project.scriptElements || [];
-      
-      const responseText = await chatWithScript(
-        userMsg.content, 
-        history, 
-        elements, 
-        characters
-      );
-
+      const responseText = await chatWithScript(userMsg.content, history, elements, characters);
       const aiMsg: Message = { id: crypto.randomUUID(), role: 'model', content: responseText };
       setMessages(prev => [...prev, aiMsg]);
     } catch (error) {
@@ -77,32 +65,19 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="w-[350px] border-l border-border bg-[#18181B] flex flex-col h-full absolute right-0 top-0 bottom-0 z-20 shadow-2xl animate-in slide-in-from-right duration-300">
+    <div className="flex flex-col h-full bg-[#18181B] w-full">
       
-      {/* Header */}
-      <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-4 shrink-0">
-        <div className="flex items-center gap-2 text-text-primary font-bold text-sm">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span>Writer's Room</span>
-        </div>
-        <button onClick={onClose} className="text-text-tertiary hover:text-white">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#121212]">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             
-            {/* Avatar */}
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
               msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'
             }`}>
               {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
 
-            {/* Bubble */}
             <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap ${
               msg.role === 'user' 
                 ? 'bg-primary/20 text-white border border-primary/30' 
@@ -126,7 +101,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border bg-surface">
+      <div className="p-4 border-t border-border bg-surface shrink-0">
         <div className="relative">
           <textarea
             value={input}
@@ -147,11 +122,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
           >
             <Send className="w-4 h-4" />
           </button>
-        </div>
-        <div className="text-[10px] text-text-tertiary mt-2 text-center">
-          {(project.scriptElements || []).length > 0 
-            ? "AI is reading your script context." 
-            : "No script detected. AI will brainstorm freely."}
         </div>
       </div>
     </div>

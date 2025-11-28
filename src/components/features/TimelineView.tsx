@@ -13,7 +13,7 @@ import { ImageSelectorModal } from './ImageSelectorModal';
 import { generateStoryboardPDF } from '../../services/pdfExport';
 import { getLocations } from '../../services/storage';
 import { EmptyProjectState } from './EmptyProjectState';
-import { PageWithSidebar } from '../layout/PageWithSidebar';
+import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { Clapperboard, MapPin, Hash, Search } from 'lucide-react';
 
 interface TimelineViewProps {
@@ -217,42 +217,49 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
   };
 
-  // --- SIDEBAR ---
+  // --- TOOL RAIL CONTENT ---
   const filteredScenes = project.scenes.filter(s => s.heading.toLowerCase().includes(sceneSearch.toLowerCase()));
+  
+  const tools: Tool[] = [
+      {
+          id: 'navigator',
+          label: 'Scene Navigator',
+          icon: <Hash className="w-5 h-5" />,
+          content: (
+            <div className="p-4 space-y-4">
+                <div className="relative">
+                    <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-zinc-500" />
+                    <input 
+                        value={sceneSearch}
+                        onChange={e => setSceneSearch(e.target.value)}
+                        placeholder="Search scenes..."
+                        className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-white outline-none focus:border-primary placeholder:text-zinc-600"
+                    />
+                </div>
 
-  const SidebarContent = (
-    <div className="space-y-4">
-       <div className="relative">
-          <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-zinc-500" />
-          <input 
-              value={sceneSearch}
-              onChange={e => setSceneSearch(e.target.value)}
-              placeholder="Search scenes..."
-              className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-white outline-none focus:border-primary placeholder:text-zinc-600"
-          />
-       </div>
-
-       <div className="space-y-1">
-          {filteredScenes.length === 0 ? (
-             <div className="text-[10px] text-zinc-600 italic text-center py-4">No scenes found</div>
-          ) : (
-             filteredScenes.map(scene => (
-                <button
-                   key={scene.id}
-                   onClick={() => scrollToScene(scene.id)}
-                   className="w-full flex items-center gap-2 px-2 py-2 rounded-sm hover:bg-[#18181b] text-left group transition-colors"
-                >
-                   <span className="text-[10px] font-mono font-bold text-zinc-500 w-6 group-hover:text-primary">{String(scene.sequence).padStart(2, '0')}</span>
-                   <span className="text-xs text-zinc-400 font-medium truncate flex-1 group-hover:text-white">{scene.heading}</span>
-                   {project.shots.filter(s => s.sceneId === scene.id).length > 0 && (
-                       <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 rounded-sm">{project.shots.filter(s => s.sceneId === scene.id).length}</span>
-                   )}
-                </button>
-             ))
-          )}
-       </div>
-    </div>
-  );
+                <div className="space-y-1">
+                    {filteredScenes.length === 0 ? (
+                        <div className="text-[10px] text-zinc-600 italic text-center py-4">No scenes found</div>
+                    ) : (
+                        filteredScenes.map(scene => (
+                            <button
+                                key={scene.id}
+                                onClick={() => scrollToScene(scene.id)}
+                                className="w-full flex items-center gap-2 px-2 py-2 rounded-sm hover:bg-[#18181b] text-left group transition-colors"
+                            >
+                                <span className="text-[10px] font-mono font-bold text-zinc-500 w-6 group-hover:text-primary">{String(scene.sequence).padStart(2, '0')}</span>
+                                <span className="text-xs text-zinc-400 font-medium truncate flex-1 group-hover:text-white">{scene.heading}</span>
+                                {project.shots.filter(s => s.sceneId === scene.id).length > 0 && (
+                                    <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 rounded-sm">{project.shots.filter(s => s.sceneId === scene.id).length}</span>
+                                )}
+                            </button>
+                        ))
+                    )}
+                </div>
+            </div>
+          )
+      }
+  ];
 
   const hasContent = project.scenes.length > 0;
 
@@ -269,7 +276,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   }
 
   return (
-    <PageWithSidebar sidebarContent={SidebarContent} icon={<Hash className="w-4 h-4" />} title="Scene Navigator">
+    <PageWithToolRail tools={tools} defaultTool="navigator">
         <div className="h-full bg-background overflow-y-auto font-sans relative">
             <TimelineHeader
                 isUploadingScript={isUploadingScript}
@@ -331,6 +338,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
                 </div>
             )}
         </div>
-    </PageWithSidebar>
+    </PageWithToolRail>
   );
 };

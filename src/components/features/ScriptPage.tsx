@@ -7,14 +7,14 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Search } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Bot, MessageSquare } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
 import { EmptyProjectState } from './EmptyProjectState';
-import { PageWithSidebar } from '../layout/PageWithSidebar';
+import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 
 export const ScriptPage: React.FC = () => {
   const { project, updateScriptElements, importScript } = useWorkspace();
@@ -30,10 +30,9 @@ export const ScriptPage: React.FC = () => {
   } = useHistory<ScriptElement[]>(project.scriptElements || []);
 
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isZenMode, setIsZenMode] = useState(false); // New Zen Mode State
+  const [isZenMode, setIsZenMode] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
@@ -51,21 +50,17 @@ export const ScriptPage: React.FC = () => {
   );
 
   useEffect(() => {
-    // A. Standard Sync
     if (project.scriptElements && project.scriptElements.length > 0) {
        if (elements.length === 0) setElements(project.scriptElements);
        return;
     }
-    // B. Auto-Hydrate from Scenes
     if (project.scenes.length > 0 && elements.length === 0) {
-        console.log("Hydrating script from scenes...");
         const generated = generateScriptFromScenes(project.scenes);
         setElements(generated);
     }
   }, [project.scriptElements, project.scenes]); 
 
   // --- 3. EDITING LOGIC ---
-
   const updateLocal = (newElements: ScriptElement[]) => {
       const enriched = enrichScriptElements(newElements);
       setElements(enriched);
@@ -197,39 +192,62 @@ export const ScriptPage: React.FC = () => {
 
   const hasElements = elements.length > 0;
   
-  // Navigation
+  // Navigation Helper
   const headings = elements.filter(el => el.type === 'scene_heading');
   const scrollToElement = (id: string) => {
      setActiveElementId(id);
-     // Scroll logic handled by focus in ScriptBlock, but we can also trigger smooth scroll if needed
+     const el = document.getElementById(id); // If we add ID to blocks later
+     // For now, focus triggers scroll in ScriptBlock
   };
 
-  const SidebarContent = (
-     <div className="space-y-4">
-        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Outline</div>
-        <div className="space-y-1">
-           {headings.map((h, i) => (
-              <button 
-                 key={h.id}
-                 onClick={() => scrollToElement(h.id)}
-                 className="w-full text-left px-2 py-1.5 rounded-sm hover:bg-[#18181b] flex gap-2 group transition-colors"
-              >
-                 <span className="text-[10px] font-mono text-zinc-600 font-bold w-4">{i + 1}.</span>
-                 <span className="text-xs text-zinc-400 font-medium truncate group-hover:text-white">{h.content || "UNTITLED SCENE"}</span>
-              </button>
-           ))}
-        </div>
-     </div>
-  );
+  // --- TOOL DEFINITIONS ---
+  const tools: Tool[] = [
+    {
+        id: 'outline',
+        label: 'Script Outline',
+        icon: <AlignLeft className="w-5 h-5" />,
+        content: (
+            <div className="p-4 space-y-4">
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Scenes</div>
+                <div className="space-y-1">
+                    {headings.length === 0 && <div className="text-zinc-600 italic text-xs">No scenes detected.</div>}
+                    {headings.map((h, i) => (
+                        <button 
+                            key={h.id}
+                            onClick={() => scrollToElement(h.id)}
+                            className="w-full text-left px-2 py-2 rounded-sm hover:bg-[#18181b] flex gap-2 group transition-colors"
+                        >
+                            <span className="text-[10px] font-mono text-zinc-600 font-bold w-4 mt-0.5">{i + 1}.</span>
+                            <span className="text-xs text-zinc-400 font-medium leading-tight group-hover:text-white">{h.content || "UNTITLED SCENE"}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        )
+    },
+    {
+        id: 'copilot',
+        label: 'AI Writer',
+        icon: <Sparkles className="w-5 h-5" />,
+        content: (
+            <div className="h-full flex flex-col">
+                <ScriptChat isOpen={true} onClose={() => {}} /> 
+                {/* Note: ScriptChat is built to handle its own layout, we might need to tweak it to fit 
+                    perfectly if it has fixed positioning, but since it's now contained in this div, 
+                    we'll rely on the parent container's constraints. */}
+            </div>
+        )
+    }
+  ];
 
   return (
-    <PageWithSidebar sidebarContent={SidebarContent} icon={<AlignLeft className="w-4 h-4" />} title="Structure">
+    <PageWithToolRail tools={tools} defaultTool="outline">
         <div className={`relative h-full flex flex-col bg-[#111111] overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
         
         {/* Toolbar */}
         {hasElements && (
             <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-[#111111] border-[#222]' : ''}`}>
-            <div className="flex items-center gap-2 text-text-primary font-medium pl-10">
+            <div className="flex items-center gap-2 text-text-primary font-medium pl-2">
                 <FileText className="w-4 h-4 text-primary" />
                 <span>Screenplay Editor</span>
             </div>
@@ -257,10 +275,6 @@ export const ScriptPage: React.FC = () => {
                 >
                     {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
-
-                <Button variant={isChatOpen ? "primary" : "secondary"} size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={() => setIsChatOpen(!isChatOpen)}>
-                    AI Co-Pilot
-                </Button>
             </div>
             </div>
         )}
@@ -269,7 +283,6 @@ export const ScriptPage: React.FC = () => {
             <div 
             ref={containerRef}
             className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-[#111111]" 
-            style={{ paddingRight: isChatOpen ? '350px' : '32px' }}
             onClick={(e) => {
                 if (e.target === containerRef.current && hasElements) {
                     setActiveElementId(elements[elements.length - 1].id);
@@ -300,9 +313,8 @@ export const ScriptPage: React.FC = () => {
                 />
             )}
             </div>
-            <ScriptChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
         </div>
         </div>
-    </PageWithSidebar>
+    </PageWithToolRail>
   );
 };

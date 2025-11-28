@@ -7,10 +7,10 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, ShowToastFn } from '../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../constants';
-import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Layers, Clapperboard, FileText, LayoutGrid, Search, BarChart3 } from 'lucide-react';
+import { Film, Trash2, Edit2, CheckSquare, Square, Filter, ChevronDown, Layers, Clapperboard, FileText, LayoutGrid, Search, BarChart3, Sliders } from 'lucide-react';
 import Button from '../ui/Button';
 import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
-import { PageWithSidebar } from '../layout/PageWithSidebar';
+import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 
 interface ProductionSpreadsheetProps {
@@ -100,84 +100,91 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     }
   };
 
-  // --- SIDEBAR CONTENT ---
-  const SidebarContent = (
-    <div className="space-y-6">
-        {/* Search */}
-        <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Search</label>
-            <div className="relative">
-                <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-zinc-500" />
-                <input 
-                    value={filterText}
-                    onChange={e => setFilterText(e.target.value)}
-                    placeholder="Keywords..."
-                    className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-white outline-none focus:border-primary placeholder:text-zinc-600"
-                />
-            </div>
-        </div>
-
-        {/* Filters */}
-        <CollapsibleSection title="Filtering" defaultOpen icon={<Filter className="w-3.5 h-3.5" />}>
-             <div className="space-y-3 pt-2">
-                 <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-400">By Status</label>
-                    <select 
-                        value={filterStatus}
-                        onChange={e => setFilterStatus(e.target.value)}
-                        className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
-                    >
-                        <option value="all">Show All</option>
-                        <option value="missing_image">Missing Image</option>
-                        <option value="has_image">Has Generated Image</option>
-                        <option value="script_linked">Linked to Script</option>
-                        <option value="no_script">Unlinked</option>
-                    </select>
-                 </div>
-
-                 <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-400">By Scene</label>
-                    <select 
-                        value={filterScene}
-                        onChange={e => setFilterScene(e.target.value)}
-                        className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
-                    >
-                        <option value="all">All Scenes</option>
-                        {project.scenes.map(s => (
-                            <option key={s.id} value={s.id}>{s.sequence}. {s.heading}</option>
-                        ))}
-                    </select>
-                 </div>
-
-                 <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-400">By Shot Type</label>
-                    <select 
-                        value={filterType}
-                        onChange={e => setFilterType(e.target.value)}
-                        className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
-                    >
-                        <option value="all">All Types</option>
-                        {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                 </div>
-             </div>
-        </CollapsibleSection>
-
-        {/* Stats */}
-        <CollapsibleSection title="Statistics" defaultOpen icon={<BarChart3 className="w-3.5 h-3.5" />}>
-            <div className="grid grid-cols-2 gap-2 pt-2">
-                <div className="bg-[#18181b] p-2 rounded-sm border border-border text-center">
-                    <div className="text-xl font-bold text-white">{project.shots.length}</div>
-                    <div className="text-[9px] text-zinc-500 uppercase">Total Shots</div>
+  // --- TOOL RAIL CONTENT ---
+  const tools: Tool[] = [
+      {
+          id: 'filters',
+          label: 'View Options',
+          icon: <Sliders className="w-5 h-5" />,
+          content: (
+            <div className="p-4 space-y-6">
+                {/* Search */}
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Search</label>
+                    <div className="relative">
+                        <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-zinc-500" />
+                        <input 
+                            value={filterText}
+                            onChange={e => setFilterText(e.target.value)}
+                            placeholder="Keywords..."
+                            className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-white outline-none focus:border-primary placeholder:text-zinc-600"
+                        />
+                    </div>
                 </div>
-                <div className="bg-[#18181b] p-2 rounded-sm border border-border text-center">
-                    <div className="text-xl font-bold text-primary">{project.shots.filter(s => s.generatedImage).length}</div>
-                    <div className="text-[9px] text-zinc-500 uppercase">Rendered</div>
-                </div>
+
+                {/* Filters */}
+                <CollapsibleSection title="Filtering" defaultOpen icon={<Filter className="w-3.5 h-3.5" />}>
+                    <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-400">By Status</label>
+                            <select 
+                                value={filterStatus}
+                                onChange={e => setFilterStatus(e.target.value)}
+                                className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
+                            >
+                                <option value="all">Show All</option>
+                                <option value="missing_image">Missing Image</option>
+                                <option value="has_image">Has Generated Image</option>
+                                <option value="script_linked">Linked to Script</option>
+                                <option value="no_script">Unlinked</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-400">By Scene</label>
+                            <select 
+                                value={filterScene}
+                                onChange={e => setFilterScene(e.target.value)}
+                                className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
+                            >
+                                <option value="all">All Scenes</option>
+                                {project.scenes.map(s => (
+                                    <option key={s.id} value={s.id}>{s.sequence}. {s.heading}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-400">By Shot Type</label>
+                            <select 
+                                value={filterType}
+                                onChange={e => setFilterType(e.target.value)}
+                                className="w-full bg-[#18181b] border border-border rounded-sm py-1.5 px-2 text-xs text-zinc-300 outline-none focus:border-primary cursor-pointer"
+                            >
+                                <option value="all">All Types</option>
+                                {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </CollapsibleSection>
+
+                {/* Stats */}
+                <CollapsibleSection title="Statistics" defaultOpen icon={<BarChart3 className="w-3.5 h-3.5" />}>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                        <div className="bg-[#18181b] p-2 rounded-sm border border-border text-center">
+                            <div className="text-xl font-bold text-white">{project.shots.length}</div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Total Shots</div>
+                        </div>
+                        <div className="bg-[#18181b] p-2 rounded-sm border border-border text-center">
+                            <div className="text-xl font-bold text-primary">{project.shots.filter(s => s.generatedImage).length}</div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Rendered</div>
+                        </div>
+                    </div>
+                </CollapsibleSection>
             </div>
-        </CollapsibleSection>
-    </div>
-  );
+          )
+      }
+  ];
 
   if (project.shots.length === 0) {
       return (
@@ -198,7 +205,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
   }
 
   return (
-    <PageWithSidebar sidebarContent={SidebarContent} icon={<LayoutGrid className="w-4 h-4" />} title="View Controls">
+    <PageWithToolRail tools={tools} defaultTool="filters">
         <div className="flex flex-col h-full bg-background">
         
         {/* 1. TABLE HEADER */}
@@ -344,6 +351,6 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
             </div>
         )}
         </div>
-    </PageWithSidebar>
+    </PageWithToolRail>
   );
 };

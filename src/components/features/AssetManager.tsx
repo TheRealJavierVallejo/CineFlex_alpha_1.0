@@ -11,7 +11,7 @@ import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, Aler
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
-import { PageWithSidebar } from '../layout/PageWithSidebar';
+import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 
 interface AssetManagerProps {
    projectId: string;
@@ -184,49 +184,60 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       }
    };
 
-   const SidebarContent = (
-      <div className="space-y-4">
-         {/* Navigation Pills */}
-         <div className="flex flex-col gap-1">
-            {['assets', 'locations', 'gallery'].map(tab => (
-               <button 
-                  key={tab}
-                  onClick={() => setActiveTab(tab as any)} 
-                  className={`flex items-center gap-3 px-3 py-2 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === tab ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'}`}
-               >
-                  {tab === 'assets' && <User className="w-3.5 h-3.5" />}
-                  {tab === 'locations' && <MapPin className="w-3.5 h-3.5" />}
-                  {tab === 'gallery' && <ImageIcon className="w-3.5 h-3.5" />}
-                  {tab}
-               </button>
-            ))}
-         </div>
-
-         {/* Contextual Lists */}
-         <div className="border-t border-border pt-4">
-            {activeTab === 'assets' && (
-                <div className="space-y-4">
+   // --- TOOL RAIL ---
+   const tools: Tool[] = [
+       {
+           id: 'cast',
+           label: 'Cast & Characters',
+           icon: <User className="w-5 h-5" />,
+           content: (
+               <div className="p-4 space-y-4">
                     <div className="space-y-2">
                         <Input placeholder="NEW CHARACTER" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
                         <Button variant="secondary" className="w-full" size="sm" onClick={handleAddCharacter} disabled={!newCharName} icon={<Plus className="w-4 h-4" />}>Add</Button>
                     </div>
                     <div className="space-y-1">
                         {characters.map(char => (
-                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} className={`p-2 rounded-sm cursor-pointer transition-colors group relative flex items-center justify-between ${selectedCharId === char.id ? 'bg-[#18181b] border-l-2 border-primary text-white' : 'hover:bg-[#18181b] text-zinc-500'}`}>
+                           <div key={char.id} onClick={() => { setSelectedCharId(char.id); setActiveTab('assets'); }} className={`p-2 rounded-sm cursor-pointer transition-colors group relative flex items-center justify-between ${activeTab === 'assets' && selectedCharId === char.id ? 'bg-[#18181b] border-l-2 border-primary text-white' : 'hover:bg-[#18181b] text-zinc-500'}`}>
                               <span className="text-xs font-bold uppercase truncate">{char.name}</span>
                            </div>
                         ))}
                     </div>
-                </div>
-            )}
-         </div>
-      </div>
-   );
+               </div>
+           )
+       },
+       {
+           id: 'locations',
+           label: 'Locations',
+           icon: <MapPin className="w-5 h-5" />,
+           content: (
+               <div className="p-4 space-y-4">
+                   <button onClick={() => setActiveTab('locations')} className={`w-full text-left px-3 py-2 rounded-sm text-xs font-bold uppercase transition-colors ${activeTab === 'locations' ? 'bg-[#18181b] text-white' : 'text-zinc-500 hover:text-white'}`}>Manage Locations</button>
+                   <div className="space-y-1">
+                       {locations.map(loc => (
+                           <div key={loc.id} className="px-3 py-1.5 text-xs text-zinc-500 truncate">{loc.name}</div>
+                       ))}
+                   </div>
+               </div>
+           )
+       },
+       {
+           id: 'gallery',
+           label: 'Image Gallery',
+           icon: <ImageIcon className="w-5 h-5" />,
+           content: (
+               <div className="p-4">
+                   <button onClick={() => setActiveTab('gallery')} className={`w-full text-left px-3 py-2 rounded-sm text-xs font-bold uppercase transition-colors ${activeTab === 'gallery' ? 'bg-[#18181b] text-white' : 'text-zinc-500 hover:text-white'}`}>Open Gallery</button>
+                   <p className="mt-2 text-[10px] text-zinc-600">Browse all generated images.</p>
+               </div>
+           )
+       }
+   ];
 
    if (isLoading) return <div className="h-full flex items-center justify-center bg-black text-zinc-500 font-mono text-xs uppercase tracking-widest">Loading Database...</div>;
 
    return (
-    <PageWithSidebar sidebarContent={SidebarContent} icon={<Package className="w-4 h-4" />} title="Asset Manager">
+    <PageWithToolRail tools={tools} defaultTool="cast">
       <div className="flex flex-col h-full bg-black overflow-hidden font-sans pl-10 pt-4">
          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
 
@@ -439,6 +450,6 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
             )}
          </div>
       </div>
-    </PageWithSidebar>
+    </PageWithToolRail>
    );
 };

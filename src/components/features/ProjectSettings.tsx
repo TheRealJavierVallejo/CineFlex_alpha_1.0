@@ -9,7 +9,7 @@ import { CustomSelect } from '../features/CustomSelect';
 import { ERAS, CINEMATIC_STYLES, LIGHTING_STYLES } from '../../constants';
 import { Key, Eye, EyeOff, Save, Settings, Sliders, Server } from 'lucide-react';
 import Button from '../ui/Button';
-import { PageWithSidebar } from '../layout/PageWithSidebar';
+import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 
 interface ProjectSettingsProps {
   project: Project;
@@ -48,19 +48,33 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
      }
   };
 
-  const SidebarContent = (
-      <div className="space-y-1">
-          <button onClick={() => setActiveSection('general')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors ${activeSection === 'general' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'}`}>
-             <Sliders className="w-3.5 h-3.5" /> General
-          </button>
-          <button onClick={() => setActiveSection('api')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors ${activeSection === 'api' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'}`}>
-             <Server className="w-3.5 h-3.5" /> API & Keys
-          </button>
-      </div>
-  );
+  const tools: Tool[] = [
+      {
+          id: 'general',
+          label: 'General Settings',
+          icon: <Sliders className="w-5 h-5" />,
+          content: (
+              <div className="p-4">
+                  <p className="text-zinc-500 text-xs">Configure project defaults for style, era, and lighting.</p>
+                  <button onClick={() => setActiveSection('general')} className="mt-4 w-full bg-primary/10 text-primary border border-primary/20 rounded p-2 text-xs font-bold uppercase">Focus Settings</button>
+              </div>
+          )
+      },
+      {
+          id: 'api',
+          label: 'API Keys',
+          icon: <Server className="w-5 h-5" />,
+          content: (
+              <div className="p-4">
+                  <p className="text-zinc-500 text-xs">Manage connection tokens for Gemini and external services.</p>
+                  <button onClick={() => setActiveSection('api')} className="mt-4 w-full bg-zinc-800 text-zinc-300 border border-zinc-700 rounded p-2 text-xs font-bold uppercase hover:bg-zinc-700">Manage Keys</button>
+              </div>
+          )
+      }
+  ];
 
   return (
-    <PageWithSidebar sidebarContent={SidebarContent} icon={<Settings className="w-4 h-4" />} title="Config">
+    <PageWithToolRail tools={tools} defaultTool={null}>
         <div className="flex flex-col h-full bg-black p-10 overflow-y-auto pl-16">
             <div className="max-w-3xl w-full mx-auto">
                 <h2 className="text-xl font-bold text-white mb-8 border-b border-zinc-800 pb-4 flex items-center gap-3">
@@ -150,6 +164,6 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
                 )}
             </div>
         </div>
-    </PageWithSidebar>
+    </PageWithToolRail>
   );
 };
