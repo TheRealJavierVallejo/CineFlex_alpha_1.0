@@ -2,8 +2,13 @@ import React, { memo } from 'react';
 import { Project, Shot } from '../../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../../constants';
 import { CheckSquare, Square, Film, Edit2, Layers, Trash2 } from 'lucide-react';
-import { FixedSizeList as List, ListChildComponentProps, areEqual } from 'react-window';
+import * as ReactWindow from 'react-window';
+import type { ListChildComponentProps } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
+
+// Defensive import resolution for react-window in Vite
+const List = ReactWindow.FixedSizeList || (ReactWindow as any).default?.FixedSizeList || (ReactWindow as any).default;
+const areEqual = ReactWindow.areEqual || (ReactWindow as any).default?.areEqual;
 
 interface SpreadsheetTableProps {
     filteredShots: Shot[];
@@ -129,6 +134,15 @@ export const SpreadsheetTable: React.FC<SpreadsheetTableProps> = (props) => {
         allSelected,
         toggleAll
     } = props;
+
+    // Safety check for List component
+    if (!List) {
+        return (
+            <div className="flex items-center justify-center h-full text-red-500 font-mono text-xs">
+                Error loading virtualized list component. Please restart the app.
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-background">
