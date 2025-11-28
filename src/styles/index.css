@@ -113,7 +113,9 @@
      STUDIO CARD (Elevated Surface)
      ============================================ */
   .studio-card {
-    @apply bg-surface border border-border rounded-lg shadow-panel overflow-hidden;
+    /* Replaced border-border with explicit border-color to fix build error */
+    @apply bg-surface border rounded-lg shadow-panel overflow-hidden;
+    border-color: var(--border);
   }
   
   .studio-input {
