@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useStudio } from '../../layouts/StudioLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
 import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { enrichScriptElements, generateScriptFromScenes } from '../../services/s
 import { EmptyProjectState } from './EmptyProjectState';
 
 export const ScriptPage: React.FC = () => {
-  const { project, updateScriptElements, importScript } = useWorkspace();
+  const { project, updateScriptElements, importScript } = useStudio();
   
   // --- 1. HISTORY STATE (Undo/Redo) ---
   const { 

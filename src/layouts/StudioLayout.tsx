@@ -178,8 +178,9 @@ export const StudioLayout: React.FC = () => {
             <ToastContainer toasts={toasts} onClose={closeToast} />
 
             {/* MINIMAL TOP BAR (Project Context) */}
-            <div className="absolute top-0 left-0 right-0 h-12 flex items-center justify-between px-6 z-40 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-4">
+            {/* UPDATED: Removed absolute positioning so it doesn't overlap content */}
+            <div className="h-12 flex items-center justify-between px-6 z-40 bg-background border-b border-border shrink-0">
+                <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/')} 
                         className="text-text-tertiary hover:text-white transition-colors"
@@ -196,7 +197,7 @@ export const StudioLayout: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="pointer-events-auto">
+                <div>
                     <button className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-full text-xs font-bold transition-colors">
                         <Share className="w-3 h-3" /> Export
                     </button>
@@ -204,7 +205,7 @@ export const StudioLayout: React.FC = () => {
             </div>
 
             {/* MAIN STAGE */}
-            <main className="flex-1 relative z-0">
+            <main className="flex-1 relative z-0 overflow-hidden">
                 <ErrorBoundary key={location.pathname}>
                     <Outlet context={contextValue} />
                 </ErrorBoundary>
