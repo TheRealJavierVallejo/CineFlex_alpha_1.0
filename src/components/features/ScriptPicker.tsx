@@ -1,6 +1,10 @@
+/*
+ * 📜 COMPONENT: SCRIPT PICKER
+ * Selection Modal for linking script lines to shots
+ */
+
 import React, { useMemo } from 'react';
 import { Type, X } from 'lucide-react';
-import Button from '../ui/Button';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -22,97 +26,102 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 }) => {
     if (!isOpen || !sceneId) return null;
 
-    // Filter and process elements for this scene
+    // Filter elements
     const sceneElements = useMemo(() => {
-        const elements = scriptElements
-            .filter(el => {
-                if (el.sceneId !== sceneId) return false;
-                // Allow Action, Dialogue AND Parentheticals
-                return el.type === 'action' || el.type === 'dialogue' || el.type === 'parenthetical';
-            })
+        return scriptElements
+            .filter(el => el.sceneId === sceneId)
             .sort((a, b) => a.sequence - b.sequence);
+    }, [scriptElements, sceneId]);
 
-        const nextAvailableId = elements.find(el => !usedElementIds.has(el.id))?.id;
-
-        return elements.map(el => ({
-            ...el,
-            isUsed: usedElementIds.has(el.id),
-            isNextAvailable: el.id === nextAvailableId
-        }));
-    }, [scriptElements, sceneId, usedElementIds]);
-
-    const getElementStyle = (type: ScriptElement['type']) => {
+    const getElementClasses = (type: ScriptElement['type']) => {
+        const base = "cursor-pointer transition-all duration-200 px-4 py-1 rounded hover:bg-white/5 relative group border border-transparent hover:border-white/10";
+        
         switch (type) {
             case 'scene_heading':
-                return 'font-bold uppercase tracking-wider text-white';
+                return `${base} font-bold uppercase tracking-wider text-zinc-500 text-center py-4 text-xs select-none pointer-events-none`;
             case 'action':
-                return 'text-white whitespace-pre-wrap';
+                return `${base} text-zinc-400 text-center leading-relaxed text-sm`;
             case 'dialogue':
-                return 'text-white text-center mx-auto whitespace-pre-wrap';
+                return `${base} text-zinc-100 text-center max-w-lg mx-auto text-sm`;
             case 'character':
-                return 'font-bold uppercase text-center text-white';
+                return `${base} font-bold uppercase text-center text-primary mt-4 tracking-wide text-sm`;
             case 'parenthetical':
-                return 'italic text-sm text-center text-white/80';
+                return `${base} italic text-sm text-center text-zinc-500`;
             case 'transition':
-                return 'font-bold uppercase text-right text-white';
+                return `${base} font-bold uppercase text-right text-zinc-500 text-xs`;
             default:
-                return 'text-white';
+                return `${base} text-zinc-400`;
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-surface border border-border rounded-lg shadow-xl w-[800px] max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="p-4 border-b border-border flex justify-between items-center bg-surface-secondary">
-                    <h3 className="font-bold text-text-primary flex items-center gap-2">
-                        <Type className="w-4 h-4" />
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+            <div 
+                className="bg-[#09090b] border border-border w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-[#09090b] shrink-0">
+                    <h3 className="font-bold text-zinc-100 flex items-center gap-2 text-sm uppercase tracking-wide">
+                        <Type className="w-4 h-4 text-white" />
                         Scene Script
                     </h3>
-                    <button onClick={onClose} className="text-text-tertiary hover:text-primary"><X className="w-4 h-4" /></button>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
 
-                <div className="overflow-y-auto p-6 flex-1 bg-[#1a1a1a] font-[family-name:var(--font-family-screenplay)]">
+                {/* Content */}
+                <div className="overflow-y-auto p-8 flex-1 bg-[#050505] font-screenplay">
                     {sceneElements.length > 0 ? (
-                        <div className="space-y-4 max-w-[600px] mx-auto">
-                            {sceneElements.map(el => (
-                                <div key={el.id} className="relative group/element">
-                                    <div className={`${getElementStyle(el.type)} leading-relaxed transition-opacity ${el.isUsed ? 'opacity-40' : 'opacity-100'}`}>
+                        <div className="space-y-1 max-w-3xl mx-auto">
+                            {sceneElements.map(el => {
+                                const isUsed = usedElementIds.has(el.id);
+                                
+                                // Skip non-selectable types if desired, or just style them
+                                if (el.type === 'scene_heading') return (
+                                    <div key={el.id} className={getElementClasses(el.type)}>{el.content}</div>
+                                );
+
+                                return (
+                                    <div 
+                                        key={el.id} 
+                                        onClick={() => onSelect(el)}
+                                        className={`${getElementClasses(el.type)} ${isUsed ? 'opacity-30' : 'opacity-100'}`}
+                                    >
+                                        {el.content}
                                         
-                                        {/* Auto-display character name if linked */}
-                                        {el.character && (
-                                            <div className="font-bold uppercase text-center mb-1 text-primary/80">
-                                                {el.character}
+                                        {/* Hover Indicator */}
+                                        {!isUsed && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-[10px] font-sans font-bold bg-primary text-white px-2 py-1 rounded shadow-lg transform translate-x-2 group-hover:translate-x-0 transition-all">
+                                                LINK
                                             </div>
                                         )}
-                                        
-                                        {el.content}
+                                        {isUsed && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-[10px] font-sans font-bold bg-zinc-800 text-zinc-400 px-2 py-1 rounded">
+                                                LINKED
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {/* Add Button - Only on next available */}
-                                    {!el.isUsed && (
-                                        <button
-                                            onClick={() => onSelect(el)}
-                                            className="absolute -right-16 top-1/2 -translate-y-1/2 flex items-center gap-1 px-3 py-1.5 rounded bg-primary text-white text-xs font-sans hover:bg-primary/80 transition-colors opacity-0 group-hover/element:opacity-100 shadow-lg"
-                                        >
-                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                            </svg>
-                                            Link
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-text-tertiary">
-                            <p>No script elements found in this scene.</p>
-                            <p className="text-xs mt-2">Write your script in the Script Tab to see elements here.</p>
+                        <div className="text-center py-32 text-zinc-600">
+                            <p className="mb-2 font-mono text-sm">No script content found for this scene.</p>
+                            <p className="text-xs">Add dialogue or action in the Script Editor.</p>
                         </div>
                     )}
                 </div>
 
-                <div className="p-3 border-t border-border bg-surface-secondary flex justify-end">
-                    <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+                {/* Footer */}
+                <div className="h-14 px-6 border-t border-border bg-[#09090b] flex items-center justify-end shrink-0">
+                    <button 
+                        onClick={onClose}
+                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-zinc-400 hover:text-white transition-colors hover:bg-white/5 rounded-sm"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>
