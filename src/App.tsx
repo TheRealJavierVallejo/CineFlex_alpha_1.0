@@ -16,7 +16,7 @@ import {
   ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
-import { ProductionSpreadsheet } from './components/features/ProductionSpreadsheet';
+import { DashboardController } from './components/features/DashboardController';
 
 // --- ADAPTER COMPONENTS ---
 
@@ -28,21 +28,23 @@ const DashboardPage = () => {
         handleEditShot, 
         handleDeleteShot, 
         handleDuplicateShot, 
+        handleBulkUpdateShots,
+        handleAddShot,
         showToast 
     } = useWorkspace();
 
     return (
         <div className="absolute inset-0 overflow-hidden">
-            <LazyWrapper>
-                <ProductionSpreadsheet
-                    project={project}
-                    onUpdateShot={handleUpdateShot}
-                    onEditShot={handleEditShot}
-                    onDeleteShot={handleDeleteShot}
-                    onDuplicateShot={handleDuplicateShot}
-                    showToast={showToast}
-                />
-            </LazyWrapper>
+            <DashboardController
+                project={project}
+                onUpdateShot={handleUpdateShot}
+                onEditShot={handleEditShot}
+                onDeleteShot={handleDeleteShot}
+                onDuplicateShot={handleDuplicateShot}
+                onBulkUpdateShots={handleBulkUpdateShots}
+                showToast={showToast}
+                handleAddShot={handleAddShot}
+            />
         </div>
     );
 };
