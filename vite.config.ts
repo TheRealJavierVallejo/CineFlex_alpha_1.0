@@ -14,14 +14,6 @@ export default defineConfig(({ mode }) => {
         },
       },
       plugins: [react()],
-      optimizeDeps: {
-        // Exclude web-llm to prevent bundler issues with WASM/Workers
-        exclude: ['@mlc-ai/web-llm'],
-        include: ['react-window', 'react-virtualized-auto-sizer']
-      },
-      worker: {
-        format: 'es' // Force ES module workers to support imports
-      },
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
-// Explicit Vite worker import
-import LLMWorker from '../workers/llm.worker.ts?worker';
+// Import worker URL for manual instantiation
+import workerUrl from '../workers/llm.worker.ts?worker&url';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -29,6 +29,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Engine ref
   const engine = useRef<WebWorkerMLCEngine | null>(null);
+  const workerRef = useRef<Worker | null>(null);
 
   // Check WebGPU & Security Context on mount
   useEffect(() => {
@@ -42,14 +43,13 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 2. Check Security Headers (SharedArrayBuffer support)
     if (!window.crossOriginIsolated) {
       setIsSupported(false);
-      setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine. If you are in a preview environment, try opening the app in a new window or tab.");
+      setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine.");
     }
   }, []);
 
   const initModel = useCallback(async () => {
     if (isReady || isDownloading) return;
     if (!isSupported) {
-        // Don't clear error here, keep the specific message from mount
         return;
     }
 
@@ -59,22 +59,30 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setDownloadProgress(0);
       setDownloadText("Initializing engine...");
 
-      // Initialize the worker if not exists
-      if (!engine.current) {
-        console.log("Creating new LLM Worker...");
-        const worker = new LLMWorker();
-
-        worker.onerror = (e) => {
-            console.error("Worker startup error:", e);
-            const msg = e instanceof ErrorEvent ? e.message : "Worker failed to start.";
-            setError(`Worker Error: ${msg}. Check console for details.`);
-            setIsDownloading(false);
-        };
-
-        engine.current = new WebWorkerMLCEngine(worker);
+      // Cleanup existing worker if any (Hard Reset)
+      if (engine.current || workerRef.current) {
+         try {
+             engine.current?.unload();
+         } catch(e) { console.warn("Unload error", e); }
+         workerRef.current?.terminate();
+         engine.current = null;
+         workerRef.current = null;
       }
 
-      // Define callback
+      // Create new worker manually to ensure type: 'module'
+      console.log("Creating worker from URL:", workerUrl);
+      const worker = new Worker(workerUrl, { type: 'module' });
+      workerRef.current = worker;
+
+      worker.onerror = (e) => {
+          console.error("Worker startup error:", e);
+          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. This may be due to browser security settings or a build error.";
+          setError(msg);
+          setIsDownloading(false);
+      };
+
+      engine.current = new WebWorkerMLCEngine(worker);
+
       const onProgress = (report: InitProgressReport) => {
         const percent = Math.round(report.progress * 100);
         setDownloadProgress(percent);
@@ -83,9 +91,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: 45s
+      // SAFETY TIMEOUT: 60s
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Engine timed out. Please refresh and try again.")), 45000)
+        setTimeout(() => reject(new Error("Engine timed out. Please refresh and try again.")), 60000)
       );
 
       await Promise.race([
@@ -100,6 +108,11 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     } catch (err: any) {
       console.error("LLM Init Error:", err);
+      if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+          engine.current = null;
+      }
       setError(err.message || "Failed to download model.");
       setIsDownloading(false);
       setDownloadText("Error");
