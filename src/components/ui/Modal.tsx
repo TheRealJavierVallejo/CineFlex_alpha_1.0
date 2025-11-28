@@ -32,13 +32,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200" 
+      <div
+        className="absolute inset-0 modal-bg-dark backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
-      
+
       {/* Modal Content */}
-      <div 
+      <div
         className={`
           relative bg-[#09090b] border border-zinc-800 shadow-2xl w-full flex flex-col rounded-sm overflow-hidden
           animate-in zoom-in-95 duration-200
@@ -51,7 +51,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
             <span className="w-1 h-4 bg-primary block"></span>
             {title}
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-zinc-500 hover:text-white transition-colors p-1"
           >
@@ -60,7 +60,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-black">
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-surface">
           {children}
         </div>
       </div>

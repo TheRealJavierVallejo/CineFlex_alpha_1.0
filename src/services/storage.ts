@@ -96,7 +96,7 @@ const createRef = (id: string) => `${REF_PREFIX}${id}${REF_SUFFIX}`;
 const persistImage = async (dataUrlOrBlobUrl: string, existingId?: string): Promise<string> => {
   // If it's already a reference, ignore
   if (isImageRef(dataUrlOrBlobUrl)) return dataUrlOrBlobUrl;
-  
+
   // If it's empty, return empty
   if (!dataUrlOrBlobUrl) return dataUrlOrBlobUrl;
 
@@ -104,18 +104,18 @@ const persistImage = async (dataUrlOrBlobUrl: string, existingId?: string): Prom
   let blob: Blob;
 
   try {
-      // Convert Base64 or Blob URL to Blob
-      const response = await fetch(dataUrlOrBlobUrl);
-      blob = await response.blob();
-      
-      // Save Blob to IDB
-      await dbSet(IMAGE_STORE_NAME, id, blob);
-      
-      // Return the reference tag
-      return createRef(id);
+    // Convert Base64 or Blob URL to Blob
+    const response = await fetch(dataUrlOrBlobUrl);
+    blob = await response.blob();
+
+    // Save Blob to IDB
+    await dbSet(IMAGE_STORE_NAME, id, blob);
+
+    // Return the reference tag
+    return createRef(id);
   } catch (e) {
-      console.error("Failed to persist image", e);
-      return dataUrlOrBlobUrl; // Fallback: keep original string if save fails
+    console.error("Failed to persist image", e);
+    return dataUrlOrBlobUrl; // Fallback: keep original string if save fails
   }
 };
 
@@ -123,88 +123,88 @@ const persistImage = async (dataUrlOrBlobUrl: string, existingId?: string): Prom
  * Loads a Reference ID from the Image Store and returns a usable Blob URL.
  */
 const hydrateImage = async (ref: string): Promise<string> => {
-    if (!isImageRef(ref)) return ref; // Already a normal string
-    
-    const id = extractIdFromRef(ref);
-    try {
-        const blob = await dbGet<Blob>(IMAGE_STORE_NAME, id);
-        if (blob) {
-            return URL.createObjectURL(blob);
-        }
-        return ''; // Image missing
-    } catch (e) {
-        console.error("Failed to hydrate image", id, e);
-        return '';
+  if (!isImageRef(ref)) return ref; // Already a normal string
+
+  const id = extractIdFromRef(ref);
+  try {
+    const blob = await dbGet<Blob>(IMAGE_STORE_NAME, id);
+    if (blob) {
+      return URL.createObjectURL(blob);
     }
+    return ''; // Image missing
+  } catch (e) {
+    console.error("Failed to hydrate image", id, e);
+    return '';
+  }
 };
 
 /**
  * Deep traverses an object, finds images, and persists them.
  */
 const dehydrateObject = async (obj: any): Promise<any> => {
-    if (!obj) return obj;
-    if (typeof obj !== 'object') return obj;
+  if (!obj) return obj;
+  if (typeof obj !== 'object') return obj;
 
-    if (Array.isArray(obj)) {
-        return Promise.all(obj.map(item => dehydrateObject(item)));
+  if (Array.isArray(obj)) {
+    return Promise.all(obj.map(item => dehydrateObject(item)));
+  }
+
+  const newObj: any = { ...obj };
+
+  // Common fields that contain images
+  const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
+  const arrayImageFields = ['generationCandidates', 'referencePhotos'];
+
+  for (const key of Object.keys(newObj)) {
+    if (imageFields.includes(key) && typeof newObj[key] === 'string') {
+      // Persist single image
+      newObj[key] = await persistImage(newObj[key]);
     }
-
-    const newObj: any = { ...obj };
-
-    // Common fields that contain images
-    const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
-    const arrayImageFields = ['generationCandidates', 'referencePhotos'];
-
-    for (const key of Object.keys(newObj)) {
-        if (imageFields.includes(key) && typeof newObj[key] === 'string') {
-            // Persist single image
-            newObj[key] = await persistImage(newObj[key]);
-        } 
-        else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
-            // Persist array of images
-            newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(img)));
-        }
-        else if (typeof newObj[key] === 'object') {
-            // Recurse
-            newObj[key] = await dehydrateObject(newObj[key]);
-        }
+    else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
+      // Persist array of images
+      newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(img)));
     }
+    else if (typeof newObj[key] === 'object') {
+      // Recurse
+      newObj[key] = await dehydrateObject(newObj[key]);
+    }
+  }
 
-    return newObj;
+  return newObj;
 };
 
 /**
  * Deep traverses an object, finds references, and loads them.
  */
 const hydrateObject = async (obj: any): Promise<any> => {
-    if (!obj) return obj;
-    if (typeof obj !== 'object') return obj;
+  if (!obj) return obj;
+  if (typeof obj !== 'object') return obj;
 
-    if (Array.isArray(obj)) {
-        return Promise.all(obj.map(item => hydrateObject(item)));
+  if (Array.isArray(obj)) {
+    return Promise.all(obj.map(item => hydrateObject(item)));
+  }
+
+  const newObj: any = { ...obj };
+
+  for (const key of Object.keys(newObj)) {
+    const val = newObj[key];
+
+    if (typeof val === 'string' && isImageRef(val)) {
+      newObj[key] = await hydrateImage(val);
     }
-
-    const newObj: any = { ...obj };
-
-    for (const key of Object.keys(newObj)) {
-        const val = newObj[key];
-        
-        if (typeof val === 'string' && isImageRef(val)) {
-            newObj[key] = await hydrateImage(val);
-        }
-        else if (Array.isArray(val)) {
-            // Check if array contains strings that are refs
-            if (val.length > 0 && typeof val[0] === 'string' && isImageRef(val[0])) {
-                 newObj[key] = await Promise.all(val.map((v: string) => hydrateImage(v)));
-            } else {
-                 newObj[key] = await Promise.all(val.map(item => hydrateObject(item)));
-            }
-        }
-        else if (typeof val === 'object') {
-            newObj[key] = await hydrateObject(val);
-        }
+    else if (Array.isArray(val)) {
+      // Check if array contains strings that are refs
+      if (val.length > 0 && typeof val[0] === 'string' && isImageRef(val[0])) {
+        newObj[key] = await Promise.all(val.map((v: string) => hydrateImage(v)));
+      } else {
+        newObj[key] = await Promise.all(val.map(item => hydrateObject(item)));
+      }
     }
-    return newObj;
+    else if (typeof val === 'object') {
+      newObj[key] = await hydrateObject(val);
+    }
+  }
+  return newObj;
 };
 
 
@@ -265,6 +265,7 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'shots'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'scenes'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptElements')); // DELETE SCRIPT
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptFile')); // DELETE SCRIPT FILE INFO
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'characters'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'outfits'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'locations'));
@@ -284,14 +285,16 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
-  const scriptKey = getStorageKey(projectId, 'scriptElements'); // KEY ADDED
+  const scriptKey = getStorageKey(projectId, 'scriptElements');
+  const scriptFileKey = getStorageKey(projectId, 'scriptFile'); // KEY ADDED
   const metadataKey = getStorageKey(projectId, 'metadata');
 
-  const [settings, shots, scenes, scriptElements, metadata] = await Promise.all([
+  const [settings, shots, scenes, scriptElements, scriptFile, metadata] = await Promise.all([
     dbGet<WorldSettings>(STORE_NAME, settingsKey),
     dbGet<Shot[]>(STORE_NAME, shotsKey),
     dbGet<Scene[]>(STORE_NAME, scenesKey),
-    dbGet<ScriptElement[]>(STORE_NAME, scriptKey), // LOAD SCRIPT
+    dbGet<ScriptElement[]>(STORE_NAME, scriptKey),
+    dbGet<any>(STORE_NAME, scriptFileKey), // LOAD SCRIPT FILE INFO
     dbGet<any>(STORE_NAME, metadataKey)
   ]);
 
@@ -304,24 +307,25 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     settings: settings || { ...DEFAULT_WORLD_SETTINGS },
     shots: shots || [],
     scenes: scenes || [],
-    scriptElements: scriptElements || [], // Use loaded script or empty
+    scriptElements: scriptElements || [],
+    scriptFile: scriptFile || undefined, // Use loaded file info
     createdAt: metadata?.createdAt || Date.now(),
     lastModified: metadata?.lastModified || Date.now()
   };
 
   // 2. VALIDATE & HEAL (Zod)
   const parseResult = ProjectSchema.safeParse(rawProject);
-  
+
   if (!parseResult.success) {
-      console.warn(`Project ${projectId} schema validation failed. Auto-healing enabled.`, parseResult.error);
+    console.warn(`Project ${projectId} schema validation failed. Auto-healing enabled.`, parseResult.error);
   }
-  
+
   const healedProject = parseResult.success ? parseResult.data : rawProject;
 
   // 3. HYDRATE (Blobs)
   console.log(`💧 Hydrating Project: ${healedProject.name}`);
   const hydratedProject = await hydrateObject(healedProject);
-  
+
   return hydratedProject as Project;
 };
 
@@ -329,7 +333,8 @@ export const saveProjectData = async (projectId: string, project: Project) => {
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
-  const scriptKey = getStorageKey(projectId, 'scriptElements'); // KEY ADDED
+  const scriptKey = getStorageKey(projectId, 'scriptElements');
+  const scriptFileKey = getStorageKey(projectId, 'scriptFile'); // KEY ADDED
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   const metadata = {
@@ -347,7 +352,8 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     dbSet(STORE_NAME, settingsKey, dehydratedProject.settings),
     dbSet(STORE_NAME, shotsKey, dehydratedProject.shots),
     dbSet(STORE_NAME, scenesKey, dehydratedProject.scenes),
-    dbSet(STORE_NAME, scriptKey, dehydratedProject.scriptElements), // SAVE SCRIPT
+    dbSet(STORE_NAME, scriptKey, dehydratedProject.scriptElements),
+    dbSet(STORE_NAME, scriptFileKey, dehydratedProject.scriptFile), // SAVE SCRIPT FILE INFO
     dbSet(STORE_NAME, metadataKey, metadata)
   ]);
 
@@ -374,13 +380,13 @@ export const getCharacters = async (projectId: string): Promise<Character[]> => 
 export const saveCharacters = async (projectId: string, chars: Character[]) => {
   const dehydrated = await dehydrateObject(chars);
   await dbSet(STORE_NAME, getStorageKey(projectId, 'characters'), dehydrated);
-  
+
   // Update count
   const list = getProjectsList();
   const index = list.findIndex(p => p.id === projectId);
   if (index !== -1) {
-      list[index].characterCount = chars.length;
-      saveProjectsList(list);
+    list[index].characterCount = chars.length;
+    saveProjectsList(list);
   }
 };
 
@@ -452,41 +458,41 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const project = await getProjectData(projectId);
   const characters = await getCharacters(projectId);
   const outfits = await getOutfits(projectId);
-  const locations = await getLocations(projectId); 
+  const locations = await getLocations(projectId);
   const library = await getImageLibrary(projectId);
 
   if (!project) throw new Error("Project not found");
 
   // We need to convert Blob URLs back to Base64 for the export file
   const convertBlobUrlToBase64 = async (blobUrl: string): Promise<string> => {
-      if (!blobUrl || !blobUrl.startsWith('blob:')) return blobUrl;
-      const response = await fetch(blobUrl);
-      const blob = await response.blob();
-      return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-      });
+    if (!blobUrl || !blobUrl.startsWith('blob:')) return blobUrl;
+    const response = await fetch(blobUrl);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
   };
 
   const deepConvertToBase64 = async (obj: any): Promise<any> => {
-      if (!obj || typeof obj !== 'object') return obj;
-      if (Array.isArray(obj)) return Promise.all(obj.map(deepConvertToBase64));
-      
-      const newObj: any = { ...obj };
-      const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url'];
-      const arrayImageFields = ['generationCandidates', 'referencePhotos'];
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return Promise.all(obj.map(deepConvertToBase64));
 
-      for (const key of Object.keys(newObj)) {
-          if (imageFields.includes(key) && typeof newObj[key] === 'string') {
-              newObj[key] = await convertBlobUrlToBase64(newObj[key]);
-          } else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
-              newObj[key] = await Promise.all(newObj[key].map((url: string) => convertBlobUrlToBase64(url)));
-          } else if (typeof newObj[key] === 'object') {
-              newObj[key] = await deepConvertToBase64(newObj[key]);
-          }
+    const newObj: any = { ...obj };
+    const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url'];
+    const arrayImageFields = ['generationCandidates', 'referencePhotos'];
+
+    for (const key of Object.keys(newObj)) {
+      if (imageFields.includes(key) && typeof newObj[key] === 'string') {
+        newObj[key] = await convertBlobUrlToBase64(newObj[key]);
+      } else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
+        newObj[key] = await Promise.all(newObj[key].map((url: string) => convertBlobUrlToBase64(url)));
+      } else if (typeof newObj[key] === 'object') {
+        newObj[key] = await deepConvertToBase64(newObj[key]);
       }
-      return newObj;
+    }
+    return newObj;
   };
 
   const portableProject = await deepConvertToBase64(project);
@@ -519,23 +525,23 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
 export const importProjectFromJSON = async (jsonString: string): Promise<string> => {
   try {
     const rawData = JSON.parse(jsonString);
-    
+
     // 1. VALIDATE IMPORTED DATA
     const parseResult = ProjectExportSchema.safeParse(rawData);
-    
+
     if (!parseResult.success) {
-       console.error("Import Validation Failed:", parseResult.error);
-       throw new Error("Invalid Project File. Data is corrupted or outdated.");
+      console.error("Import Validation Failed:", parseResult.error);
+      throw new Error("Invalid Project File. Data is corrupted or outdated.");
     }
-    
+
     const data = parseResult.data;
     const projectId = data.project.id;
 
     // Ensure backwards compat for Scene Architecture (extra safety check)
     if (!data.project.scenes || data.project.scenes.length === 0) {
-        const defId = crypto.randomUUID();
-        data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '' }];
-        data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
+      const defId = crypto.randomUUID();
+      data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '' }];
+      data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
     }
 
     await saveProjectData(projectId, data.project as Project);

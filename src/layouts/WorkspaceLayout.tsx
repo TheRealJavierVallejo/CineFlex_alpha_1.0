@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useParams, useNavigate, useLocation, useOutletContext, NavLink } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
+import { useAutoSave } from '../hooks/useAutoSave';
+import SaveStatusIndicator from '../components/ui/SaveStatusIndicator';
 import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -34,11 +36,29 @@ export const WorkspaceLayout: React.FC = () => {
 
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+    // Auto-save with debouncing
+    const { saveStatus, lastSavedAt } = useAutoSave(
+        project,
+        useCallback(async (data: Project | null) => {
+            if (data?.id) {
+                await saveProjectData(data.id, data);
+            }
+        }, []),
+        {
+            delay: 1000,
+            onSave: () => console.log('Auto-saving project...'),
+            onSuccess: () => console.log('Project saved successfully'),
+            onError: (error) => {
+                showToast('Failed to auto-save project', 'error');
+                console.error('Auto-save error:', error);
+            }
+        }
+    );
 
     useKeyboardShortcut({
         key: 'k',
@@ -89,11 +109,9 @@ export const WorkspaceLayout: React.FC = () => {
         }
     };
 
-    const handleUpdateProject = async (updated: Project) => {
-        setSaveStatus('saving');
+    const handleUpdateProject = (updated: Project) => {
         setProject(updated);
-        if (updated.id) await saveProjectData(updated.id, updated);
-        setTimeout(() => setSaveStatus('saved'), 500);
+        // Auto-save hook will handle the debounced save
     };
 
     const handleUpdateSettings = (key: keyof WorldSettings, value: any) => {
@@ -105,7 +123,6 @@ export const WorkspaceLayout: React.FC = () => {
     const importScript = async (file: File) => {
         if (!project) return;
         try {
-            setSaveStatus('saving');
             const parsed = await parseScript(file);
             const tempProject: Project = {
                 ...project,
@@ -117,12 +134,11 @@ export const WorkspaceLayout: React.FC = () => {
                 }
             };
             const syncedProject = syncScriptToScenes(tempProject);
-            await handleUpdateProject(syncedProject);
+            handleUpdateProject(syncedProject);
             showToast(`Script imported & synced (${parsed.elements.length} lines)`, 'success');
         } catch (e: any) {
             console.error(e);
             showToast(e.message || "Failed to parse script", 'error');
-            setSaveStatus('saved');
         }
     };
 
@@ -200,7 +216,7 @@ export const WorkspaceLayout: React.FC = () => {
             ...original,
             id: crypto.randomUUID(),
             sequence: original.sequence + 1,
-            generatedImage: undefined, 
+            generatedImage: undefined,
             generationCandidates: [],
             description: original.description + " (Copy)"
         };
@@ -234,13 +250,13 @@ export const WorkspaceLayout: React.FC = () => {
     };
 
     const SegmentedTab = ({ to, icon: Icon, label, exact = false }: { to: string, icon: any, label: string, exact?: boolean }) => (
-        <NavLink 
-            to={to} 
+        <NavLink
+            to={to}
             end={exact}
             className={({ isActive }) => `
                 flex items-center gap-2 px-6 py-1.5 rounded-sm transition-all text-[11px] font-bold uppercase tracking-widest
-                ${isActive 
-                    ? 'bg-surface-secondary text-text-primary shadow-sm border border-border' 
+                ${isActive
+                    ? 'bg-surface-secondary text-text-primary shadow-sm border border-border'
                     : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}
             `}
         >
@@ -255,22 +271,22 @@ export const WorkspaceLayout: React.FC = () => {
 
             {/* 1. HEADER (Command Center) */}
             <header className="h-12 bg-background border-b border-border flex items-center justify-between px-4 select-none shrink-0 z-30 relative">
-                
+
                 {/* LEFT: Branding, Dashboard, Project */}
                 <div className="flex items-center h-full gap-4">
                     {/* Library Back Link */}
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-                         <div className="w-8 h-8 bg-surface border border-border flex items-center justify-center relative group-hover:border-primary group-hover:bg-primary/10 transition-colors rounded-full">
-                             <Film className="w-4 h-4 text-primary transition-colors" />
+                        <div className="w-8 h-8 bg-surface border border-border flex items-center justify-center relative group-hover:border-primary group-hover:bg-primary/10 transition-colors rounded-full">
+                            <Film className="w-4 h-4 text-primary transition-colors" />
                         </div>
                         <span className="font-bold tracking-tight text-sm text-text-primary group-hover:text-primary transition-colors hidden md:inline">CineFlex</span>
                     </div>
-                    
+
                     <div className="h-4 w-[1px] bg-border" />
-                    
+
                     {/* Dashboard Button (Icon Only) */}
-                    <NavLink 
-                        to="." 
+                    <NavLink
+                        to="."
                         end
                         className={({ isActive }) => `
                             w-8 h-8 flex items-center justify-center rounded-sm transition-all
@@ -297,12 +313,8 @@ export const WorkspaceLayout: React.FC = () => {
                     </nav>
 
                     {/* Status Indicator */}
-                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono uppercase tracking-wider min-w-[60px] justify-end">
-                        {saveStatus === 'saving' ? (
-                            <span className="flex items-center gap-2 text-primary animate-pulse">SAVING</span>
-                        ) : (
-                            <span className="flex items-center gap-2">SAVED</span>
-                        )}
+                    <div className="flex items-center gap-2">
+                        <SaveStatusIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
                     </div>
                 </div>
             </header>
@@ -326,7 +338,7 @@ export const WorkspaceLayout: React.FC = () => {
                     </span>
                 </div>
                 <div>
-                   RAM: OPTIMAL
+                    RAM: OPTIMAL
                 </div>
             </footer>
 

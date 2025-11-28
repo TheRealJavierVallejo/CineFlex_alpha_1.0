@@ -9,6 +9,8 @@ import { UI_COLOR_PALETTE } from '../../constants';
 import Button from '../ui/Button';
 import { ShowToastFn } from '../../types';
 
+import { getContrastColor, getGlowColor } from '../../utils/themeUtils';
+
 interface AppSettingsProps {
     onClose: () => void;
     showToast: ShowToastFn;
@@ -37,7 +39,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
             localStorage.setItem('cinesketch_api_key', apiKey.trim());
             showToast("API Key saved securely", 'success');
         } else {
-            localStorage.removeItem('cinesketch_active_project_id'); 
+            localStorage.removeItem('cinesketch_active_project_id');
             localStorage.removeItem('cinesketch_api_key');
             showToast("API Key removed", 'info');
         }
@@ -51,17 +53,13 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
         root.style.setProperty('--color-primary', color);
         root.style.setProperty('--color-primary-hover', color);
 
-        // Calculate contrast
-        const hex = color.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        const foreground = brightness > 128 ? '#000000' : '#FFFFFF';
+        // Use smart contrast utility
+        const foreground = getContrastColor(color);
         root.style.setProperty('--color-primary-foreground', foreground);
 
         try {
-            root.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+            const glow = getGlowColor(color, 0.5);
+            root.style.setProperty('--color-primary-glow', glow);
         } catch (e) {
             console.warn("Could not parse color for glow:", color);
         }
@@ -78,9 +76,9 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] modal-bg-dark backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-                
+
                 {/* Header */}
                 <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
                     <span className="font-bold text-text-primary text-sm tracking-widest uppercase">Studio Settings</span>
@@ -109,21 +107,21 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 <div className="p-8 bg-background min-h-[320px]">
                     {activeTab === 'theme' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-200">
-                            
+
                             {/* Mode Selection */}
                             <div>
                                 <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2 mb-4">
                                     <Sun className="w-3.5 h-3.5" /> Color Mode
                                 </label>
                                 <div className="flex gap-4">
-                                    <button 
+                                    <button
                                         onClick={() => handleThemeModeChange('dark')}
                                         className={`flex-1 p-4 rounded border flex flex-col items-center gap-3 transition-all ${themeMode === 'dark' ? 'bg-surface border-primary text-primary' : 'bg-surface-secondary border-transparent hover:border-border text-text-secondary'}`}
                                     >
                                         <Moon className="w-6 h-6" />
                                         <span className="text-xs font-bold uppercase">Dark Mode</span>
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => handleThemeModeChange('light')}
                                         className={`flex-1 p-4 rounded border flex flex-col items-center gap-3 transition-all ${themeMode === 'light' ? 'bg-surface border-primary text-primary' : 'bg-surface-secondary border-transparent hover:border-border text-text-secondary'}`}
                                     >
@@ -138,7 +136,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                 <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2 mb-4">
                                     <Palette className="w-3.5 h-3.5" /> Accent Color
                                 </label>
-                                
+
                                 <div className="grid grid-cols-4 gap-4">
                                     {UI_COLOR_PALETTE.map((color) => (
                                         <button
@@ -154,11 +152,11 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                             {accentColor === color && (
                                                 <div className="absolute inset-0 flex items-center justify-center animate-in zoom-in duration-200">
                                                     {/* Smart Check Icon Color based on swatch brightness */}
-                                                    <Check 
-                                                        className={`w-5 h-5`} 
-                                                        strokeWidth={3} 
-                                                        style={{ 
-                                                            color: ((parseInt(color.slice(1,3),16)*299 + parseInt(color.slice(3,5),16)*587 + parseInt(color.slice(5,7),16)*114)/1000) > 128 ? 'black' : 'white' 
+                                                    <Check
+                                                        className={`w-5 h-5`}
+                                                        strokeWidth={3}
+                                                        style={{
+                                                            color: getContrastColor(color)
                                                         }}
                                                     />
                                                 </div>

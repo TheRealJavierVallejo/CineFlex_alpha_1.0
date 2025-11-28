@@ -43,9 +43,9 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] overlay-dark backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-surface w-full max-w-5xl h-[85vh] border border-border rounded-lg shadow-2xl flex flex-col overflow-hidden">
-                
+
                 {/* Header */}
                 <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-surface-secondary shrink-0">
                     <div className="flex items-center gap-3">
@@ -66,10 +66,10 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
                 <div className="p-4 border-b border-border flex gap-4 bg-surface shrink-0">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-                        <input 
+                        <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search library..." 
+                            placeholder="Search library..."
                             className="w-full h-10 bg-background border border-border rounded-md pl-9 pr-4 text-sm text-text-primary outline-none focus:border-primary transition-colors"
                         />
                     </div>
@@ -81,9 +81,9 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
                 {/* Grid */}
                 <div className="flex-1 overflow-y-auto p-6 bg-background">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                        
+
                         {/* Option 1: Create Blank Shot */}
-                        <button 
+                        <button
                             onClick={() => onSelect(null)}
                             className="aspect-video bg-surface border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 rounded-lg flex flex-col items-center justify-center gap-3 group transition-all"
                         >
@@ -95,13 +95,13 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
 
                         {/* Library Images */}
                         {filteredImages.map((img) => (
-                            <div 
-                                key={img.id} 
+                            <div
+                                key={img.id}
                                 onClick={() => onSelect(img)}
-                                className="group relative aspect-video bg-black rounded-lg overflow-hidden cursor-pointer border border-transparent hover:border-primary transition-all"
+                                className="group relative aspect-video media-bg rounded-lg overflow-hidden cursor-pointer border border-transparent hover:border-primary transition-all"
                             >
                                 <img src={img.url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
-                                
+
                                 {/* Info Overlay */}
                                 <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-200">
                                     <p className="text-[10px] text-white/90 line-clamp-2">{img.prompt || "No description"}</p>

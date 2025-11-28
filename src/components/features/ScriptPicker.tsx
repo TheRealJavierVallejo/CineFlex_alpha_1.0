@@ -23,7 +23,7 @@ const groupElements = (elements: ScriptElement[]) => {
     let i = 0;
     while (i < elements.length) {
         const el = elements[i];
-        
+
         // Start a dialogue block
         if (el.type === 'character') {
             const block = [el];
@@ -70,7 +70,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     const getElementClasses = (type: ScriptElement['type']) => {
         // Strict screenplay formatting styles - DARK MODE MATCH
         const base = "font-screenplay text-[17px] leading-relaxed transition-colors duration-200";
-        
+
         switch (type) {
             case 'scene_heading':
                 return `${base} font-bold uppercase pt-8 pb-4 border-b border-white/5 mb-4 block w-full text-text-primary text-left`;
@@ -90,9 +90,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
-            <div 
-                className="bg-surface border border-border w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overlay-dark backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+            <div
+                className="bg-surface border border-border w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
@@ -115,7 +115,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                 const isHeading = group.items[0].type === 'scene_heading';
 
                                 return (
-                                    <div 
+                                    <div
                                         key={idx}
                                         className={`
                                             relative group transition-opacity duration-200
@@ -143,7 +143,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                         {/* Linked Label (Left Margin) */}
                                         {isLinked && (
                                             <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4">
-                                                 <div className="text-text-muted font-sans font-bold text-[9px] uppercase tracking-wider">
+                                                <div className="text-text-muted font-sans font-bold text-[9px] uppercase tracking-wider">
                                                     Linked
                                                 </div>
                                             </div>
@@ -165,7 +165,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                     <div className="text-[10px] text-text-secondary font-sans uppercase tracking-wider">
                         Click text to link to shot
                     </div>
-                    <button 
+                    <button
                         onClick={onClose}
                         className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-text-muted hover:text-white transition-colors hover:bg-white/5 rounded-sm border border-transparent hover:border-border"
                     >

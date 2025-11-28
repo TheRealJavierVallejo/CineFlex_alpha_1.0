@@ -43,7 +43,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
 
     const handleDeleteStill = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onUpdateShot(shot.id, { 
+        onUpdateShot(shot.id, {
             generatedImage: undefined,
             generationCandidates: []
         });
@@ -61,7 +61,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     <div className="flex justify-between items-center">
                         <span className="text-[10px] font-mono font-bold text-text-secondary">SHOT {String(shot.sequence).padStart(2, '0')}</span>
                         <div className="flex gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                             <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
                                 className="text-text-muted hover:text-red-500 transition-colors"
                                 title="Delete Shot"
@@ -72,7 +72,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     </div>
 
                     <div
-                        className="aspect-video w-full bg-black border border-border relative group/visual cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                        className="aspect-video w-full media-bg border border-border relative group/visual cursor-pointer hover:border-primary transition-colors overflow-hidden"
                         onClick={() => {
                             if (shot.generatedImage) {
                                 onEditShot(shot);
@@ -84,7 +84,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                         {shot.generatedImage ? (
                             <>
                                 <img src={shot.generatedImage} className="w-full h-full object-cover" alt={`Shot ${shot.sequence}`} />
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <div className="absolute inset-0 media-control opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                     <span className="text-[10px] uppercase font-bold text-white tracking-widest border border-white px-2 py-1">Edit Visual</span>
                                 </div>
                             </>
@@ -95,7 +95,7 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                             </div>
                         )}
                     </div>
-                    
+
                     <div className="flex justify-between text-[9px] font-mono text-text-muted uppercase">
                         <span>{shot.shotType}</span>
                         <span>{shot.aspectRatio || '16:9'}</span>
@@ -107,13 +107,13 @@ export const ShotRow: React.FC<ShotRowProps> = ({
                     {/* Description Input (if no linked script) */}
                     {linkedElements.length === 0 && (
                         <div className="mb-2">
-                           <textarea 
-                              value={shot.description}
-                              onChange={(e) => onUpdateShot(shot.id, { description: e.target.value })}
-                              placeholder="// Describe shot action..."
-                              className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full"
-                              rows={2}
-                           />
+                            <textarea
+                                value={shot.description}
+                                onChange={(e) => onUpdateShot(shot.id, { description: e.target.value })}
+                                placeholder="// Describe shot action..."
+                                className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full"
+                                rows={2}
+                            />
                         </div>
                     )}
 
@@ -137,12 +137,12 @@ export const ShotRow: React.FC<ShotRowProps> = ({
 
                     {/* Link Button */}
                     <div className="mt-4 pt-2 border-t border-border/20 flex items-center gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                         <button 
+                        <button
                             onClick={() => onLinkElement(shot.id, 'script')}
                             className="text-[10px] uppercase font-bold text-text-secondary hover:text-primary flex items-center gap-1 transition-colors"
-                         >
+                        >
                             <Type className="w-3 h-3" /> Link Script Element
-                         </button>
+                        </button>
                     </div>
                 </div>
             </div>

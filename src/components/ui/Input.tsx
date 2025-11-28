@@ -17,7 +17,7 @@ const Input: React.FC<InputProps> = ({ label, error, className = '', ...props })
         className={`
           w-full bg-[#050505] border border-zinc-800 text-zinc-200 text-xs px-3 py-2 rounded-sm
           outline-none transition-colors
-          focus:border-primary focus:bg-black
+          focus:border-primary focus:bg-background
           placeholder:text-zinc-700
           disabled:opacity-50 disabled:cursor-not-allowed
           ${error ? 'border-red-500 focus:border-red-500' : ''}

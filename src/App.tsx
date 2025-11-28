@@ -9,12 +9,12 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import {
-  TimelineView,
-  AssetManager,
-  ProjectSettings,
-  ShotList, // Keeping import just in case, though unused in new dashboard
-  ScriptPage,
-  LazyWrapper
+    TimelineView,
+    AssetManager,
+    ProjectSettings,
+    ShotList, // Keeping import just in case, though unused in new dashboard
+    ScriptPage,
+    LazyWrapper
 } from './components/features/LazyComponents';
 import { ProductionSpreadsheet } from './components/features/ProductionSpreadsheet';
 
@@ -22,13 +22,13 @@ import { ProductionSpreadsheet } from './components/features/ProductionSpreadshe
 
 const DashboardPage = () => {
     // Using the exposed handlers from WorkspaceLayout
-    const { 
-        project, 
-        handleUpdateShot, 
-        handleEditShot, 
-        handleDeleteShot, 
-        handleDuplicateShot, 
-        showToast 
+    const {
+        project,
+        handleUpdateShot,
+        handleEditShot,
+        handleDeleteShot,
+        handleDuplicateShot,
+        showToast
     } = useWorkspace();
 
     return (
@@ -87,7 +87,7 @@ const AssetsPage = () => {
 
 const SettingsPage = () => {
     const { project, handleUpdateProject, handleUpdateSettings, showToast } = useWorkspace();
-    
+
     // Helpers for custom settings array manipulation
     const addCustomSetting = (field: any, value: string) => {
         const currentList = (project.settings as any)[field] || [];
@@ -119,72 +119,69 @@ const SettingsPage = () => {
     );
 };
 
+import { getContrastColor, getGlowColor } from './utils/themeUtils';
+
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
-  // Apply saved theme on mount
-  useEffect(() => {
-    // 1. Accent Color
-    const savedColor = localStorage.getItem('cinesketch_theme_color');
-    if (savedColor) {
-        const root = document.documentElement;
-        root.style.setProperty('--color-primary', savedColor);
-        root.style.setProperty('--color-primary-hover', savedColor);
-        
-        // Calculate contrast color
-        const hex = savedColor.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        // Brightness formula
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        const foreground = brightness > 128 ? '#000000' : '#FFFFFF';
-        root.style.setProperty('--color-primary-foreground', foreground);
+    // Apply saved theme on mount
+    useEffect(() => {
+        // 1. Accent Color
+        const savedColor = localStorage.getItem('cinesketch_theme_color');
+        if (savedColor) {
+            const root = document.documentElement;
+            root.style.setProperty('--color-primary', savedColor);
+            root.style.setProperty('--color-primary-hover', savedColor); // Ideally darken this slightly
 
-        // Convert to RGB for glow
-        try {
-            root.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
-        } catch(e) {
-            console.warn("Failed to apply theme glow", e);
+            // Use smart contrast utility
+            const foreground = getContrastColor(savedColor);
+            root.style.setProperty('--color-primary-foreground', foreground);
+
+            // Apply glow
+            try {
+                const glow = getGlowColor(savedColor, 0.5);
+                root.style.setProperty('--color-primary-glow', glow);
+            } catch (e) {
+                console.warn("Failed to apply theme glow", e);
+            }
         }
-    }
 
-    // 2. Light/Dark Mode
-    const savedMode = localStorage.getItem('cinesketch_theme_mode');
-    if (savedMode === 'light') {
-        document.documentElement.classList.add('light');
-    } else {
-        document.documentElement.classList.remove('light');
-    }
-  }, []);
+        // 2. Light/Dark Mode
+        const savedMode = localStorage.getItem('cinesketch_theme_mode');
+        if (savedMode === 'light') {
+            document.documentElement.classList.add('light');
+        } else {
+            document.documentElement.classList.remove('light');
+        }
+    }, []);
 
-  return (
-    <BrowserRouter>
-        <Routes>
-            {/* Project Selection / Library */}
-            <Route path="/" element={<ProjectLibrary />} />
+    return (
+        <BrowserRouter>
+            <Routes>
+                {/* Project Selection / Library */}
+                <Route path="/" element={<ProjectLibrary />} />
 
-            {/* Main Workspace Layout */}
-            <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                {/* Dashboard is back as Index, but now it's a Spreadsheet */}
-                <Route index element={<DashboardPage />} />
-                <Route path="timeline" element={<TimelinePage />} />
-                <Route path="script" element={<ScriptEditorPage />} />
-                <Route path="assets" element={<AssetsPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-            </Route>
+                {/* Main Workspace Layout */}
+                <Route path="/project/:projectId" element={<WorkspaceLayout />}>
+                    {/* Dashboard is back as Index, but now it's a Spreadsheet */}
+                    <Route index element={<DashboardPage />} />
+                    <Route path="timeline" element={<TimelinePage />} />
+                    <Route path="script" element={<ScriptEditorPage />} />
+                    <Route path="assets" element={<AssetsPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-    </BrowserRouter>
-  );
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </BrowserRouter>
+    );
 };
 
 const WrappedApp = () => (
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
+    <ErrorBoundary>
+        <App />
+    </ErrorBoundary>
 );
 
 export default WrappedApp;

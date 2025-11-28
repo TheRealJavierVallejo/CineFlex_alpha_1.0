@@ -54,46 +54,46 @@ export const OnboardingTour: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+    <div className="fixed inset-0 z-[200] overlay-dark backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative">
-        
-        <button 
-           onClick={handleComplete}
-           className="absolute top-4 right-4 text-text-tertiary hover:text-text-primary p-1"
-           aria-label="Skip tour"
+
+        <button
+          onClick={handleComplete}
+          className="absolute top-4 right-4 text-text-tertiary hover:text-text-primary p-1"
+          aria-label="Skip tour"
         >
-           <X className="w-5 h-5" />
+          <X className="w-5 h-5" />
         </button>
 
         <div className="p-8 text-center flex flex-col items-center">
-           <div className="mb-6 p-6 bg-surface-secondary rounded-full border border-border shadow-inner">
-              {steps[step].icon}
-           </div>
-           
-           <h2 id="tour-title" className="text-xl font-bold text-text-primary mb-3">{steps[step].title}</h2>
-           <p className="text-text-secondary text-sm leading-relaxed mb-8 min-h-[60px]">
-              {steps[step].desc}
-           </p>
+          <div className="mb-6 p-6 bg-surface-secondary rounded-full border border-border shadow-inner">
+            {steps[step].icon}
+          </div>
 
-           <div className="flex gap-2 mb-6">
-              {steps.map((_, i) => (
-                 <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-primary' : 'bg-border'}`} />
-              ))}
-           </div>
+          <h2 id="tour-title" className="text-xl font-bold text-text-primary mb-3">{steps[step].title}</h2>
+          <p className="text-text-secondary text-sm leading-relaxed mb-8 min-h-[60px]">
+            {steps[step].desc}
+          </p>
 
-           <button
-              onClick={() => {
-                 if (step < steps.length - 1) setStep(step + 1);
-                 else handleComplete();
-              }}
-              className="w-full h-10 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-lg shadow-teal-900/20"
-           >
-              {step < steps.length - 1 ? (
-                 <>Next Step <ChevronRight className="w-4 h-4" /></>
-              ) : (
-                 "Get Started"
-              )}
-           </button>
+          <div className="flex gap-2 mb-6">
+            {steps.map((_, i) => (
+              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-primary' : 'bg-border'}`} />
+            ))}
+          </div>
+
+          <button
+            onClick={() => {
+              if (step < steps.length - 1) setStep(step + 1);
+              else handleComplete();
+            }}
+            className="w-full h-10 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-lg shadow-teal-900/20"
+          >
+            {step < steps.length - 1 ? (
+              <>Next Step <ChevronRight className="w-4 h-4" /></>
+            ) : (
+              "Get Started"
+            )}
+          </button>
         </div>
       </div>
     </div>

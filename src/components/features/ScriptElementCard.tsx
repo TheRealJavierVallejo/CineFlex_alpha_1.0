@@ -45,7 +45,7 @@ export const ScriptElementCard: React.FC<ScriptElementCardProps> = ({
     switch (element.type) {
       case 'scene_heading':
         return {
-          wrapper: `py-6 border-b border-border/30 bg-black/20`,
+          wrapper: `py-6 border-b border-border/30 bg-surface-secondary`,
           text: `${base} font-bold uppercase text-text-primary tracking-wider`
         };
       case 'action':

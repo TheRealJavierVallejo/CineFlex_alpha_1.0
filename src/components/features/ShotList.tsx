@@ -32,15 +32,15 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
         label: "Edit Shot",
         icon: <Edit2 className="w-4 h-4" />,
         action: () => {
-           const shot = project.shots.find(s => s.id === contextMenu.shotId);
-           if (shot) onEditShot(shot);
+          const shot = project.shots.find(s => s.id === contextMenu.shotId);
+          if (shot) onEditShot(shot);
         }
       },
       {
         label: "Duplicate",
         icon: <Copy className="w-4 h-4" />,
         action: () => {
-           if (onDuplicateShot) onDuplicateShot(contextMenu.shotId);
+          if (onDuplicateShot) onDuplicateShot(contextMenu.shotId);
         }
       },
       {
@@ -81,7 +81,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
               className="bg-surface border border-border rounded-sm overflow-hidden hover:border-primary cursor-pointer transition-all group relative"
             >
               {/* Thumbnail */}
-              <div className="aspect-video bg-black relative">
+              <div className="aspect-video media-bg relative">
                 {shot.generatedImage ? (
                   <img src={shot.generatedImage} className="w-full h-full object-contain" />
                 ) : shot.sketchImage ? (
@@ -92,27 +92,27 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
                   </div>
                 )}
 
-                <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10">
+                <div className="absolute top-1 left-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10">
                   #{shot.sequence}
                 </div>
 
                 {/* Actions overlay - Hover Buttons still useful for quick access */}
                 <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                   <button 
-                      onClick={(e) => {
-                         e.stopPropagation();
-                         onDeleteShot(shot.id);
-                      }}
-                      className="bg-black/80 hover:bg-red-900/80 text-white p-1 rounded-[1px] transition-colors border border-white/10"
-                      title="Delete Shot"
-                   >
-                      <Trash2 className="w-3 h-3 text-red-400" />
-                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteShot(shot.id);
+                    }}
+                    className="media-control hover:bg-red-900/80 text-white p-1 rounded-[1px] transition-colors border border-white/10"
+                    title="Delete Shot"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-400" />
+                  </button>
                 </div>
 
                 {/* Stack Indicator */}
                 {shot.generationCandidates && shot.generationCandidates.length > 1 && (
-                  <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[1px] text-[9px] text-zinc-400 flex items-center gap-1 border border-white/10">
+                  <div className="absolute bottom-1 right-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] text-zinc-400 flex items-center gap-1 border border-white/10">
                     <Layers className="w-2.5 h-2.5" />
                     <span>{shot.generationCandidates.length}</span>
                   </div>

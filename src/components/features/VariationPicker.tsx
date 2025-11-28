@@ -33,7 +33,7 @@ export const VariationPicker: React.FC<VariationPickerProps> = ({
   generatingSlotIndex
 }) => {
   return (
-    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] overlay-dark flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-surface w-full max-w-[900px] border border-border rounded-sm shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
         {/* Header */}
@@ -49,14 +49,14 @@ export const VariationPicker: React.FC<VariationPickerProps> = ({
         </div>
 
         {/* Grid Content */}
-        <div className="flex-1 overflow-y-auto p-4 bg-black">
+        <div className="flex-1 overflow-y-auto p-4 media-bg">
           <div className={`grid gap-4 h-full ${candidates.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {candidates.map((img, idx) => (
               <div key={idx} className="relative group rounded-sm overflow-hidden bg-zinc-900 transition-all flex flex-col border border-border hover:border-primary">
 
                 {/* Image Area */}
                 <div
-                  className="flex-1 relative cursor-pointer overflow-hidden bg-black"
+                  className="flex-1 relative cursor-pointer overflow-hidden media-bg"
                   onClick={() => onSelect(img)}
                 >
                   <img src={img} className="block w-full h-full object-contain border-none outline-none m-0 p-0 bg-transparent transform scale-[1.01] transition-transform group-hover:scale-105" />
@@ -70,7 +70,7 @@ export const VariationPicker: React.FC<VariationPickerProps> = ({
 
                   {/* Loading State for Slot */}
                   {generatingSlotIndex === idx && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10 backdrop-blur-sm">
+                    <div className="absolute inset-0 media-control flex items-center justify-center z-10 backdrop-blur-sm">
                       <RefreshCw className="w-8 h-8 text-primary animate-spin" />
                     </div>
                   )}
