@@ -9,14 +9,15 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
 import { StudioLayout, useStudio } from './layouts/StudioLayout';
 import {
-  TimelineView,
+  TimelineView, // Kept for legacy ref if needed, but mostly internal now
   AssetManager,
   ProjectSettings,
   ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
+import { DirectorPage } from './components/features/DirectorPage';
 
-// --- ADAPTER COMPONENTS (Adapting old components to new Context) ---
+// --- ADAPTER COMPONENTS ---
 
 const WriterMode = () => {
     return (
@@ -26,17 +27,11 @@ const WriterMode = () => {
     );
 };
 
+// UPDATED: Now uses the Split Screen DirectorPage
 const DirectorMode = () => {
-    const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useStudio();
     return (
         <LazyWrapper>
-            <TimelineView
-                project={project}
-                onUpdateProject={handleUpdateProject}
-                onEditShot={handleEditShot}
-                importScript={importScript}
-                showToast={showToast}
-            />
+            <DirectorPage />
         </LazyWrapper>
     );
 };
@@ -100,10 +95,9 @@ const App: React.FC = () => {
 
             {/* Studio Console */}
             <Route path="/project/:projectId" element={<StudioLayout />}>
-                {/* Redirect root to Writer mode (The starting point) */}
+                {/* Redirect root to Writer mode */}
                 <Route index element={<Navigate to="script" replace />} />
                 
-                {/* The 4 Main Modes */}
                 <Route path="script" element={<WriterMode />} />
                 <Route path="director" element={<DirectorMode />} />
                 <Route path="producer" element={<ProducerMode />} />
