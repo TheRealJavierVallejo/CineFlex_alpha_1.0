@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shot, Project, Character, Outfit, Location, ShowToastFn } from '../../types';
 import { generateShotImage, generateBatchShotImages, analyzeSketch } from '../../services/gemini';
-import { constructPrompt } from '../../services/promptBuilder';
-import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS, IMAGE_RESOLUTIONS, TIMES_OF_DAY } from '../../constants';
-import { Wand2, RefreshCw, Upload, Loader2, Trash2, Camera, MapPin, Users, Settings, Maximize2, Download, Copy, Info } from 'lucide-react';
-import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
+import { SHOT_TYPES, MODEL_OPTIONS, ASPECT_RATIOS } from '../../constants';
+import { Wand2, Upload, Loader2, Camera, MapPin, Users, Settings, Download, X } from 'lucide-react';
+import { getCharacters, getOutfits, addToImageLibrary, addBatchToImageLibrary, getLocations } from '../../services/storage';
 import Button from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { VariationPicker } from '../features/VariationPicker';
@@ -14,13 +13,14 @@ interface ShotInspectorProps {
     shot: Shot;
     onUpdateShot: (id: string, updates: Partial<Shot>) => void;
     showToast: ShowToastFn;
+    onClose?: () => void; // Optional close if we use it in mobile/overlay
 }
 
 const LOADING_MESSAGES = [
     "Calibrating...", "Lighting...", "Directing...", "Rendering...", "Developing..."
 ];
 
-export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onUpdateShot, showToast }) => {
+export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onUpdateShot, showToast, onClose }) => {
     // Assets
     const [characters, setCharacters] = useState<Character[]>([]);
     const [outfits, setOutfits] = useState<Outfit[]>([]);
@@ -87,7 +87,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                     url: img,
                     createdAt: Date.now(),
                     shotId: shot.id,
-                    prompt: shot.description, // Simplified
+                    prompt: shot.description, 
                     model: shot.model,
                     aspectRatio: shot.aspectRatio
                 }));
@@ -134,7 +134,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
     };
 
     return (
-        <div className="h-full flex flex-col bg-surface-secondary border-l border-border w-[400px] shrink-0 shadow-xl z-10">
+        <div className="h-full flex flex-col bg-surface border-l border-border w-[380px] shrink-0 z-10">
             {/* VARIATION PICKER OVERLAY */}
             {showVariationPicker && (
                 <VariationPicker
@@ -145,27 +145,21 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                     }}
                     onCancel={() => setShowVariationPicker(false)}
                     onGenerateMore={handleGenerate}
-                    onRegenerateSlot={() => {}} // Placeholder
+                    onRegenerateSlot={() => {}} 
                     isGeneratingMore={isGenerating}
                     generatingSlotIndex={null}
                 />
             )}
 
             {/* HEADER */}
-            <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0">
-                <div>
-                    <div className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Shot #{shot.sequence}</div>
-                    <div className="text-xs font-medium text-text-primary">{shot.shotType}</div>
+            <div className="h-10 border-b border-border flex items-center justify-between px-4 bg-surface-secondary shrink-0">
+                <div className="flex items-center gap-2">
+                     <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Shot Inspector</span>
+                     <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary font-mono text-[10px]">#{shot.sequence}</span>
                 </div>
-                <Button 
-                    variant="primary" 
-                    size="sm" 
-                    icon={isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                    onClick={handleGenerate}
-                    disabled={isGenerating}
-                >
-                    {isGenerating ? 'Rendering...' : 'Render'}
-                </Button>
+                {onClose && (
+                    <button onClick={onClose} className="text-text-tertiary hover:text-white"><X className="w-4 h-4" /></button>
+                )}
             </div>
 
             {/* SCROLLABLE CONTENT */}
@@ -198,6 +192,19 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                     </div>
                 </div>
 
+                {/* GENERATE BUTTON BAR */}
+                <div className="p-3 border-b border-border bg-[#121212]">
+                     <Button 
+                        variant="primary" 
+                        className="w-full justify-center h-9"
+                        icon={isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                        onClick={handleGenerate}
+                        disabled={isGenerating}
+                    >
+                        {isGenerating ? 'Rendering...' : 'Generate Frame'}
+                    </Button>
+                </div>
+
                 {/* CONTROLS */}
                 <div className="p-4 space-y-1">
                     
@@ -206,7 +213,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                         <textarea 
                             value={shot.description}
                             onChange={(e) => update({ description: e.target.value })}
-                            className="studio-input h-24 resize-none leading-relaxed"
+                            className="studio-input h-24 resize-none leading-relaxed text-xs"
                             placeholder="Describe the shot..."
                         />
                         <div className="mt-2 flex gap-2">
@@ -226,7 +233,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                     <CollapsibleSection title="Camera Settings" icon={<Camera className="w-3 h-3" />} defaultOpen>
                         <div className="grid grid-cols-2 gap-2">
                             <div>
-                                <label className="text-[10px] uppercase text-text-tertiary font-bold">Shot Type</label>
+                                <label className="text-[9px] uppercase text-text-tertiary font-bold mb-1 block">Shot Type</label>
                                 <select 
                                     value={shot.shotType}
                                     onChange={(e) => update({ shotType: e.target.value })}
@@ -236,7 +243,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                                 </select>
                             </div>
                             <div>
-                                <label className="text-[10px] uppercase text-text-tertiary font-bold">Aspect Ratio</label>
+                                <label className="text-[9px] uppercase text-text-tertiary font-bold mb-1 block">Aspect Ratio</label>
                                 <select 
                                     value={shot.aspectRatio || '16:9'}
                                     onChange={(e) => update({ aspectRatio: e.target.value })}
@@ -246,14 +253,14 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                                 </select>
                             </div>
                         </div>
-                        <div className="mt-2">
-                            <label className="text-[10px] uppercase text-text-tertiary font-bold">Variations</label>
-                            <div className="flex bg-surface border border-border rounded p-0.5 mt-1">
+                        <div className="mt-3">
+                            <label className="text-[9px] uppercase text-text-tertiary font-bold mb-1 block">Variations</label>
+                            <div className="flex bg-surface border border-border rounded p-0.5">
                                 {[1, 2, 4].map(n => (
                                     <button
                                         key={n}
                                         onClick={() => setVariationCount(n)}
-                                        className={`flex-1 py-1 text-xs font-medium rounded ${variationCount === n ? 'bg-primary text-white' : 'text-text-secondary hover:text-white'}`}
+                                        className={`flex-1 py-1 text-xs font-medium rounded-sm ${variationCount === n ? 'bg-primary text-white' : 'text-text-secondary hover:text-white'}`}
                                     >
                                         {n}x
                                     </button>
@@ -266,7 +273,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                     <CollapsibleSection title="Cast & Location" icon={<Users className="w-3 h-3" />}>
                         <div className="space-y-3">
                             <div>
-                                <label className="text-[10px] uppercase text-text-tertiary font-bold mb-1 block">Characters</label>
+                                <label className="text-[9px] uppercase text-text-tertiary font-bold mb-1 block">Characters</label>
                                 <div className="space-y-1">
                                     {characters.map(char => (
                                         <div 
@@ -278,7 +285,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                                                 update({ characterIds: ids });
                                             }}
                                             className={`
-                                                flex items-center gap-2 p-2 rounded cursor-pointer border
+                                                flex items-center gap-2 p-1.5 rounded-sm cursor-pointer border
                                                 ${shot.characterIds.includes(char.id) ? 'bg-primary/10 border-primary text-text-primary' : 'bg-surface border-border text-text-secondary hover:border-text-tertiary'}
                                             `}
                                         >
@@ -290,17 +297,17 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                             </div>
 
                             <div>
-                                <label className="text-[10px] uppercase text-text-tertiary font-bold mb-1 block">Location</label>
+                                <label className="text-[9px] uppercase text-text-tertiary font-bold mb-1 block">Location Override</label>
                                 <div className="relative">
                                     <select 
                                         value={shot.locationId || ''}
                                         onChange={(e) => update({ locationId: e.target.value || undefined })}
-                                        className="studio-input pl-8"
+                                        className="studio-input pl-7"
                                     >
-                                        <option value="">None (Use Prompt)</option>
+                                        <option value="">None (Use Scene Default)</option>
                                         {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                     </select>
-                                    <MapPin className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-text-tertiary" />
+                                    <MapPin className="absolute left-2 top-2 w-3 h-3 text-text-tertiary" />
                                 </div>
                             </div>
                         </div>
@@ -309,7 +316,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({ project, shot, onU
                     {/* 4. ADVANCED */}
                     <CollapsibleSection title="Advanced" icon={<Settings className="w-3 h-3" />}>
                         <div className="space-y-2">
-                             <label className="text-[10px] uppercase text-text-tertiary font-bold">Negative Prompt</label>
+                             <label className="text-[9px] uppercase text-text-tertiary font-bold mb-1 block">Negative Prompt</label>
                              <input 
                                 value={shot.negativePrompt || ''}
                                 onChange={(e) => update({ negativePrompt: e.target.value })}

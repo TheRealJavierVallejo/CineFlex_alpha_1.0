@@ -105,7 +105,8 @@
   }
 
   /* Standard Input field */
-  .nle-input {
+  .nle-input,
+  .studio-input {
     @apply w-full bg-[#000000]/30 border border-border rounded px-2 py-1.5 text-xs text-text-primary;
     @apply outline-none transition-colors focus:border-primary focus:bg-black;
   }
@@ -141,10 +142,6 @@
     @apply bg-surface border border-border rounded shadow-none overflow-hidden;
   }
   
-  .studio-input {
-    @apply nle-input;
-  }
-
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;

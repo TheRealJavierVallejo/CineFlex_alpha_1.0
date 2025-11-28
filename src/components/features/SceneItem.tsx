@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowUp, ArrowDown, Trash2, Plus, Type, ChevronDown, MapPin, MoreHorizontal } from 'lucide-react';
+import { ArrowUp, ArrowDown, Trash2, Plus, ChevronRight, MapPin } from 'lucide-react';
 import { Scene, Shot, ScriptElement, Project, Location } from '../../types';
 import Button from '../ui/Button';
 import { ShotCard } from './ShotCard';
@@ -43,91 +43,102 @@ export const SceneItem: React.FC<SceneItemProps> = ({
     const [isExpanded, setIsExpanded] = useState(true);
 
     return (
-        <div className="studio-card overflow-hidden group/scene mb-6 border-l-4 border-l-primary/50">
-            {/* SCENE HEADER */}
+        <div className="flex flex-col border-b border-border bg-surface">
+            {/* SCENE HEADER STRIP */}
             <div 
-                className="bg-surface-secondary p-4 flex flex-col cursor-pointer select-none transition-colors hover:bg-surface-hover"
+                className="flex items-center h-12 px-4 hover:bg-white/5 transition-colors cursor-pointer group"
                 onClick={(e) => {
                     if (['INPUT', 'BUTTON', 'SELECT'].includes((e.target as HTMLElement).tagName)) return;
                     setIsExpanded(!isExpanded);
                 }}
             >
-                <div className="flex items-center gap-4">
-                    {/* Expand/Collapse Chevron */}
-                    <div className={`transition-transform duration-200 text-text-muted ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
-                        <ChevronDown className="w-5 h-5" />
-                    </div>
+                {/* 1. EXPAND CONTROL */}
+                <div className="w-8 flex justify-center text-text-tertiary">
+                     <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                </div>
 
-                    {/* Scene Controls */}
-                    <div className="flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover/scene:opacity-100 transition-opacity">
-                        <button onClick={(e) => { e.stopPropagation(); onMoveScene(index, 'up'); }} disabled={index === 0} className="text-text-muted hover:text-primary disabled:opacity-0"><ArrowUp className="w-3.5 h-3.5" /></button>
-                        <span className="font-mono text-xs text-text-muted font-bold px-1 bg-surface rounded border border-border">{index + 1}</span>
-                        <button onClick={(e) => { e.stopPropagation(); onMoveScene(index, 'down'); }} disabled={index === totalScenes - 1} className="text-text-muted hover:text-primary disabled:opacity-0"><ArrowDown className="w-3.5 h-3.5" /></button>
-                    </div>
+                {/* 2. SEQUENCE NUMBER */}
+                <div className="w-10 text-center font-mono text-xs font-bold text-primary mr-4 border border-primary/20 bg-primary/10 rounded px-1 py-0.5">
+                    {index + 1}
+                </div>
 
-                    {/* Heading & Metadata */}
-                    <div className="flex-1">
-                        <input
-                            value={scene.heading}
-                            onChange={(e) => onUpdateScene(scene.id, { heading: e.target.value.toUpperCase() })}
-                            className="bg-transparent text-text-primary font-bold text-lg font-mono outline-none placeholder-text-muted w-full tracking-wider uppercase"
-                            placeholder="INT. SCENE HEADING - DAY"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        
-                        <div className="flex items-center gap-6 mt-1.5">
-                             {/* Location Selector */}
-                             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                <MapPin className={`w-3 h-3 ${scene.locationId ? 'text-primary' : 'text-text-muted'}`} />
-                                <div className="relative group/loc">
-                                    <select
-                                        value={scene.locationId || ''}
-                                        onChange={(e) => onUpdateScene(scene.id, { locationId: e.target.value || undefined })}
-                                        className="bg-transparent text-xs text-text-secondary hover:text-text-primary border-none outline-none cursor-pointer appearance-none pr-4 font-medium transition-colors"
-                                    >
-                                        <option value="">No Location Set</option>
-                                        {locations.map(loc => (
-                                            <option key={loc.id} value={loc.id}>{loc.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                             </div>
+                {/* 3. HEADING INPUT */}
+                <div className="flex-1 mr-4">
+                    <input
+                        value={scene.heading}
+                        onChange={(e) => onUpdateScene(scene.id, { heading: e.target.value.toUpperCase() })}
+                        className="bg-transparent text-text-primary font-bold text-sm font-mono outline-none placeholder-text-muted w-full tracking-wider uppercase"
+                        placeholder="INT. SCENE HEADING - DAY"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
 
-                             <div className="text-xs text-text-muted flex items-center gap-2">
-                                <div className="w-[1px] h-3 bg-border"></div>
-                                <span>{shots.length} Shots</span>
-                                <div className="w-[1px] h-3 bg-border"></div>
-                                <span className="truncate max-w-[300px] opacity-70">{scene.actionNotes?.substring(0, 60)}...</span>
-                             </div>
+                {/* 4. METADATA & LOCATION */}
+                <div className="flex items-center gap-6 mr-6 text-xs text-text-tertiary">
+                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        <MapPin className={`w-3.5 h-3.5 ${scene.locationId ? 'text-text-secondary' : 'text-text-muted opacity-50'}`} />
+                        <div className="relative">
+                            <select
+                                value={scene.locationId || ''}
+                                onChange={(e) => onUpdateScene(scene.id, { locationId: e.target.value || undefined })}
+                                className="bg-transparent text-text-secondary border-none outline-none cursor-pointer appearance-none pr-4 hover:text-white transition-colors max-w-[150px] truncate"
+                            >
+                                <option value="">No Location</option>
+                                {locations.map(loc => (
+                                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                                ))}
+                            </select>
                         </div>
-                    </div>
+                     </div>
+                     
+                     <div className="w-[1px] h-4 bg-border"></div>
+                     <span className="font-mono">{shots.length} SHOTS</span>
+                </div>
 
-                    <div className="flex items-center gap-2">
-                        <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            onClick={(e) => { e.stopPropagation(); onAddShot(scene.id); }}
-                            className="hidden group-hover/scene:flex"
-                        >
-                            <Plus className="w-3.5 h-3.5" /> Add Shot
-                        </Button>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onDeleteScene(scene.id); }} 
-                            className="text-text-muted hover:text-error p-2 opacity-0 group-hover/scene:opacity-100 transition-opacity"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
+                {/* 5. ACTIONS */}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveScene(index, 'up'); }} 
+                        disabled={index === 0} 
+                        className="p-1.5 hover:bg-white/10 rounded text-text-muted hover:text-white disabled:opacity-0"
+                    >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveScene(index, 'down'); }} 
+                        disabled={index === totalScenes - 1} 
+                        className="p-1.5 hover:bg-white/10 rounded text-text-muted hover:text-white disabled:opacity-0"
+                    >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <div className="w-[1px] h-4 bg-border mx-1"></div>
+
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onDeleteScene(scene.id); }} 
+                        className="p-1.5 hover:bg-red-500/20 hover:text-red-500 rounded text-text-muted transition-colors"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <Button 
+                        variant="primary" 
+                        size="sm" 
+                        onClick={(e) => { e.stopPropagation(); onAddShot(scene.id); }}
+                        className="ml-2 h-7"
+                    >
+                        <Plus className="w-3.5 h-3.5" /> Shot
+                    </Button>
                 </div>
             </div>
 
-            {/* FILM STRIP VIEW (Horizontal Scroll) */}
+            {/* EXPANDED TRACK CONTENT */}
             {isExpanded && (
-                <div className="bg-[#121212] p-4 border-t border-border/50 animate-in slide-in-from-top-1 duration-200">
+                <div className="bg-[#0f0f10] border-t border-border/50 p-2 pl-12">
                     {shots.length > 0 ? (
-                        <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x">
+                        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x items-start">
                             {shots.map(shot => (
-                                <div key={shot.id} className="snap-start">
+                                <div key={shot.id} className="snap-start shrink-0">
                                     <ShotCard
                                         shot={shot}
                                         onClick={() => onEditShot(shot)}
@@ -139,25 +150,19 @@ export const SceneItem: React.FC<SceneItemProps> = ({
                             {/* "Add Shot" Ghost Card */}
                             <button
                                 onClick={() => onAddShot(scene.id)}
-                                className="w-32 shrink-0 rounded-md border-2 border-dashed border-border hover:border-primary hover:bg-surface-secondary flex flex-col items-center justify-center gap-2 transition-all group/add snap-start"
+                                className="w-32 h-[120px] shrink-0 rounded border border-dashed border-border hover:border-primary/50 hover:bg-white/5 flex flex-col items-center justify-center gap-2 transition-all group/add snap-start"
                             >
-                                <div className="w-8 h-8 rounded-full bg-surface-secondary group-hover/add:bg-primary/20 flex items-center justify-center transition-colors">
-                                    <Plus className="w-5 h-5 text-text-muted group-hover/add:text-primary" />
-                                </div>
-                                <span className="text-xs font-medium text-text-muted group-hover/add:text-text-primary">New Shot</span>
+                                <Plus className="w-6 h-6 text-text-muted group-hover/add:text-primary transition-colors" />
                             </button>
                         </div>
                     ) : (
-                        <div className="h-32 flex flex-col items-center justify-center text-text-muted border-2 border-dashed border-border/30 rounded-md">
-                            <p className="text-sm mb-3">No shots in this scene yet.</p>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                icon={<Plus className="w-3.5 h-3.5" />}
+                        <div className="h-24 flex items-center justify-center text-text-muted border border-dashed border-border/30 rounded">
+                            <button 
                                 onClick={() => onAddShot(scene.id)}
+                                className="flex items-center gap-2 hover:text-primary transition-colors"
                             >
-                                Create First Shot
-                            </Button>
+                                <Plus className="w-4 h-4" /> Create First Shot
+                            </button>
                         </div>
                     )}
                 </div>
