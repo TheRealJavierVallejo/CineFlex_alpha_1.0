@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { Type, X, ArrowRight } from 'lucide-react';
+import { Type, X, Plus, ArrowRight } from 'lucide-react';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -14,8 +14,40 @@ interface ScriptPickerProps {
     sceneId: string | null;
     scriptElements: ScriptElement[];
     usedElementIds: Set<string>;
-    onSelect: (element: ScriptElement) => void;
+    onSelect: (elements: ScriptElement[]) => void;
 }
+
+// Helper to group elements (Character -> Parenthetical -> Dialogue)
+const groupElements = (elements: ScriptElement[]) => {
+    const groups: { type: 'single' | 'block'; items: ScriptElement[] }[] = [];
+    let i = 0;
+    while (i < elements.length) {
+        const el = elements[i];
+        
+        // Start a dialogue block
+        if (el.type === 'character') {
+            const block = [el];
+            let j = i + 1;
+            // Look ahead for dialogue parts
+            while (j < elements.length) {
+                const next = elements[j];
+                if (next.type === 'parenthetical' || next.type === 'dialogue') {
+                    block.push(next);
+                    j++;
+                } else {
+                    break;
+                }
+            }
+            groups.push({ type: 'block', items: block });
+            i = j;
+        } else {
+            // Normal separate elements (Action, Scene Heading, Transition)
+            groups.push({ type: 'single', items: [el] });
+            i++;
+        }
+    }
+    return groups;
+};
 
 export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     isOpen,
@@ -27,33 +59,33 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 }) => {
     if (!isOpen || !sceneId) return null;
 
-    // Filter elements
-    const sceneElements = useMemo(() => {
-        return scriptElements
+    // Filter elements for this scene and group them
+    const groups = useMemo(() => {
+        const sceneEls = scriptElements
             .filter(el => el.sceneId === sceneId)
             .sort((a, b) => a.sequence - b.sequence);
+        return groupElements(sceneEls);
     }, [scriptElements, sceneId]);
 
     const getElementClasses = (type: ScriptElement['type']) => {
-        // Base: Courier font, dark text on white, no background hover effects on the box itself
-        const base = "relative group cursor-pointer transition-colors duration-200 font-screenplay text-base leading-relaxed selection:bg-blue-100 selection:text-black border border-transparent";
+        // Strict screenplay formatting styles
+        const base = "font-screenplay text-base leading-relaxed text-black transition-colors";
         
-        // Standard Screenplay Formatting Margins (approximate for web)
         switch (type) {
             case 'scene_heading':
-                return `${base} font-bold uppercase text-black py-6 select-none pointer-events-none border-b border-black/5 mb-6`;
+                return `${base} font-bold uppercase py-6 mb-6 mt-4 border-b border-black/5 block w-full`;
             case 'action':
-                return `${base} text-black text-left mb-4`;
+                return `${base} text-left mb-4 block w-full`;
             case 'character':
-                return `${base} font-bold uppercase text-center text-black mt-6 mb-0 w-[60%] mx-auto tracking-widest`;
+                return `${base} font-bold uppercase text-center mt-6 w-[60%] mx-auto tracking-widest block`;
             case 'dialogue':
-                return `${base} text-black text-center w-[70%] mx-auto mb-4`;
+                return `${base} text-center w-[70%] mx-auto mb-4 block`;
             case 'parenthetical':
-                return `${base} text-black italic text-center w-[50%] mx-auto -mt-2 mb-1`;
+                return `${base} italic text-center w-[50%] mx-auto -mt-0 mb-0 block`;
             case 'transition':
-                return `${base} font-bold uppercase text-right text-black mt-4 mb-4`;
+                return `${base} font-bold uppercase text-right mt-4 mb-4 block`;
             default:
-                return `${base} text-black`;
+                return `${base}`;
         }
     };
 
@@ -63,11 +95,11 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 className="bg-zinc-100 w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header - Dark strip for UI contrast vs the Page */}
+                {/* Header */}
                 <div className="h-12 border-b border-zinc-300 flex items-center justify-between px-8 bg-zinc-200 shrink-0">
                     <h3 className="font-bold text-zinc-700 flex items-center gap-2 text-xs uppercase tracking-widest font-sans">
                         <Type className="w-4 h-4 text-zinc-600" />
-                        Select Line from Script
+                        Select Script Element
                     </h3>
                     <button onClick={onClose} className="text-zinc-500 hover:text-black transition-colors">
                         <X className="w-5 h-5" />
@@ -76,28 +108,33 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
                 {/* Content - The "White Page" */}
                 <div className="overflow-y-auto p-12 flex-1 bg-white font-screenplay shadow-inner custom-scrollbar-light">
-                    {sceneElements.length > 0 ? (
+                    {groups.length > 0 ? (
                         <div className="max-w-3xl mx-auto pl-20 pr-12 min-h-full bg-white relative">
-                            {sceneElements.map(el => {
-                                const isUsed = usedElementIds.has(el.id);
-                                
-                                // Render Scene Heading (Non-interactive)
-                                if (el.type === 'scene_heading') return (
-                                    <div key={el.id} className={getElementClasses(el.type)}>
-                                        {el.content}
-                                    </div>
-                                );
+                            {groups.map((group, idx) => {
+                                // Check if *all* items in block are used, or *any*? Usually if the dialogue is used, the whole block is 'linked'.
+                                // We'll say if ANY part of the block is linked, show linked status.
+                                const isLinked = group.items.some(item => usedElementIds.has(item.id));
+                                const isHeading = group.items[0].type === 'scene_heading';
 
                                 return (
                                     <div 
-                                        key={el.id} 
-                                        onClick={() => !isUsed && onSelect(el)}
-                                        className={`${getElementClasses(el.type)} ${isUsed ? 'opacity-40 grayscale' : ''}`}
+                                        key={idx}
+                                        className={`
+                                            relative group transition-opacity duration-200
+                                            ${isHeading ? 'pointer-events-none' : 'cursor-pointer'}
+                                            ${isLinked ? 'opacity-40 grayscale' : 'hover:text-blue-900'}
+                                        `}
+                                        onClick={() => !isLinked && !isHeading && onSelect(group.items)}
                                     >
-                                        {el.content}
-                                        
-                                        {/* Hover Indicator: Floating in the left margin only */}
-                                        {!isUsed && (
+                                        {/* Render items in the group */}
+                                        {group.items.map(item => (
+                                            <div key={item.id} className={getElementClasses(item.type)}>
+                                                {item.content}
+                                            </div>
+                                        ))}
+
+                                        {/* Hover Arrow (Left Margin) */}
+                                        {!isLinked && !isHeading && (
                                             <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <div className="flex items-center gap-1 text-blue-600 font-sans font-bold text-[10px] uppercase tracking-wider bg-white/0">
                                                     Add <ArrowRight className="w-4 h-4" />
@@ -105,9 +142,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                             </div>
                                         )}
 
-                                        {/* Linked Status */}
-                                        {isUsed && (
-                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 pr-4">
+                                        {/* Linked Label (Left Margin) */}
+                                        {isLinked && (
+                                            <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4">
                                                  <div className="text-zinc-400 font-sans font-bold text-[9px] uppercase tracking-wider">
                                                     Linked
                                                 </div>

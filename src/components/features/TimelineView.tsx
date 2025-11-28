@@ -192,13 +192,29 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setPickerState({ isOpen: true, shotId, type, sceneId });
   };
 
-  const handleSelectScriptElement = (element: ScriptElement) => {
+  const handleSelectScriptElement = (elements: ScriptElement[]) => {
     if (!pickerState.shotId) return;
+    
+    // Auto-generate description from selected elements if one doesn't exist
+    const contentText = elements.map(e => {
+        if (e.type === 'character') return e.content.toUpperCase();
+        if (e.type === 'parenthetical') return `(${e.content})`;
+        return e.content;
+    }).join('\n');
+
+    const idsToAdd = elements.map(e => e.id);
+
     const updatedShots = project.shots.map(s => {
       if (s.id === pickerState.shotId) {
         const currentIds = s.linkedElementIds || [];
-        if (currentIds.includes(element.id)) return s;
-        return { ...s, linkedElementIds: [...currentIds, element.id], description: s.description || element.content };
+        // Merge without duplicates
+        const newIds = Array.from(new Set([...currentIds, ...idsToAdd]));
+        
+        return { 
+            ...s, 
+            linkedElementIds: newIds, 
+            description: s.description || contentText // Only set if empty
+        };
       }
       return s;
     });
