@@ -7,49 +7,18 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
-import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
+import { StudioLayout, useStudio } from './layouts/StudioLayout';
 import {
   TimelineView,
   AssetManager,
   ProjectSettings,
-  ShotList, // Keeping import just in case, though unused in new dashboard
   ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
-import { DashboardController } from './components/features/DashboardController';
 
-// --- ADAPTER COMPONENTS ---
+// --- ADAPTER COMPONENTS (Adapting old components to new Context) ---
 
-const DashboardPage = () => {
-    // Using the exposed handlers from WorkspaceLayout
-    const { 
-        project, 
-        handleUpdateShot, 
-        handleEditShot, 
-        handleDeleteShot, 
-        handleDuplicateShot, 
-        handleBulkUpdateShots,
-        handleAddShot,
-        showToast 
-    } = useWorkspace();
-
-    return (
-        <div className="absolute inset-0 overflow-hidden">
-            <DashboardController
-                project={project}
-                onUpdateShot={handleUpdateShot}
-                onEditShot={handleEditShot}
-                onDeleteShot={handleDeleteShot}
-                onDuplicateShot={handleDuplicateShot}
-                onBulkUpdateShots={handleBulkUpdateShots}
-                showToast={showToast}
-                handleAddShot={handleAddShot}
-            />
-        </div>
-    );
-};
-
-const ScriptEditorPage = () => {
+const WriterMode = () => {
     return (
         <LazyWrapper>
             <ScriptPage />
@@ -57,25 +26,25 @@ const ScriptEditorPage = () => {
     );
 };
 
-const TimelinePage = () => {
-    const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useWorkspace();
+const DirectorMode = () => {
+    const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useStudio();
     return (
         <LazyWrapper>
             <TimelineView
                 project={project}
                 onUpdateProject={handleUpdateProject}
                 onEditShot={handleEditShot}
-                importScript={importScript} // Pass the centralized importer
+                importScript={importScript}
                 showToast={showToast}
             />
         </LazyWrapper>
     );
 };
 
-const AssetsPage = () => {
-    const { project, showToast } = useWorkspace();
+const ProducerMode = () => {
+    const { project, showToast } = useStudio();
     return (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 pt-16 pb-24 px-8">
             <LazyWrapper>
                 <AssetManager
                     projectId={project.id}
@@ -87,10 +56,9 @@ const AssetsPage = () => {
     );
 };
 
-const SettingsPage = () => {
-    const { project, handleUpdateProject, handleUpdateSettings, showToast } = useWorkspace();
+const SettingsMode = () => {
+    const { project, handleUpdateProject, handleUpdateSettings, showToast } = useStudio();
     
-    // Helpers for custom settings array manipulation
     const addCustomSetting = (field: any, value: string) => {
         const currentList = (project.settings as any)[field] || [];
         if (!currentList.includes(value)) {
@@ -106,7 +74,7 @@ const SettingsPage = () => {
     };
 
     return (
-        <div className="absolute inset-0 p-8">
+        <div className="absolute inset-0 pt-16 pb-24 px-8 overflow-y-auto">
             <LazyWrapper>
                 <ProjectSettings
                     project={project}
@@ -127,17 +95,19 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
         <Routes>
-            {/* Project Selection / Library */}
+            {/* Library / Home */}
             <Route path="/" element={<ProjectLibrary />} />
 
-            {/* Main Workspace Layout */}
-            <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                {/* Dashboard is back as Index, but now it's a Spreadsheet */}
-                <Route index element={<DashboardPage />} />
-                <Route path="timeline" element={<TimelinePage />} />
-                <Route path="script" element={<ScriptEditorPage />} />
-                <Route path="assets" element={<AssetsPage />} />
-                <Route path="settings" element={<SettingsPage />} />
+            {/* Studio Console */}
+            <Route path="/project/:projectId" element={<StudioLayout />}>
+                {/* Redirect root to Writer mode (The starting point) */}
+                <Route index element={<Navigate to="script" replace />} />
+                
+                {/* The 4 Main Modes */}
+                <Route path="script" element={<WriterMode />} />
+                <Route path="director" element={<DirectorMode />} />
+                <Route path="producer" element={<ProducerMode />} />
+                <Route path="settings" element={<SettingsMode />} />
             </Route>
 
             {/* Fallback */}
