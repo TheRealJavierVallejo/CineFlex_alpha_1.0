@@ -45,52 +45,52 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
 }) => {
     return (
         <div className="flex-1 media-bg flex flex-col relative">
+            {/* HEADER */}
             <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
                 <div className="flex items-center gap-4">
-                    {/* TIER-BASED UI: VARIATIONS */}
-                    {tier === 'pro' ? (
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
-                            <div className="flex bg-surface-secondary rounded border border-border p-0.5">
-                                {[1, 2, 4].map(v => (
-                                    <button
-                                        key={v}
-                                        onClick={() => setVariationCount(v)}
-                                        className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
-                                    >
-                                        {v}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 opacity-50 cursor-not-allowed" title="Variations are available in Pro">
-                             <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
-                             <div className="text-xs font-mono text-text-tertiary border border-border px-2 py-0.5 rounded bg-surface-secondary">1 (Free)</div>
-                        </div>
-                    )}
-
-                    <div className="h-4 w-[1px] bg-border" />
                     
-                    {/* TIER-BASED UI: MODEL SELECTION */}
-                    {tier === 'pro' ? (
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
-                            <select
-                                value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
-                                className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
-                            >
-                                {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                            </select>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <GraduationCap className="w-3.5 h-3.5 text-text-muted" />
-                            <span className="text-xs font-bold text-text-secondary">Student Mode</span>
-                        </div>
+                    {/* PRO TIER CONTROLS */}
+                    {tier === 'pro' && (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
+                                <div className="flex bg-surface-secondary rounded border border-border p-0.5">
+                                    {[1, 2, 4].map(v => (
+                                        <button
+                                            key={v}
+                                            onClick={() => setVariationCount(v)}
+                                            className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
+                                        >
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="h-4 w-[1px] bg-border" />
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
+                                <select
+                                    value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
+                                    className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
+                                >
+                                    {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="h-4 w-[1px] bg-border" />
+                        </>
                     )}
 
-                    <div className="h-4 w-[1px] bg-border" />
+                    {/* FREE TIER BADGE */}
+                    {tier === 'free' && (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <GraduationCap className="w-3.5 h-3.5 text-text-muted" />
+                                <span className="text-xs font-bold text-text-secondary">Student Mode</span>
+                            </div>
+                            <div className="h-4 w-[1px] bg-border" />
+                        </>
+                    )}
+
                     <button
                         onClick={onShowPromptPreview}
                         className="p-1.5 hover:bg-surface-secondary rounded text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-2 text-xs"
@@ -104,6 +104,7 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                 </button>
             </div>
 
+            {/* MAIN VIEWPORT */}
             <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden media-bg">
                 {/* Main Image */}
                 <div className="relative w-full max-w-5xl flex items-center justify-center flex-1" style={{ maxHeight: '100%' }}>
@@ -151,7 +152,7 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                     </div>
                 </div>
 
-                {/* Version History Filmstrip */}
+                {/* Version History (Only show if multiple exist) */}
                 {shot.generationCandidates && shot.generationCandidates.length > 0 && (
                     <div className="w-full max-w-5xl h-24 mt-6 flex gap-3 overflow-x-auto p-3 bg-surface border border-border rounded-lg shrink-0 shadow-lg">
                         {shot.generationCandidates.map((url, idx) => (
