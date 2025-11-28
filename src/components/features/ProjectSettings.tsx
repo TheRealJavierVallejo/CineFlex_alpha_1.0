@@ -38,7 +38,7 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
      const stored = localStorage.getItem('cinesketch_api_key');
      if (stored) setApiKey(stored);
      
-     // Load theme
+     // Load theme state (visual checkmark only)
      const savedColor = localStorage.getItem('cinesketch_theme_color');
      if (savedColor) setAccentColor(savedColor);
   }, []);
@@ -59,20 +59,27 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
       // 1. Save to local storage
       localStorage.setItem('cinesketch_theme_color', color);
       
-      // 2. Update CSS Variables
-      document.documentElement.style.setProperty('--color-primary', color);
+      // 2. Update CSS Variables (Apply to :root/html)
+      const root = document.documentElement;
       
-      // Simple darkening logic for hover
-      // Note: This is a rough heuristic. For production, use color manipulation lib.
-      document.documentElement.style.setProperty('--color-primary-hover', color); 
+      root.style.setProperty('--color-primary', color);
+      root.style.setProperty('--color-primary-hover', color); // Fallback: same color if no manipulation lib
       
-      // Glow with opacity
-      // Convert hex to rgb for rgba
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+      // Convert hex to rgb for glow
+      try {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        root.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+      } catch(e) {
+        console.warn("Could not parse color for glow:", color);
+      }
       
+      // Force repaint/reflow if needed (usually not, but good for iframe contexts)
+      root.style.display = 'none';
+      root.offsetHeight; // Trigger reflow
+      root.style.display = '';
+
       showToast("Theme updated", 'success');
   };
 

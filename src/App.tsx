@@ -126,14 +126,19 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedColor = localStorage.getItem('cinesketch_theme_color');
     if (savedColor) {
-        document.documentElement.style.setProperty('--color-primary', savedColor);
-        document.documentElement.style.setProperty('--color-primary-hover', savedColor);
+        const root = document.documentElement;
+        root.style.setProperty('--color-primary', savedColor);
+        root.style.setProperty('--color-primary-hover', savedColor);
         
         // Convert to RGB for glow
-        const r = parseInt(savedColor.slice(1, 3), 16);
-        const g = parseInt(savedColor.slice(3, 5), 16);
-        const b = parseInt(savedColor.slice(5, 7), 16);
-        document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+        try {
+            const r = parseInt(savedColor.slice(1, 3), 16);
+            const g = parseInt(savedColor.slice(3, 5), 16);
+            const b = parseInt(savedColor.slice(5, 7), 16);
+            root.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+        } catch(e) {
+            console.warn("Failed to apply theme glow", e);
+        }
     }
   }, []);
 
