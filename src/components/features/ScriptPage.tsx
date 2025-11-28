@@ -45,15 +45,18 @@ export const ScriptPage: React.FC = () => {
           const enriched = enrichScriptElements(sequenced);
           updateScriptElements(enriched);
           setTimeout(() => setIsSyncing(false), 500);
-      }, 2000),
+      }, 800), // Reduced from 2000ms to 800ms
       []
   );
 
   useEffect(() => {
+    // Priority: If script elements exist in DB, use them.
     if (project.scriptElements && project.scriptElements.length > 0) {
+       // Only set if we don't have local changes, or on first load
        if (elements.length === 0) setElements(project.scriptElements);
        return;
     }
+    // Fallback: If no script exists, try to rebuild from scenes (only on first load)
     if (project.scenes.length > 0 && elements.length === 0) {
         const generated = generateScriptFromScenes(project.scenes);
         setElements(generated);
@@ -232,9 +235,6 @@ export const ScriptPage: React.FC = () => {
         content: (
             <div className="h-full flex flex-col">
                 <ScriptChat isOpen={true} onClose={() => {}} /> 
-                {/* Note: ScriptChat is built to handle its own layout, we might need to tweak it to fit 
-                    perfectly if it has fixed positioning, but since it's now contained in this div, 
-                    we'll rely on the parent container's constraints. */}
             </div>
         )
     }

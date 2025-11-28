@@ -3,10 +3,10 @@
  * Refactored for Detached Blob Storage (High Performance) & Zod Validation
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
-import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema } from './schemas';
+import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema, ScriptElementSchema } from './schemas';
 import { z } from 'zod';
 
 const KEYS = {
@@ -264,9 +264,10 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'settings'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'shots'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'scenes'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'scriptElements')); // DELETE SCRIPT
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'characters'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'outfits'));
-  await dbDelete(STORE_NAME, getStorageKey(projectId, 'locations')); // Added
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'locations'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'metadata'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'library'));
 
@@ -283,12 +284,14 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
+  const scriptKey = getStorageKey(projectId, 'scriptElements'); // KEY ADDED
   const metadataKey = getStorageKey(projectId, 'metadata');
 
-  const [settings, shots, scenes, metadata] = await Promise.all([
+  const [settings, shots, scenes, scriptElements, metadata] = await Promise.all([
     dbGet<WorldSettings>(STORE_NAME, settingsKey),
     dbGet<Shot[]>(STORE_NAME, shotsKey),
     dbGet<Scene[]>(STORE_NAME, scenesKey),
+    dbGet<ScriptElement[]>(STORE_NAME, scriptKey), // LOAD SCRIPT
     dbGet<any>(STORE_NAME, metadataKey)
   ]);
 
@@ -301,9 +304,9 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     settings: settings || { ...DEFAULT_WORLD_SETTINGS },
     shots: shots || [],
     scenes: scenes || [],
+    scriptElements: scriptElements || [], // Use loaded script or empty
     createdAt: metadata?.createdAt || Date.now(),
-    lastModified: metadata?.lastModified || Date.now(),
-    scriptElements: [] // Default for now, usually empty on simple load unless hydrated elsewhere
+    lastModified: metadata?.lastModified || Date.now()
   };
 
   // 2. VALIDATE & HEAL (Zod)
@@ -326,6 +329,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
   const settingsKey = getStorageKey(projectId, 'settings');
   const shotsKey = getStorageKey(projectId, 'shots');
   const scenesKey = getStorageKey(projectId, 'scenes');
+  const scriptKey = getStorageKey(projectId, 'scriptElements'); // KEY ADDED
   const metadataKey = getStorageKey(projectId, 'metadata');
 
   const metadata = {
@@ -343,6 +347,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     dbSet(STORE_NAME, settingsKey, dehydratedProject.settings),
     dbSet(STORE_NAME, shotsKey, dehydratedProject.shots),
     dbSet(STORE_NAME, scenesKey, dehydratedProject.scenes),
+    dbSet(STORE_NAME, scriptKey, dehydratedProject.scriptElements), // SAVE SCRIPT
     dbSet(STORE_NAME, metadataKey, metadata)
   ]);
 
@@ -447,7 +452,7 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const project = await getProjectData(projectId);
   const characters = await getCharacters(projectId);
   const outfits = await getOutfits(projectId);
-  const locations = await getLocations(projectId); // Added
+  const locations = await getLocations(projectId); 
   const library = await getImageLibrary(projectId);
 
   if (!project) throw new Error("Project not found");
