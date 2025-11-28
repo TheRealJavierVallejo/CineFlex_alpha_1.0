@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, Palette, Check, X } from 'lucide-react';
+import { Key, Eye, EyeOff, Palette, Check, X, Moon, Sun } from 'lucide-react';
 import { UI_COLOR_PALETTE } from '../../constants';
 import Button from '../ui/Button';
 import { ShowToastFn } from '../../types';
@@ -18,6 +18,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
     const [apiKey, setApiKey] = useState('');
     const [showKey, setShowKey] = useState(false);
     const [accentColor, setAccentColor] = useState('#3b82f6');
+    const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
     const [activeTab, setActiveTab] = useState<'theme' | 'api'>('theme');
 
     useEffect(() => {
@@ -26,6 +27,9 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
 
         const savedColor = localStorage.getItem('cinesketch_theme_color');
         if (savedColor) setAccentColor(savedColor);
+
+        const savedMode = localStorage.getItem('cinesketch_theme_mode');
+        if (savedMode === 'light') setThemeMode('light');
     }, []);
 
     const saveApiKey = () => {
@@ -61,8 +65,16 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
         } catch (e) {
             console.warn("Could not parse color for glow:", color);
         }
-        
-        showToast("Interface updated", 'success');
+    };
+
+    const handleThemeModeChange = (mode: 'dark' | 'light') => {
+        setThemeMode(mode);
+        localStorage.setItem('cinesketch_theme_mode', mode);
+        if (mode === 'light') {
+            document.documentElement.classList.add('light');
+        } else {
+            document.documentElement.classList.remove('light');
+        }
     };
 
     return (
@@ -72,7 +84,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 {/* Header */}
                 <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
                     <span className="font-bold text-text-primary text-sm tracking-widest uppercase">Studio Settings</span>
-                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded text-text-secondary hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded text-text-secondary hover:text-text-primary transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -81,13 +93,13 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 <div className="flex border-b border-border bg-background">
                     <button
                         onClick={() => setActiveTab('theme')}
-                        className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'theme' ? 'text-primary border-b-2 border-primary bg-white/5' : 'text-text-secondary hover:text-white hover:bg-white/5'}`}
+                        className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'theme' ? 'text-primary border-b-2 border-primary bg-surface-secondary' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
                     >
                         Interface
                     </button>
                     <button
                         onClick={() => setActiveTab('api')}
-                        className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'api' ? 'text-primary border-b-2 border-primary bg-white/5' : 'text-text-secondary hover:text-white hover:bg-white/5'}`}
+                        className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'api' ? 'text-primary border-b-2 border-primary bg-surface-secondary' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
                     >
                         Connections
                     </button>
@@ -97,9 +109,34 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 <div className="p-8 bg-background min-h-[320px]">
                     {activeTab === 'theme' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-200">
+                            
+                            {/* Mode Selection */}
                             <div>
                                 <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2 mb-4">
-                                    <Palette className="w-3.5 h-3.5" /> Command Color
+                                    <Sun className="w-3.5 h-3.5" /> Color Mode
+                                </label>
+                                <div className="flex gap-4">
+                                    <button 
+                                        onClick={() => handleThemeModeChange('dark')}
+                                        className={`flex-1 p-4 rounded border flex flex-col items-center gap-3 transition-all ${themeMode === 'dark' ? 'bg-surface border-primary text-primary' : 'bg-surface-secondary border-transparent hover:border-border text-text-secondary'}`}
+                                    >
+                                        <Moon className="w-6 h-6" />
+                                        <span className="text-xs font-bold uppercase">Dark Mode</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleThemeModeChange('light')}
+                                        className={`flex-1 p-4 rounded border flex flex-col items-center gap-3 transition-all ${themeMode === 'light' ? 'bg-surface border-primary text-primary' : 'bg-surface-secondary border-transparent hover:border-border text-text-secondary'}`}
+                                    >
+                                        <Sun className="w-6 h-6" />
+                                        <span className="text-xs font-bold uppercase">Light Mode</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Color Selection */}
+                            <div>
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2 mb-4">
+                                    <Palette className="w-3.5 h-3.5" /> Accent Color
                                 </label>
                                 
                                 <div className="grid grid-cols-4 gap-4">
@@ -109,7 +146,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                             onClick={() => handleColorChange(color)}
                                             className={`
                                                 w-full aspect-square rounded-full relative group transition-all duration-300
-                                                ${accentColor === color ? 'scale-110 ring-2 ring-offset-2 ring-offset-black ring-white' : 'hover:scale-105 hover:opacity-100 opacity-80'}
+                                                ${accentColor === color ? 'scale-110 ring-2 ring-offset-2 ring-offset-background ring-text-primary' : 'hover:scale-105 hover:opacity-100 opacity-80'}
                                             `}
                                             style={{ backgroundColor: color }}
                                             title={color}
@@ -149,7 +186,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                     />
                                     <button
                                         onClick={() => setShowKey(!showKey)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
                                     >
                                         {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
@@ -157,7 +194,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                 <Button variant="primary" className="w-full h-10" onClick={saveApiKey}>
                                     Save Connection
                                 </Button>
-                                <div className="p-4 bg-white/5 border border-border rounded-md">
+                                <div className="p-4 bg-surface-secondary border border-border rounded-md">
                                     <p className="text-[11px] text-text-secondary leading-relaxed">
                                         Your API key is stored locally in your browser's secure storage. It is never transmitted to our servers, communicating directly with Google's API for generation.
                                     </p>

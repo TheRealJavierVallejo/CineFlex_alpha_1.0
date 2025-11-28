@@ -124,6 +124,7 @@ const SettingsPage = () => {
 const App: React.FC = () => {
   // Apply saved theme on mount
   useEffect(() => {
+    // 1. Accent Color
     const savedColor = localStorage.getItem('cinesketch_theme_color');
     if (savedColor) {
         const root = document.documentElement;
@@ -146,6 +147,14 @@ const App: React.FC = () => {
         } catch(e) {
             console.warn("Failed to apply theme glow", e);
         }
+    }
+
+    // 2. Light/Dark Mode
+    const savedMode = localStorage.getItem('cinesketch_theme_mode');
+    if (savedMode === 'light') {
+        document.documentElement.classList.add('light');
+    } else {
+        document.documentElement.classList.remove('light');
     }
   }, []);
 
