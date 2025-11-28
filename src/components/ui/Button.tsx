@@ -1,64 +1,54 @@
-import React, { ButtonHTMLAttributes, forwardRef } from 'react';
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-    size?: 'sm' | 'md' | 'lg';
-    loading?: boolean;
-    icon?: React.ReactNode;
-    children?: React.ReactNode;
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  icon?: React.ReactNode;
+  loading?: boolean;
 }
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-    ({
-        variant = 'secondary',
-        size = 'md',
-        loading = false,
-        icon,
-        children,
-        className = '',
-        disabled,
-        ...props
-    }, ref) => {
-        const baseStyles = 'inline-flex items-center justify-center gap-1.5 font-medium transition-all duration-100 select-none cursor-pointer rounded-sm outline-none disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-px';
+const Button: React.FC<ButtonProps> = ({
+  children,
+  variant = 'primary',
+  size = 'md',
+  icon,
+  loading = false,
+  className = '',
+  disabled,
+  ...props
+}) => {
+  
+  const baseClass = "nle-btn justify-center shrink-0";
+  
+  const variants = {
+    primary: "nle-btn-primary",
+    secondary: "nle-btn-secondary",
+    ghost: "nle-btn-ghost",
+    danger: "bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white border border-transparent"
+  };
 
-        const variants = {
-            primary: 'bg-accent text-white hover:bg-accent-hover focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-app',
-            secondary: 'bg-[#2D2D30] border border-border text-text-primary hover:bg-[#3E3E42] focus:border-border-focus',
-            ghost: 'bg-transparent text-text-secondary hover:bg-white/5 hover:text-text-primary',
-            danger: 'bg-status-error text-white hover:bg-status-error/90 focus:ring-2 focus:ring-status-error focus:ring-offset-2 focus:ring-offset-app',
-        };
+  const sizes = {
+    sm: "h-6 px-2 text-[11px]",
+    md: "h-8 px-3 text-xs",
+    lg: "h-10 px-4 text-sm font-bold"
+  };
 
-        const sizes = {
-            sm: 'h-6 px-2 text-xs',
-            md: 'h-7 px-3 text-sm',
-            lg: 'h-9 px-4 text-base',
-        };
-
-        const iconSizes = {
-            sm: 'w-3 h-3',
-            md: 'w-3.5 h-3.5',
-            lg: 'w-4 h-4',
-        };
-
-        return (
-            <button
-                ref={ref}
-                className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-                disabled={disabled || loading}
-                {...props}
-            >
-                {loading ? (
-                    <Loader2 className={`${iconSizes[size]} animate-spin`} />
-                ) : icon ? (
-                    <span className={iconSizes[size]}>{icon}</span>
-                ) : null}
-                {children}
-            </button>
-        );
-    }
-);
-
-Button.displayName = 'Button';
+  return (
+    <button
+      className={`${baseClass} ${variants[variant]} ${sizes[size]} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? (
+        <Loader2 className="w-3 h-3 animate-spin" />
+      ) : icon ? (
+        <span className="shrink-0">{icon}</span>
+      ) : null}
+      
+      {children && <span>{children}</span>}
+    </button>
+  );
+};
 
 export default Button;

@@ -6,7 +6,8 @@ import { Dock } from '../components/layout/Dock';
 import { ToastContainer } from '../components/features/Toast';
 import KeyboardShortcutsPanel from '../components/KeyboardShortcutsPanel';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { Loader2, ArrowLeft, Share } from 'lucide-react';
+import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts';
+import { Loader2, ArrowLeft, Share, Save } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
 import { syncScriptToScenes } from '../services/scriptUtils';
@@ -38,10 +39,24 @@ export const StudioLayout: React.FC = () => {
     const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (Panel Toggle)
     useKeyboardShortcut({
         key: 'k', meta: true, callback: (e) => { e.preventDefault(); setShowShortcutsPanel(true); }
     });
+
+    // Global Shortcuts (Save/Undo logic - Note: Undo is page-specific usually, but Save is global)
+    useGlobalShortcuts(project, (p) => handleUpdateProject(p));
+
+    // Listen for manual save events from hook
+    useEffect(() => {
+        const onManualSave = () => {
+            setSaveStatus('saving');
+            showToast("Project saved", 'success');
+            setTimeout(() => setSaveStatus('saved'), 500);
+        };
+        window.addEventListener('app-save', onManualSave);
+        return () => window.removeEventListener('app-save', onManualSave);
+    }, []);
 
     const showToast: ShowToastFn = (message, type = 'info', action) => {
         const id = Date.now();
@@ -82,8 +97,10 @@ export const StudioLayout: React.FC = () => {
     const handleUpdateProject = async (updated: Project) => {
         setSaveStatus('saving');
         setProject(updated);
+        // Fire-and-forget save to IDB
         if (updated.id) await saveProjectData(updated.id, updated);
-        setTimeout(() => setSaveStatus('saved'), 500);
+        // Visual feedback delay
+        setTimeout(() => setSaveStatus('saved'), 800);
     };
 
     const handleUpdateSettings = (key: keyof WorldSettings, value: any) => {
@@ -150,7 +167,25 @@ export const StudioLayout: React.FC = () => {
     };
 
     const handleDuplicateShot = (shotId: string) => {
-        // Implementation passed to child
+        if (!project) return;
+        const sourceShot = project.shots.find(s => s.id === shotId);
+        if (!sourceShot) return;
+        
+        // Find max sequence in that scene
+        const sceneShots = project.shots.filter(s => s.sceneId === sourceShot.sceneId);
+        const maxSeq = Math.max(...sceneShots.map(s => s.sequence));
+
+        const newShot: Shot = {
+            ...sourceShot,
+            id: crypto.randomUUID(),
+            sequence: maxSeq + 1,
+            generatedImage: undefined, // Don't dup the image, it's a new shot
+            generationCandidates: [],
+            description: `${sourceShot.description} (Copy)`
+        };
+        
+        handleUpdateProject({ ...project, shots: [...project.shots, newShot] });
+        showToast("Shot duplicated", 'success');
     };
 
     // This is passed to child components to handle local UI state (like opening the Inspector)
@@ -178,8 +213,7 @@ export const StudioLayout: React.FC = () => {
             <ToastContainer toasts={toasts} onClose={closeToast} />
 
             {/* MINIMAL TOP BAR (Project Context) */}
-            {/* UPDATED: Removed absolute positioning so it doesn't overlap content */}
-            <div className="h-12 flex items-center justify-between px-6 z-40 bg-background border-b border-border shrink-0">
+            <div className="h-12 flex items-center justify-between px-6 z-40 bg-background border-b border-border shrink-0 select-none">
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/')} 
@@ -189,15 +223,20 @@ export const StudioLayout: React.FC = () => {
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
-                        <h1 className="text-sm font-bold text-white/80 tracking-wide">{project.name}</h1>
+                        <h1 className="text-sm font-bold text-white/90 tracking-wide">{project.name}</h1>
                         <div className="flex items-center gap-2">
-                             <div className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'saving' ? 'bg-yellow-500' : 'bg-green-500'}`} />
-                             <span className="text-[10px] uppercase font-mono text-text-tertiary">{saveStatus === 'saving' ? 'SAVING...' : 'SYNCED'}</span>
+                             <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${saveStatus === 'saving' ? 'bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.8)]' : 'bg-green-500'}`} />
+                             <span className="text-[10px] uppercase font-mono text-text-tertiary transition-opacity">
+                                {saveStatus === 'saving' ? 'SAVING...' : 'SYNCED'}
+                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div>
+                <div className="flex items-center gap-3">
+                    <div className="text-[10px] text-text-tertiary font-mono hidden md:block">
+                        CMD+K for Shortcuts
+                    </div>
                     <button className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-full text-xs font-bold transition-colors">
                         <Share className="w-3 h-3" /> Export
                     </button>
