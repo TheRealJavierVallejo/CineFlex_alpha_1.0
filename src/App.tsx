@@ -9,13 +9,12 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
 import { StudioLayout, useStudio } from './layouts/StudioLayout';
 import {
-  TimelineView, // Kept for legacy ref if needed, but mostly internal now
-  AssetManager,
   ProjectSettings,
   ScriptPage,
   LazyWrapper
 } from './components/features/LazyComponents';
 import { DirectorPage } from './components/features/DirectorPage';
+import { ProducerPage } from './components/features/ProducerPage';
 
 // --- ADAPTER COMPONENTS ---
 
@@ -27,7 +26,6 @@ const WriterMode = () => {
     );
 };
 
-// UPDATED: Now uses the Split Screen DirectorPage
 const DirectorMode = () => {
     return (
         <LazyWrapper>
@@ -37,17 +35,10 @@ const DirectorMode = () => {
 };
 
 const ProducerMode = () => {
-    const { project, showToast } = useStudio();
     return (
-        <div className="absolute inset-0 pt-16 pb-24 px-8">
-            <LazyWrapper>
-                <AssetManager
-                    projectId={project.id}
-                    projectShots={project.shots}
-                    showToast={showToast}
-                />
-            </LazyWrapper>
-        </div>
+        <LazyWrapper>
+            <ProducerPage />
+        </LazyWrapper>
     );
 };
 
