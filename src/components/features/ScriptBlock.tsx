@@ -8,7 +8,7 @@ interface ScriptBlockProps {
   onKeyDown: (e: React.KeyboardEvent, id: string, type: ScriptElement['type'], selectionStart: number, selectionEnd: number) => void;
   onFocus: (id: string) => void;
   cursorRequest?: number | null;
-  isLightMode?: boolean; // NEW: Toggle for paper theme
+  isLightMode?: boolean;
 }
 
 export const ScriptBlock: React.FC<ScriptBlockProps> = ({
@@ -45,9 +45,8 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // Base styles: Courier font, large comfortable size, transparent background
-    // STRICTLY REMOVED ALL BORDERS/RINGS via !important-like utility classes
-    const base = "block bg-transparent outline-none focus:outline-none border-none focus:border-none ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30 w-full p-0 m-0 appearance-none";
+    // NUCLEAR OPTION for removing borders: using ! prefixes and ring-0
+    const base = "block bg-transparent !outline-none !border-none !ring-0 !shadow-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-none";
     
     // Theme Colors
     const colors = isLightMode ? {
@@ -125,14 +124,16 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-       {/* Type Indicator 
-           - Moved to -left-[112px]. 
-           - Page padding is 100px. 
-           - This places the indicator 12px outside the paper edge (112 - 100 = 12px gap).
-           - "Just barely off the page"
+       {/* 
+         TYPE INDICATOR POSITIONING:
+         - The Script Page has 100px padding.
+         - left-[-230px] moves the start of the box 230px left.
+         - width is w-32 (128px).
+         - Right edge of indicator ends at -102px relative to text.
+         - Since paper starts at -100px, this places the indicator just barely (~2px) outside the paper edge.
        */}
        <div className={`
-          absolute -left-[112px] text-[10px] uppercase transition-all duration-200 select-none w-24 text-right pr-3 font-sans border-r
+          absolute -left-[230px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
           ${styles.indicator}
           ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'border-transparent opacity-0 group-hover:opacity-30'}
           ${isLightMode && !isActive ? 'text-zinc-400' : ''}
@@ -151,6 +152,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
           }}
           onFocus={() => onFocus(element.id)}
           className={styles.input}
+          style={{ border: 'none', outline: 'none', boxShadow: 'none' }} // Inline fallback
           rows={1}
           placeholder={styles.placeholder}
           spellCheck={false}
