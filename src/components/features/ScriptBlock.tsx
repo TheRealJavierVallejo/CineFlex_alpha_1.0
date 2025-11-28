@@ -44,66 +44,73 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   const getStyles = () => {
     // Base styles: Courier font, large comfortable size, transparent background
-    const base = "block bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[17px] leading-relaxed transition-colors duration-200 placeholder:opacity-30";
+    // Standard screenplay font is 12pt Courier. 
+    // In web pixels, 12pt is approx 16px. We use slightly larger for UI readability if needed, but 16-17px is good.
+    const base = "block bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[16px] leading-normal transition-colors duration-200 placeholder:opacity-30";
     
-    // FORMATTING STRATEGY:
-    // Instead of padding, we use max-width + mx-auto to create the "column" effect.
-    // This allows text to wrap naturally within the constrained width.
+    // FORMATTING RULES (Based on Standard Screenplay Format)
+    // 1 inch = ~96px / ~6rem
+    // Page Width ~8.5"
+    // Action: 6" wide
+    // Dialogue: ~3.5" wide (approx 21rem)
+    // Parenthetical: ~2.0" wide (approx 12rem)
     
     switch (element.type) {
       case 'scene_heading':
         return {
-           container: "pt-8 pb-4 border-b border-white/5 mb-4 group/heading",
-           // Full width, Bold, Uppercase
-           input: `${base} w-full font-bold uppercase tracking-wider text-[#E8E8E8] text-left`,
+           // Scene Headings: Left aligned, Uppercase.
+           // Standard: 1 line blank before, 1 line blank after.
+           container: "pt-6 pb-2 group/heading",
+           input: `${base} w-full font-bold uppercase tracking-wide text-[#E8E8E8] text-left`,
            placeholder: "INT. SCENE HEADING - DAY",
-           indicator: "top-10"
+           indicator: "top-7"
         };
       case 'action':
         return {
+           // Action: Full width (6 inches).
            container: "pb-4",
-           // Full width
-           input: `${base} w-full text-[#CCCCCC] text-left`,
-           placeholder: "Action...",
+           input: `${base} w-full text-[#E8E8E8] text-left`,
+           placeholder: "Action description...",
            indicator: "top-1"
         };
       case 'character':
         return {
+           // Character: Centered relative to dialogue, UPPERCASE.
+           // Indentation is typically ~2.2" from left margin.
+           // In this centered layout, we use a centered column.
            container: "pt-4 pb-0",
-           // Narrow centered column (~33 characters wide), Centered Text
            input: `${base} w-full max-w-[22rem] mx-auto font-bold uppercase tracking-widest text-[#E8E8E8] text-center`,
            placeholder: "CHARACTER",
            indicator: "top-5"
         };
       case 'dialogue':
         return {
+           // Dialogue: ~3.5 inches wide, centered under character.
            container: "pb-2",
-           // Medium centered column (~40-45 characters wide), Left Aligned Text
-           // This width (approx 34rem or 540px) is standard for 12pt Courier dialogue
-           input: `${base} w-full max-w-[34rem] mx-auto text-[#CCCCCC] text-left`,
+           input: `${base} w-full max-w-[24rem] mx-auto text-[#E8E8E8] text-left`,
            placeholder: "Dialogue...",
-           indicator: "top-1"
+           indicator: "top-0"
         };
       case 'parenthetical':
         return {
+           // Parenthetical: Inside dialogue width, indented further.
            container: "pb-0",
-           // Narrower than dialogue (~25 characters wide), Left Aligned
-           input: `${base} w-full max-w-[20rem] mx-auto italic text-sm text-[#969696] text-left`,
+           input: `${base} w-full max-w-[16rem] mx-auto italic text-[#AAAAAA] text-left`,
            placeholder: "(parenthetical)",
-           indicator: "top-0.5"
+           indicator: "top-0"
         };
       case 'transition':
         return {
+           // Transition: Right aligned.
            container: "pt-4 pb-4",
-           // Full width, Right Aligned
-           input: `${base} w-full font-bold uppercase tracking-widest text-right text-[#E8E8E8] pr-12`,
+           input: `${base} w-full font-bold uppercase tracking-widest text-right text-[#E8E8E8] pr-0`,
            placeholder: "CUT TO:",
            indicator: "top-6"
         };
       default:
         return {
            container: "pb-2",
-           input: `${base} w-full text-[#CCCCCC]`,
+           input: `${base} w-full text-[#E8E8E8]`,
            placeholder: "",
            indicator: "top-2"
         };
@@ -116,9 +123,9 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
     <div className={`relative ${styles.container}`}>
        {/* Type Indicator - Visual Guide on the left */}
        <div className={`
-          absolute -left-28 text-[9px] uppercase transition-all duration-200 select-none w-24 text-right pr-4 border-r font-sans
+          absolute -left-32 text-[9px] uppercase transition-all duration-200 select-none w-24 text-right pr-4 border-r font-sans
           ${styles.indicator}
-          ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'text-[#505050] border-[#333] opacity-0 group-hover:opacity-100'}
+          ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'text-[#444] border-[#333] opacity-0 group-hover:opacity-50'}
        `}>
           {element.type.replace('_', ' ')}
        </div>
