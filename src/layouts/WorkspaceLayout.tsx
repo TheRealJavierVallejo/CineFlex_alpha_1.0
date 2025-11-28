@@ -260,10 +260,10 @@ export const WorkspaceLayout: React.FC = () => {
                 <div className="flex items-center h-full gap-4">
                     {/* Library Back Link */}
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-                         <div className="w-8 h-8 bg-surface border border-border flex items-center justify-center relative group-hover:border-primary transition-colors rounded-full">
-                             <Film className="w-4 h-4 text-text-secondary group-hover:text-primary transition-colors" />
+                         <div className="w-8 h-8 bg-surface border border-border flex items-center justify-center relative group-hover:border-primary group-hover:bg-primary/10 transition-colors rounded-full">
+                             <Film className="w-4 h-4 text-primary transition-colors" />
                         </div>
-                        <span className="font-bold tracking-tight text-sm text-text-primary group-hover:text-text-primary transition-colors hidden md:inline">CineFlex</span>
+                        <span className="font-bold tracking-tight text-sm text-text-primary group-hover:text-primary transition-colors hidden md:inline">CineFlex</span>
                     </div>
                     
                     <div className="h-4 w-[1px] bg-border" />
