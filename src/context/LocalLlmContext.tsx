@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
+// Explicit Vite worker import
+import LLMWorker from '../workers/llm.worker.ts?worker';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -25,8 +27,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
 
-  // Engine ref to persist across renders
+  // Engine ref
   const engine = useRef<WebWorkerMLCEngine | null>(null);
+  const workerRef = useRef<Worker | null>(null);
 
   // Check WebGPU support on mount
   useEffect(() => {
@@ -49,24 +52,27 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setDownloadProgress(0);
       setDownloadText("Initializing engine...");
 
-      // Initialize the worker if not exists
-      if (!engine.current) {
-        // Use the standard Vite/Browser worker pattern
-        const worker = new Worker(new URL('../workers/llm.worker.ts', import.meta.url), { 
-            type: 'module' 
-        });
-
-        // Listen for startup errors (Critical for debugging "Stuck on Initializing")
-        worker.onerror = (e) => {
-            console.error("Worker startup error:", e);
-            setError(`Worker failed to start: ${e.message}`);
-            setIsDownloading(false);
-        };
-
-        engine.current = new WebWorkerMLCEngine(worker);
+      // Cleanup existing worker if any (Hard Reset)
+      if (engine.current || workerRef.current) {
+         engine.current?.unload();
+         workerRef.current?.terminate();
+         engine.current = null;
+         workerRef.current = null;
       }
 
-      // Define callback
+      // Create new worker
+      const worker = new LLMWorker();
+      workerRef.current = worker;
+
+      worker.onerror = (e) => {
+          console.error("Worker startup error:", e);
+          const msg = e instanceof ErrorEvent ? e.message : "Worker failed to start.";
+          setError(`Worker Error: ${msg}`);
+          setIsDownloading(false);
+      };
+
+      engine.current = new WebWorkerMLCEngine(worker);
+
       const onProgress = (report: InitProgressReport) => {
         const percent = Math.round(report.progress * 100);
         setDownloadProgress(percent);
@@ -75,12 +81,11 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: If nothing happens in 30 seconds, fail.
+      // SAFETY TIMEOUT: 60s
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Engine timed out. Check your internet connection or try refreshing.")), 30000)
+        setTimeout(() => reject(new Error("Engine timed out. Please refresh and try again.")), 60000)
       );
 
-      // Race the reload against the timeout
       await Promise.race([
         engine.current.reload(SELECTED_MODEL),
         timeoutPromise
@@ -93,6 +98,12 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     } catch (err: any) {
       console.error("LLM Init Error:", err);
+      // Clean up on error
+      if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+          engine.current = null;
+      }
       setError(err.message || "Failed to download model.");
       setIsDownloading(false);
       setDownloadText("Error");

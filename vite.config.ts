@@ -8,9 +8,15 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        headers: {
+          'Cross-Origin-Embedder-Policy': 'require-corp',
+          'Cross-Origin-Opener-Policy': 'same-origin',
+        },
       },
       plugins: [react()],
       optimizeDeps: {
+        // Critical: Exclude web-llm so Vite doesn't break its worker/wasm loading
+        exclude: ['@mlc-ai/web-llm'],
         include: ['react-window', 'react-virtualized-auto-sizer']
       },
       define: {
