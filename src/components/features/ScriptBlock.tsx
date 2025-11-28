@@ -43,12 +43,10 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // UPDATED: Using 'font-screenplay' (Courier Prime) and slightly larger text for readability
+    // UPDATED: Using 'font-screenplay' (Courier Prime)
     const base = "w-full bg-transparent outline-none resize-none overflow-hidden font-screenplay text-[17px] leading-relaxed transition-colors duration-200 placeholder:opacity-30";
     
-    // Default text color logic from previous version (No color changes requested)
-    // Base Text: #CCCCCC
-    
+    // Formatting Logic: Using Max-Width + Auto Margins for proper flow
     switch (element.type) {
       case 'scene_heading':
         return {
@@ -69,25 +67,24 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
       case 'character':
         return {
            container: "pt-4 pb-0",
-           // UPDATED: Indented ~40% from left, text-left (Standard Screenplay Format)
-           // Instead of centering, we push it to the character column.
-           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8] pl-[37%]`,
+           // Centered Box, Centered Text (Width ~40%)
+           input: `${base} font-bold uppercase tracking-widest text-[#E8E8E8] text-center max-w-[22rem] mx-auto`,
            placeholder: "CHARACTER",
            indicator: "top-5"
         };
       case 'dialogue':
         return {
            container: "pb-2",
-           // UPDATED: Indented ~25% from left, constrained width ~75% (Standard Screenplay Format)
-           input: `${base} text-[#CCCCCC] pl-[25%] pr-[25%]`,
+           // Centered Box, Left Align Text (Width ~35rem / 60%)
+           input: `${base} text-[#CCCCCC] text-left max-w-[35rem] mx-auto`,
            placeholder: "Dialogue...",
            indicator: "top-1"
         };
       case 'parenthetical':
         return {
            container: "pb-0",
-           // UPDATED: Indented ~30% from left
-           input: `${base} italic text-sm text-[#969696] pl-[31%]`,
+           // Centered Box, Left Align Text (Width ~20rem)
+           input: `${base} italic text-sm text-[#969696] text-left max-w-[20rem] mx-auto`,
            placeholder: "(parenthetical)",
            indicator: "top-0.5"
         };

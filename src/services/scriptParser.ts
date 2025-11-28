@@ -151,7 +151,7 @@ function parseFountain(text: string): ParsedScript {
            elements.push({
              id: crypto.randomUUID(),
              type: 'dialogue',
-             content: currentDialogueBuffer,
+             content: currentDialogueBuffer.trim(),
              character: characterName,
              sceneId: currentScene?.id,
              sequence: elementSequence++
@@ -184,8 +184,8 @@ function parseFountain(text: string): ParsedScript {
               sequence: elementSequence++
            });
         } else {
-           // Accumulate Dialogue
-           currentDialogueBuffer += (currentDialogueBuffer ? '\n' : '') + nextLine;
+           // Accumulate Dialogue - JOIN WITH SPACE TO PREVENT HARD WRAPS
+           currentDialogueBuffer += (currentDialogueBuffer ? ' ' : '') + nextLine;
         }
         j++;
       }
