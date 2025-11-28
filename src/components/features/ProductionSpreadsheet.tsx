@@ -7,7 +7,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, ShowToastFn } from '../../types';
-import { FileText, Clapperboard, LayoutGrid, Sliders, Package, Settings } from 'lucide-react';
+import { FileText, Clapperboard, LayoutGrid, Sliders, Package, Settings, Upload } from 'lucide-react';
 import Button from '../ui/Button';
 import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
@@ -18,6 +18,7 @@ import { AssetManagerPanel } from './AssetManager';
 import { SpreadsheetFilters } from './production-spreadsheet/SpreadsheetFilters';
 import { SpreadsheetTable } from './production-spreadsheet/SpreadsheetTable';
 import { SpreadsheetBulkActions } from './production-spreadsheet/SpreadsheetBulkActions';
+import { EmptyProjectState } from './EmptyProjectState';
 
 interface ProductionSpreadsheetProps {
     project: Project;
@@ -37,7 +38,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     showToast
 }) => {
     const navigate = useNavigate();
-    const { handleBulkUpdateShots, handleUpdateProject, handleUpdateSettings } = useOutletContext<WorkspaceContextType>();
+    const { handleBulkUpdateShots, handleUpdateProject, handleUpdateSettings, importScript } = useOutletContext<WorkspaceContextType>();
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -46,6 +47,9 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     const [filterType, setFilterType] = useState<string>('all');
     const [filterScene, setFilterScene] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+    
+    // Import State
+    const [isImporting, setIsImporting] = useState(false);
 
     // Helpers for Project Settings panel
     const addCustomSetting = (field: any, value: string) => {
@@ -63,13 +67,48 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     };
 
     // --- HELPER: Get Scene Info ---
-    // Memoized to avoid repeated scene lookups on every render
     const getSceneInfo = useCallback((sceneId?: string) => {
         if (!sceneId) return { sequence: '-', heading: 'Unknown' };
         const scene = project.scenes.find(s => s.id === sceneId);
         return scene ? { sequence: scene.sequence, heading: scene.heading } : { sequence: '?', heading: 'Deleted Scene' };
     }, [project.scenes]);
 
+    // --- ONBOARDING HANDLER ---
+    const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsImporting(true);
+        try {
+            await importScript(file);
+            // On successful import, go to script page
+            navigate('script');
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsImporting(false);
+        }
+    };
+    
+    const handleStartWriting = () => {
+        navigate('script');
+    };
+
+    // --- INITIAL EMPTY STATE (Project Created -> Dashboard) ---
+    // If we have no scenes and no shots, we assume it's a fresh project needing setup.
+    if (project.scenes.length === 0 && project.shots.length === 0) {
+        return (
+            <div className="h-full flex flex-col bg-background">
+                <EmptyProjectState 
+                    title="Welcome to your Studio"
+                    description="To begin, please upload an existing screenplay or start writing from scratch."
+                    onImport={handleScriptUpload}
+                    onCreate={handleStartWriting}
+                    isImporting={isImporting}
+                />
+            </div>
+        );
+    }
+    
     // --- DERIVED DATA ---
     const filteredShots = useMemo(() => {
         return project.shots.filter(shot => {
@@ -167,22 +206,27 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         }
     ];
 
+    // If we have scenes but no shots (e.g. just imported script but haven't made shots), show standard empty table view
+    // The previous check handled the "Complete New Project" state. 
+    // This return is for "Project initialized but empty shot list".
     if (project.shots.length === 0) {
-        return (
-            <div className="flex flex-col h-full items-center justify-center bg-background text-center p-8">
-                <div className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center mb-6 border border-border shadow-inner">
-                    <LayoutGrid className="w-8 h-8 text-text-muted" />
+         return (
+             <PageWithToolRail tools={tools} defaultTool={null}>
+                <div className="flex flex-col h-full items-center justify-center bg-background text-center p-8">
+                    <div className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center mb-6 border border-border shadow-inner">
+                        <LayoutGrid className="w-8 h-8 text-text-muted" />
+                    </div>
+                    <h2 className="text-lg font-bold text-text-primary mb-2">Ready for Shots</h2>
+                    <p className="text-text-secondary max-w-md mb-8 leading-relaxed text-sm">
+                        You have {project.scenes.length} scenes. Create shots in the Timeline or use the Script Editor.
+                    </p>
+                    <div className="flex gap-4">
+                        <Button variant="primary" size="lg" icon={<FileText className="w-4 h-4" />} onClick={() => navigate('script')}>Open Script Editor</Button>
+                        <Button variant="secondary" size="lg" icon={<Clapperboard className="w-4 h-4" />} onClick={() => navigate('timeline')}>Go to Timeline</Button>
+                    </div>
                 </div>
-                <h2 className="text-lg font-bold text-text-primary mb-2">Welcome to your Project</h2>
-                <p className="text-text-secondary max-w-md mb-8 leading-relaxed text-sm">
-                    Your shot list is currently empty. Start by creating scenes or importing a script.
-                </p>
-                <div className="flex gap-4">
-                    <Button variant="primary" size="lg" icon={<FileText className="w-4 h-4" />} onClick={() => navigate('script')}>Open Script Editor</Button>
-                    <Button variant="secondary" size="lg" icon={<Clapperboard className="w-4 h-4" />} onClick={() => navigate('timeline')}>Go to Timeline</Button>
-                </div>
-            </div>
-        );
+            </PageWithToolRail>
+         );
     }
 
     return (

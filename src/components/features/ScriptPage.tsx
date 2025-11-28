@@ -7,8 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Bot, MessageSquare, Sun, Moon } from 'lucide-react';
-import Button from '../ui/Button';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
@@ -18,7 +17,7 @@ import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { FeatureGate } from '../ui/FeatureGate';
 
 export const ScriptPage: React.FC = () => {
-    const { project, updateScriptElements, importScript } = useWorkspace();
+    const { project, updateScriptElements } = useWorkspace(); // Removed importScript
 
     // --- 1. HISTORY STATE (Undo/Redo) ---
     const {
@@ -31,7 +30,6 @@ export const ScriptPage: React.FC = () => {
     } = useHistory<ScriptElement[]>(project.scriptElements || []);
 
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
-    const [isImporting, setIsImporting] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
 
@@ -195,14 +193,6 @@ export const ScriptPage: React.FC = () => {
         setActiveElementId(newId);
     };
 
-    const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setIsImporting(true);
-        await importScript(file);
-        setIsImporting(false);
-    };
-
     const hasElements = elements.length > 0;
 
     // Navigation Helper
@@ -344,9 +334,10 @@ export const ScriptPage: React.FC = () => {
                             </div>
                         ) : (
                             <EmptyProjectState
-                                onImport={handleImportScript}
+                                title="Script Workspace"
+                                description="Your project has no script yet. Start writing!"
                                 onCreate={handleAddFirstElement}
-                                isImporting={isImporting}
+                                // No onImport prop means no upload button
                             />
                         )}
                     </div>

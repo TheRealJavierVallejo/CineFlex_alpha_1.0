@@ -14,7 +14,7 @@ import { generateStoryboardPDF } from '../../services/pdfExport';
 import { getLocations } from '../../services/storage';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
-import { Clapperboard, MapPin, Hash, Search } from 'lucide-react';
+import { Hash, Search } from 'lucide-react';
 // IMPORT CONTEXT
 import { useSubscription } from '../../context/SubscriptionContext';
 
@@ -26,11 +26,10 @@ interface TimelineViewProps {
   showToast: ShowToastFn;
 }
 
-export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, importScript, showToast }) => {
+export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
   const { tier } = useSubscription(); // GET TIER
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [isUploadingScript, setIsUploadingScript] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [confirmDeleteScene, setConfirmDeleteScene] = useState<{ id: string; name: string } | null>(null);
   const [sceneSearch, setSceneSearch] = useState('');
@@ -63,14 +62,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
   }, []);
 
   // --- HANDLERS (Same as before) ---
-  const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingScript(true);
-    await importScript(file);
-    setIsUploadingScript(false);
-  };
-
   const handleExportPDF = async () => {
     if (project.scenes.length === 0) {
       showToast("Add scenes before exporting", 'warning');
@@ -290,10 +281,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     return (
       <EmptyProjectState
         title="Empty Timeline"
-        description="Start by creating a scene manually or importing a script."
-        onImport={handleScriptUpload}
+        description="No scenes found. Please go to the Dashboard to set up your project or add a scene manually."
         onCreate={handleAddScene}
-        isImporting={isUploadingScript}
+        // Removed onImport here to enforce Dashboard workflow
       />
     );
   }
@@ -302,8 +292,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     <PageWithToolRail tools={tools} defaultTool={null}>
       <div className="h-full bg-background overflow-y-auto font-sans relative">
         <TimelineHeader
-          isUploadingScript={isUploadingScript}
-          onImportScript={handleScriptUpload}
+          isUploadingScript={false}
+          onImportScript={() => {}}
           onAddScene={handleAddScene}
           onExportPDF={handleExportPDF}
           isExporting={isExporting}

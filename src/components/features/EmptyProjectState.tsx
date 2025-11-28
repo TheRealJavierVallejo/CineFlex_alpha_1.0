@@ -3,7 +3,7 @@ import { FileText, Plus } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface EmptyProjectStateProps {
-  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImport?: (e: React.ChangeEvent<HTMLInputElement>) => void; // Made optional
   onCreate: () => void;
   title?: string;
   description?: string;
@@ -21,13 +21,15 @@ export const EmptyProjectState: React.FC<EmptyProjectStateProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 p-8">
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept=".fountain,.txt" 
-        onChange={onImport} 
-      />
+      {onImport && (
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept=".fountain,.txt" 
+          onChange={onImport} 
+        />
+      )}
       
       <div className="text-center mb-10">
         <div className="w-16 h-16 bg-surface-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border shadow-inner">
@@ -40,13 +42,15 @@ export const EmptyProjectState: React.FC<EmptyProjectStateProps> = ({
       </div>
       
       <div className="flex gap-4 justify-center">
-        <Button 
-          variant="secondary" 
-          onClick={() => fileInputRef.current?.click()}
-          loading={isImporting}
-        >
-          Import Script
-        </Button>
+        {onImport && (
+          <Button 
+            variant="secondary" 
+            onClick={() => fileInputRef.current?.click()}
+            loading={isImporting}
+          >
+            Import Script
+          </Button>
+        )}
         <Button 
           variant="primary" 
           icon={<Plus className="w-4 h-4" />} 
