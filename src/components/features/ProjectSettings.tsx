@@ -6,8 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { Project, WorldSettings, ShowToastFn } from '../../types';
 import { CustomSelect } from '../features/CustomSelect';
-import { ERAS, CINEMATIC_STYLES, LIGHTING_STYLES } from '../../constants';
-import { Key, Eye, EyeOff, Save, Settings, Sliders, Server } from 'lucide-react';
+import { ERAS, CINEMATIC_STYLES, LIGHTING_STYLES, UI_COLOR_PALETTE } from '../../constants';
+import { Key, Eye, EyeOff, Save, Settings, Sliders, Palette, Check } from 'lucide-react';
 import Button from '../ui/Button';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 
@@ -31,11 +31,16 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'api'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'api'>('general');
+  const [accentColor, setAccentColor] = useState('#3b82f6');
 
   useEffect(() => {
      const stored = localStorage.getItem('cinesketch_api_key');
      if (stored) setApiKey(stored);
+     
+     // Load theme
+     const savedColor = localStorage.getItem('cinesketch_theme_color');
+     if (savedColor) setAccentColor(savedColor);
   }, []);
 
   const saveApiKey = () => {
@@ -46,6 +51,29 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
         localStorage.removeItem('cinesketch_api_key');
         showToast("API Key removed", 'info');
      }
+  };
+
+  const handleColorChange = (color: string) => {
+      setAccentColor(color);
+      
+      // 1. Save to local storage
+      localStorage.setItem('cinesketch_theme_color', color);
+      
+      // 2. Update CSS Variables
+      document.documentElement.style.setProperty('--color-primary', color);
+      
+      // Simple darkening logic for hover
+      // Note: This is a rough heuristic. For production, use color manipulation lib.
+      document.documentElement.style.setProperty('--color-primary-hover', color); 
+      
+      // Glow with opacity
+      // Convert hex to rgb for rgba
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+      
+      showToast("Theme updated", 'success');
   };
 
   return (
@@ -59,10 +87,16 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
                 General
             </button>
             <button 
+                onClick={() => setActiveTab('theme')} 
+                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors ${activeTab === 'theme' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-white'}`}
+            >
+                Theme
+            </button>
+            <button 
                 onClick={() => setActiveTab('api')} 
                 className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors ${activeTab === 'api' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-white'}`}
             >
-                API Keys
+                API
             </button>
          </div>
 
@@ -109,6 +143,38 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
                     />
                 </div>
             </div>
+         )}
+
+         {activeTab === 'theme' && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-200">
+                 <div>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-3">
+                        <Palette className="w-3 h-3" /> UI Accent Color
+                    </label>
+                    
+                    <div className="grid grid-cols-5 gap-2">
+                        {UI_COLOR_PALETTE.map((color) => (
+                            <button
+                                key={color}
+                                onClick={() => handleColorChange(color)}
+                                className="w-full aspect-square rounded-sm relative group hover:scale-105 transition-transform border border-transparent hover:border-white/50"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                            >
+                                {accentColor === color && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Check className={`w-4 h-4 ${['#ffffff', '#a1a1aa'].includes(color) ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <p className="text-[9px] text-zinc-600 mt-4 leading-relaxed">
+                        This setting is saved to your browser and applies to all projects.
+                    </p>
+                 </div>
+             </div>
          )}
 
          {activeTab === 'api' && (

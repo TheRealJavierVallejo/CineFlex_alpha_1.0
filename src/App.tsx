@@ -3,7 +3,7 @@
  * Routing & Entry Point
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
@@ -122,6 +122,21 @@ const SettingsPage = () => {
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
+  // Apply saved theme on mount
+  useEffect(() => {
+    const savedColor = localStorage.getItem('cinesketch_theme_color');
+    if (savedColor) {
+        document.documentElement.style.setProperty('--color-primary', savedColor);
+        document.documentElement.style.setProperty('--color-primary-hover', savedColor);
+        
+        // Convert to RGB for glow
+        const r = parseInt(savedColor.slice(1, 3), 16);
+        const g = parseInt(savedColor.slice(3, 5), 16);
+        const b = parseInt(savedColor.slice(5, 7), 16);
+        document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
         <Routes>

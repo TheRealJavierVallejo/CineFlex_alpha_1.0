@@ -31,7 +31,7 @@ export default {
 
                 border: {
                     DEFAULT: '#27272a', // Zinc 800
-                    focus: '#3b82f6',   // Electric Blue
+                    focus: 'var(--color-primary)',   // Dynamic
                     subtle: '#18181b',
                 },
 
@@ -42,12 +42,12 @@ export default {
                     inverse: '#000000',
                 },
 
-                // Electric Blue Accent (ONYX Slash)
+                // Electric Blue Accent (ONYX Slash) - NOW DYNAMIC
                 primary: {
-                    DEFAULT: '#3b82f6', // Blue 500
-                    hover: '#2563eb',   // Blue 600
+                    DEFAULT: 'var(--color-primary)',
+                    hover: 'var(--color-primary-hover)',
                     foreground: '#FFFFFF',
-                    glow: 'rgba(59, 130, 246, 0.5)'
+                    glow: 'var(--color-primary-glow)'
                 },
             },
             fontSize: {
@@ -71,8 +71,8 @@ export default {
             boxShadow: {
                 'window': '0 0 0 1px #27272a',
                 'panel': '0 1px 0 0 #27272a',
-                'glow': '0 0 10px rgba(59, 130, 246, 0.15)',
-                'focus': '0 0 0 1px #3b82f6',
+                'glow': '0 0 10px var(--color-primary-glow)',
+                'focus': '0 0 0 1px var(--color-primary)',
             },
         },
     },

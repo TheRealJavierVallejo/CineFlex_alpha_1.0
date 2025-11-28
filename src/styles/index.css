@@ -13,10 +13,11 @@
   /* ONYX Color Palette */
   --color-background: #000000;
   --color-surface: #09090b;
-  --color-primary: #3b82f6;
+  
+  /* NOTE: Primary colors are now defined in :root for dynamic theming */
   
   --color-border: #27272a;
-  --color-border-focus: #3b82f6;
+  --color-border-focus: var(--color-primary);
   --color-border-subtle: #18181b;
 
   --color-text-primary: #f4f4f5;
@@ -38,6 +39,11 @@
     --header-height: 48px;
     --sidebar-width: 240px;
     --sidebar-collapsed: 50px;
+
+    /* DYNAMIC ACCENT COLORS (Default: Blue 500) */
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-primary-glow: rgba(59, 130, 246, 0.5);
   }
 
   * {
@@ -55,7 +61,7 @@
   }
 
   ::selection {
-    background-color: #3b82f6;
+    background-color: var(--color-primary);
     color: white;
   }
 }
@@ -119,7 +125,7 @@
   }
   
   .app-btn-primary {
-    @apply text-white bg-primary hover:bg-blue-600 border border-primary;
+    @apply text-white bg-primary hover:bg-primary/90 border border-primary;
   }
   
   .app-btn-secondary {
@@ -127,7 +133,7 @@
   }
 
   .focus-ring {
-    @apply outline-none ring-1 ring-[#3b82f6] ring-offset-0;
+    @apply outline-none ring-1 ring-primary ring-offset-0;
   }
 }
 
