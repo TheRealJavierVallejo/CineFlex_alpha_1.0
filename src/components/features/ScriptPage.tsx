@@ -33,29 +33,10 @@ export const ScriptPage: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
-  
-  // Default to global theme, but allow local override
-  const [isLightMode, setIsLightMode] = useState(() => {
-      // Check global class on mount
-      return document.documentElement.classList.contains('light');
-  }); 
+  const [isLightMode, setIsLightMode] = useState(false); // NEW: Paper Mode State
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
-
-  // Sync with global theme changes
-  useEffect(() => {
-      const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-              if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                  const isLight = document.documentElement.classList.contains('light');
-                  setIsLightMode(isLight);
-              }
-          });
-      });
-      observer.observe(document.documentElement, { attributes: true });
-      return () => observer.disconnect();
-  }, []);
 
   // --- 2. SYNC ENGINE ---
   const debouncedSync = useCallback(
@@ -261,11 +242,11 @@ export const ScriptPage: React.FC = () => {
 
   return (
     <PageWithToolRail tools={tools} defaultTool={null}>
-        <div className={`relative h-full flex flex-col bg-surface-secondary overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+        <div className={`relative h-full flex flex-col bg-black overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
         
         {/* Toolbar */}
         {hasElements && (
-            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-background border-border' : ''}`}>
+            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-black border-border' : ''}`}>
             <div className="flex items-center gap-2 text-text-primary font-medium pl-2">
                 <FileText className="w-4 h-4 text-primary" />
                 <span>Screenplay Editor</span>
@@ -310,7 +291,7 @@ export const ScriptPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden relative">
             <div 
             ref={containerRef}
-            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-background" 
+            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-black" 
             onClick={(e) => {
                 if (e.target === containerRef.current && hasElements) {
                     setActiveElementId(elements[elements.length - 1].id);
@@ -322,8 +303,8 @@ export const ScriptPage: React.FC = () => {
                     className={`
                         w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
                         ${isLightMode 
-                            ? 'bg-surface-secondary border-zinc-200 shadow-zinc-900/10' 
-                            : 'bg-surface border-border'}
+                            ? 'bg-white border-zinc-200 shadow-zinc-900/10' 
+                            : 'bg-surface-secondary border-border'}
                     `}
                 >
                     <div className="flex flex-col">

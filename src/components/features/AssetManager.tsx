@@ -97,7 +97,7 @@ export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, proj
                        <div key={char.id} className="p-2 rounded-sm bg-surface-secondary border border-border flex items-center justify-between group">
                           <div className="flex items-center gap-2 overflow-hidden">
                              <div className="w-6 h-6 bg-surface rounded-full flex items-center justify-center shrink-0 border border-border">
-                                {char.referencePhotos?.[0] ? <img src={char.referencePhotos[0]} className="w-full h-full object-cover rounded-full" /> : <User className="w-3 h-3 text-text-muted" />}
+                                {char.referencePhotos?.[0] ? <img src={char.referencePhotos[0]} className="w-full h-full object-cover rounded-full" /> : <User className="w-3 h-3 text-primary/70" />}
                              </div>
                              <span className="text-xs font-medium text-text-primary truncate">{char.name}</span>
                           </div>
@@ -120,7 +120,7 @@ export const AssetManagerPanel: React.FC<AssetManagerProps> = ({ projectId, proj
                     {locations.map(loc => (
                        <div key={loc.id} className="p-2 rounded-sm bg-surface-secondary border border-border flex items-center justify-between">
                           <div className="flex items-center gap-2 overflow-hidden">
-                             <MapPin className="w-3 h-3 text-text-muted shrink-0" />
+                             <MapPin className="w-3 h-3 text-primary/70 shrink-0" />
                              <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
                           </div>
                        </div>

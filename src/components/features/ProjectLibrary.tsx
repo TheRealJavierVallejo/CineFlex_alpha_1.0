@@ -129,18 +129,18 @@ export const ProjectLibrary: React.FC = () => {
             <div className="flex items-center gap-8">
                
                {/* CINEFLEX BRANDING */}
-               <div className="flex items-center gap-3 select-none">
-                  <div className="w-8 h-8 bg-surface border border-border flex items-center justify-center relative overflow-hidden rounded-full">
-                      <Film className="w-4 h-4 text-text-muted hover:text-primary transition-colors" />
+               <div className="flex items-center gap-3 select-none group cursor-default">
+                  <div className="w-8 h-8 bg-surface border border-border group-hover:border-primary/50 flex items-center justify-center relative overflow-hidden rounded-full transition-colors duration-300">
+                      <Film className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-300" />
                   </div>
                   <span className="text-xl tracking-tight font-bold text-text-primary">CineFlex</span>
                </div>
                
                <div className="h-8 w-[1px] bg-border" />
                
-               <form onSubmit={handleCreate} className="flex items-center gap-0">
+               <form onSubmit={handleCreate} className="flex items-center gap-0 group/create">
                   <input
-                     className="w-64 h-9 bg-surface border border-border border-r-0 rounded-l-sm px-3 text-sm focus:border-primary outline-none transition-colors text-text-primary placeholder:text-text-muted"
+                     className="w-64 h-9 bg-surface border border-border border-r-0 rounded-l-sm px-3 text-sm focus:border-primary outline-none transition-colors text-text-primary placeholder:text-text-muted group-hover/create:border-r-primary"
                      placeholder="New Project Name..."
                      value={newProjectName}
                      onChange={e => setNewProjectName(e.target.value)}
@@ -148,7 +148,7 @@ export const ProjectLibrary: React.FC = () => {
                   <button 
                     type="submit" 
                     disabled={!newProjectName.trim() || isCreating} 
-                    className="h-9 px-4 rounded-r-sm bg-surface-secondary border border-border hover:bg-border hover:text-text-primary text-text-secondary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="h-9 px-4 rounded-r-sm bg-surface-secondary border border-border group-hover/create:border-l-primary hover:bg-primary hover:text-white hover:border-primary text-text-secondary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                      {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create
                   </button>
@@ -156,7 +156,10 @@ export const ProjectLibrary: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-               <button onClick={() => fileInputRef.current?.click()} className="h-9 px-4 rounded-sm bg-surface border border-border hover:border-text-muted text-text-secondary hover:text-text-primary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all">
+               <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  className="h-9 px-4 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all"
+               >
                   <Upload className="w-3.5 h-3.5" /> Import
                </button>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
@@ -165,7 +168,7 @@ export const ProjectLibrary: React.FC = () => {
                
                <button 
                   onClick={() => setShowSettings(true)}
-                  className="h-9 w-9 rounded-sm bg-surface border border-border hover:border-text-muted text-text-secondary hover:text-text-primary flex items-center justify-center transition-all"
+                  className="h-9 w-9 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary flex items-center justify-center transition-all"
                   title="App Settings"
                >
                   <Settings className="w-4 h-4" />
@@ -205,8 +208,9 @@ export const ProjectLibrary: React.FC = () => {
                         `}
                         >
                             <div className="flex-[2] pl-2 font-medium flex items-center gap-4 truncate">
-                            <div className={`w-2 h-2 rounded-full ${selection === proj.id ? 'bg-primary shadow-glow' : 'bg-border group-hover:bg-text-muted'}`} />
-                            <span className="font-mono">{proj.name}</span>
+                            {/* Selection Indicator - Now glows with primary color */}
+                            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${selection === proj.id ? 'bg-primary shadow-[0_0_8px_var(--color-primary)] scale-110' : 'bg-border group-hover:bg-primary/50'}`} />
+                            <span className={`font-mono transition-colors ${selection === proj.id ? 'text-primary font-bold' : ''}`}>{proj.name}</span>
                             </div>
                             <div className="flex-1 opacity-60 group-hover:opacity-100 transition-opacity text-xs font-mono">{proj.shotCount} shots</div>
                             <div className="flex-1 opacity-60 group-hover:opacity-100 transition-opacity text-xs font-mono">{proj.characterCount || 0} characters</div>

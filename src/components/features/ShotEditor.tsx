@@ -457,7 +457,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
             {/* Shot Details Section */}
-            <CollapsibleSection title="Shot Details" icon={<FileText className="w-4 h-4" />} defaultOpen={true}>
+            <CollapsibleSection title="Shot Details" icon={<FileText className="w-4 h-4 text-primary" />} defaultOpen={true}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Prompt / Description</label>
@@ -513,7 +513,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             </CollapsibleSection>
 
             {/* Camera & Style Section */}
-            <CollapsibleSection title="Camera & Style" icon={<Camera className="w-4 h-4" />} defaultOpen={true}>
+            <CollapsibleSection title="Camera & Style" icon={<Camera className="w-4 h-4 text-primary" />} defaultOpen={true}>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -586,7 +586,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             </CollapsibleSection>
 
             {/* Cast Section */}
-            <CollapsibleSection title="Cast" icon={<Users className="w-4 h-4" />} defaultOpen={false}>
+            <CollapsibleSection title="Cast" icon={<Users className="w-4 h-4 text-primary" />} defaultOpen={false}>
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg border border-border">
                   <div className="flex items-center gap-2">
@@ -634,7 +634,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
             </CollapsibleSection>
 
             {/* Advanced Section */}
-            <CollapsibleSection title="Advanced" icon={<Settings className="w-4 h-4" />} defaultOpen={false}>
+            <CollapsibleSection title="Advanced" icon={<Settings className="w-4 h-4 text-primary" />} defaultOpen={false}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-text-secondary mb-2">Negative Prompt</label>
