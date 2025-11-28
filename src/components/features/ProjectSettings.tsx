@@ -40,64 +40,70 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsProps> = ({
           />
         </div>
 
+        {/* PRO SETTINGS GATE - Merged Era/Style/Lighting + Resolution/Batch */}
         <div className="space-y-4 pt-4 border-t border-border">
-          <CustomSelect
-            label="Era"
-            value={project.settings.era}
-            options={ERAS}
-            customOptions={project.settings.customEras}
-            onChange={(val) => onUpdateSettings('era', val)}
-            onAddCustom={(val) => onAddCustom('customEras', val)}
-            onDeleteCustom={(val) => onRemoveCustom('customEras', val)}
-          />
+            <FeatureGate label="Studio Configuration" description="Global styling, era settings, and high-res controls are available in Pro.">
+                <div className="space-y-6">
+                    {/* World Settings */}
+                    <div className="space-y-4">
+                      <CustomSelect
+                        label="Era"
+                        value={project.settings.era}
+                        options={ERAS}
+                        customOptions={project.settings.customEras}
+                        onChange={(val) => onUpdateSettings('era', val)}
+                        onAddCustom={(val) => onAddCustom('customEras', val)}
+                        onDeleteCustom={(val) => onRemoveCustom('customEras', val)}
+                      />
 
-          <CustomSelect
-            label="Cinematic Style"
-            value={project.settings.cinematicStyle}
-            options={CINEMATIC_STYLES}
-            customOptions={project.settings.customStyles}
-            onChange={(val) => onUpdateSettings('cinematicStyle', val)}
-            onAddCustom={(val) => onAddCustom('customStyles', val)}
-            onDeleteCustom={(val) => onRemoveCustom('customStyles', val)}
-          />
+                      <CustomSelect
+                        label="Cinematic Style"
+                        value={project.settings.cinematicStyle}
+                        options={CINEMATIC_STYLES}
+                        customOptions={project.settings.customStyles}
+                        onChange={(val) => onUpdateSettings('cinematicStyle', val)}
+                        onAddCustom={(val) => onAddCustom('customStyles', val)}
+                        onDeleteCustom={(val) => onRemoveCustom('customStyles', val)}
+                      />
 
-          <CustomSelect
-            label="Lighting"
-            value={project.settings.lighting}
-            options={LIGHTING_STYLES}
-            customOptions={project.settings.customLighting}
-            onChange={(val) => onUpdateSettings('lighting', val)}
-            onAddCustom={(val) => onAddCustom('customLighting', val)}
-            onDeleteCustom={(val) => onRemoveCustom('customLighting', val)}
-          />
-        </div>
-
-        {/* PRO SETTINGS GATE */}
-        <div className="space-y-4 pt-4 border-t border-border">
-            <FeatureGate label="Pro Configuration">
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Global Resolution</label>
-                        <select 
-                            value={project.settings.imageResolution || '2048x2048'}
-                            onChange={(e) => onUpdateSettings('imageResolution', e.target.value)}
-                            className="studio-input"
-                        >
-                            {IMAGE_RESOLUTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                        </select>
+                      <CustomSelect
+                        label="Lighting"
+                        value={project.settings.lighting}
+                        options={LIGHTING_STYLES}
+                        customOptions={project.settings.customLighting}
+                        onChange={(val) => onUpdateSettings('lighting', val)}
+                        onAddCustom={(val) => onAddCustom('customLighting', val)}
+                        onDeleteCustom={(val) => onRemoveCustom('customLighting', val)}
+                      />
                     </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Default Batch Size</label>
-                        <div className="flex bg-surface-secondary rounded border border-border p-0.5">
-                            {[1, 2, 4].map(v => (
-                                <button
-                                    key={v}
-                                    onClick={() => onUpdateSettings('variationCount', v)}
-                                    className={`flex-1 py-1 text-xs font-medium rounded transition-colors ${project.settings.variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
-                                >
-                                    {v}x
-                                </button>
-                            ))}
+
+                    <div className="h-[1px] bg-border" />
+
+                    {/* Tech Settings */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Global Resolution</label>
+                            <select 
+                                value={project.settings.imageResolution || '2048x2048'}
+                                onChange={(e) => onUpdateSettings('imageResolution', e.target.value)}
+                                className="studio-input"
+                            >
+                                {IMAGE_RESOLUTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Default Batch Size</label>
+                            <div className="flex bg-surface-secondary rounded border border-border p-0.5">
+                                {[1, 2, 4].map(v => (
+                                    <button
+                                        key={v}
+                                        onClick={() => onUpdateSettings('variationCount', v)}
+                                        className={`flex-1 py-1 text-xs font-medium rounded transition-colors ${project.settings.variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
+                                    >
+                                        {v}x
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
