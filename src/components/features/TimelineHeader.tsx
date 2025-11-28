@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
-import { Clapperboard, Upload, Plus, Download } from 'lucide-react';
+import { Clapperboard, Upload, Plus, Download, FileText } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface TimelineHeaderProps {
     isUploadingScript: boolean;
     onImportScript: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onAddScene: () => void;
-    onExportPDF: () => void; // New Prop
-    isExporting?: boolean; // New Prop
+    onExportPDF: () => void; 
+    isExporting?: boolean; 
 }
 
 export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
@@ -20,50 +20,50 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="flex items-center justify-between mb-8 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b border-border">
-            <h2 className="text-lg font-bold text-text-primary tracking-wide flex items-center gap-3">
-                <div className="p-2 bg-surface-secondary rounded border border-border">
-                    <Clapperboard className="w-5 h-5 text-primary" aria-hidden="true" />
-                </div>
-                SEQUENCE EDITOR
-            </h2>
-
+        <div className="h-10 flex items-center justify-between sticky top-0 z-20 bg-surface-secondary border-b border-border px-4 shrink-0">
             <div className="flex items-center gap-2">
+                <Clapperboard className="w-3.5 h-3.5 text-text-tertiary" />
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Board Sequence</span>
+            </div>
+
+            <div className="flex items-center gap-1">
                 <input
                     ref={fileInputRef}
                     type="file"
                     accept=".fountain,.txt"
                     onChange={onImportScript}
                     className="hidden"
-                    id="script-upload"
                 />
 
                 <Button
                     variant="ghost"
-                    size="md"
-                    icon={<Download className="w-4 h-4" />}
+                    size="sm"
+                    className="h-7 text-xs"
+                    icon={<Download className="w-3 h-3" />}
                     onClick={onExportPDF}
                     loading={isExporting}
                 >
-                    Export PDF
+                    PDF
                 </Button>
 
-                <div className="h-6 w-[1px] bg-border mx-2"></div>
+                <div className="h-4 w-[1px] bg-border mx-1"></div>
 
                 <Button
-                    variant="secondary"
-                    size="md"
-                    icon={<Upload className="w-4 h-4" />}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    icon={<Upload className="w-3 h-3" />}
                     loading={isUploadingScript}
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    {isUploadingScript ? 'Parsing...' : 'Import Script'}
+                    Import
                 </Button>
 
                 <Button
                     variant="primary"
-                    size="md"
-                    icon={<Plus className="w-4 h-4" />}
+                    size="sm"
+                    className="h-7 text-xs ml-1"
+                    icon={<Plus className="w-3 h-3" />}
                     onClick={onAddScene}
                 >
                     New Scene

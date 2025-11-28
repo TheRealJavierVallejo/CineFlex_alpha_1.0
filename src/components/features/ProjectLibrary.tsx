@@ -1,18 +1,20 @@
 /*
- * 📂 COMPONENT: PROJECT LIBRARY (Data Table)
- * Premium Desktop UI - High Density Table
+ * 📂 COMPONENT: PROJECT LIBRARY
+ * "Startup Window" Design - Clean, Centered, Professional.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, Search, FileText, Film, Users, Clock, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, Search, FileText, Film, Users, Clock, MoreHorizontal, Layout, LayoutGrid, X } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
+import Button from '../ui/Button';
 
 export const ProjectLibrary: React.FC = () => {
    const navigate = useNavigate();
    const [projects, setProjects] = useState<ProjectMetadata[]>([]);
+   const [search, setSearch] = useState('');
    const [isCreating, setIsCreating] = useState(false);
    const [newProjectName, setNewProjectName] = useState('');
    const [selection, setSelection] = useState<string | null>(null);
@@ -20,11 +22,8 @@ export const ProjectLibrary: React.FC = () => {
    const [toasts, setToasts] = useState<ToastNotification[]>([]);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
-   useEffect(() => {
-      loadProjects();
-   }, []);
+   useEffect(() => { loadProjects(); }, []);
 
-   // --- Toast Helper for Library ---
    const showToast: ShowToastFn = (message, type = 'info', action) => {
        const id = Date.now();
        setToasts(prev => [...prev, { id, message, type, action }]);
@@ -33,12 +32,11 @@ export const ProjectLibrary: React.FC = () => {
 
    const loadProjects = () => {
       const list = getProjectsList();
-      setProjects(list);
+      // Sort by last modified descending
+      setProjects(list.sort((a, b) => b.lastModified - a.lastModified));
    };
 
-   const openProject = (id: string) => {
-       navigate(`/project/${id}`);
-   };
+   const openProject = (id: string) => navigate(`/project/${id}`);
 
    const handleCreate = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -46,7 +44,6 @@ export const ProjectLibrary: React.FC = () => {
       setIsCreating(true);
       try {
          const id = await createNewProject(newProjectName);
-         setNewProjectName('');
          openProject(id);
       } catch (error) {
          showToast("Failed to create project", 'error');
@@ -55,40 +52,23 @@ export const ProjectLibrary: React.FC = () => {
       }
    };
 
-   const handleDelete = async (id: string, name: string, e: React.MouseEvent) => {
+   const handleDelete = async (e: React.MouseEvent) => {
       e.stopPropagation();
-      e.preventDefault();
-      setConfirmDelete({ id, name });
+      if (!selection) return;
+      const proj = projects.find(p => p.id === selection);
+      if (proj) setConfirmDelete({ id: proj.id, name: proj.name });
    };
 
    const confirmDeletion = async () => {
       if (!confirmDelete) return;
       await deleteProject(confirmDelete.id);
       loadProjects();
-      showToast("Project deleted", 'info');
+      setSelection(null);
       setConfirmDelete(null);
+      showToast("Project deleted", 'info');
    };
 
-   const handleExport = async (id: string, name: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      try {
-         const json = await exportProjectToJSON(id);
-         const blob = new Blob([json], { type: 'application/json' });
-         const url = URL.createObjectURL(blob);
-         const a = document.createElement('a');
-         a.href = url;
-         a.download = `${name.replace(/\s+/g, '_')}.json`;
-         document.body.appendChild(a);
-         a.click();
-         document.body.removeChild(a);
-         URL.revokeObjectURL(url);
-         showToast("Exported", 'success');
-      } catch (error) {
-         showToast("Export failed", 'error');
-      }
-   };
-
-   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
@@ -96,127 +76,163 @@ export const ProjectLibrary: React.FC = () => {
          try {
             await importProjectFromJSON(event.target?.result as string);
             loadProjects();
-            showToast("Imported", 'success');
+            showToast("Project imported", 'success');
          } catch (error) {
             showToast("Import failed", 'error');
          } finally {
-            if (fileInputRef.current) fileInputRef.current.value = '';
+             if (fileInputRef.current) fileInputRef.current.value = '';
          }
       };
       reader.readAsText(file);
    };
 
+   // Derived state
+   const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
    return (
-      <div className="h-screen w-screen bg-[#1E1E1E] text-[#CCCCCC] flex flex-col font-sans">
+      <div className="h-screen w-screen bg-[#050505] text-[#E4E4E7] flex items-center justify-center font-sans">
          <ToastContainer toasts={toasts} onClose={closeToast} />
+         
+         {/* MAIN WINDOW */}
+         <div className="w-[900px] h-[600px] bg-[#121212] border border-[#27272A] rounded-lg shadow-2xl flex overflow-hidden">
+            
+            {/* SIDEBAR */}
+            <div className="w-64 bg-[#18181B] border-r border-[#27272A] flex flex-col p-6">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center shadow-glow">
+                        <Film className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="font-bold tracking-tight text-white leading-none">CINESKETCH</h1>
+                        <span className="text-[10px] text-text-tertiary font-mono">STUDIO PRO v2.5</span>
+                    </div>
+                </div>
 
-         {/* Toolbar */}
-         <div className="h-12 border-b border-[#333] flex items-center justify-between px-4 bg-[#252526]">
-            <div className="flex items-center gap-4">
-               <div className="font-bold text-[#E8E8E8] text-sm tracking-wide flex items-center gap-2">
-                  <div className="w-3 h-3 bg-[#007ACC] rounded-sm" /> CINESKETCH
-               </div>
-               <div className="h-4 w-[1px] bg-[#333]" />
-               <form onSubmit={handleCreate} className="flex items-center gap-2">
-                  <input
-                     className="app-input w-48"
-                     placeholder="New Project Name..."
-                     value={newProjectName}
-                     onChange={e => setNewProjectName(e.target.value)}
-                  />
-                  <button type="submit" disabled={!newProjectName.trim()} className="app-btn app-btn-primary">
-                     <Plus className="w-3.5 h-3.5" /> Create
-                  </button>
-               </form>
+                <div className="space-y-6 flex-1">
+                    <div>
+                        <div className="text-[10px] font-bold text-text-tertiary uppercase mb-2">Create</div>
+                        <Button 
+                            variant="primary" 
+                            className="w-full justify-center" 
+                            icon={<Plus className="w-4 h-4" />}
+                            onClick={() => document.getElementById('new-proj-input')?.focus()}
+                        >
+                            New Project
+                        </Button>
+                    </div>
+
+                    <div>
+                        <div className="text-[10px] font-bold text-text-tertiary uppercase mb-2">Actions</div>
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full h-8 flex items-center gap-2 px-3 rounded hover:bg-white/5 text-sm text-text-secondary hover:text-white transition-colors"
+                        >
+                            <Upload className="w-4 h-4" /> Import Project
+                            <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="text-[10px] text-text-tertiary text-center pt-6 border-t border-[#27272A]">
+                    Local Storage • No Cloud Sync
+                </div>
             </div>
 
-            <div className="flex items-center gap-2">
-               <button onClick={() => fileInputRef.current?.click()} className="app-btn app-btn-secondary">
-                  <Upload className="w-3.5 h-3.5" /> Import
-               </button>
-               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+            {/* CONTENT */}
+            <div className="flex-1 flex flex-col bg-[#09090b]">
+                {/* Header */}
+                <div className="h-14 border-b border-[#27272A] flex items-center justify-between px-6 bg-[#121212]">
+                    <h2 className="font-semibold">Recent Projects</h2>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+                        <input 
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search..."
+                            className="bg-[#18181B] border border-[#27272A] rounded h-8 pl-8 pr-3 text-xs text-white focus:border-primary outline-none w-48 transition-all"
+                        />
+                    </div>
+                </div>
+
+                {/* List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                    {filteredProjects.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-text-muted opacity-50">
+                            <FileText className="w-12 h-12 mb-2" />
+                            <p className="text-sm">No projects found</p>
+                        </div>
+                    ) : (
+                        filteredProjects.map(proj => (
+                            <div 
+                                key={proj.id}
+                                onClick={() => setSelection(proj.id)}
+                                onDoubleClick={() => openProject(proj.id)}
+                                className={`
+                                    group flex items-center h-12 px-4 rounded border cursor-pointer transition-all
+                                    ${selection === proj.id 
+                                        ? 'bg-primary/10 border-primary/50' 
+                                        : 'bg-[#121212] border-transparent hover:bg-[#18181B] hover:border-[#27272A]'}
+                                `}
+                            >
+                                <div className="flex-1">
+                                    <div className={`font-medium text-sm ${selection === proj.id ? 'text-primary' : 'text-gray-200'}`}>
+                                        {proj.name}
+                                    </div>
+                                    <div className="text-[10px] text-text-tertiary flex gap-2">
+                                        <span>Modified: {new Date(proj.lastModified).toLocaleDateString()}</span>
+                                        <span>•</span>
+                                        <span>{proj.shotCount} Shots</span>
+                                    </div>
+                                </div>
+                                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2">
+                                    <Button size="sm" variant="secondary" onClick={() => openProject(proj.id)}>Open</Button>
+                                    <button 
+                                        onClick={handleDelete}
+                                        className="p-2 text-text-muted hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer Input Area */}
+                <div className="p-4 bg-[#121212] border-t border-[#27272A]">
+                    <form onSubmit={handleCreate} className="flex gap-3">
+                         <input 
+                            id="new-proj-input"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            className="flex-1 bg-[#09090B] border border-[#27272A] rounded h-9 px-3 text-sm focus:border-primary outline-none"
+                            placeholder="Enter new project name..."
+                         />
+                         <Button 
+                            variant="primary" 
+                            disabled={!newProjectName.trim()}
+                            loading={isCreating}
+                         >
+                            Create Project
+                         </Button>
+                    </form>
+                </div>
             </div>
          </div>
 
-         {/* Data Table Header */}
-         <div className="flex items-center px-4 h-8 bg-[#1E1E1E] border-b border-[#333] text-xs font-bold text-[#969696] uppercase tracking-wider select-none">
-            <div className="flex-[2] pl-2">Project Name</div>
-            <div className="flex-1">Shots</div>
-            <div className="flex-1">Cast</div>
-            <div className="flex-1">Last Modified</div>
-            <div className="w-20 text-center">Actions</div>
-         </div>
-
-         {/* Table Body */}
-         <div className="flex-1 overflow-y-auto bg-[#18181B]">
-            {projects.length === 0 ? (
-               <div className="flex flex-col items-center justify-center h-full text-[#505050]">
-                  <FileText className="w-12 h-12 mb-2 opacity-20" />
-                  <p className="text-sm">No projects found</p>
-               </div>
-            ) : (
-               <div className="flex flex-col">
-                  {projects.map(proj => (
-                     <div
-                        key={proj.id}
-                        onClick={() => setSelection(proj.id)}
-                        onDoubleClick={() => openProject(proj.id)}
-                        className={`
-                       group flex items-center px-4 h-9 border-b border-[#252526] cursor-default text-[13px] transition-colors
-                       ${selection === proj.id ? 'bg-[#094771] text-white' : 'hover:bg-[#2A2D2E] text-[#CCCCCC]'}
-                    `}
-                     >
-                        <div className="flex-[2] pl-2 font-medium flex items-center gap-2 truncate">
-                           <FileText className={`w-3.5 h-3.5 ${selection === proj.id ? 'text-white' : 'text-[#007ACC]'}`} />
-                           {proj.name}
-                        </div>
-                        <div className="flex-1 text-[#969696] group-hover:text-[#CCCCCC]">{proj.shotCount}</div>
-                        <div className="flex-1 text-[#969696] group-hover:text-[#CCCCCC]">{proj.characterCount || 0}</div>
-                        <div className="flex-1 text-[#969696] group-hover:text-[#CCCCCC] font-mono text-xs">
-                           {new Date(proj.lastModified).toLocaleDateString()}
-                        </div>
-                        <div className="w-20 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                           <button onClick={(e) => handleExport(proj.id, proj.name, e)} className="p-1 hover:bg-white/10 rounded" title="Export">
-                              <Download className="w-3.5 h-3.5" />
-                           </button>
-                           <button onClick={(e) => handleDelete(proj.id, proj.name, e)} className="p-1 hover:bg-red-500/20 hover:text-red-400 rounded" title="Delete">
-                              <Trash2 className="w-3.5 h-3.5" />
-                           </button>
-                        </div>
-                     </div>
-                  ))}
-               </div>
-            )}
-         </div>
-
-         {/* Status Footer */}
-         <div className="h-6 bg-[#007ACC] text-white text-[11px] flex items-center px-3 font-medium select-none">
-            {projects.length} Projects Loaded
-         </div>
-
-         {/* Delete Confirmation Modal */}
+         {/* Delete Modal */}
          {confirmDelete && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in" onClick={() => setConfirmDelete(null)}>
-               <div className="bg-[#252526] border border-[#333] rounded-lg p-6 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-lg font-bold text-white mb-2">Delete Project?</h3>
-                  <p className="text-[#CCCCCC] text-sm mb-4">
-                     Are you sure you want to permanently delete "{confirmDelete.name}"? This action cannot be undone.
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                     <button
-                        onClick={() => setConfirmDelete(null)}
-                        className="px-4 py-2 rounded bg-[#3C3C3C] hover:bg-[#505050] text-white text-sm transition-colors"
-                     >
-                        Cancel
-                     </button>
-                     <button
-                        onClick={confirmDeletion}
-                        className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white text-sm transition-colors"
-                     >
-                        Delete
-                     </button>
-                  </div>
-               </div>
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] animate-in fade-in">
+                <div className="bg-[#18181B] border border-[#27272A] p-6 rounded-lg w-96 shadow-xl">
+                    <h3 className="font-bold text-white mb-2">Delete Project?</h3>
+                    <p className="text-sm text-text-secondary mb-6">
+                        Are you sure you want to delete <strong className="text-white">{confirmDelete.name}</strong>? This cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="ghost" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+                        <Button className="bg-red-600 hover:bg-red-700" onClick={confirmDeletion}>Delete Forever</Button>
+                    </div>
+                </div>
             </div>
          )}
       </div>
