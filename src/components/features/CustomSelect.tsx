@@ -1,4 +1,3 @@
-
 /*
  * 🔽 COMPONENT: CUSTOM SELECT (Hybrid Dropdown)
  * 
@@ -59,29 +58,29 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
   return (
     <div className="space-y-1" ref={containerRef}>
-       <label className="text-[11px] font-bold text-[#A0A0A0] uppercase">{label}</label>
+       <label className="text-[11px] font-bold text-zinc-500 uppercase">{label}</label>
        <div className="relative">
          <button 
             onClick={() => setIsOpen(!isOpen)}
-            className="w-full h-8 bg-[#1E1E1E] border border-[#3A3A3A] px-2 text-[12px] text-[#E8E8E8] focus:border-[#0071EB] outline-none flex items-center justify-between hover:border-[#505050] rounded-[2px]"
+            className="w-full h-8 bg-black border border-border px-2 text-[12px] text-zinc-300 focus:border-primary outline-none flex items-center justify-between hover:border-zinc-500 rounded-sm transition-colors"
          >
             <span className="truncate">{value}</span>
-            <ChevronDown className="w-3 h-3 text-[#707070]" />
+            <ChevronDown className="w-3 h-3 text-zinc-500" />
          </button>
 
          {isOpen && (
-            <div className="absolute top-full left-0 w-full mt-1 bg-[#252525] border border-[#3A3A3A] shadow-xl rounded-[2px] z-50 max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-0 w-full mt-1 bg-[#09090b] border border-border shadow-xl rounded-sm z-50 max-h-60 overflow-y-auto">
                
                {/* Custom Options Section (Your added items) */}
                {customOptions.length > 0 && (
-                 <div className="border-b border-[#3A3A3A] pb-1 mb-1">
-                    <div className="px-2 py-1 text-[10px] text-[#505050] font-bold uppercase">Custom</div>
+                 <div className="border-b border-border pb-1 mb-1">
+                    <div className="px-2 py-1 text-[10px] text-zinc-500 font-bold uppercase">Custom</div>
                     {customOptions.map(opt => (
-                       <div key={opt} className="flex items-center justify-between px-2 py-1.5 hover:bg-[#0071EB] hover:text-white group cursor-pointer text-[12px] text-[#E8E8E8]" onClick={() => { onChange(opt); setIsOpen(false); }}>
+                       <div key={opt} className="flex items-center justify-between px-2 py-1.5 hover:bg-primary hover:text-white group cursor-pointer text-[12px] text-zinc-300" onClick={() => { onChange(opt); setIsOpen(false); }}>
                           <span>{opt}</span>
                           <button 
                              onClick={(e) => { e.stopPropagation(); onDeleteCustom(opt); }}
-                             className="p-0.5 hover:bg-red-500 rounded text-[#A0A0A0] group-hover:text-white"
+                             className="p-0.5 hover:bg-red-500 rounded text-zinc-500 group-hover:text-white"
                           >
                              <X className="w-3 h-3" />
                           </button>
@@ -91,11 +90,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                )}
 
                {/* Standard Options (The presets) */}
-               <div className="border-b border-[#3A3A3A] pb-1 mb-1">
+               <div className="border-b border-border pb-1 mb-1">
                    {options.map(opt => (
                       <div 
                         key={opt} 
-                        className={`px-2 py-1.5 hover:bg-[#0071EB] hover:text-white cursor-pointer text-[12px] ${value === opt ? 'bg-[#3A3A3A] text-white' : 'text-[#E8E8E8]'}`}
+                        className={`px-2 py-1.5 hover:bg-primary hover:text-white cursor-pointer text-[12px] transition-colors ${value === opt ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`}
                         onClick={() => { onChange(opt); setIsOpen(false); }}
                       >
                          {opt}
@@ -110,19 +109,19 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                        autoFocus
                        value={newVal}
                        onChange={(e) => setNewVal(e.target.value)}
-                       className="w-full bg-[#1E1E1E] border border-[#3A3A3A] px-2 py-1 text-[12px] text-[#E8E8E8] focus:border-[#0071EB] outline-none rounded-[2px]"
+                       className="w-full bg-black border border-border px-2 py-1 text-[12px] text-white focus:border-primary outline-none rounded-sm"
                        placeholder="Enter custom value..."
                      />
                      <button 
                        type="submit" 
-                       className="bg-[#0071EB] text-white px-2 py-1 rounded-[2px] text-[11px]"
+                       className="bg-primary text-white px-2 py-1 rounded-sm text-[11px] font-bold"
                      >
                        Add
                      </button>
                      <button 
                        type="button"
                        onClick={() => setIsAdding(false)}
-                       className="text-[#A0A0A0] hover:text-white px-2"
+                       className="text-zinc-500 hover:text-white px-2"
                      >
                        <X className="w-3 h-3" />
                      </button>
@@ -130,7 +129,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                ) : (
                   <button 
                     onClick={() => setIsAdding(true)}
-                    className="w-full text-left px-2 py-2 text-[11px] text-[#0071EB] hover:bg-[#3A3A3A] font-medium flex items-center gap-1"
+                    className="w-full text-left px-2 py-2 text-[11px] text-primary hover:bg-zinc-800 font-bold flex items-center gap-1 uppercase tracking-wide"
                   >
                      <Plus className="w-3 h-3" /> Add Custom...
                   </button>

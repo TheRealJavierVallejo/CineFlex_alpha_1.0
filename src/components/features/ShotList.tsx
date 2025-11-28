@@ -65,10 +65,10 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
       )}
 
       {project.shots.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-[#505050] border-2 border-dashed border-[#333] rounded-[4px]">
+        <div className="h-full flex flex-col items-center justify-center text-zinc-600 border-2 border-dashed border-border rounded-sm">
           <Film className="w-8 h-8 mb-2 opacity-30" />
           <span className="text-sm">No shots in timeline</span>
-          <button onClick={onAddShot} className="text-[#007ACC] text-xs hover:underline mt-1">Create Shot</button>
+          <button onClick={onAddShot} className="text-primary text-xs hover:underline mt-1 font-bold">Create Shot</button>
         </div>
       ) : (
         /* Dense Grid */
@@ -78,21 +78,21 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
               key={shot.id}
               onClick={() => onEditShot(shot)}
               onContextMenu={(e) => handleContextMenu(e, shot.id)}
-              className="bg-[#252526] border border-[#333] rounded-[3px] overflow-hidden hover:border-[#007ACC] cursor-pointer transition-all group relative"
+              className="bg-surface border border-border rounded-sm overflow-hidden hover:border-primary cursor-pointer transition-all group relative"
             >
               {/* Thumbnail */}
-              <div className="aspect-video bg-[#121212] relative">
+              <div className="aspect-video bg-black relative">
                 {shot.generatedImage ? (
                   <img src={shot.generatedImage} className="w-full h-full object-contain" />
                 ) : shot.sketchImage ? (
                   <img src={shot.sketchImage} className="w-full h-full object-contain opacity-50 p-2" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-[#333]" />
+                    <Camera className="w-5 h-5 text-zinc-700" />
                   </div>
                 )}
 
-                <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] font-mono text-[#E8E8E8]">
+                <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10">
                   #{shot.sequence}
                 </div>
 
@@ -103,7 +103,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
                          e.stopPropagation();
                          onDeleteShot(shot.id);
                       }}
-                      className="bg-black/80 hover:bg-red-900/80 text-white p-1 rounded-[2px] transition-colors"
+                      className="bg-black/80 hover:bg-red-900/80 text-white p-1 rounded-[1px] transition-colors border border-white/10"
                       title="Delete Shot"
                    >
                       <Trash2 className="w-3 h-3 text-red-400" />
@@ -112,7 +112,7 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
 
                 {/* Stack Indicator */}
                 {shot.generationCandidates && shot.generationCandidates.length > 1 && (
-                  <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[2px] text-[9px] text-[#A0A0A0] flex items-center gap-1">
+                  <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded-[1px] text-[9px] text-zinc-400 flex items-center gap-1 border border-white/10">
                     <Layers className="w-2.5 h-2.5" />
                     <span>{shot.generationCandidates.length}</span>
                   </div>
@@ -121,10 +121,10 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
 
               {/* Meta */}
               <div className="p-2 text-[11px]">
-                <div className="text-[#CCCCCC] truncate font-medium mb-1" title={shot.description}>
+                <div className="text-zinc-300 truncate font-medium mb-1" title={shot.description}>
                   {shot.description || "Untitled Shot"}
                 </div>
-                <div className="flex justify-between text-[#707070]">
+                <div className="flex justify-between text-zinc-500">
                   <span className="truncate max-w-[60%]">{shot.shotType}</span>
                   <span className="font-mono">{shot.aspectRatio}</span>
                 </div>

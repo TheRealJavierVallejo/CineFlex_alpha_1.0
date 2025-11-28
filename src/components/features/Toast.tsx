@@ -1,4 +1,3 @@
-
 /*
  * 🍞 COMPONENT: TOAST (Status Notification)
  * Premium Desktop Style - Bottom Right Minimal
@@ -40,30 +39,30 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
 
   const getStyles = () => {
     switch (toast.type) {
-      case 'success': return 'bg-[#1E1E1E] border-[#007ACC] text-[#E8E8E8]';
-      case 'error': return 'bg-[#3E1A1A] border-[#F48771] text-[#E8E8E8]';
-      default: return 'bg-[#1E1E1E] border-[#333] text-[#E8E8E8]';
+      case 'success': return 'bg-[#09090b] border-primary text-white shadow-[0_4px_12px_rgba(0,0,0,0.5)]';
+      case 'error': return 'bg-[#1a0505] border-red-500 text-white shadow-[0_4px_12px_rgba(0,0,0,0.5)]';
+      default: return 'bg-[#09090b] border-zinc-700 text-zinc-200 shadow-[0_4px_12px_rgba(0,0,0,0.5)]';
     }
   };
 
   return (
     <div 
       className={`
-        pointer-events-auto min-w-[240px] max-w-[320px] p-3 rounded-[3px] shadow-2xl border-l-4 flex items-center gap-3 
-        animate-in slide-in-from-bottom-2 fade-in duration-200
+        pointer-events-auto min-w-[240px] max-w-[320px] p-3 rounded-sm border-l-2 flex items-center gap-3 
+        animate-in slide-in-from-bottom-2 fade-in duration-200 border border-t-0 border-r-0 border-b-0
         ${getStyles()}
       `}
     >
-      {toast.type === 'success' ? <Check className="w-4 h-4 text-[#007ACC]" /> : 
-       toast.type === 'error' ? <AlertCircle className="w-4 h-4 text-[#F48771]" /> : 
-       <Info className="w-4 h-4 text-[#969696]" />}
+      {toast.type === 'success' ? <Check className="w-4 h-4 text-primary" /> : 
+       toast.type === 'error' ? <AlertCircle className="w-4 h-4 text-red-500" /> : 
+       <Info className="w-4 h-4 text-zinc-500" />}
       
       <div className="flex-1 text-[12px] font-medium">{toast.message}</div>
       
       {toast.action && (
         <button 
           onClick={toast.action.onClick}
-          className="text-[11px] bg-[#333] px-2 py-0.5 rounded hover:bg-[#444] transition-colors"
+          className="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-sm transition-colors uppercase font-bold tracking-wide"
         >
           {toast.action.label}
         </button>
