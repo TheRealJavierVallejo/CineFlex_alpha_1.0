@@ -1,13 +1,13 @@
 import { Project } from '../types';
 import PdfWorker from '../workers/pdf.worker.ts?worker';
 
-export const generateStoryboardPDF = (project: Project): Promise<void> => {
+export const generateStoryboardPDF = (project: Project, tier: 'free' | 'pro' = 'pro'): Promise<void> => {
   return new Promise((resolve, reject) => {
     // Initialize Worker
     const worker = new PdfWorker();
 
     // Send Data
-    worker.postMessage({ project });
+    worker.postMessage({ project, tier });
 
     // Listen for response
     worker.onmessage = (e) => {

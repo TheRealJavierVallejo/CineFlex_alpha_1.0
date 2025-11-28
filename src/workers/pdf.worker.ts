@@ -30,7 +30,7 @@ const resolveImage = async (url: string): Promise<string> => {
 };
 
 self.onmessage = async (e: MessageEvent) => {
-    const { project } = e.data as { project: Project };
+    const { project, tier } = e.data as { project: Project, tier: 'free' | 'pro' };
 
     if (!project) {
         self.postMessage({ type: 'ERROR', error: 'No project data received' });
@@ -59,6 +59,12 @@ self.onmessage = async (e: MessageEvent) => {
         doc.text(`STORYBOARD EXPORT`, pageWidth / 2, pageHeight / 2 + 5, { align: 'center' });
         doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, pageHeight / 2 + 12, { align: 'center' });
         
+        if (tier === 'free') {
+            doc.setTextColor(200, 50, 50);
+            doc.setFontSize(14);
+            doc.text("STUDENT DRAFT VERSION", pageWidth / 2, pageHeight - 30, { align: 'center' });
+        }
+
         doc.addPage();
 
         // --- CONTENT PAGES ---
@@ -69,6 +75,7 @@ self.onmessage = async (e: MessageEvent) => {
         for (const scene of project.scenes) {
             // Check Page Break
             if (cursorY > pageHeight - 40) {
+                if (tier === 'free') drawWatermark(doc, pageWidth, pageHeight);
                 doc.addPage();
                 cursorY = margin;
             }
@@ -101,6 +108,7 @@ self.onmessage = async (e: MessageEvent) => {
 
             for (let i = 0; i < sceneShots.length; i += 2) {
                 if (cursorY + rowHeight > pageHeight - margin) {
+                    if (tier === 'free') drawWatermark(doc, pageWidth, pageHeight);
                     doc.addPage();
                     cursorY = margin;
                 }
@@ -125,13 +133,20 @@ self.onmessage = async (e: MessageEvent) => {
             cursorY += 10;
         }
 
-        // Footer
+        // Footer & Watermark
         const pageCount = doc.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
+            
+            // Page Number
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
             doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+
+            // Apply Watermark to content pages (skip title page which is page 1 usually, but here our loop covers all)
+            if (i > 1 && tier === 'free') {
+               drawWatermark(doc, pageWidth, pageHeight);
+            }
         }
 
         const blob = doc.output('blob');
@@ -142,6 +157,19 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ type: 'ERROR', error: e.message || 'Unknown error' });
     }
 };
+
+function drawWatermark(doc: jsPDF, w: number, h: number) {
+    doc.saveGraphicsState();
+    doc.setTextColor(200, 200, 200);
+    doc.setFontSize(60);
+    doc.setFont('helvetica', 'bold');
+    
+    // Rotate text
+    // jsPDF rotation is a bit tricky, often needs context transformation
+    // Simple center text for now
+    doc.text("DRAFT", w/2, h/2, { align: 'center', angle: 45 } as any);
+    doc.restoreGraphicsState();
+}
 
 function drawShot(doc: jsPDF, shot: Shot, imgData: string | null, x: number, y: number, w: number, h: number) {
   const imgHeight = (w * 9) / 16;

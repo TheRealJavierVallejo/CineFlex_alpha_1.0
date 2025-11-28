@@ -15,6 +15,8 @@ import { getLocations } from '../../services/storage';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { Clapperboard, MapPin, Hash, Search } from 'lucide-react';
+// IMPORT CONTEXT
+import { useSubscription } from '../../context/SubscriptionContext';
 
 interface TimelineViewProps {
   project: Project;
@@ -25,6 +27,7 @@ interface TimelineViewProps {
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, importScript, showToast }) => {
+  const { tier } = useSubscription(); // GET TIER
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isUploadingScript, setIsUploadingScript] = useState(false);
@@ -76,7 +79,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setIsExporting(true);
     showToast("Generating PDF...", 'info');
     try {
-      await generateStoryboardPDF(project);
+      // PASS TIER HERE
+      await generateStoryboardPDF(project, tier);
       showToast("PDF Downloaded", 'success');
     } catch (e) {
       console.error(e);

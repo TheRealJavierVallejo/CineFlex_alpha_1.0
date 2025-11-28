@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Project, Shot, ShowToastFn } from '../../types';
-import { Film, Camera, Layers, Trash2, Copy, Edit2 } from 'lucide-react';
+import { Film, Camera, Layers, Trash2, Copy, Edit2, GraduationCap } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { LazyImage } from '../ui/LazyImage';
 
@@ -96,6 +96,13 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
                 <div className="absolute top-1 left-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10 z-10">
                   #{shot.sequence}
                 </div>
+
+                {/* Draft Badge */}
+                {shot.model?.includes('Student') && (
+                    <div className="absolute top-1 right-1 media-control px-1.5 py-0.5 rounded-[1px] text-[8px] font-bold uppercase text-zinc-300 border border-white/10 z-10 flex items-center gap-1">
+                        <GraduationCap className="w-2.5 h-2.5" /> Draft
+                    </div>
+                )}
 
                 {/* Actions overlay - Hover Buttons still useful for quick access */}
                 <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
