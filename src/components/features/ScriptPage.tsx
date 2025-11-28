@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Bot, MessageSquare } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Bot, MessageSquare, Sun, Moon } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
@@ -33,6 +33,7 @@ export const ScriptPage: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(false); // NEW: Paper Mode State
   
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
@@ -199,8 +200,7 @@ export const ScriptPage: React.FC = () => {
   const headings = elements.filter(el => el.type === 'scene_heading');
   const scrollToElement = (id: string) => {
      setActiveElementId(id);
-     const el = document.getElementById(id); // If we add ID to blocks later
-     // For now, focus triggers scroll in ScriptBlock
+     const el = document.getElementById(id); 
   };
 
   // --- TOOL DEFINITIONS ---
@@ -267,6 +267,15 @@ export const ScriptPage: React.FC = () => {
                 </div>
                 
                 <div className="h-4 w-[1px] bg-border" />
+
+                {/* Paper Mode Switch */}
+                <button 
+                    onClick={() => setIsLightMode(!isLightMode)}
+                    className="p-1.5 rounded text-text-tertiary hover:text-white hover:bg-[#2A2D2E] transition-colors"
+                    title={isLightMode ? "Switch to Dark Paper" : "Switch to Light Paper"}
+                >
+                    {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                </button>
                 
                 <button 
                     onClick={() => setIsZenMode(!isZenMode)}
@@ -290,7 +299,14 @@ export const ScriptPage: React.FC = () => {
             }}
             >
             {hasElements ? (
-                <div className="w-full max-w-[850px] bg-[#1E1E1E] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border border-[#333] relative transition-transform">
+                <div 
+                    className={`
+                        w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
+                        ${isLightMode 
+                            ? 'bg-white border-zinc-200 shadow-zinc-900/10' 
+                            : 'bg-[#1E1E1E] border-[#333]'}
+                    `}
+                >
                     <div className="flex flex-col">
                         {elements.map(element => (
                         <ScriptBlock 
@@ -301,6 +317,7 @@ export const ScriptPage: React.FC = () => {
                             onKeyDown={handleKeyDown}
                             onFocus={setActiveElementId}
                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
+                            isLightMode={isLightMode}
                         />
                         ))}
                     </div>
