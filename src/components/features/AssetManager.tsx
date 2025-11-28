@@ -1,15 +1,16 @@
 /*
  * 👥 COMPONENT: ASSET MANAGER
- * Commercial Quality Update: Teal Theme & Gallery Grid & Locations
+ * ONYX Edition: Industrial Grid
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Character, Outfit, ShowToastFn, ImageLibraryItem, Shot, Location } from '../../types';
 import { getCharacters, saveCharacters, getOutfits, saveOutfits, getImageLibrary, getLocations, saveLocations } from '../../services/storage';
 import { compressImage } from '../../services/image';
-import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Grid, Layout, Edit2, CheckCircle, FolderPlus, MapPin } from 'lucide-react';
+import { Plus, Trash2, User, Shirt, Loader2, Image as ImageIcon, Upload, X, AlertTriangle, Edit2, CheckCircle, MapPin } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
+import Input from '../ui/Input';
 
 interface AssetManagerProps {
    projectId: string;
@@ -27,7 +28,7 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
    const [gallerySection, setGallerySection] = useState<'selected' | 'all'>('all');
    const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
 
-   // Creation States
+   // States for creation/edit
    const [newCharName, setNewCharName] = useState('');
    const [newCharDesc, setNewCharDesc] = useState('');
    const [newOutfitName, setNewOutfitName] = useState('');
@@ -35,7 +36,6 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
    const [newLocName, setNewLocName] = useState('');
    const [newLocDesc, setNewLocDesc] = useState('');
 
-   // Operation States
    const [isUploading, setIsUploading] = useState(false);
    const [uploadTarget, setUploadTarget] = useState<{ type: 'character' | 'outfit' | 'location', id: string } | null>(null);
    const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -70,109 +70,77 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
       loadAssets();
    }, [projectId, activeTab]);
 
-   // Helper to check if an image from the library is currently used in the timeline
-   const isImageUsed = (imageUrl: string) => {
-      return projectShots.some(shot => shot.generatedImage === imageUrl);
-   };
-   
-   // Helper: Check usage of asset
+   const isImageUsed = (imageUrl: string) => projectShots.some(shot => shot.generatedImage === imageUrl);
    const getUsageCount = (type: 'character' | 'outfit' | 'location', id: string) => {
-       if (type === 'character') {
-           return projectShots.filter(s => s.characterIds?.includes(id)).length;
-       }
-       if (type === 'location') {
-           return projectShots.filter(s => s.locationId === id).length;
-       }
-       return 0; // Outfits not directly linked on shots yet in this version
+       if (type === 'character') return projectShots.filter(s => s.characterIds?.includes(id)).length;
+       if (type === 'location') return projectShots.filter(s => s.locationId === id).length;
+       return 0; 
    };
-
-   // Calculate derived stats
-   const usedImagesCount = library.filter(img => isImageUsed(img.url)).length;
 
    const handleUpdateAsset = async () => {
       if (!editingItem || !editName.trim()) return;
-
       if (editingItem.type === 'character') {
          const updated = characters.map(c => c.id === editingItem.id ? { ...c, name: editName, description: editDesc } : c);
-         setCharacters(updated);
-         await saveCharacters(projectId, updated);
+         setCharacters(updated); await saveCharacters(projectId, updated);
       } else if (editingItem.type === 'outfit') {
          const updated = outfits.map(o => o.id === editingItem.id ? { ...o, name: editName, description: editDesc } : o);
-         setOutfits(updated);
-         await saveOutfits(projectId, updated);
+         setOutfits(updated); await saveOutfits(projectId, updated);
       } else {
          const updated = locations.map(l => l.id === editingItem.id ? { ...l, name: editName, description: editDesc } : l);
-         setLocations(updated);
-         await saveLocations(projectId, updated);
+         setLocations(updated); await saveLocations(projectId, updated);
       }
-      showToast("Updated successfully", 'success');
+      showToast("Updated", 'success');
       setEditingItem(null);
    };
 
-   // --- CHARACTER ACTIONS ---
+   // CRUD Handlers
    const handleAddCharacter = async () => {
       if (!newCharName.trim()) return;
       const newChar: Character = { id: crypto.randomUUID(), name: newCharName, description: newCharDesc, referencePhotos: [] };
       const updated = [...characters, newChar];
-      setCharacters(updated);
-      await saveCharacters(projectId, updated);
+      setCharacters(updated); await saveCharacters(projectId, updated);
       setNewCharName(''); setNewCharDesc('');
-      showToast("Character added", 'success');
+      showToast("Character created", 'success');
    };
 
    const handleDeleteCharacter = async (id: string) => {
       const updated = characters.filter(c => c.id !== id);
-      setCharacters(updated);
-      await saveCharacters(projectId, updated);
-
+      setCharacters(updated); await saveCharacters(projectId, updated);
       const updatedOutfits = outfits.filter(o => o.characterId !== id);
-      setOutfits(updatedOutfits);
-      await saveOutfits(projectId, updatedOutfits);
-
+      setOutfits(updatedOutfits); await saveOutfits(projectId, updatedOutfits);
       if (selectedCharId === id) setSelectedCharId(null);
-      setDeleteConfirm(null);
-      showToast("Character removed", 'success');
+      setDeleteConfirm(null); showToast("Character deleted", 'success');
    };
 
-   // --- OUTFIT ACTIONS ---
    const handleAddOutfit = async () => {
       if (!selectedCharId || !newOutfitName.trim()) return;
       const newOutfit: Outfit = { id: crypto.randomUUID(), characterId: selectedCharId, name: newOutfitName, description: newOutfitDesc, referencePhotos: [] };
       const updated = [...outfits, newOutfit];
-      setOutfits(updated);
-      await saveOutfits(projectId, updated);
-      setNewOutfitName(''); setNewOutfitDesc('');
-      showToast("Outfit added", 'success');
+      setOutfits(updated); await saveOutfits(projectId, updated);
+      setNewOutfitName(''); setNewOutfitDesc(''); showToast("Outfit added", 'success');
    };
 
    const handleDeleteOutfit = async (id: string) => {
       const updated = outfits.filter(o => o.id !== id);
-      setOutfits(updated);
-      await saveOutfits(projectId, updated);
-      setDeleteConfirm(null);
-      showToast("Outfit removed", 'success');
+      setOutfits(updated); await saveOutfits(projectId, updated);
+      setDeleteConfirm(null); showToast("Outfit deleted", 'success');
    };
 
-   // --- LOCATION ACTIONS ---
    const handleAddLocation = async () => {
       if (!newLocName.trim()) return;
       const newLoc: Location = { id: crypto.randomUUID(), name: newLocName, description: newLocDesc, referencePhotos: [] };
       const updated = [...locations, newLoc];
-      setLocations(updated);
-      await saveLocations(projectId, updated);
-      setNewLocName(''); setNewLocDesc('');
-      showToast("Location added", 'success');
+      setLocations(updated); await saveLocations(projectId, updated);
+      setNewLocName(''); setNewLocDesc(''); showToast("Location added", 'success');
    };
 
    const handleDeleteLocation = async (id: string) => {
       const updated = locations.filter(l => l.id !== id);
-      setLocations(updated);
-      await saveLocations(projectId, updated);
-      setDeleteConfirm(null);
-      showToast("Location removed", 'success');
+      setLocations(updated); await saveLocations(projectId, updated);
+      setDeleteConfirm(null); showToast("Location deleted", 'success');
    };
 
-   // --- IMAGE UPLOAD ---
+   // Image Handlers
    const triggerImageUpload = (type: 'character' | 'outfit' | 'location', id: string) => {
       setUploadTarget({ type, id });
       fileInputRef.current?.click();
@@ -181,22 +149,11 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0 || !uploadTarget) return;
-      
       setIsUploading(true);
-      showToast(`Processing ${files.length} photos...`, 'info');
-
       try {
          const newPhotos: string[] = [];
-         for (let i = 0; i < files.length; i++) {
-             try {
-                const compressed = await compressImage(files[i]);
-                newPhotos.push(compressed);
-             } catch (err) {
-                 console.error("Failed to compress image", files[i].name, err);
-             }
-         }
-
-         if (newPhotos.length === 0) throw new Error("No valid images processed");
+         for (let i = 0; i < files.length; i++) newPhotos.push(await compressImage(files[i]));
+         if (newPhotos.length === 0) throw new Error("No valid images");
 
          if (uploadTarget.type === 'character') {
             const updated = characters.map(c => c.id === uploadTarget.id ? { ...c, referencePhotos: [...(c.referencePhotos || []), ...newPhotos] } : c);
@@ -208,15 +165,9 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
             const updated = locations.map(l => l.id === uploadTarget.id ? { ...l, referencePhotos: [...(l.referencePhotos || []), ...newPhotos] } : l);
             setLocations(updated); await saveLocations(projectId, updated);
          }
-         showToast(`${newPhotos.length} photo(s) uploaded`, 'success');
-      } catch (e) { 
-          showToast("Upload failed", 'error'); 
-          console.error(e);
-      } finally { 
-          setIsUploading(false); 
-          setUploadTarget(null); 
-          if (fileInputRef.current) fileInputRef.current.value = ''; 
-      }
+         showToast("Photos uploaded", 'success');
+      } catch (e) { showToast("Upload failed", 'error'); } 
+      finally { setIsUploading(false); setUploadTarget(null); if (fileInputRef.current) fileInputRef.current.value = ''; }
    };
 
    const handleDeletePhoto = async (type: 'character' | 'outfit' | 'location', id: string, idx: number) => {
@@ -230,144 +181,127 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
          const updated = locations.map(l => l.id === id ? { ...l, referencePhotos: l.referencePhotos?.filter((_, i) => i !== idx) } : l);
          setLocations(updated); await saveLocations(projectId, updated);
       }
-      showToast("Photo deleted", 'info');
    };
 
-   if (isLoading) return <div className="p-8 text-center text-text-tertiary">Loading Assets...</div>;
+   if (isLoading) return <div className="h-full flex items-center justify-center bg-black text-zinc-500 font-mono text-xs uppercase tracking-widest">Loading Database...</div>;
 
    return (
-      <div className="flex flex-col h-full bg-background overflow-hidden">
+      <div className="flex flex-col h-full bg-black overflow-hidden font-sans">
          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
 
-         {/* Edit Modal */}
+         {/* Modals */}
          {editingItem && (
-            <Modal isOpen={true} onClose={() => setEditingItem(null)} title={`Edit ${editingItem.type}`}>
+            <Modal isOpen={true} onClose={() => setEditingItem(null)} title={`EDIT ${editingItem.type.toUpperCase()}`} size="sm">
                <div className="space-y-4">
+                  <Input label="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
                   <div>
-                     <label className="block text-xs font-medium text-text-secondary mb-1">Name</label>
-                     <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary" />
-                  </div>
-                  <div>
-                     <label className="block text-xs font-medium text-text-secondary mb-1">Description</label>
-                     <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary min-h-[100px] resize-none" />
+                     <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Description</label>
+                     <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full bg-[#050505] border border-zinc-800 text-zinc-200 text-xs px-3 py-2 rounded-sm outline-none focus:border-primary min-h-[100px] resize-none" />
                   </div>
                   <div className="flex gap-2 justify-end pt-2">
                      <Button variant="secondary" onClick={() => setEditingItem(null)}>Cancel</Button>
-                     <Button variant="primary" onClick={handleUpdateAsset}>Save Changes</Button>
+                     <Button variant="primary" onClick={handleUpdateAsset}>Save</Button>
                   </div>
                </div>
             </Modal>
          )}
 
-         {/* Delete Confirmation Modal */}
          {deleteConfirm && (
-            <Modal isOpen={true} onClose={() => setDeleteConfirm(null)} title="Delete Item?">
-               <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-error/10 rounded border border-error/20">
-                     <AlertTriangle className="w-5 h-5 text-error shrink-0" />
-                     <div className="text-sm text-text-primary">
-                        <p className="mb-1">Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
-                        
-                        {/* Usage Warning */}
-                        {getUsageCount(deleteConfirm.type, deleteConfirm.id) > 0 && (
-                            <p className="text-error font-bold mt-2">
-                                Warning: This {deleteConfirm.type} is used in {getUsageCount(deleteConfirm.type, deleteConfirm.id)} shot(s).
-                            </p>
-                        )}
-                        
-                        {deleteConfirm.type === 'character' && <p className="text-xs text-text-secondary mt-1">This will also remove all associated outfits.</p>}
-                     </div>
+            <Modal isOpen={true} onClose={() => setDeleteConfirm(null)} title="CONFIRM DELETION" size="sm">
+               <div className="space-y-6">
+                  <div className="text-zinc-400 text-xs">
+                     <p>Permanently delete <strong className="text-white">{deleteConfirm.name}</strong>?</p>
+                     {getUsageCount(deleteConfirm.type, deleteConfirm.id) > 0 && <p className="text-red-500 font-bold mt-2">Active in {getUsageCount(deleteConfirm.type, deleteConfirm.id)} shots.</p>}
                   </div>
                   <div className="flex gap-2 justify-end">
                      <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-                     <Button variant="primary" onClick={() => {
+                     <Button variant="danger" onClick={() => {
                         if (deleteConfirm.type === 'character') handleDeleteCharacter(deleteConfirm.id);
                         else if (deleteConfirm.type === 'outfit') handleDeleteOutfit(deleteConfirm.id);
                         else handleDeleteLocation(deleteConfirm.id);
-                     }} className="bg-error hover:bg-error/90">Delete</Button>
+                     }}>Delete</Button>
                   </div>
                </div>
             </Modal>
          )}
 
          {previewImage && (
-            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-8 animate-in fade-in" onClick={() => setPreviewImage(null)}>
-               <img src={previewImage} className="max-w-full max-h-full object-contain shadow-2xl rounded" alt="Preview" />
-               <button onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 text-white p-2"><X className="w-8 h-8" /></button>
+            <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-8 animate-in fade-in" onClick={() => setPreviewImage(null)}>
+               <img src={previewImage} className="max-w-full max-h-full object-contain" />
+               <button onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 text-zinc-500 hover:text-white p-2"><X className="w-6 h-6" /></button>
             </div>
          )}
 
-         {/* TOP NAVIGATION */}
-         <div className="h-10 border-b border-border flex items-center px-4 gap-4 bg-surface shrink-0">
-            <button onClick={() => setActiveTab('assets')} className={`h-full flex items-center gap-2 text-xs font-medium border-b-2 transition-colors ${activeTab === 'assets' ? 'border-primary text-text-primary' : 'border-transparent text-text-tertiary hover:text-text-primary'}`}>
-               <User className="w-3.5 h-3.5" /> Cast & Wardrobe
-            </button>
-            <button onClick={() => setActiveTab('locations')} className={`h-full flex items-center gap-2 text-xs font-medium border-b-2 transition-colors ${activeTab === 'locations' ? 'border-primary text-text-primary' : 'border-transparent text-text-tertiary hover:text-text-primary'}`}>
-               <MapPin className="w-3.5 h-3.5" /> Locations
-            </button>
-            <button onClick={() => setActiveTab('gallery')} className={`h-full flex items-center gap-2 text-xs font-medium border-b-2 transition-colors ${activeTab === 'gallery' ? 'border-primary text-text-primary' : 'border-transparent text-text-tertiary hover:text-text-primary'}`}>
-               <ImageIcon className="w-3.5 h-3.5" /> Image Gallery
-            </button>
+         {/* TAB BAR */}
+         <div className="h-10 border-b border-zinc-800 flex items-center px-6 gap-6 bg-[#09090b] shrink-0">
+            {['assets', 'locations', 'gallery'].map(tab => (
+               <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab as any)} 
+                  className={`h-full flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === tab ? 'border-primary text-white' : 'border-transparent text-zinc-600 hover:text-zinc-400'}`}
+               >
+                  {tab === 'assets' && <User className="w-3.5 h-3.5" />}
+                  {tab === 'locations' && <MapPin className="w-3.5 h-3.5" />}
+                  {tab === 'gallery' && <ImageIcon className="w-3.5 h-3.5" />}
+                  {tab}
+               </button>
+            ))}
          </div>
 
-         {/* CONTENT AREA */}
+         {/* CONTENT */}
          <div className="flex-1 overflow-hidden">
-            {activeTab === 'gallery' ? (
+            
+            {/* 1. GALLERY */}
+            {activeTab === 'gallery' && (
                <div className="h-full flex flex-col">
-                  {/* Gallery Section Switcher */}
-                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface-secondary">
+                  <div className="p-3 border-b border-zinc-800 flex items-center justify-between bg-[#050505]">
                      <div className="flex gap-2">
-                        <button onClick={() => setGallerySection('all')} className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-colors ${gallerySection === 'all' ? 'bg-primary text-white' : 'bg-surface hover:bg-surface-hover text-text-secondary'}`}>All Images ({library.length})</button>
-                        <button onClick={() => setGallerySection('selected')} className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-colors flex items-center gap-2 ${gallerySection === 'selected' ? 'bg-primary text-white' : 'bg-surface hover:bg-surface-hover text-text-secondary'}`}><CheckCircle className="w-3 h-3" /> Selected Shots ({usedImagesCount})</button>
+                        <Button variant={gallerySection === 'all' ? 'primary' : 'ghost'} size="sm" onClick={() => setGallerySection('all')}>All ({library.length})</Button>
+                        <Button variant={gallerySection === 'selected' ? 'primary' : 'ghost'} size="sm" onClick={() => setGallerySection('selected')}>Used in Edit ({library.filter(i => isImageUsed(i.url)).length})</Button>
                      </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 bg-background">
-                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  <div className="flex-1 overflow-y-auto p-4 bg-black">
+                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-px bg-zinc-900 border border-zinc-900">
                         {(gallerySection === 'selected' ? library.filter(img => isImageUsed(img.url)) : library).map((item) => (
-                           <div key={item.id} className="aspect-video bg-black rounded-sm overflow-hidden group relative cursor-pointer border border-transparent hover:border-primary/50 transition-colors" onClick={() => setPreviewImage(item.url)}>
-                              <img src={item.url} className="block w-full h-full object-cover" loading="lazy" />
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                                 <div className="text-[10px] text-white/80 line-clamp-2">{item.prompt}</div>
-                              </div>
+                           <div key={item.id} className="aspect-video bg-black group relative cursor-pointer" onClick={() => setPreviewImage(item.url)}>
+                              <img src={item.url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute inset-0 border-2 border-transparent group-hover:border-primary/50 pointer-events-none"></div>
                            </div>
                         ))}
                      </div>
                   </div>
                </div>
-            ) : activeTab === 'locations' ? (
-               <div className="h-full flex flex-col p-6 overflow-y-auto bg-background">
-                  <div className="max-w-5xl mx-auto w-full space-y-6">
-                     {/* Add Location */}
-                     <div className="studio-card p-4">
-                        <h3 className="font-bold text-text-primary text-sm mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> Add New Location</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                           <input className="studio-input" placeholder="Location Name (e.g. Abandoned Warehouse)" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
-                           <input className="studio-input md:col-span-2" placeholder="Description (e.g. Rusty pillars, puddles on floor)" value={newLocDesc} onChange={e => setNewLocDesc(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()} />
-                        </div>
-                        <div className="mt-3 flex justify-end">
-                           <Button variant="primary" size="sm" onClick={handleAddLocation} disabled={!newLocName}>Add Location</Button>
-                        </div>
-                     </div>
+            )}
 
-                     {/* Location List */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 2. LOCATIONS */}
+            {activeTab === 'locations' && (
+               <div className="h-full flex p-0">
+                  <div className="w-[300px] border-r border-zinc-800 bg-[#050505] p-4 flex flex-col gap-4">
+                     <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">New Location</h3>
+                     <div className="space-y-2">
+                        <Input placeholder="LOCATION NAME" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
+                        <textarea placeholder="VISUAL DESCRIPTION" value={newLocDesc} onChange={e => setNewLocDesc(e.target.value)} className="w-full bg-black border border-zinc-800 text-zinc-300 text-xs px-3 py-2 rounded-sm outline-none focus:border-primary h-24 resize-none placeholder:text-zinc-700" />
+                        <Button variant="secondary" className="w-full" onClick={handleAddLocation} disabled={!newLocName}>Create Asset</Button>
+                     </div>
+                  </div>
+                  <div className="flex-1 p-6 overflow-y-auto bg-black">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
                         {locations.map(loc => (
-                           <div key={loc.id} className="studio-card p-4 relative group">
+                           <div key={loc.id} className="bg-[#09090b] border border-zinc-800 p-4 group relative hover:border-zinc-700 transition-colors">
                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => setEditingItem({ type: 'location', id: loc.id, name: loc.name, description: loc.description })} className="text-text-tertiary hover:text-primary p-1.5 rounded-sm hover:bg-surface-hover"><Edit2 className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => setDeleteConfirm({ type: 'location', id: loc.id, name: loc.name })} className="text-text-tertiary hover:text-error p-1.5 rounded-sm hover:bg-surface-hover"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => setEditingItem({ type: 'location', id: loc.id, name: loc.name, description: loc.description })} className="text-zinc-600 hover:text-white p-1.5"><Edit2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => setDeleteConfirm({ type: 'location', id: loc.id, name: loc.name })} className="text-zinc-600 hover:text-red-500 p-1.5"><Trash2 className="w-3.5 h-3.5" /></button>
                                </div>
-                               <h4 className="font-bold text-text-primary text-sm">{loc.name}</h4>
-                               <p className="text-xs text-text-secondary mb-3 mt-1">{loc.description}</p>
-                               
-                               <div className="flex gap-2 border-t border-border pt-3 overflow-x-auto pb-1 scrollbar-hide">
-                                   <button onClick={() => triggerImageUpload('location', loc.id)} className="w-14 h-14 border border-dashed border-border rounded-sm flex items-center justify-center hover:bg-surface-hover transition-colors shrink-0">
-                                      {isUploading && uploadTarget?.id === loc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 text-text-tertiary" />}
+                               <h4 className="font-bold text-zinc-200 text-sm font-mono uppercase tracking-wide">{loc.name}</h4>
+                               <p className="text-xs text-zinc-500 mb-4 mt-1 font-mono">{loc.description}</p>
+                               <div className="flex gap-2 pt-3 border-t border-zinc-900 overflow-x-auto">
+                                   <button onClick={() => triggerImageUpload('location', loc.id)} className="w-12 h-12 border border-dashed border-zinc-800 flex items-center justify-center hover:border-primary hover:text-primary text-zinc-700 transition-colors shrink-0">
+                                      {isUploading && uploadTarget?.id === loc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                                    </button>
                                    {loc.referencePhotos?.map((p, i) => (
-                                      <div key={i} className="relative w-14 h-14 group/img shrink-0">
-                                         <img src={p} className="w-full h-full object-cover rounded-sm border border-border cursor-pointer" onClick={() => setPreviewImage(p)} />
-                                         <button onClick={() => handleDeletePhoto('location', loc.id, i)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white rounded-sm"><X className="w-4 h-4" /></button>
+                                      <div key={i} className="relative w-12 h-12 group/img shrink-0">
+                                         <img src={p} className="w-full h-full object-cover border border-zinc-800 cursor-pointer" onClick={() => setPreviewImage(p)} />
+                                         <button onClick={() => handleDeletePhoto('location', loc.id, i)} className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white"><X className="w-4 h-4" /></button>
                                       </div>
                                    ))}
                                </div>
@@ -376,82 +310,121 @@ export const AssetManager: React.FC<AssetManagerProps> = ({ projectId, projectSh
                      </div>
                   </div>
                </div>
-            ) : (
+            )}
+
+            {/* 3. ASSETS (CAST) */}
+            {activeTab === 'assets' && (
                <div className="flex h-full">
-                  {/* ASSETS TAB (Characters & Outfits) - Preserved */}
-                  <div className="w-[350px] border-r border-border flex flex-col bg-surface">
-                     <div className="h-10 px-4 border-b border-border flex items-center justify-between bg-surface-secondary">
-                        <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Cast List</span>
-                        <span className="text-[10px] text-text-tertiary font-mono">{characters.length} Actors</span>
-                     </div>
-                     <div className="p-3 border-b border-border space-y-2 bg-surface">
-                        <input className="studio-input" placeholder="Character Name" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
+                  {/* Cast List Sidebar */}
+                  <div className="w-[300px] border-r border-zinc-800 bg-[#050505] flex flex-col">
+                     <div className="p-4 border-b border-zinc-800 space-y-2">
+                        <Input placeholder="NEW CHARACTER" value={newCharName} onChange={e => setNewCharName(e.target.value)} />
                         <div className="flex gap-2">
-                           <input value={newCharDesc} onChange={(e) => setNewCharDesc(e.target.value)} placeholder="Description" className="studio-input" onKeyDown={(e) => e.key === 'Enter' && handleAddCharacter()} />
-                           <Button variant="primary" size="sm" icon={<Plus className="w-3 h-3" />} onClick={handleAddCharacter} disabled={newCharName.length === 0}>Add</Button>
+                           <Input placeholder="ROLE/DESC" value={newCharDesc} onChange={e => setNewCharDesc(e.target.value)} />
+                           <Button variant="secondary" size="icon" onClick={handleAddCharacter} disabled={!newCharName} icon={<Plus className="w-4 h-4" />} />
                         </div>
                      </div>
                      <div className="flex-1 overflow-y-auto">
                         {characters.map(char => (
-                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} className={`p-3 border-b border-border cursor-pointer transition-colors group relative ${selectedCharId === char.id ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-surface-secondary border-l-2 border-l-transparent'}`}>
-                              <div className="flex justify-between items-start mb-2">
-                                 <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-sm flex items-center justify-center ${selectedCharId === char.id ? 'bg-primary text-white' : 'bg-surface-secondary text-text-tertiary border border-border'}`}><User className="w-4 h-4" /></div>
-                                    <div><div className={`font-semibold text-xs ${selectedCharId === char.id ? 'text-primary' : 'text-text-primary'}`}>{char.name}</div><div className="text-[10px] text-text-secondary truncate max-w-[150px]">{char.description}</div></div>
-                                 </div>
-                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={(e) => { e.stopPropagation(); setEditingItem({ type: 'character', id: char.id, name: char.name, description: char.description }); }} className="text-text-tertiary hover:text-primary p-1 rounded-sm hover:bg-surface-hover"><Edit2 className="w-3 h-3" /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'character', id: char.id, name: char.name }); }} className="text-text-tertiary hover:text-error p-1 rounded-sm hover:bg-surface-hover"><Trash2 className="w-3 h-3" /></button>
-                                 </div>
+                           <div key={char.id} onClick={() => setSelectedCharId(char.id)} className={`p-3 border-b border-zinc-900 cursor-pointer transition-colors group relative flex items-center justify-between ${selectedCharId === char.id ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-[#0a0a0a] border-l-2 border-l-transparent'}`}>
+                              <div>
+                                 <div className={`font-bold text-xs uppercase tracking-wide ${selectedCharId === char.id ? 'text-white' : 'text-zinc-400'}`}>{char.name}</div>
+                                 <div className="text-[10px] text-zinc-600 font-mono truncate max-w-[150px]">{char.description}</div>
                               </div>
-                              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                 <button onClick={(e) => { e.stopPropagation(); triggerImageUpload('character', char.id); }} className="w-8 h-8 border border-dashed border-border rounded-sm flex items-center justify-center text-text-tertiary hover:text-primary hover:border-primary shrink-0 transition-colors">{isUploading && uploadTarget?.id === char.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}</button>
-                                 {char.referencePhotos?.map((p, i) => (
-                                    <div key={i} className="relative w-8 h-8 shrink-0 group/img">
-                                       <img src={p} className="w-full h-full object-cover rounded-sm border border-border cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewImage(p); }} />
-                                       <button onClick={(e) => { e.stopPropagation(); handleDeletePhoto('character', char.id, i); }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white rounded-sm"><X className="w-3 h-3" /></button>
-                                    </div>
-                                 ))}
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                                 <button onClick={(e) => { e.stopPropagation(); setEditingItem({ type: 'character', id: char.id, name: char.name, description: char.description }); }} className="text-zinc-600 hover:text-white p-1"><Edit2 className="w-3 h-3" /></button>
+                                 <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'character', id: char.id, name: char.name }); }} className="text-zinc-600 hover:text-red-500 p-1"><Trash2 className="w-3 h-3" /></button>
                               </div>
                            </div>
                         ))}
                      </div>
                   </div>
-                  <div className="flex-1 bg-background flex flex-col">
-                     <div className="h-10 px-4 border-b border-border flex items-center justify-between bg-surface-secondary">
-                        <div className="flex items-center gap-2"><span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Wardrobe</span>{selectedCharId && <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-sm font-medium border border-primary/20">{characters.find(c => c.id === selectedCharId)?.name}</span>}</div>
-                     </div>
+
+                  {/* Character Detail / Wardrobe */}
+                  <div className="flex-1 bg-black flex flex-col">
                      {!selectedCharId ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-text-tertiary"><Shirt className="w-10 h-10 mb-3 opacity-20" /><p className="text-xs">Select a character to manage wardrobe</p></div>
+                        <div className="flex-1 flex flex-col items-center justify-center text-zinc-800">
+                           <User className="w-16 h-16 mb-4 opacity-10" />
+                           <span className="text-xs font-mono uppercase tracking-widest">Select Character</span>
+                        </div>
                      ) : (
-                        <div className="flex-1 overflow-y-auto p-6 bg-background">
-                           <div className="studio-card p-3 mb-4 bg-surface-secondary/50">
-                              <div className="flex gap-2">
-                                 <input value={newOutfitName} onChange={(e) => setNewOutfitName(e.target.value)} placeholder="Outfit name" className="studio-input flex-1" />
-                                 <input value={newOutfitDesc} onChange={(e) => setNewOutfitDesc(e.target.value)} placeholder="Description" className="studio-input flex-[2]" onKeyDown={(e) => e.key === 'Enter' && handleAddOutfit()} />
-                                 <Button variant="primary" size="sm" onClick={() => handleAddOutfit()} disabled={!newOutfitName}>Add Outfit</Button>
-                              </div>
-                           </div>
-                           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                              {outfits.filter(o => o.characterId === selectedCharId).map(outfit => (
-                                 <div key={outfit.id} className="studio-card p-3 relative group">
-                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <button onClick={() => setEditingItem({ type: 'outfit', id: outfit.id, name: outfit.name, description: outfit.description })} className="text-text-tertiary hover:text-primary p-1.5 rounded-sm hover:bg-surface-hover"><Edit2 className="w-3.5 h-3.5" /></button>
-                                       <button onClick={() => setDeleteConfirm({ type: 'outfit', id: outfit.id, name: outfit.name })} className="text-text-tertiary hover:text-error p-1.5 rounded-sm hover:bg-surface-hover"><Trash2 className="w-3.5 h-3.5" /></button>
-                                    </div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                       <div className="w-8 h-8 bg-surface-secondary rounded-sm flex items-center justify-center text-text-tertiary border border-border"><Shirt className="w-4 h-4" /></div>
-                                       <div><div className="text-text-primary font-medium text-xs">{outfit.name}</div><div className="text-[10px] text-text-secondary">{outfit.description}</div></div>
-                                    </div>
-                                    <div className="flex gap-2 mt-2 pt-2 border-t border-border">
-                                       <button onClick={() => triggerImageUpload('outfit', outfit.id)} className="w-10 h-10 border border-dashed border-border rounded-sm flex items-center justify-center hover:bg-surface-hover transition-colors">{isUploading && uploadTarget?.id === outfit.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 text-text-tertiary" />}</button>
-                                       {outfit.referencePhotos?.map((p, i) => (
-                                          <div key={i} className="relative w-10 h-10 group/img"><img src={p} className="w-full h-full object-cover rounded-sm border border-border cursor-pointer" onClick={() => setPreviewImage(p)} /><button onClick={() => handleDeletePhoto('outfit', outfit.id, i)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white rounded-sm"><X className="w-3 h-3" /></button></div>
-                                       ))}
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
+                        <div className="flex-1 flex flex-col">
+                            {/* Character Header */}
+                            <div className="h-16 border-b border-zinc-800 p-4 flex items-center justify-between bg-[#050505]">
+                               <div className="flex items-center gap-4">
+                                   <div className="w-10 h-10 border border-zinc-800 bg-black flex items-center justify-center text-zinc-700">
+                                      <User className="w-5 h-5" />
+                                   </div>
+                                   <div>
+                                      <h2 className="text-sm font-bold text-white uppercase tracking-wider">{characters.find(c => c.id === selectedCharId)?.name}</h2>
+                                      <p className="text-[10px] text-zinc-500 font-mono">Reference & Wardrobe Config</p>
+                                   </div>
+                               </div>
+                               <div className="flex gap-2">
+                                   <button onClick={() => triggerImageUpload('character', selectedCharId)} className="h-8 px-3 border border-zinc-800 hover:border-primary text-zinc-500 hover:text-white text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-colors">
+                                      {isUploading && uploadTarget?.id === selectedCharId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />} Face Ref
+                                   </button>
+                               </div>
+                            </div>
+                            
+                            {/* Face Refs Row */}
+                            <div className="p-4 border-b border-zinc-900 bg-[#09090b]">
+                                <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-3">Face References</div>
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    {characters.find(c => c.id === selectedCharId)?.referencePhotos?.length === 0 && <span className="text-[10px] text-zinc-700 italic">No reference photos loaded.</span>}
+                                    {characters.find(c => c.id === selectedCharId)?.referencePhotos?.map((p, i) => (
+                                       <div key={i} className="relative w-16 h-16 group/img shrink-0 border border-zinc-800 hover:border-zinc-500 transition-colors">
+                                          <img src={p} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImage(p)} />
+                                          <button onClick={() => handleDeletePhoto('character', selectedCharId, i)} className="absolute top-0 right-0 bg-black text-white p-0.5 opacity-0 group-hover/img:opacity-100"><X className="w-3 h-3" /></button>
+                                       </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Wardrobe Section */}
+                            <div className="flex-1 p-4 bg-black overflow-y-auto">
+                                <div className="flex items-center justify-between mb-4">
+                                   <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Outfits</div>
+                                </div>
+                                
+                                {/* Add Outfit */}
+                                <div className="flex gap-2 mb-6 p-3 border border-zinc-900 bg-[#050505]">
+                                    <input value={newOutfitName} onChange={e => setNewOutfitName(e.target.value)} placeholder="OUTFIT NAME" className="bg-transparent border-b border-zinc-800 text-xs text-white w-40 px-2 outline-none focus:border-primary" />
+                                    <input value={newOutfitDesc} onChange={e => setNewOutfitDesc(e.target.value)} placeholder="DESCRIPTION" className="bg-transparent border-b border-zinc-800 text-xs text-zinc-400 flex-1 px-2 outline-none focus:border-primary" onKeyDown={(e) => e.key === 'Enter' && handleAddOutfit()} />
+                                    <Button variant="ghost" size="sm" icon={<Plus className="w-3 h-3" />} onClick={handleAddOutfit} disabled={!newOutfitName} />
+                                </div>
+
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                   {outfits.filter(o => o.characterId === selectedCharId).map(outfit => (
+                                      <div key={outfit.id} className="border border-zinc-800 bg-[#09090b] p-4 group relative hover:border-zinc-700 transition-colors">
+                                         <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-3">
+                                               <div className="w-8 h-8 bg-black border border-zinc-800 flex items-center justify-center text-zinc-700"><Shirt className="w-4 h-4" /></div>
+                                               <div>
+                                                  <div className="text-zinc-200 text-xs font-bold uppercase tracking-wide">{outfit.name}</div>
+                                                  <div className="text-[10px] text-zinc-500 font-mono">{outfit.description}</div>
+                                               </div>
+                                            </div>
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                                               <button onClick={() => setEditingItem({ type: 'outfit', id: outfit.id, name: outfit.name, description: outfit.description })} className="text-zinc-600 hover:text-white p-1"><Edit2 className="w-3 h-3" /></button>
+                                               <button onClick={() => setDeleteConfirm({ type: 'outfit', id: outfit.id, name: outfit.name })} className="text-zinc-600 hover:text-red-500 p-1"><Trash2 className="w-3 h-3" /></button>
+                                            </div>
+                                         </div>
+                                         <div className="flex gap-2 pt-3 border-t border-zinc-900 overflow-x-auto">
+                                             <button onClick={() => triggerImageUpload('outfit', outfit.id)} className="w-10 h-10 border border-dashed border-zinc-800 flex items-center justify-center text-zinc-700 hover:text-white hover:border-zinc-500 transition-colors shrink-0">
+                                                {isUploading && uploadTarget?.id === outfit.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                                             </button>
+                                             {outfit.referencePhotos?.map((p, i) => (
+                                                <div key={i} className="relative w-10 h-10 group/img shrink-0 border border-zinc-800">
+                                                   <img src={p} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImage(p)} />
+                                                   <button onClick={() => handleDeletePhoto('outfit', outfit.id, i)} className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover/img:opacity-100 text-white"><X className="w-3 h-3" /></button>
+                                                </div>
+                                             ))}
+                                         </div>
+                                      </div>
+                                   ))}
+                                </div>
+                            </div>
                         </div>
                      )}
                   </div>

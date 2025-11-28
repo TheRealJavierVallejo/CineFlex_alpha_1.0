@@ -4,49 +4,47 @@ import { Loader2 } from 'lucide-react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg' | 'icon';
-  isLoading?: boolean;
-  loading?: boolean; // Alias for isLoading
+  loading?: boolean;
   icon?: React.ReactNode;
 }
 
-const Button: React.FC<ButtonProps> = ({ 
-  children, 
-  variant = 'primary', 
-  size = 'md', 
-  isLoading,
-  loading,
+const Button: React.FC<ButtonProps> = ({
+  children,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
   icon,
   className = '',
   disabled,
-  ...props 
+  ...props
 }) => {
-  const isBusy = isLoading || loading;
-
-  const baseStyles = "inline-flex items-center justify-center font-medium transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed border select-none";
+  const baseStyles = "inline-flex items-center justify-center font-bold uppercase tracking-wider transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 focus:ring-offset-black select-none";
   
-  // Note the change from rounded-md/lg to rounded (which is now 3px in config)
   const variants = {
-    primary: "bg-primary hover:bg-primary-hover text-white border-transparent shadow-sm",
-    secondary: "bg-[#27272a] hover:bg-[#323235] text-[#e4e4e7] border-[#3f3f46]",
-    ghost: "bg-transparent hover:bg-white/5 text-[#a1a1aa] hover:text-[#e4e4e7] border-transparent",
-    danger: "bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20"
+    primary: "bg-primary hover:bg-primary-hover text-white border border-primary shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]",
+    secondary: "bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-zinc-700",
+    ghost: "bg-transparent hover:bg-white/5 text-zinc-500 hover:text-white border border-transparent hover:border-zinc-800",
+    danger: "bg-red-900/20 hover:bg-red-900/50 text-red-500 hover:text-red-200 border border-red-900/50"
   };
 
   const sizes = {
-    sm: "text-[11px] h-7 px-2.5 rounded-sm gap-1.5",
-    md: "text-[12px] h-8 px-3 rounded gap-2",
-    lg: "text-[13px] h-10 px-4 rounded-md gap-2",
-    icon: "h-8 w-8 p-0 rounded"
+    sm: "h-6 px-3 text-[10px]",
+    md: "h-8 px-4 text-[11px]",
+    lg: "h-10 px-6 text-xs",
+    icon: "h-8 w-8 p-0"
   };
 
   return (
     <button
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-      disabled={disabled || isBusy}
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} rounded-sm ${className}`}
+      disabled={disabled || loading}
       {...props}
     >
-      {isBusy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-      {!isBusy && icon && <span className="shrink-0">{icon}</span>}
+      {loading ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+      ) : icon ? (
+        <span className={`mr-2 ${size === 'icon' ? 'mr-0' : ''}`}>{icon}</span>
+      ) : null}
       {children}
     </button>
   );

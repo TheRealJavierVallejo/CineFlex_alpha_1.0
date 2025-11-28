@@ -5,37 +5,29 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className = '', label, error, ...props }, ref) => {
-    return (
-      <div className="w-full">
-        {label && (
-          <label className="block text-[11px] font-medium text-text-secondary mb-1.5 uppercase tracking-wide">
-            {label}
-          </label>
-        )}
-        <input
-          ref={ref}
-          className={`
-            w-full bg-[#18181b] border border-[#27272a] 
-            text-[13px] text-text-primary 
-            rounded px-3 py-1.5 h-8
-            outline-none transition-colors
-            focus:border-primary focus:bg-[#09090b] focus:ring-1 focus:ring-primary/20
-            placeholder:text-text-muted/50
-            disabled:opacity-50 disabled:cursor-not-allowed
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}
-            ${className}
-          `}
-          {...props}
-        />
-        {error && (
-          <p className="mt-1 text-[11px] text-red-500">{error}</p>
-        )}
-      </div>
-    );
-  }
-);
+const Input: React.FC<InputProps> = ({ label, error, className = '', ...props }) => {
+  return (
+    <div className="w-full">
+      {label && (
+        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">
+          {label}
+        </label>
+      )}
+      <input
+        className={`
+          w-full bg-[#050505] border border-zinc-800 text-zinc-200 text-xs px-3 py-2 rounded-sm
+          outline-none transition-colors
+          focus:border-primary focus:bg-black
+          placeholder:text-zinc-700
+          disabled:opacity-50 disabled:cursor-not-allowed
+          ${error ? 'border-red-500 focus:border-red-500' : ''}
+          ${className}
+        `}
+        {...props}
+      />
+      {error && <span className="text-[10px] text-red-500 mt-1 block font-mono">{error}</span>}
+    </div>
+  );
+};
 
-Input.displayName = 'Input';
 export default Input;
