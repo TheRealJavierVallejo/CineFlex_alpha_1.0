@@ -4,6 +4,8 @@ import { SHOT_TYPES, TIMES_OF_DAY, ASPECT_RATIOS, IMAGE_RESOLUTIONS } from '../.
 import { CollapsibleSection } from '../../ui/CollapsibleSection';
 import { FileText, MapPin, Info, Camera, Users, Ban, Settings, Upload, Loader2, Trash2, RotateCcw } from 'lucide-react';
 import Button from '../../ui/Button';
+// NEW IMPORT
+import { FeatureGate } from '../../ui/FeatureGate';
 
 interface ShotDetailsFormProps {
     shot: Shot;
@@ -129,13 +131,20 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-text-secondary mb-2">Resolution</label>
-                                <select
-                                    value={selectedResolution}
-                                    onChange={(e) => setSelectedResolution(e.target.value)}
-                                    className="studio-input"
-                                >
-                                    {IMAGE_RESOLUTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                                </select>
+                                {/* PRO FEATURE */}
+                                <FeatureGate label="High Res 4K" fallback={
+                                    <select disabled className="studio-input opacity-50 cursor-not-allowed">
+                                        <option>1024x1024 (Free)</option>
+                                    </select>
+                                }>
+                                    <select
+                                        value={selectedResolution}
+                                        onChange={(e) => setSelectedResolution(e.target.value)}
+                                        className="studio-input"
+                                    >
+                                        {IMAGE_RESOLUTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                    </select>
+                                </FeatureGate>
                             </div>
                         </div>
 
@@ -186,52 +195,55 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                     </div>
                 </CollapsibleSection>
 
-                {/* Cast Section */}
+                {/* Cast Section - GATED */}
                 <CollapsibleSection title="Cast" icon={<Users className="w-4 h-4 text-primary" />} defaultOpen={false}>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg border border-border">
-                            <div className="flex items-center gap-2">
-                                <Ban className="w-4 h-4 text-text-secondary" />
-                                <span className="text-sm font-medium text-text-secondary">No Characters</span>
+                    {/* WRAP THE CONTENT IN THE GATE */}
+                    <FeatureGate label="Character Consistency">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg border border-border">
+                                <div className="flex items-center gap-2">
+                                    <Ban className="w-4 h-4 text-text-secondary" />
+                                    <span className="text-sm font-medium text-text-secondary">No Characters</span>
+                                </div>
+                                <button
+                                    onClick={() => setNoCharacters(!noCharacters)}
+                                    className={`w-10 h-5 rounded-full relative transition-colors ${noCharacters ? 'bg-primary' : 'bg-border'}`}
+                                >
+                                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${noCharacters ? 'left-6' : 'left-1'}`} />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setNoCharacters(!noCharacters)}
-                                className={`w-10 h-5 rounded-full relative transition-colors ${noCharacters ? 'bg-primary' : 'bg-border'}`}
-                            >
-                                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${noCharacters ? 'left-6' : 'left-1'}`} />
-                            </button>
-                        </div>
 
-                        <div className={`space-y-2 transition-opacity ${noCharacters ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <div className="text-xs text-text-secondary mb-2">Select characters to include in the scene.</div>
-                            {characters.length === 0 ? (
-                                <div className="text-center text-text-muted py-4 text-sm border border-dashed border-border rounded">No characters in project</div>
-                            ) : (
-                                characters.map(char => (
-                                    <div
-                                        key={char.id}
-                                        onClick={() => {
-                                            const ids = shot.characterIds.includes(char.id)
-                                                ? shot.characterIds.filter(id => id !== char.id)
-                                                : [...shot.characterIds, char.id];
-                                            setShot(prev => ({ ...prev, characterIds: ids }));
-                                        }}
-                                        className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${shot.characterIds.includes(char.id)
-                                            ? 'bg-primary/10 border-primary'
-                                            : 'bg-surface-secondary border-border hover:border-text-muted'
-                                            }`}
-                                    >
-                                        <div className={`w-4 h-4 rounded-full border mr-3 flex items-center justify-center ${shot.characterIds.includes(char.id) ? 'border-primary bg-primary' : 'border-text-muted'
-                                            }`}>
-                                            {shot.characterIds.includes(char.id) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                            <div className={`space-y-2 transition-opacity ${noCharacters ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <div className="text-xs text-text-secondary mb-2">Select characters to include in the scene.</div>
+                                {characters.length === 0 ? (
+                                    <div className="text-center text-text-muted py-4 text-sm border border-dashed border-border rounded">No characters in project</div>
+                                ) : (
+                                    characters.map(char => (
+                                        <div
+                                            key={char.id}
+                                            onClick={() => {
+                                                const ids = shot.characterIds.includes(char.id)
+                                                    ? shot.characterIds.filter(id => id !== char.id)
+                                                    : [...shot.characterIds, char.id];
+                                                setShot(prev => ({ ...prev, characterIds: ids }));
+                                            }}
+                                            className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${shot.characterIds.includes(char.id)
+                                                ? 'bg-primary/10 border-primary'
+                                                : 'bg-surface-secondary border-border hover:border-text-muted'
+                                                }`}
+                                        >
+                                            <div className={`w-4 h-4 rounded-full border mr-3 flex items-center justify-center ${shot.characterIds.includes(char.id) ? 'border-primary bg-primary' : 'border-text-muted'
+                                                }`}>
+                                                {shot.characterIds.includes(char.id) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                            </div>
+                                            <span className={`font-medium text-sm ${shot.characterIds.includes(char.id) ? 'text-text-primary' : 'text-text-secondary'
+                                                }`}>{char.name}</span>
                                         </div>
-                                        <span className={`font-medium text-sm ${shot.characterIds.includes(char.id) ? 'text-text-primary' : 'text-text-secondary'
-                                            }`}>{char.name}</span>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    </FeatureGate>
                 </CollapsibleSection>
 
                 {/* Advanced Section */}
@@ -247,57 +259,63 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                             />
                         </div>
 
+                        {/* GATED SKETCH */}
                         <div>
                             <label className="block text-xs font-semibold text-text-secondary mb-2">Sketch Reference</label>
-                            <div className="flex gap-3">
-                                <div
-                                    className="w-20 h-20 bg-surface-secondary border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors cursor-pointer overflow-hidden"
-                                    onClick={() => document.getElementById('sketch-upload')?.click()}
-                                >
-                                    {shot.sketchImage ? (
-                                        <img src={shot.sketchImage} className="w-full h-full object-contain p-1" alt="Sketch" />
-                                    ) : <Upload className="w-5 h-5 text-text-muted" />}
-                                    <input id="sketch-upload" type="file" onChange={handleSketchUpload} className="hidden" />
+                            <FeatureGate label="Sketch-to-Image">
+                                <div className="flex gap-3">
+                                    <div
+                                        className="w-20 h-20 bg-surface-secondary border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors cursor-pointer overflow-hidden"
+                                        onClick={() => document.getElementById('sketch-upload')?.click()}
+                                    >
+                                        {shot.sketchImage ? (
+                                            <img src={shot.sketchImage} className="w-full h-full object-contain p-1" alt="Sketch" />
+                                        ) : <Upload className="w-5 h-5 text-text-muted" />}
+                                        <input id="sketch-upload" type="file" onChange={handleSketchUpload} className="hidden" />
+                                    </div>
+                                    <div className="flex-1 text-xs text-text-tertiary py-1">
+                                        <p className="mb-1">Upload a rough sketch or storyboard frame.</p>
+                                        {isAnalyzing && <div className="flex items-center gap-2 text-primary"><Loader2 className="w-3 h-3 animate-spin" /> Analyzing...</div>}
+                                    </div>
                                 </div>
-                                <div className="flex-1 text-xs text-text-tertiary py-1">
-                                    <p className="mb-1">Upload a rough sketch or storyboard frame.</p>
-                                    {isAnalyzing && <div className="flex items-center gap-2 text-primary"><Loader2 className="w-3 h-3 animate-spin" /> Analyzing...</div>}
-                                </div>
-                            </div>
+                            </FeatureGate>
                         </div>
 
+                        {/* GATED CONTROLNET */}
                         <div>
                             <label className="block text-xs font-semibold text-text-secondary mb-2">Reference Image (ControlNet)</label>
-                            <div className="flex gap-3">
-                                <div className="w-20 h-20 bg-surface-secondary border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors overflow-hidden">
-                                    {shot.referenceImage ? (
-                                        <>
-                                            <img src={shot.referenceImage} className="w-full h-full object-cover" alt="Reference" />
-                                            <button onClick={() => setShot(prev => ({ ...prev, referenceImage: undefined }))} className="absolute inset-0 media-control opacity-0 group-hover:opacity-100 flex items-center justify-center text-white"><Trash2 className="w-4 h-4" /></button>
-                                        </>
-                                    ) : <Upload className="w-4 h-4 text-text-muted" />}
-                                    <input type="file" onChange={handleReferenceUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                </div>
-                                <div className="flex-1 space-y-2">
-                                    <div className="flex bg-surface-secondary rounded p-0.5 border border-border w-fit">
-                                        {['depth', 'canny'].map(t => (
-                                            <button
-                                                key={t}
-                                                onClick={() => setShot(prev => ({ ...prev, controlType: t as any }))}
-                                                className={`px-2 py-0.5 text-[10px] uppercase rounded ${shot.controlType === t ? 'bg-primary text-white' : 'text-text-tertiary'}`}
-                                            >
-                                                {t}
-                                            </button>
-                                        ))}
+                            <FeatureGate label="ControlNet (Advanced)">
+                                <div className="flex gap-3">
+                                    <div className="w-20 h-20 bg-surface-secondary border-2 border-dashed border-border rounded-lg flex items-center justify-center relative group hover:border-primary transition-colors overflow-hidden">
+                                        {shot.referenceImage ? (
+                                            <>
+                                                <img src={shot.referenceImage} className="w-full h-full object-cover" alt="Reference" />
+                                                <button onClick={() => setShot(prev => ({ ...prev, referenceImage: undefined }))} className="absolute inset-0 media-control opacity-0 group-hover:opacity-100 flex items-center justify-center text-white"><Trash2 className="w-4 h-4" /></button>
+                                            </>
+                                        ) : <Upload className="w-4 h-4 text-text-muted" />}
+                                        <input type="file" onChange={handleReferenceUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                                     </div>
-                                    <input
-                                        type="range"
-                                        value={shot.referenceStrength || 50}
-                                        onChange={(e) => setShot(prev => ({ ...prev, referenceStrength: parseInt(e.target.value) }))}
-                                        className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
-                                    />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="flex bg-surface-secondary rounded p-0.5 border border-border w-fit">
+                                            {['depth', 'canny'].map(t => (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => setShot(prev => ({ ...prev, controlType: t as any }))}
+                                                    className={`px-2 py-0.5 text-[10px] uppercase rounded ${shot.controlType === t ? 'bg-primary text-white' : 'text-text-tertiary'}`}
+                                                >
+                                                    {t}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <input
+                                            type="range"
+                                            value={shot.referenceStrength || 50}
+                                            onChange={(e) => setShot(prev => ({ ...prev, referenceStrength: parseInt(e.target.value) }))}
+                                            className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            </FeatureGate>
                         </div>
 
                         <div className="flex justify-end pt-2">
