@@ -299,17 +299,18 @@ export const WorkspaceLayout: React.FC = () => {
 
                     <div className="h-4 w-[1px] bg-border" />
 
-                    {/* Dashboard Button (Icon Only) */}
+                    {/* Dashboard Button */}
                     <NavLink
                         to="."
                         end
                         className={({ isActive }) => `
-                            w-8 h-8 flex items-center justify-center rounded-sm transition-all
+                            h-8 px-3 flex items-center justify-center rounded-sm transition-all gap-2
                             ${isActive ? 'bg-surface text-primary border border-border' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}
                         `}
                         title="Dashboard"
                     >
                         <LayoutGrid className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wide">Dashboard</span>
                     </NavLink>
 
                     <div className="h-4 w-[1px] bg-border" />
