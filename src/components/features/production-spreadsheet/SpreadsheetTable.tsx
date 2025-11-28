@@ -2,14 +2,14 @@ import React, { memo } from 'react';
 import { Project, Shot } from '../../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../../constants';
 import { CheckSquare, Square, Film, Edit2, Layers, Trash2 } from 'lucide-react';
-import * as ReactWindow from 'react-window';
+import ReactWindow from 'react-window';
 import type { ListChildComponentProps } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
 // Fix for Vite/ESM import compatibility with react-window (CommonJS module)
-// We try named export first, then fallback to default export property
-const List = ReactWindow.FixedSizeList || (ReactWindow as any).default?.FixedSizeList;
-const areEqual = ReactWindow.areEqual || (ReactWindow as any).default?.areEqual;
+// We access the default export which contains the named exports in this environment
+const List = (ReactWindow as any).FixedSizeList || (ReactWindow as any).default?.FixedSizeList;
+const areEqual = (ReactWindow as any).areEqual || (ReactWindow as any).default?.areEqual;
 
 interface SpreadsheetTableProps {
     filteredShots: Shot[];
