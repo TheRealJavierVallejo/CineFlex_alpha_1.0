@@ -7,8 +7,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, FileText, Loader2, Check, Film } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, FileText, Loader2, Check, Film, Settings } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
+import { AppSettings } from './AppSettings';
 
 export const ProjectLibrary: React.FC = () => {
    const navigate = useNavigate();
@@ -17,6 +18,7 @@ export const ProjectLibrary: React.FC = () => {
    const [newProjectName, setNewProjectName] = useState('');
    const [selection, setSelection] = useState<string | null>(null);
    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+   const [showSettings, setShowSettings] = useState(false);
    const [toasts, setToasts] = useState<ToastNotification[]>([]);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,6 +122,8 @@ export const ProjectLibrary: React.FC = () => {
       <div className="h-screen w-screen bg-black text-text-primary flex flex-col font-sans">
          <ToastContainer toasts={toasts} onClose={closeToast} />
 
+         {showSettings && <AppSettings onClose={() => setShowSettings(false)} showToast={showToast} />}
+
          {/* Toolbar */}
          <div className="h-14 border-b border-border flex items-center justify-between px-8 bg-[#050505] shrink-0 z-10">
             <div className="flex items-center gap-8">
@@ -156,6 +160,16 @@ export const ProjectLibrary: React.FC = () => {
                   <Upload className="w-3.5 h-3.5" /> Import
                </button>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+               
+               <div className="h-8 w-[1px] bg-zinc-800 mx-2" />
+               
+               <button 
+                  onClick={() => setShowSettings(true)}
+                  className="h-9 w-9 rounded-sm bg-black border border-border hover:border-zinc-600 text-zinc-400 hover:text-white flex items-center justify-center transition-all"
+                  title="App Settings"
+               >
+                  <Settings className="w-4 h-4" />
+               </button>
             </div>
          </div>
 
