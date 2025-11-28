@@ -104,7 +104,7 @@
     background-color: #333;
   }
 
-  /* Studio Input - "Command Line" feel */
+  /* Studio Input */
   .studio-input {
     @apply w-full bg-surface border border-border rounded px-3 py-2 text-sm outline-none transition-all duration-200 text-text-primary placeholder:text-text-muted;
   }
@@ -113,21 +113,31 @@
   }
 
   /* 
-   * SAFEGUARD: High Contrast Enforcer
-   * If an element has bg-primary, force its text color to match the calculated foreground.
-   * This fixes Buttons, Badges, and Active States globally.
+   * CRITICAL CONTRAST ENFORCEMENT
+   * When using bg-primary, force text to be readable.
+   * This overrides default Tailwind behavior to ensure accessibility.
    */
-  [class*="bg-primary"] {
+  
+  /* Solid Primary Elements */
+  .bg-primary {
     color: var(--color-primary-foreground) !important;
   }
-  [class*="bg-primary"] .text-white {
+
+  /* Force children (like icons or specific text spans) to match */
+  .bg-primary .text-white, 
+  .bg-primary svg,
+  .bg-primary .text-primary-foreground {
     color: var(--color-primary-foreground) !important;
   }
-  [class*="bg-primary"] svg {
-    color: currentColor;
+
+  /* Hover States: Only apply when actually hovering */
+  .hover\:bg-primary:hover {
+    background-color: var(--color-primary) !important;
+    color: var(--color-primary-foreground) !important;
   }
-  /* Specific override for hover states to prevent fighting */
-  [class*="hover:bg-primary"]:hover {
+  
+  .hover\:bg-primary:hover .text-white,
+  .hover\:bg-primary:hover svg {
     color: var(--color-primary-foreground) !important;
   }
 }
