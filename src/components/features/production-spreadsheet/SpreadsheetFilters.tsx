@@ -38,7 +38,7 @@ export const SpreadsheetFilters: React.FC<SpreadsheetFiltersProps> = ({
                         value={filterText}
                         onChange={e => setFilterText(e.target.value)}
                         placeholder="Keywords..."
-                        className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs text-text-primary outline-none focus:border-primary placeholder:text-text-muted"
+                        className="studio-input pl-8 py-1.5 text-xs rounded-sm"
                     />
                 </div>
             </div>
@@ -51,7 +51,7 @@ export const SpreadsheetFilters: React.FC<SpreadsheetFiltersProps> = ({
                         <select
                             value={filterStatus}
                             onChange={e => setFilterStatus(e.target.value)}
-                            className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 px-2 text-xs text-text-secondary outline-none focus:border-primary cursor-pointer"
+                            className="studio-input py-1.5 px-2 text-xs cursor-pointer rounded-sm"
                         >
                             <option value="all">Show All</option>
                             <option value="missing_image">Missing Image</option>
@@ -66,7 +66,7 @@ export const SpreadsheetFilters: React.FC<SpreadsheetFiltersProps> = ({
                         <select
                             value={filterScene}
                             onChange={e => setFilterScene(e.target.value)}
-                            className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 px-2 text-xs text-text-secondary outline-none focus:border-primary cursor-pointer"
+                            className="studio-input py-1.5 px-2 text-xs cursor-pointer rounded-sm"
                         >
                             <option value="all">All Scenes</option>
                             {project.scenes.map(s => (
@@ -80,7 +80,7 @@ export const SpreadsheetFilters: React.FC<SpreadsheetFiltersProps> = ({
                         <select
                             value={filterType}
                             onChange={e => setFilterType(e.target.value)}
-                            className="w-full bg-surface-secondary border border-border rounded-sm py-1.5 px-2 text-xs text-text-secondary outline-none focus:border-primary cursor-pointer"
+                            className="studio-input py-1.5 px-2 text-xs cursor-pointer rounded-sm"
                         >
                             <option value="all">All Types</option>
                             {SHOT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
