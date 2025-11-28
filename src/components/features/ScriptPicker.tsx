@@ -1,10 +1,11 @@
 /*
  * 📜 COMPONENT: SCRIPT PICKER
  * Selection Modal for linking script lines to shots
+ * Theme: White Paper / Standard Screenplay Format
  */
 
 import React, { useMemo } from 'react';
-import { Type, X, Plus } from 'lucide-react';
+import { Type, X, Plus, MoveRight } from 'lucide-react';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -34,105 +35,104 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     }, [scriptElements, sceneId]);
 
     const getElementClasses = (type: ScriptElement['type']) => {
-        // Base styles mimicking industry standard screenplay formatting (Courier, margins)
-        const base = "relative group cursor-pointer transition-colors duration-200 font-screenplay text-base leading-relaxed selection:bg-primary/30 selection:text-white";
+        // Base: Courier font, dark text on white, no background hover effects on the box itself
+        const base = "relative group cursor-pointer transition-colors duration-200 font-screenplay text-base leading-relaxed selection:bg-blue-100 selection:text-black border border-transparent";
         
+        // Standard Screenplay Formatting Margins (approximate for web)
         switch (type) {
             case 'scene_heading':
-                // Scene headings are usually not linked to specific shots in this context, but we keep the style
-                return `${base} font-bold uppercase text-zinc-500 py-6 select-none pointer-events-none`;
+                return `${base} font-bold uppercase text-black py-6 select-none pointer-events-none border-b border-black/5 mb-6`;
             case 'action':
-                return `${base} text-zinc-300 text-left mb-4`;
+                return `${base} text-black text-left mb-4`;
             case 'character':
-                // Blue color for characters as requested
-                return `${base} font-bold uppercase text-center text-primary mt-6 mb-0 w-[60%] mx-auto tracking-widest`;
+                return `${base} font-bold uppercase text-center text-black mt-6 mb-0 w-[60%] mx-auto tracking-widest`;
             case 'dialogue':
-                return `${base} text-white text-center w-[70%] mx-auto mb-4`;
+                return `${base} text-black text-center w-[70%] mx-auto mb-4`;
             case 'parenthetical':
-                return `${base} text-zinc-500 italic text-center w-[50%] mx-auto -mt-2 mb-1`;
+                return `${base} text-black italic text-center w-[50%] mx-auto -mt-2 mb-1`;
             case 'transition':
-                return `${base} font-bold uppercase text-right text-zinc-500 mt-4 mb-4`;
+                return `${base} font-bold uppercase text-right text-black mt-4 mb-4`;
             default:
-                return `${base} text-zinc-400`;
+                return `${base} text-black`;
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
             <div 
-                className="bg-[#050505] border border-zinc-800 w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
+                className="bg-zinc-100 w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-8 bg-[#09090b] shrink-0">
-                    <h3 className="font-bold text-zinc-200 flex items-center gap-3 text-sm uppercase tracking-widest font-mono">
-                        <Type className="w-4 h-4 text-primary" />
-                        Select Script Element
+                {/* Header - Dark strip for UI contrast vs the Page */}
+                <div className="h-12 border-b border-zinc-300 flex items-center justify-between px-8 bg-zinc-200 shrink-0">
+                    <h3 className="font-bold text-zinc-700 flex items-center gap-2 text-xs uppercase tracking-widest font-sans">
+                        <Type className="w-4 h-4 text-zinc-600" />
+                        Select Line from Script
                     </h3>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-zinc-500 hover:text-black transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content - The "Page" */}
-                <div className="overflow-y-auto p-12 flex-1 bg-[#050505] font-screenplay custom-scrollbar">
+                {/* Content - The "White Page" */}
+                <div className="overflow-y-auto p-12 flex-1 bg-white font-screenplay shadow-inner custom-scrollbar-light">
                     {sceneElements.length > 0 ? (
-                        <div className="max-w-3xl mx-auto pl-16 pr-8 min-h-full">
+                        <div className="max-w-3xl mx-auto pl-20 pr-12 min-h-full bg-white relative">
                             {sceneElements.map(el => {
                                 const isUsed = usedElementIds.has(el.id);
                                 
-                                // Render Scene Heading (Non-interactive generally)
+                                // Render Scene Heading (Non-interactive)
                                 if (el.type === 'scene_heading') return (
-                                    <div key={el.id} className={getElementClasses(el.type)}>{el.content}</div>
+                                    <div key={el.id} className={getElementClasses(el.type)}>
+                                        {el.content}
+                                    </div>
                                 );
 
                                 return (
                                     <div 
                                         key={el.id} 
                                         onClick={() => !isUsed && onSelect(el)}
-                                        className={`${getElementClasses(el.type)} ${isUsed ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                        className={`${getElementClasses(el.type)} ${isUsed ? 'opacity-40 grayscale' : ''}`}
                                     >
-                                        {/* Hover Indicator (Left Margin) */}
+                                        {el.content}
+                                        
+                                        {/* Hover Indicator: Floating in the left margin only */}
                                         {!isUsed && (
-                                            <div className="absolute -left-16 top-0 bottom-0 flex items-center justify-end w-12 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
-                                                <div className="flex items-center gap-1.5 text-primary">
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider font-sans">Link</span>
-                                                    <Plus className="w-4 h-4" /> 
+                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1 text-blue-600 font-sans font-bold text-[10px] uppercase tracking-wider bg-white px-1">
+                                                    Add <Plus className="w-4 h-4" />
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Status Indicator (Already Linked) */}
+                                        {/* Linked Status */}
                                         {isUsed && (
-                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 pr-2">
-                                                <span className="text-[9px] font-bold uppercase tracking-wider font-sans text-zinc-600">Linked</span>
+                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 pr-4">
+                                                 <div className="text-zinc-400 font-sans font-bold text-[9px] uppercase tracking-wider">
+                                                    Linked
+                                                </div>
                                             </div>
                                         )}
-
-                                        {/* The Content */}
-                                        <span className={!isUsed ? "group-hover:text-primary transition-colors" : ""}>
-                                            {el.content}
-                                        </span>
                                     </div>
                                 );
                             })}
                         </div>
                     ) : (
-                        <div className="text-center py-32 text-zinc-700">
-                            <p className="mb-2 font-mono text-sm uppercase tracking-widest">Scene is empty</p>
-                            <p className="text-xs font-mono">Add content in the Script Editor</p>
+                        <div className="text-center py-32 text-zinc-400">
+                            <p className="mb-2 font-mono text-sm uppercase tracking-widest">Page is Blank</p>
+                            <p className="text-xs font-sans text-zinc-500">Add content in the Script Editor to see it here.</p>
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="h-14 px-8 border-t border-zinc-800 bg-[#09090b] flex items-center justify-between shrink-0">
-                    <div className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">
-                        Select a line to link it to the current shot
+                <div className="h-14 px-8 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
+                    <div className="text-[10px] text-zinc-400 font-sans uppercase tracking-wider">
+                        Click text to link to shot
                     </div>
                     <button 
                         onClick={onClose}
-                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-zinc-400 hover:text-white transition-colors hover:bg-white/5 rounded-sm"
+                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-zinc-600 hover:text-black transition-colors hover:bg-zinc-200 rounded-sm"
                     >
                         Cancel
                     </button>
