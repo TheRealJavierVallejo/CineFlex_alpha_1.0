@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { Type, X } from 'lucide-react';
+import { Type, X, Plus } from 'lucide-react';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -34,51 +34,54 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     }, [scriptElements, sceneId]);
 
     const getElementClasses = (type: ScriptElement['type']) => {
-        const base = "cursor-pointer transition-all duration-200 px-4 py-1 rounded hover:bg-white/5 relative group border border-transparent hover:border-white/10";
+        // Base styles mimicking industry standard screenplay formatting (Courier, margins)
+        const base = "relative group cursor-pointer transition-colors duration-200 font-screenplay text-base leading-relaxed selection:bg-primary/30 selection:text-white";
         
         switch (type) {
             case 'scene_heading':
-                return `${base} font-bold uppercase tracking-wider text-zinc-500 text-center py-4 text-xs select-none pointer-events-none`;
+                // Scene headings are usually not linked to specific shots in this context, but we keep the style
+                return `${base} font-bold uppercase text-zinc-500 py-6 select-none pointer-events-none`;
             case 'action':
-                return `${base} text-zinc-400 text-center leading-relaxed text-sm`;
-            case 'dialogue':
-                return `${base} text-zinc-100 text-center max-w-lg mx-auto text-sm`;
+                return `${base} text-zinc-300 text-left mb-4`;
             case 'character':
-                return `${base} font-bold uppercase text-center text-primary mt-4 tracking-wide text-sm`;
+                // Blue color for characters as requested
+                return `${base} font-bold uppercase text-center text-primary mt-6 mb-0 w-[60%] mx-auto tracking-widest`;
+            case 'dialogue':
+                return `${base} text-white text-center w-[70%] mx-auto mb-4`;
             case 'parenthetical':
-                return `${base} italic text-sm text-center text-zinc-500`;
+                return `${base} text-zinc-500 italic text-center w-[50%] mx-auto -mt-2 mb-1`;
             case 'transition':
-                return `${base} font-bold uppercase text-right text-zinc-500 text-xs`;
+                return `${base} font-bold uppercase text-right text-zinc-500 mt-4 mb-4`;
             default:
                 return `${base} text-zinc-400`;
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
             <div 
-                className="bg-[#09090b] border border-border w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
+                className="bg-[#050505] border border-zinc-800 w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden" 
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-[#09090b] shrink-0">
-                    <h3 className="font-bold text-zinc-100 flex items-center gap-2 text-sm uppercase tracking-wide">
-                        <Type className="w-4 h-4 text-white" />
-                        Scene Script
+                <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-8 bg-[#09090b] shrink-0">
+                    <h3 className="font-bold text-zinc-200 flex items-center gap-3 text-sm uppercase tracking-widest font-mono">
+                        <Type className="w-4 h-4 text-primary" />
+                        Select Script Element
                     </h3>
                     <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="overflow-y-auto p-8 flex-1 bg-[#050505] font-screenplay">
+                {/* Content - The "Page" */}
+                <div className="overflow-y-auto p-12 flex-1 bg-[#050505] font-screenplay custom-scrollbar">
                     {sceneElements.length > 0 ? (
-                        <div className="space-y-1 max-w-3xl mx-auto">
+                        <div className="max-w-3xl mx-auto pl-16 pr-8 min-h-full">
                             {sceneElements.map(el => {
                                 const isUsed = usedElementIds.has(el.id);
                                 
-                                // Skip non-selectable types if desired, or just style them
+                                // Render Scene Heading (Non-interactive generally)
                                 if (el.type === 'scene_heading') return (
                                     <div key={el.id} className={getElementClasses(el.type)}>{el.content}</div>
                                 );
@@ -86,36 +89,47 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                 return (
                                     <div 
                                         key={el.id} 
-                                        onClick={() => onSelect(el)}
-                                        className={`${getElementClasses(el.type)} ${isUsed ? 'opacity-30' : 'opacity-100'}`}
+                                        onClick={() => !isUsed && onSelect(el)}
+                                        className={`${getElementClasses(el.type)} ${isUsed ? 'opacity-30 cursor-not-allowed' : ''}`}
                                     >
-                                        {el.content}
-                                        
-                                        {/* Hover Indicator */}
+                                        {/* Hover Indicator (Left Margin) */}
                                         {!isUsed && (
-                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-[10px] font-sans font-bold bg-primary text-white px-2 py-1 rounded shadow-lg transform translate-x-2 group-hover:translate-x-0 transition-all">
-                                                LINK
+                                            <div className="absolute -left-16 top-0 bottom-0 flex items-center justify-end w-12 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                                                <div className="flex items-center gap-1.5 text-primary">
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider font-sans">Link</span>
+                                                    <Plus className="w-4 h-4" /> 
+                                                </div>
                                             </div>
                                         )}
+
+                                        {/* Status Indicator (Already Linked) */}
                                         {isUsed && (
-                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-[10px] font-sans font-bold bg-zinc-800 text-zinc-400 px-2 py-1 rounded">
-                                                LINKED
+                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 pr-2">
+                                                <span className="text-[9px] font-bold uppercase tracking-wider font-sans text-zinc-600">Linked</span>
                                             </div>
                                         )}
+
+                                        {/* The Content */}
+                                        <span className={!isUsed ? "group-hover:text-primary transition-colors" : ""}>
+                                            {el.content}
+                                        </span>
                                     </div>
                                 );
                             })}
                         </div>
                     ) : (
-                        <div className="text-center py-32 text-zinc-600">
-                            <p className="mb-2 font-mono text-sm">No script content found for this scene.</p>
-                            <p className="text-xs">Add dialogue or action in the Script Editor.</p>
+                        <div className="text-center py-32 text-zinc-700">
+                            <p className="mb-2 font-mono text-sm uppercase tracking-widest">Scene is empty</p>
+                            <p className="text-xs font-mono">Add content in the Script Editor</p>
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="h-14 px-6 border-t border-border bg-[#09090b] flex items-center justify-end shrink-0">
+                <div className="h-14 px-8 border-t border-zinc-800 bg-[#09090b] flex items-center justify-between shrink-0">
+                    <div className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">
+                        Select a line to link it to the current shot
+                    </div>
                     <button 
                         onClick={onClose}
                         className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-zinc-400 hover:text-white transition-colors hover:bg-white/5 rounded-sm"
