@@ -380,7 +380,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/80 flex justify-end backdrop-blur-sm animate-in slide-in-from-right duration-300"
+      className="fixed inset-0 z-50 bg-background/95 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-label="Shot Editor"
@@ -399,7 +399,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       )}
 
       {showPromptPreview && (
-        <div className="fixed inset-0 z-[110] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="bg-surface w-full max-w-2xl border border-border rounded-lg shadow-2xl flex flex-col max-h-[80vh]">
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-surface-secondary">
               <span className="font-bold text-text-primary text-sm flex items-center gap-2">
@@ -451,12 +451,12 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
       <div
         ref={containerRef}
-        className="bg-surface w-[90vw] max-w-[1200px] h-full border-l border-border shadow-2xl flex overflow-hidden"
+        className="bg-surface w-[95vw] max-w-[1400px] h-[90vh] border border-border shadow-2xl rounded-xl flex overflow-hidden"
       >
 
         {/* LEFT COLUMN: CONTROLS */}
-        <div className="w-[380px] flex flex-col border-r border-border bg-surface-secondary shrink-0">
-          <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface">
+        <div className="w-[400px] flex flex-col border-r border-border bg-surface-secondary">
+          <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-surface">
             <div>
               <h2 className="text-text-primary font-bold text-base">Shot #{shot.sequence}</h2>
               <div className="text-text-tertiary text-xs font-mono">ID: {shot.id.substring(0, 6)}</div>
@@ -725,7 +725,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
         {/* RIGHT COLUMN: PREVIEW */}
         <div className="flex-1 bg-[#121212] flex flex-col relative">
-          <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
+          <div className="h-16 border-b border-border flex items-center justify-between px-6 shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-xs font-bold text-text-secondary uppercase">Variations:</label>
@@ -854,7 +854,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
       {/* Fullscreen Overlay */}
       {isFullscreen && shot.generatedImage && (
-        <div className="fixed inset-0 z-[120] bg-black flex flex-col animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-200">
           <div className="h-16 flex items-center px-6 border-b border-white/10 bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-10">
             <button
               onClick={() => setIsFullscreen(false)}

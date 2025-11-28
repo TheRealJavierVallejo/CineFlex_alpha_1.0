@@ -40,7 +40,7 @@ export const SceneList: React.FC<SceneListProps> = ({
     onAddVisual
 }) => {
     return (
-        <div className="space-y-4 px-4 md:px-8 py-6">
+        <div className="space-y-8 px-8">
             {scenes.map((scene, index) => {
                 const sceneShots = shots
                     .filter(shot => shot.sceneId === scene.id)
@@ -54,7 +54,7 @@ export const SceneList: React.FC<SceneListProps> = ({
                         totalScenes={scenes.length}
                         shots={sceneShots}
                         scriptElements={scriptElements}
-                        locations={locations}
+                        locations={locations} // Pass down
                         projectSettings={projectSettings}
                         onUpdateScene={onUpdateScene}
                         onDeleteScene={onDeleteScene}
@@ -62,10 +62,9 @@ export const SceneList: React.FC<SceneListProps> = ({
                         onAddShot={onAddShot}
                         onUpdateShot={onUpdateShot}
                         onDeleteShot={onDeleteShot}
-                        onEditShot={onEditShot}
-                        // Legacy props kept for compatibility if needed in future, but new SceneItem uses simplified visual flow
                         onLinkElement={onLinkElement}
                         onUnlinkElement={onUnlinkElement}
+                        onEditShot={onEditShot}
                         onCreateAndLinkShot={onCreateAndLinkShot}
                         onAddVisual={onAddVisual}
                     />

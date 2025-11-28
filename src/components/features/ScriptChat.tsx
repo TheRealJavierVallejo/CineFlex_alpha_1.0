@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, X } from 'lucide-react';
-import { useStudio } from '../../layouts/StudioLayout';
+import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { chatWithScript } from '../../services/gemini';
 import { getCharacters } from '../../services/storage';
 import { Character } from '../../types';
@@ -23,7 +23,7 @@ interface ScriptChatProps {
 }
 
 export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
-  const { project, showToast } = useStudio();
+  const { project, showToast } = useWorkspace();
   const [messages, setMessages] = useState<Message[]>([
     { id: 'welcome', role: 'model', content: "Hello! I'm your co-writer. I've read your script context. How can I help you today? Need dialogue ideas or a plot twist?" }
   ]);
