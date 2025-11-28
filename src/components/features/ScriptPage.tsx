@@ -242,11 +242,11 @@ export const ScriptPage: React.FC = () => {
 
   return (
     <PageWithToolRail tools={tools} defaultTool={null}>
-        <div className={`relative h-full flex flex-col bg-surface-secondary overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
+        <div className={`relative h-full flex flex-col bg-black overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''}`}>
         
         {/* Toolbar */}
         {hasElements && (
-            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-background border-border' : ''}`}>
+            <div className={`h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 ${isZenMode ? 'bg-black border-border' : ''}`}>
             <div className="flex items-center gap-2 text-text-primary font-medium pl-2">
                 <FileText className="w-4 h-4 text-primary" />
                 <span>Screenplay Editor</span>
@@ -291,7 +291,7 @@ export const ScriptPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden relative">
             <div 
             ref={containerRef}
-            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-surface-secondary" 
+            className="flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 bg-black" 
             onClick={(e) => {
                 if (e.target === containerRef.current && hasElements) {
                     setActiveElementId(elements[elements.length - 1].id);
@@ -304,7 +304,7 @@ export const ScriptPage: React.FC = () => {
                         w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
                         ${isLightMode 
                             ? 'bg-white border-zinc-200 shadow-zinc-900/10' 
-                            : 'bg-surface border-border'}
+                            : 'bg-surface-secondary border-border'}
                     `}
                 >
                     <div className="flex flex-col">
