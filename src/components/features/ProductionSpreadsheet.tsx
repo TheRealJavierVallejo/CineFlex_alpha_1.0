@@ -115,24 +115,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         // Redirect to Script Editor
         navigate('script');
     };
-
-    // --- INITIAL EMPTY STATE (Project Created -> Dashboard) ---
-    // If we have no scenes and no shots, we assume it's a fresh project needing setup.
-    if (project.scenes.length === 0 && project.shots.length === 0) {
-        return (
-            <div className="h-full flex flex-col bg-background">
-                <EmptyProjectState 
-                    title="Welcome to your Studio"
-                    description="To begin, please upload an existing screenplay or start writing from scratch."
-                    onImport={handleScriptUpload}
-                    onCreate={handleStartWriting}
-                    isImporting={isImporting}
-                />
-            </div>
-        );
-    }
     
-    // --- DERIVED DATA ---
+    // --- DERIVED DATA (HOOKS MOVED UP) ---
     const filteredShots = useMemo(() => {
         return project.shots.filter(shot => {
             const matchesText = (shot.description || '').toLowerCase().includes(filterText.toLowerCase()) ||
@@ -229,8 +213,21 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         }
     ];
 
-    // NOTE: Removed the 'Ready for Shots' splash screen block here.
-    // It will now fall through to the PageWithToolRail render below, showing an empty table.
+    // --- RENDER CHECK (MOVED AFTER HOOKS) ---
+    // If we have no scenes and no shots, we assume it's a fresh project needing setup.
+    if (project.scenes.length === 0 && project.shots.length === 0) {
+        return (
+            <div className="h-full flex flex-col bg-background">
+                <EmptyProjectState 
+                    title="Welcome to your Studio"
+                    description="To begin, please upload an existing screenplay or start writing from scratch."
+                    onImport={handleScriptUpload}
+                    onCreate={handleStartWriting}
+                    isImporting={isImporting}
+                />
+            </div>
+        );
+    }
 
     return (
         <PageWithToolRail tools={tools} defaultTool={null}>
