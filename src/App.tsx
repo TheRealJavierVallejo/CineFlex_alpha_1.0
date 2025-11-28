@@ -130,11 +130,18 @@ const App: React.FC = () => {
         root.style.setProperty('--color-primary', savedColor);
         root.style.setProperty('--color-primary-hover', savedColor);
         
+        // Calculate contrast color
+        const hex = savedColor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        // Brightness formula
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        const foreground = brightness > 128 ? '#000000' : '#FFFFFF';
+        root.style.setProperty('--color-primary-foreground', foreground);
+
         // Convert to RGB for glow
         try {
-            const r = parseInt(savedColor.slice(1, 3), 16);
-            const g = parseInt(savedColor.slice(3, 5), 16);
-            const b = parseInt(savedColor.slice(5, 7), 16);
             root.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
         } catch(e) {
             console.warn("Failed to apply theme glow", e);

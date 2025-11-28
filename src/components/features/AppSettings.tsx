@@ -47,11 +47,16 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
         root.style.setProperty('--color-primary', color);
         root.style.setProperty('--color-primary-hover', color);
 
+        // Calculate contrast
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        const foreground = brightness > 128 ? '#000000' : '#FFFFFF';
+        root.style.setProperty('--color-primary-foreground', foreground);
+
         try {
-            // Simple hex to rgb for glow
-            const r = parseInt(color.slice(1, 3), 16);
-            const g = parseInt(color.slice(3, 5), 16);
-            const b = parseInt(color.slice(5, 7), 16);
             root.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
         } catch (e) {
             console.warn("Could not parse color for glow:", color);
@@ -111,7 +116,14 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                         >
                                             {accentColor === color && (
                                                 <div className="absolute inset-0 flex items-center justify-center animate-in zoom-in duration-200">
-                                                    <Check className={`w-5 h-5 ${['#FFFFFF', '#A1A1AA'].includes(color) ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                                                    {/* Smart Check Icon Color based on swatch brightness */}
+                                                    <Check 
+                                                        className={`w-5 h-5`} 
+                                                        strokeWidth={3} 
+                                                        style={{ 
+                                                            color: ((parseInt(color.slice(1,3),16)*299 + parseInt(color.slice(3,5),16)*587 + parseInt(color.slice(5,7),16)*114)/1000) > 128 ? 'black' : 'white' 
+                                                        }}
+                                                    />
                                                 </div>
                                             )}
                                         </button>

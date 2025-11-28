@@ -11,6 +11,9 @@
   --color-primary: #E11D48;
   --color-primary-hover: #BE123C;
   --color-primary-glow: rgba(225, 29, 72, 0.3);
+  
+  /* CONTRAST FOREGROUND (Auto-calculated: White or Black) */
+  --color-primary-foreground: #FFFFFF;
 
   /* VOID HIERARCHY (Strictly Grayscale) */
   --bg-app: #030303;        /* The Void (Main Background) */
@@ -42,6 +45,7 @@
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
   --color-primary-glow: var(--color-primary-glow);
+  --color-primary-foreground: var(--color-primary-foreground);
   
   --color-background: var(--bg-app);
   --color-surface: var(--bg-panel);
@@ -79,7 +83,7 @@
   /* Selection State */
   ::selection {
     background-color: var(--color-primary);
-    color: #ffffff;
+    color: var(--color-primary-foreground);
   }
 }
 
@@ -106,5 +110,24 @@
   }
   .studio-input:focus {
     @apply border-primary ring-1 ring-primary/20 bg-[#0F0F0F];
+  }
+
+  /* 
+   * SAFEGUARD: High Contrast Enforcer
+   * If an element has bg-primary, force its text color to match the calculated foreground.
+   * This fixes Buttons, Badges, and Active States globally.
+   */
+  [class*="bg-primary"] {
+    color: var(--color-primary-foreground) !important;
+  }
+  [class*="bg-primary"] .text-white {
+    color: var(--color-primary-foreground) !important;
+  }
+  [class*="bg-primary"] svg {
+    color: currentColor;
+  }
+  /* Specific override for hover states to prevent fighting */
+  [class*="hover:bg-primary"]:hover {
+    color: var(--color-primary-foreground) !important;
   }
 }
