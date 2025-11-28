@@ -31,7 +31,7 @@ export default {
 
                 border: {
                     DEFAULT: '#27272a', // Zinc 800
-                    focus: 'var(--color-primary)',   // Dynamic
+                    focus: 'var(--color-primary, #3b82f6)',   // Dynamic
                     subtle: '#18181b',
                 },
 
@@ -44,19 +44,11 @@ export default {
 
                 // Electric Blue Accent (ONYX Slash) - NOW DYNAMIC
                 primary: {
-                    DEFAULT: 'var(--color-primary)',
-                    hover: 'var(--color-primary-hover)',
+                    DEFAULT: 'var(--color-primary, #3b82f6)',
+                    hover: 'var(--color-primary-hover, #2563eb)',
                     foreground: '#FFFFFF',
-                    glow: 'var(--color-primary-glow)'
+                    glow: 'var(--color-primary-glow, rgba(59, 130, 246, 0.5))'
                 },
-            },
-            fontSize: {
-                'xs': ['11px', { lineHeight: '16px' }],
-                'sm': ['12px', { lineHeight: '18px' }],
-                'base': ['13px', { lineHeight: '20px' }],
-                'lg': ['14px', { lineHeight: '22px' }],
-                'xl': ['16px', { lineHeight: '24px' }],
-                '2xl': ['18px', { lineHeight: '28px' }],
             },
             borderRadius: {
                 'none': '0',
@@ -71,8 +63,8 @@ export default {
             boxShadow: {
                 'window': '0 0 0 1px #27272a',
                 'panel': '0 1px 0 0 #27272a',
-                'glow': '0 0 10px var(--color-primary-glow)',
-                'focus': '0 0 0 1px var(--color-primary)',
+                'glow': '0 0 10px var(--color-primary-glow, rgba(59, 130, 246, 0.5))',
+                'focus': '0 0 0 1px var(--color-primary, #3b82f6)',
             },
         },
     },
