@@ -46,9 +46,17 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
-    // 2. Check Security Headers
-    if (!window.crossOriginIsolated && window.location.hostname !== 'localhost') {
-       console.warn("Missing Cross-Origin headers. WebGPU might fail.");
+    // 2. Check Security Headers (SharedArrayBuffer support)
+    // In production, this MUST be true or the engine crashes silently.
+    if (!window.crossOriginIsolated) {
+        if (window.location.hostname === 'localhost') {
+            console.warn("Localhost warning: Missing Cross-Origin headers. WebGPU might be unstable.");
+        } else {
+            setIsSupported(false);
+            setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine. Please contact support if you see this.");
+            setIsCheckingCache(false);
+            return;
+        }
     }
     
     // 3. Check Cache
