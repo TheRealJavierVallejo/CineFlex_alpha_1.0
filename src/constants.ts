@@ -51,7 +51,8 @@ export const SHOT_TYPES = [
 
 export const MODEL_OPTIONS = [
   { label: "Gemini (Fast)", value: "gemini-2.5-flash-image" },
-  { label: "Gemini (Pro)", value: "gemini-3-pro-image-preview" }
+  { label: "Gemini (Pro)", value: "gemini-3-pro-image-preview" },
+  { label: "Student Draft (Base)", value: "pollinations" }
 ];
 
 export const ASPECT_RATIOS = [

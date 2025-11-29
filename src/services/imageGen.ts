@@ -5,7 +5,7 @@ import { enhancePromptForFreeTier } from './promptBuilder';
 
 /**
  * THE HYBRID ENGINE
- * Routes requests based on user tier.
+ * Routes requests based on user tier AND selected model.
  */
 export const generateHybridImage = async (
     tier: 'free' | 'pro',
@@ -17,14 +17,21 @@ export const generateHybridImage = async (
     options: { model: string; aspectRatio: string; imageSize?: string }
 ): Promise<string> => {
 
-    // 1. PRO TIER: Use the high-end Gemini API (Cost: Credits or BYOK)
-    if (tier === 'pro') {
+    // 1. DETERMINE EFFECTIVE MODEL
+    // If user is FREE, they are FORCED to use 'pollinations'.
+    // If user is PRO, they can use whatever is in options.model (Gemini OR Pollinations).
+    const effectiveModel = tier === 'free' ? 'pollinations' : options.model;
+
+    // 2. ROUTING LOGIC
+
+    // --- CASE A: GEMINI (PRO) ---
+    if (effectiveModel !== 'pollinations' && !effectiveModel.includes('Student')) {
         return await generateShotImage(shot, project, characters, outfits, location, options);
     }
 
-    // 2. FREE TIER: Pure Text-to-Image (Pollinations.ai)
+    // --- CASE B: POLLINATIONS (BASE / FREE) ---
     
-    // A. Aspect Ratio Logic
+    // A. Aspect Ratio Logic (Calculate Integer Dimensions)
     let width = 1280;
     let height = 720;
     
@@ -34,26 +41,35 @@ export const generateHybridImage = async (
         const hRatio = parts.length > 1 ? parts[1] : 1;
 
         if (!isNaN(wRatio) && !isNaN(hRatio)) {
+            // Target ~1MP for speed/reliability on free tier
             const targetPixels = 1000000; 
             const scale = Math.sqrt(targetPixels / (wRatio * hRatio));
-            width = Math.round(wRatio * scale);
-            height = Math.round(hRatio * scale);
+            width = Math.floor(wRatio * scale);
+            height = Math.floor(hRatio * scale);
         }
     }
 
     // B. Construct Prompt using the Smart Enhancer
-    // This replaces the old simple logic with the context-aware builder
     const fullPrompt = enhancePromptForFreeTier(shot, project, characters, outfits, location);
     
-    // Append negative prompt if exists
-    const negativeParam = shot.negativePrompt ? `&negative=${encodeURIComponent(shot.negativePrompt)}` : "";
+    // C. Safety Truncation (Pollinations URL limit safety)
+    // URLs generally shouldn't exceed 2000 chars safely across all browsers/proxies.
+    // We truncate the prompt to ~1000 chars to leave room for other params.
+    const safePrompt = fullPrompt.slice(0, 1000);
+    const encodedPrompt = encodeURIComponent(safePrompt);
     
-    // C. Add randomness
+    // D. Append negative prompt if exists
+    const negativeParam = shot.negativePrompt 
+        ? `&negative=${encodeURIComponent(shot.negativePrompt.slice(0, 200))}` 
+        : "";
+    
+    // E. Add randomness (Seed)
     const seed = Math.floor(Math.random() * 1000000);
     
-    // D. Construct URL
-    const encodedPrompt = encodeURIComponent(fullPrompt);
+    // F. Construct URL
+    // Using 'flux' model for better quality, or 'turbo' for speed. Flux is current standard.
     const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${seed}&model=flux${negativeParam}`;
 
+    // G. Verify URL (Optional Pre-fetch check could go here, but for now we return the URL)
     return url;
 };

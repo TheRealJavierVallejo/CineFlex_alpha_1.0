@@ -82,7 +82,8 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const [noCharacters, setNoCharacters] = useState(false);
 
   // Local Settings
-  const [selectedModel, setSelectedModel] = useState(shot.model || MODEL_OPTIONS[0].value);
+  // If user is Free, we force a safe default for local state, but they can't change it anyway in UI
+  const [selectedModel, setSelectedModel] = useState(shot.model || (tier === 'free' ? 'pollinations' : MODEL_OPTIONS[0].value));
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(shot.aspectRatio || project.settings.aspectRatio || '16:9');
   const [variationCount, setVariationCount] = useState<number>(project.settings.variationCount || 1);
   const [selectedResolution, setSelectedResolution] = useState<string>(project.settings.imageResolution || '2048x2048');
@@ -234,6 +235,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
   const handleGenerate = async () => {
     // BLOCK GENERATION IF IN LOCKED PRO MODE
+    // If user is FREE, they can't use Pro View to generate.
     if (tier === 'free' && viewMode === 'pro') {
       showToast("Unlock Pro to use Studio features", 'info');
       return;
@@ -270,7 +272,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       );
 
       // Determine correct model name for metadata
-      const finalModelName = tier === 'free' ? 'Student Draft (Pollinations)' : selectedModel;
+      // If hybrid image returned, we check if it was actually pollinations (Free Tier or User Selection)
+      const isBaseModel = tier === 'free' || selectedModel === 'pollinations';
+      const finalModelName = isBaseModel ? 'Student Draft (Base)' : selectedModel;
 
       const imageId = crypto.randomUUID();
       await addToImageLibrary(project.id, {
@@ -294,7 +298,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       
       setShot(updated);
       onUpdateShot(updated);
-      showToast(tier === 'free' ? "Draft image generated" : "Pro render successful", 'success');
+      showToast(isBaseModel ? "Draft image generated" : "Pro render successful", 'success');
 
     } catch (e) {
       console.error(e);
