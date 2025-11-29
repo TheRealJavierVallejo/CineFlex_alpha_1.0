@@ -1,9 +1,7 @@
 import React from 'react';
 import { useLocalLlm } from '../../context/LocalLlmContext';
-import Modal from './Modal';
-import { Cpu, Download, Check, AlertCircle, Database, Loader2 } from 'lucide-react';
+import { Download, X, AlertTriangle, CheckCircle2, HardDrive, Shield, Cpu } from 'lucide-react';
 import Button from './Button';
-import ProgressBar from './ProgressBar';
 
 interface ModelDownloadModalProps {
     isOpen: boolean;
@@ -12,124 +10,126 @@ interface ModelDownloadModalProps {
 }
 
 export const ModelDownloadModal: React.FC<ModelDownloadModalProps> = ({ isOpen, onClose, onConfirm }) => {
-    const { isDownloading, isReady, downloadProgress, downloadText, error, isSupported } = useLocalLlm();
+    const { isDownloading, downloadProgress, downloadText, error, isReady } = useLocalLlm();
 
-    // 1. UNSUPPORTED STATE
-    if (!isSupported) {
-        return (
-            <Modal isOpen={isOpen} onClose={onClose} title="Hardware Incompatible">
-                <div className="flex flex-col items-center justify-center p-6 text-center">
-                    <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mb-4">
-                        <AlertCircle className="w-8 h-8 text-red-500" />
-                    </div>
-                    <h3 className="text-lg font-bold text-text-primary mb-2">WebGPU Not Found</h3>
-                    <p className="text-sm text-text-secondary mb-6 leading-relaxed">
-                        The Local AI model requires WebGPU, which isn't available in your current browser.
-                        <br /><br />
-                        Please try Chrome, Edge, or Arc on a Desktop computer.
-                    </p>
-                    <Button variant="secondary" onClick={onClose}>Close</Button>
-                </div>
-            </Modal>
-        );
-    }
+    if (!isOpen) return null;
 
-    // 2. READY STATE (Success)
-    if (isReady) {
-        return (
-            <Modal isOpen={isOpen} onClose={onClose} title="AI Ready">
-                <div className="flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
-                    <div className="w-16 h-16 bg-green-900/20 rounded-full flex items-center justify-center mb-4 border border-green-900/50">
-                        <Check className="w-8 h-8 text-green-500" />
-                    </div>
-                    <h3 className="text-lg font-bold text-text-primary mb-2">Model Loaded</h3>
-                    <p className="text-sm text-text-secondary mb-6">
-                        Llama 3 is running locally on your device. You can now chat offline.
-                    </p>
-                    <Button variant="primary" onClick={onClose} className="w-full">Start Chatting</Button>
-                </div>
-            </Modal>
-        );
-    }
-
-    // 3. DOWNLOADING / LOADING STATE
-    if (isDownloading) {
-        return (
-            <Modal isOpen={isOpen} onClose={() => {}} title="Setting up AI">
-                <div className="p-6 space-y-6">
-                    <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 bg-surface-secondary rounded flex items-center justify-center shrink-0 animate-pulse">
-                             <Cpu className="w-6 h-6 text-primary" />
-                         </div>
-                         <div className="flex-1 min-w-0">
-                             <h4 className="font-bold text-text-primary text-sm truncate">Llama-3-8B-Instruct</h4>
-                             <p className="text-xs text-text-muted truncate">{downloadText || "Initializing..."}</p>
-                         </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-                            <span>Progress</span>
-                            <span>{Math.round(downloadProgress)}%</span>
-                        </div>
-                        <ProgressBar progress={downloadProgress} className="h-2" />
-                    </div>
-
-                    <div className="bg-surface-secondary border border-border rounded p-3 text-xs text-text-secondary flex gap-3">
-                        <Database className="w-4 h-4 text-text-muted shrink-0 mt-0.5" />
-                        <div className="leading-relaxed">
-                            <strong className="block text-text-primary mb-1">Smart Caching</strong>
-                            If you've used this model before, we'll just verify the files. Otherwise, we'll download ~4GB of data once.
-                        </div>
-                    </div>
-                </div>
-            </Modal>
-        );
-    }
-
-    // 4. INITIAL START PROMPT (Confirm Download)
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Download Local AI">
-            <div className="p-6 space-y-6">
-                <div className="text-center">
-                    <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
-                        <Download className="w-8 h-8 text-primary" />
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white text-zinc-900 w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col relative">
+                
+                {/* Header */}
+                <div className="h-14 bg-zinc-900 text-white flex items-center justify-between px-6 shrink-0">
+                    <div className="flex items-center gap-2 font-bold text-sm tracking-widest uppercase">
+                        <div className="w-1 h-4 bg-blue-500 rounded-full" />
+                        Download Local AI
                     </div>
-                    <h3 className="text-lg font-bold text-text-primary mb-2">Setup Local Intelligence</h3>
-                    <p className="text-sm text-text-secondary leading-relaxed">
-                        To use the AI Writer for free, we need to download the <strong>Llama 3</strong> model to your browser cache.
+                    {!isDownloading && (
+                        <button onClick={onClose} className="text-zinc-400 hover:text-white transition-colors">
+                            <X className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+
+                {/* Content */}
+                <div className="p-8 flex flex-col items-center text-center">
+                    
+                    {/* Icon State */}
+                    <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6 relative">
+                        {isReady ? (
+                            <CheckCircle2 className="w-10 h-10 text-green-500" />
+                        ) : error ? (
+                            <AlertTriangle className="w-10 h-10 text-red-500" />
+                        ) : isDownloading ? (
+                            <div className="absolute inset-0 border-4 border-blue-100 rounded-full">
+                                <div 
+                                    className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center font-bold text-blue-600 text-sm">
+                                    {downloadProgress}%
+                                </div>
+                            </div>
+                        ) : (
+                            <Download className="w-10 h-10 text-blue-500" />
+                        )}
+                    </div>
+
+                    <h2 className="text-xl font-bold mb-2">
+                        {isReady ? "AI Ready to Write" : error ? "Setup Failed" : isDownloading ? "Downloading Model..." : "Setup Local Intelligence"}
+                    </h2>
+                    
+                    <p className="text-zinc-500 text-sm mb-8 leading-relaxed">
+                        {isReady 
+                            ? "The Llama 3 model is loaded and ready. You can now use the AI Writer offline."
+                            : isDownloading 
+                                ? downloadText 
+                                : "To use the AI Writer for free, we need to download the Llama 3 model to your browser cache."
+                        }
                     </p>
-                </div>
 
-                <div className="bg-surface-secondary border border-border rounded p-4 text-xs space-y-2">
-                    <div className="flex justify-between">
-                        <span className="text-text-secondary">Model Size:</span>
-                        <span className="font-mono text-text-primary">~4.0 GB</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-text-secondary">Requirements:</span>
-                        <span className="font-mono text-text-primary">GPU with 6GB+ VRAM</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-text-secondary">Privacy:</span>
-                        <span className="font-mono text-green-400">100% Offline / Private</span>
-                    </div>
-                </div>
+                    {/* Specs / Status */}
+                    {!isReady && !error && !isDownloading && (
+                        <div className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-4 mb-8 text-xs space-y-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Model Size:</span>
+                                <span className="font-mono font-bold">~4.0 GB</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Requirements:</span>
+                                <span className="font-mono font-bold">GPU with 6GB+ VRAM</span>
+                            </div>
+                            <div className="flex justify-between items-center border-t border-zinc-200 pt-3 mt-1">
+                                <span className="text-zinc-500">Privacy:</span>
+                                <span className="font-bold text-green-600 flex items-center gap-1">
+                                    <Shield className="w-3 h-3" /> 100% Offline / Private
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
-                {error && (
-                     <div className="bg-red-900/20 border border-red-900/50 p-3 rounded text-xs text-red-200 flex items-center gap-2">
-                         <AlertCircle className="w-4 h-4" />
-                         {error}
-                     </div>
-                )}
+                    {/* Error Box - FIXED CONTRAST */}
+                    {error && (
+                        <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left flex gap-3">
+                            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-xs text-red-800 font-medium leading-relaxed break-words">
+                                {error}
+                            </div>
+                        </div>
+                    )}
 
-                <div className="flex gap-3">
-                    <Button variant="ghost" onClick={onClose} className="flex-1">Cancel</Button>
-                    <Button variant="primary" onClick={onConfirm} className="flex-[2]" icon={<Download className="w-4 h-4" />}>
-                        Download Model
-                    </Button>
+                    {/* Actions */}
+                    <div className="w-full flex gap-3">
+                        {isReady ? (
+                            <Button variant="primary" className="w-full bg-green-600 hover:bg-green-700" onClick={onClose}>
+                                Start Writing
+                            </Button>
+                        ) : error ? (
+                            <>
+                                <Button variant="secondary" className="flex-1" onClick={onClose}>
+                                    Cancel
+                                </Button>
+                                <Button variant="primary" className="flex-1" onClick={onConfirm}>
+                                    Try Again
+                                </Button>
+                            </>
+                        ) : isDownloading ? (
+                            <div className="w-full h-10 bg-zinc-100 rounded flex items-center justify-center text-xs font-bold text-zinc-400 uppercase tracking-wider cursor-wait">
+                                Please Wait...
+                            </div>
+                        ) : (
+                            <>
+                                <Button variant="secondary" className="flex-1" onClick={onClose}>
+                                    Cancel
+                                </Button>
+                                <Button variant="primary" className="flex-1 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20" onClick={onConfirm} icon={<Download className="w-4 h-4" />}>
+                                    Download Model
+                                </Button>
+                            </>
+                        )}
+                    </div>
+
                 </div>
             </div>
-        </Modal>
+        </div>
     );
 };

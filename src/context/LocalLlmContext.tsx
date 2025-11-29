@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
-// Import worker URL for manual instantiation
-import workerUrl from '../workers/llm.worker.ts?worker&url';
+// Standard Vite worker import - lets Vite handle the bundling
+import LLMWorker from '../workers/llm.worker.ts?worker';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -69,14 +69,14 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
          workerRef.current = null;
       }
 
-      // Create new worker manually to ensure type: 'module'
-      console.log("Creating worker from URL:", workerUrl);
-      const worker = new Worker(workerUrl, { type: 'module' });
+      // Instantiate using the imported class from Vite
+      console.log("Creating new LLM Worker...");
+      const worker = new LLMWorker();
       workerRef.current = worker;
 
       worker.onerror = (e) => {
           console.error("Worker startup error:", e);
-          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. This may be due to browser security settings or a build error.";
+          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. Please check browser console.";
           setError(msg);
           setIsDownloading(false);
       };
