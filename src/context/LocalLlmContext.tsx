@@ -3,6 +3,7 @@ import { MLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
+const DOWNLOAD_TIMEOUT_MS = 600000; // 10 minutes
 
 interface LocalLlmContextType {
   isReady: boolean;
@@ -77,9 +78,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: 120s
+      // EXTENDED TIMEOUT: 10 minutes for slow connections
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Engine timed out during initialization. Please check your internet connection.")), 120000)
+        setTimeout(() => reject(new Error("Download timed out after 10 minutes. Please check your internet connection and try again. The browser may have cached some files, so retrying should be faster.")), DOWNLOAD_TIMEOUT_MS)
       );
 
       await Promise.race([
