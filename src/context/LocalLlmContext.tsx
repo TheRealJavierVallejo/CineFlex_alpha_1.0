@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
-// Explicit Vite worker import
-import LLMWorker from '../workers/llm.worker.ts?worker';
+// Explicit Vite worker import with INLINE strategy to prevent loading errors
+import LLMWorker from '../workers/llm.worker.ts?worker&inline';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -69,14 +69,14 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
          workerRef.current = null;
       }
 
-      console.log("Initializing Worker via ?worker import...");
-      // Instantiate the imported worker class
+      console.log("Initializing Worker via ?worker&inline import...");
+      // Instantiate the inline worker
       const worker = new LLMWorker();
       workerRef.current = worker;
 
       worker.onerror = (e) => {
           console.error("Worker startup error:", e);
-          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. Please check browser console.";
+          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. Likely a CSP or path issue.";
           setError(msg);
           setIsDownloading(false);
       };
@@ -91,9 +91,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: 90s
+      // SAFETY TIMEOUT: 120s (Downloading can be slow)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Engine timed out during initialization. Please check your internet connection.")), 90000)
+        setTimeout(() => reject(new Error("Engine timed out during initialization. Please check your internet connection.")), 120000)
       );
 
       await Promise.race([
