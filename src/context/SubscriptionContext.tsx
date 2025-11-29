@@ -6,6 +6,9 @@ interface SubscriptionContextType {
   tier: UserTier;
   setTier: (tier: UserTier) => void;
   isPro: boolean;
+  isUpgradeModalOpen: boolean;
+  triggerUpgrade: () => void;
+  closeUpgradeModal: () => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -13,6 +16,7 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Default to 'pro' so you (the dev) have access, but can switch to 'free' to test
   const [tier, setTierState] = useState<UserTier>('pro'); 
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     // Load saved preference from local storage
@@ -27,10 +31,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.setItem('cinesketch_tier', newTier);
   };
 
+  const triggerUpgrade = () => setIsUpgradeModalOpen(true);
+  const closeUpgradeModal = () => setIsUpgradeModalOpen(false);
+
   const isPro = tier === 'pro';
 
   return (
-    <SubscriptionContext.Provider value={{ tier, setTier, isPro }}>
+    <SubscriptionContext.Provider value={{ tier, setTier, isPro, isUpgradeModalOpen, triggerUpgrade, closeUpgradeModal }}>
       {children}
     </SubscriptionContext.Provider>
   );

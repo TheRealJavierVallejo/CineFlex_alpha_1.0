@@ -16,7 +16,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
     description = "Upgrade to CineFlex Pro to unlock this tool.",
     className = ""
 }) => {
-    const { isPro } = useSubscription();
+    const { isPro, triggerUpgrade } = useSubscription();
 
     if (isPro) {
         return <>{children}</>;
@@ -44,7 +44,12 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
                     {description}
                 </p>
                 
-                <Button variant="primary" size="sm" className="shadow-lg shadow-primary/20">
+                <Button 
+                    variant="primary" 
+                    size="sm" 
+                    className="shadow-lg shadow-primary/20"
+                    onClick={triggerUpgrade} // Hooked up!
+                >
                     Unlock Pro
                 </Button>
             </div>

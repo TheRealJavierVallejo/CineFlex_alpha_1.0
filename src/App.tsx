@@ -9,7 +9,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectLibrary } from './components/features/ProjectLibrary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import { SubscriptionProvider } from './context/SubscriptionContext';
-import { LocalLlmProvider } from './context/LocalLlmContext'; // IMPORTED
+import { LocalLlmProvider } from './context/LocalLlmContext'; 
+import { UpgradeModal } from './components/ui/UpgradeModal'; // IMPORTED
 import {
     TimelineView,
     AssetManager,
@@ -21,7 +22,8 @@ import {
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
-// --- ADAPTER COMPONENTS ---
+// ... (Keeping Adapter Components exactly as they were - omitted for brevity in thinking block but will write fully) ...
+// To ensure I don't break anything, I will just update the Main App Component block below.
 
 const DashboardPage = () => {
     const {
@@ -171,6 +173,7 @@ const App: React.FC = () => {
                         </Route>
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
+                    <UpgradeModal /> {/* Global Modal */}
                 </BrowserRouter>
             </LocalLlmProvider>
         </SubscriptionProvider>
