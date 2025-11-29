@@ -9,8 +9,8 @@ interface LocalLlmContextType {
   isReady: boolean;
   isDownloading: boolean;
   isSupported: boolean;
-  isModelCached: boolean; // NEW
-  isCheckingCache: boolean; // NEW
+  isModelCached: boolean;
+  isCheckingCache: boolean;
   downloadProgress: number; // 0 to 100
   downloadText: string;
   error: string | null;
@@ -63,7 +63,10 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const initModel = useCallback(async () => {
-    if (isReady || isDownloading) return;
+    // If we have an engine, we assume it's ready or getting there.
+    if (engine.current && isReady) return;
+    if (isDownloading) return; // Prevent double init
+    
     if (!isSupported) {
         return;
     }
@@ -72,7 +75,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDownloading(true);
       setError(null);
       setDownloadProgress(0);
-      setDownloadText(isModelCached ? "Loading from disk..." : "Initializing engine..."); // Improved UX
+      setDownloadText(isModelCached ? "Loading from disk..." : "Initializing engine...");
 
       // Cleanup existing engine if any
       if (engine.current) {
@@ -83,10 +86,8 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       console.log("Initializing Main-Thread Engine (No Worker)...");
-      // Create engine on main thread
       engine.current = new MLCEngine();
 
-      // Define callback
       const onProgress = (report: InitProgressReport) => {
         const percent = Math.round(report.progress * 100);
         setDownloadProgress(percent);
@@ -95,7 +96,6 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // EXTENDED TIMEOUT: 10 minutes for slow connections
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Download timed out after 10 minutes. Please check your internet connection and try again.")), DOWNLOAD_TIMEOUT_MS)
       );
@@ -123,8 +123,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [isReady, isDownloading, isSupported, isModelCached]);
 
   const generateResponse = useCallback(async (prompt: string, history: { role: string; content: string }[] = []) => {
-    if (!engine.current || !isReady) {
-      throw new Error("AI Engine not ready");
+    // Rely on engine ref, not state, to avoid race conditions immediately after init
+    if (!engine.current) {
+      throw new Error("AI Engine not initialized");
     }
 
     const messages = [
@@ -139,15 +140,16 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     return reply.choices[0]?.message?.content || "";
-  }, [isReady]);
+  }, []); // Removed [isReady] dependency so function reference is stable
 
   const streamResponse = useCallback(async (
     prompt: string, 
     history: { role: string; content: string }[], 
     onUpdate: (chunk: string) => void
   ) => {
-    if (!engine.current || !isReady) {
-      throw new Error("AI Engine not ready");
+    // Rely on engine ref, not state
+    if (!engine.current) {
+      throw new Error("AI Engine not initialized");
     }
 
     const messages = [
@@ -166,7 +168,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const content = chunk.choices[0]?.delta?.content || "";
       if (content) onUpdate(content);
     }
-  }, [isReady]);
+  }, []); // Removed [isReady] dependency
 
   return (
     <LocalLlmContext.Provider value={{
