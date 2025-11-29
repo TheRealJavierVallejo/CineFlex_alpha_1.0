@@ -27,7 +27,7 @@ interface ScriptChatProps {
 export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
   const { project, showToast } = useWorkspace();
   const { tier } = useSubscription();
-  const { isReady, initModel, streamResponse, isSupported } = useLocalLlm();
+  const { isReady, initModel, streamResponse, isSupported, isModelCached, isCheckingCache } = useLocalLlm();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 'welcome', role: 'model', content: "Hello! I'm your co-writer. I can help brainstorm dialogue, plot points, or format checks. How can I help?" }
@@ -68,9 +68,31 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
             showToast("WebGPU not supported on this device.", 'error');
             return;
         }
+        
+        // --- SEAMLESS INIT LOGIC ---
         if (!isReady) {
-            setShowDownloadModal(true);
-            return;
+            if (isModelCached) {
+                // Scenario A: Cached -> Seamless Warmup
+                // We DON'T show the modal. We just warm it up silently.
+                
+                // Add a temporary system message so user knows what's happening
+                const warmupId = crypto.randomUUID();
+                setMessages(prev => [...prev, { id: warmupId, role: 'model', content: 'Warmup: Loading AI engine...' }]);
+                
+                try {
+                    await initModel(); // This will take a few seconds
+                } catch(e) {
+                    // Context handles error state, but let's clear the message
+                }
+                
+                // Remove the warmup message (the real response will follow)
+                setMessages(prev => prev.filter(m => m.id !== warmupId));
+                
+            } else {
+                // Scenario B: Not Cached -> Permission Modal
+                setShowDownloadModal(true);
+                return;
+            }
         }
     }
 
@@ -178,8 +200,16 @@ Keep response concise and relevant to the script.
           
           {tier === 'free' ? (
               <div className={`flex items-center gap-2 px-2 py-1 bg-background border rounded-full text-[10px] cursor-help transition-colors ${!isSupported ? 'border-red-900/50 text-red-400' : 'border-border text-text-muted'}`} title="Free users use local AI">
-                  {isSupported ? <Cpu className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                  <span>{isSupported ? 'Local (Llama 3)' : 'Unsupported'}</span>
+                  {isCheckingCache ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : isSupported ? (
+                      <Cpu className="w-3 h-3" />
+                  ) : (
+                      <AlertTriangle className="w-3 h-3" />
+                  )}
+                  <span>
+                      {isCheckingCache ? 'Checking...' : isSupported ? 'Local (Llama 3)' : 'Unsupported'}
+                  </span>
                   <GraduationCap className="w-3 h-3 text-text-muted ml-1" />
               </div>
           ) : (
@@ -255,16 +285,30 @@ Keep response concise and relevant to the script.
                 handleSend();
               }
             }}
-            placeholder={useLocal && !isReady ? "Model needs to initialize first..." : "Ask for ideas, dialogue..."}
-            disabled={useLocal && !isSupported}
+            placeholder={
+                useLocal 
+                  ? isCheckingCache 
+                      ? "Checking AI status..." 
+                      : !isReady && !isModelCached 
+                          ? "Model download required..." 
+                          : "Ask for ideas, dialogue..." 
+                  : "Ask for ideas, dialogue..."
+            }
+            disabled={useLocal && (!isSupported || isCheckingCache)}
             className="w-full bg-surface-secondary border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-text-primary resize-none outline-none focus:border-primary h-[80px] disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button 
             onClick={handleSend}
-            disabled={!input.trim() || isLoading || (useLocal && !isSupported)}
+            disabled={!input.trim() || isLoading || (useLocal && (!isSupported || isCheckingCache))}
             className="absolute right-3 bottom-3 text-primary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {useLocal && !isReady ? <Cpu className="w-4 h-4 animate-pulse" /> : <Send className="w-4 h-4" />}
+            {useLocal && isCheckingCache ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+            ) : useLocal && !isReady && !isModelCached ? (
+                <Cpu className="w-4 h-4 animate-pulse" />
+            ) : (
+                <Send className="w-4 h-4" />
+            )}
           </button>
         </div>
         

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
-import { MLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
+import { MLCEngine, InitProgressReport, hasModelInCache } from "@mlc-ai/web-llm";
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -9,6 +9,8 @@ interface LocalLlmContextType {
   isReady: boolean;
   isDownloading: boolean;
   isSupported: boolean;
+  isModelCached: boolean; // NEW
+  isCheckingCache: boolean; // NEW
   downloadProgress: number; // 0 to 100
   downloadText: string;
   error: string | null;
@@ -26,25 +28,38 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [downloadText, setDownloadText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
+  
+  // Cache state
+  const [isModelCached, setIsModelCached] = useState(false);
+  const [isCheckingCache, setIsCheckingCache] = useState(true);
 
   // Engine ref (Main Thread)
   const engine = useRef<MLCEngine | null>(null);
 
-  // Check WebGPU & Security Context on mount
+  // Check WebGPU, Security & Cache on mount
   useEffect(() => {
     // 1. Check GPU
     if (!navigator.gpu) {
       setIsSupported(false);
       setError("WebGPU is not supported in this browser. Local AI requires WebGPU.");
+      setIsCheckingCache(false);
       return;
     }
 
-    // 2. Check Security Headers (SharedArrayBuffer support)
-    // Note: Localhost usually works without headers, but production needs them.
-    // We won't block strictly on this for localhost dev.
+    // 2. Check Security Headers
     if (!window.crossOriginIsolated && window.location.hostname !== 'localhost') {
        console.warn("Missing Cross-Origin headers. WebGPU might fail.");
     }
+    
+    // 3. Check Cache
+    hasModelInCache(SELECTED_MODEL)
+      .then((cached) => {
+        console.log("Local AI Model Cached:", cached);
+        setIsModelCached(cached);
+      })
+      .catch((e) => console.warn("Cache check failed", e))
+      .finally(() => setIsCheckingCache(false));
+      
   }, []);
 
   const initModel = useCallback(async () => {
@@ -57,7 +72,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDownloading(true);
       setError(null);
       setDownloadProgress(0);
-      setDownloadText("Initializing engine...");
+      setDownloadText(isModelCached ? "Loading from disk..." : "Initializing engine..."); // Improved UX
 
       // Cleanup existing engine if any
       if (engine.current) {
@@ -105,7 +120,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDownloading(false);
       setDownloadText("Error");
     }
-  }, [isReady, isDownloading, isSupported]);
+  }, [isReady, isDownloading, isSupported, isModelCached]);
 
   const generateResponse = useCallback(async (prompt: string, history: { role: string; content: string }[] = []) => {
     if (!engine.current || !isReady) {
@@ -158,6 +173,8 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isReady,
       isDownloading,
       isSupported,
+      isModelCached,
+      isCheckingCache,
       downloadProgress,
       downloadText,
       error,
