@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { MLCEngine, InitProgressReport, hasModelInCache } from "@mlc-ai/web-llm";
+import { logEvent } from '../services/telemetry'; // IMPORTED
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -38,6 +39,8 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Check WebGPU, Security & Cache on mount
   useEffect(() => {
+    logEvent('app_init'); // LOG INIT
+
     // 1. Check GPU
     if (!navigator.gpu) {
       setIsSupported(false);
@@ -47,13 +50,12 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // 2. Check Security Headers (SharedArrayBuffer support)
-    // In production, this MUST be true or the engine crashes silently.
     if (!window.crossOriginIsolated) {
         if (window.location.hostname === 'localhost') {
             console.warn("Localhost warning: Missing Cross-Origin headers. WebGPU might be unstable.");
         } else {
             setIsSupported(false);
-            setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine. Please contact support if you see this.");
+            setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine.");
             setIsCheckingCache(false);
             return;
         }
@@ -71,15 +73,14 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const initModel = useCallback(async () => {
-    // If we have an engine, we assume it's ready or getting there.
     if (engine.current && isReady) return;
-    if (isDownloading) return; // Prevent double init
+    if (isDownloading) return; 
     
-    if (!isSupported) {
-        return;
-    }
+    if (!isSupported) return;
 
     try {
+      logEvent('model_download_start', { model: SELECTED_MODEL, cached: isModelCached }); // LOG START
+
       setIsDownloading(true);
       setError(null);
       setDownloadProgress(0);
@@ -87,13 +88,10 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Cleanup existing engine if any
       if (engine.current) {
-         try {
-             await engine.current.unload();
-         } catch(e) { console.warn("Unload error", e); }
+         try { await engine.current.unload(); } catch(e) {}
          engine.current = null;
       }
 
-      console.log("Initializing Main-Thread Engine (No Worker)...");
       engine.current = new MLCEngine();
 
       const onProgress = (report: InitProgressReport) => {
@@ -105,7 +103,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       engine.current.setInitProgressCallback(onProgress);
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Download timed out after 10 minutes. Please check your internet connection and try again.")), DOWNLOAD_TIMEOUT_MS)
+        setTimeout(() => reject(new Error("Download timed out.")), DOWNLOAD_TIMEOUT_MS)
       );
 
       await Promise.race([
@@ -117,6 +115,8 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDownloading(false);
       setDownloadText("Ready");
       setDownloadProgress(100);
+      
+      logEvent('model_download_success', { model: SELECTED_MODEL }); // LOG SUCCESS
 
     } catch (err: any) {
       console.error("LLM Init Error:", err);
@@ -127,14 +127,13 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setError(err.message || "Failed to download model.");
       setIsDownloading(false);
       setDownloadText("Error");
+      
+      logEvent('model_download_fail', { error: err.message }); // LOG FAIL
     }
   }, [isReady, isDownloading, isSupported, isModelCached]);
 
   const generateResponse = useCallback(async (prompt: string, history: { role: string; content: string }[] = []) => {
-    // Rely on engine ref, not state, to avoid race conditions immediately after init
-    if (!engine.current) {
-      throw new Error("AI Engine not initialized");
-    }
+    if (!engine.current) throw new Error("AI Engine not initialized");
 
     const messages = [
       ...history.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
@@ -148,17 +147,14 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     return reply.choices[0]?.message?.content || "";
-  }, []); // Removed [isReady] dependency so function reference is stable
+  }, []); 
 
   const streamResponse = useCallback(async (
     prompt: string, 
     history: { role: string; content: string }[], 
     onUpdate: (chunk: string) => void
   ) => {
-    // Rely on engine ref, not state
-    if (!engine.current) {
-      throw new Error("AI Engine not initialized");
-    }
+    if (!engine.current) throw new Error("AI Engine not initialized");
 
     const messages = [
       ...history.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
@@ -176,21 +172,13 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const content = chunk.choices[0]?.delta?.content || "";
       if (content) onUpdate(content);
     }
-  }, []); // Removed [isReady] dependency
+  }, []); 
 
   return (
     <LocalLlmContext.Provider value={{
-      isReady,
-      isDownloading,
-      isSupported,
-      isModelCached,
-      isCheckingCache,
-      downloadProgress,
-      downloadText,
-      error,
-      initModel,
-      generateResponse,
-      streamResponse
+      isReady, isDownloading, isSupported, isModelCached, isCheckingCache,
+      downloadProgress, downloadText, error,
+      initModel, generateResponse, streamResponse
     }}>
       {children}
     </LocalLlmContext.Provider>
@@ -199,8 +187,6 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const useLocalLlm = () => {
   const context = useContext(LocalLlmContext);
-  if (!context) {
-    throw new Error("useLocalLlm must be used within a LocalLlmProvider");
-  }
+  if (!context) throw new Error("useLocalLlm must be used within a LocalLlmProvider");
   return context;
 };

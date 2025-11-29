@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, Palette, Check, X, Moon, Sun, Shield, Sparkles } from 'lucide-react';
+import { Key, Eye, EyeOff, Palette, Check, X, Moon, Sun, Shield, Sparkles, Scale } from 'lucide-react';
 import { UI_COLOR_PALETTE } from '../../constants';
 import Button from '../ui/Button';
 import { ShowToastFn } from '../../types';
-import { useSubscription } from '../../context/SubscriptionContext'; // IMPORTED
+import { useSubscription } from '../../context/SubscriptionContext'; 
 
 import { getContrastColor, getGlowColor } from '../../utils/themeUtils';
 
@@ -18,7 +18,7 @@ interface AppSettingsProps {
 }
 
 export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) => {
-    const { tier, setTier } = useSubscription(); // Use Context
+    const { tier, setTier } = useSubscription(); 
 
     const [apiKey, setApiKey] = useState('');
     const [showKey, setShowKey] = useState(false);
@@ -79,7 +79,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
 
     return (
         <div className="fixed inset-0 z-[100] modal-bg-dark backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
 
                 {/* Header */}
                 <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
@@ -90,7 +90,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-border bg-surface">
+                <div className="flex border-b border-border bg-surface shrink-0">
                     <button
                         onClick={() => setActiveTab('theme')}
                         className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'theme' ? 'text-primary border-b-2 border-primary bg-surface-secondary' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
@@ -112,7 +112,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 </div>
 
                 {/* Content */}
-                <div className="p-8 bg-background min-h-[320px]">
+                <div className="p-8 bg-background min-h-[320px] overflow-y-auto">
                     {activeTab === 'theme' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-200">
                             <div>
@@ -252,9 +252,13 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-border bg-surface flex justify-end">
-                    <Button variant="secondary" onClick={onClose}>Done</Button>
+                {/* Footer (Legal) */}
+                <div className="p-4 border-t border-border bg-surface flex items-center justify-between shrink-0">
+                    <div className="text-[10px] text-text-tertiary flex gap-4">
+                         <a href="#" className="hover:text-text-primary flex items-center gap-1"><Scale className="w-3 h-3"/> Terms of Service</a>
+                         <a href="#" className="hover:text-text-primary">Privacy Policy</a>
+                    </div>
+                    <Button variant="secondary" onClick={onClose} size="sm">Done</Button>
                 </div>
             </div>
         </div>
