@@ -82,8 +82,18 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const [noCharacters, setNoCharacters] = useState(false);
 
   // Local Settings
-  // If user is Free, we force a safe default for local state, but they can't change it anyway in UI
-  const [selectedModel, setSelectedModel] = useState(shot.model || (tier === 'free' ? 'pollinations' : MODEL_OPTIONS[0].value));
+  // Force reset if tier changes (Safety Mechanism)
+  const [selectedModel, setSelectedModel] = useState(
+      shot.model && tier === 'pro' ? shot.model : (tier === 'free' ? 'pollinations' : MODEL_OPTIONS[0].value)
+  );
+  
+  // Effect to enforce model constraint when tier changes dynamically
+  useEffect(() => {
+      if (tier === 'free') {
+          setSelectedModel('pollinations');
+      }
+  }, [tier]);
+
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(shot.aspectRatio || project.settings.aspectRatio || '16:9');
   const [variationCount, setVariationCount] = useState<number>(project.settings.variationCount || 1);
   const [selectedResolution, setSelectedResolution] = useState<string>(project.settings.imageResolution || '2048x2048');
@@ -235,7 +245,6 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
   const handleGenerate = async () => {
     // BLOCK GENERATION IF IN LOCKED PRO MODE
-    // If user is FREE, they can't use Pro View to generate.
     if (tier === 'free' && viewMode === 'pro') {
       showToast("Unlock Pro to use Studio features", 'info');
       return;
@@ -244,10 +253,6 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     if (!shot.description?.trim() && !shot.sketchImage) {
       showToast("Please add a scene description or upload a sketch before rendering.", 'warning');
       return;
-    }
-    const hasMissingPhotos = activeChars.some(c => !c.referencePhotos || c.referencePhotos.length === 0);
-    if (activeChars.length > 0 && hasMissingPhotos) {
-      showToast("Warning: Selected characters have no reference photos.", 'warning');
     }
 
     setIsGenerating(true);
@@ -300,9 +305,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       onUpdateShot(updated);
       showToast(isBaseModel ? "Draft image generated" : "Pro render successful", 'success');
 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast("Render failed", 'error');
+      showToast(`Render failed: ${e.message}`, 'error');
     } finally {
       setIsGenerating(false);
     }
