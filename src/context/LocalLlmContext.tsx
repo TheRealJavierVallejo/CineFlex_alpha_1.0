@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
-// Standard Vite worker import - lets Vite handle the bundling
-import LLMWorker from '../workers/llm.worker.ts?worker';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -59,7 +57,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setDownloadProgress(0);
       setDownloadText("Initializing engine...");
 
-      // Cleanup existing worker if any (Hard Reset)
+      // Cleanup existing worker if any
       if (engine.current || workerRef.current) {
          try {
              engine.current?.unload();
@@ -69,14 +67,23 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
          workerRef.current = null;
       }
 
-      // Instantiate using the imported class from Vite
-      console.log("Creating new LLM Worker...");
-      const worker = new LLMWorker();
+      console.log("Initializing Worker via new URL()...");
+      // Using new URL(..., import.meta.url) is the standard Vite way for workers
+      const worker = new Worker(new URL('../workers/llm.worker.ts', import.meta.url), { 
+          type: 'module' 
+      });
+      
       workerRef.current = worker;
 
       worker.onerror = (e) => {
           console.error("Worker startup error:", e);
-          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. Please check browser console.";
+          // Try to extract useful info from the event
+          let msg = "The worker script failed to load.";
+          if (e instanceof ErrorEvent) {
+              msg += ` ${e.message}`;
+          } else {
+              msg += " Possible causes: 404 Not Found, Syntax Error, or CSP blocking.";
+          }
           setError(msg);
           setIsDownloading(false);
       };
@@ -91,9 +98,9 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: 60s
+      // SAFETY TIMEOUT: 90s (Downloading can be slow)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Engine timed out. Please refresh and try again.")), 60000)
+        setTimeout(() => reject(new Error("Engine timed out during initialization. Please check your internet connection.")), 90000)
       );
 
       await Promise.race([

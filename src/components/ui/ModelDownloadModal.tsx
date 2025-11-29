@@ -39,7 +39,7 @@ export const ModelDownloadModal: React.FC<ModelDownloadModalProps> = ({ isOpen, 
                         {isReady ? (
                             <CheckCircle2 className="w-10 h-10 text-green-500" />
                         ) : error ? (
-                            <AlertTriangle className="w-10 h-10 text-red-500" />
+                            <AlertTriangle className="w-10 h-10 text-red-600" />
                         ) : isDownloading ? (
                             <div className="absolute inset-0 border-4 border-blue-100 rounded-full">
                                 <div 
@@ -87,11 +87,11 @@ export const ModelDownloadModal: React.FC<ModelDownloadModalProps> = ({ isOpen, 
                         </div>
                     )}
 
-                    {/* Error Box - FIXED CONTRAST */}
+                    {/* Error Box - MAX READABILITY */}
                     {error && (
-                        <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left flex gap-3">
-                            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                            <div className="text-xs text-red-800 font-medium leading-relaxed break-words">
+                        <div className="w-full bg-red-100 border-2 border-red-500 rounded-lg p-4 mb-6 text-left flex gap-3">
+                            <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-black font-semibold leading-relaxed break-words">
                                 {error}
                             </div>
                         </div>
