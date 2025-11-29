@@ -1,6 +1,6 @@
 /*
  * 🤖 COMPONENT: SCRIPT CHAT (Writer's Room)
- * Optimized for Local LLM Context Injection
+ * Optimized for Local LLM Streaming
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -27,7 +27,7 @@ interface ScriptChatProps {
 export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
   const { project, showToast } = useWorkspace();
   const { tier } = useSubscription();
-  const { isReady, initModel, generateResponse, isSupported, error: llmError } = useLocalLlm();
+  const { isReady, initModel, streamResponse, isSupported } = useLocalLlm();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 'welcome', role: 'model', content: "Hello! I'm your co-writer. I can help brainstorm dialogue, plot points, or format checks. How can I help?" }
@@ -57,7 +57,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading]); // Scroll on load change too
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -79,11 +79,14 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
     setInput('');
     setIsLoading(true);
 
-    try {
-      let responseText = "";
+    // Create placeholder for AI response immediately
+    const aiMsgId = crypto.randomUUID();
+    const aiMsg: Message = { id: aiMsgId, role: 'model', content: '' };
+    setMessages(prev => [...prev, aiMsg]);
 
+    try {
       if (useLocal) {
-          // --- LOCAL ENGINE (OPTIMIZED PROMPT) ---
+          // --- LOCAL ENGINE (STREAMING) ---
           
           // 1. Build Character Context
           const charContext = characters.length > 0 
@@ -91,15 +94,11 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
             : "";
 
           // 2. Build Scene Context (Smart Slice)
-          // We prioritize the *end* of the script where writing usually happens, but we also try to find the start of the current scene.
           const elements = project.scriptElements || [];
           let startIndex = Math.max(0, elements.length - 30); // Default to last 30 lines
           
-          // Try to find the last Scene Heading to capture the full current scene context
           for (let i = elements.length - 1; i >= 0; i--) {
               if (elements[i].type === 'scene_heading') {
-                  // If the scene heading is within the last 50 lines, start there.
-                  // If it's too far back, we stick to the last 30 to save context tokens.
                   if (elements.length - i < 50) {
                       startIndex = i;
                   }
@@ -130,20 +129,31 @@ INSTRUCTION: ${userMsg.content}
 Keep response concise and relevant to the script.
           `.trim();
 
-          responseText = await generateResponse(prompt, history);
+          // Stream the response
+          await streamResponse(prompt, history, (chunk) => {
+              setMessages(prev => prev.map(m => 
+                  m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
+              ));
+              // Turn off loading as soon as we start receiving data so the spinner goes away
+              setIsLoading(false);
+          });
 
       } else {
-          // --- CLOUD ENGINE (Gemini) ---
+          // --- CLOUD ENGINE (Gemini - Non-Streaming) ---
           const history = messages.map(m => ({ role: m.role, content: m.content }));
           const elements = project.scriptElements || [];
-          responseText = await chatWithScript(userMsg.content, history, elements, characters);
+          const responseText = await chatWithScript(userMsg.content, history, elements, characters);
+          
+          // Update placeholder with full response
+          setMessages(prev => prev.map(m => 
+              m.id === aiMsgId ? { ...m, content: responseText } : m
+          ));
       }
-      
-      const aiMsg: Message = { id: crypto.randomUUID(), role: 'model', content: responseText };
-      setMessages(prev => [...prev, aiMsg]);
     } catch (error: any) {
       console.error(error);
       showToast(error.message || "Failed to get response", 'error');
+      // If error, remove the empty placeholder
+      setMessages(prev => prev.filter(m => m.id !== aiMsgId));
     } finally {
       setIsLoading(false);
     }
@@ -217,21 +227,19 @@ Keep response concise and relevant to the script.
                 ? 'bg-primary/20 text-text-primary border border-primary/30' 
                 : 'bg-surface-secondary text-text-primary border border-border'
             }`}>
-              {msg.content}
+              {/* Show typing indicator if empty content (during initial stream start) */}
+              {!msg.content && msg.role === 'model' && isLoading ? (
+                 <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                 </span>
+              ) : msg.content}
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex gap-3">
-             <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center shrink-0">
-                <Bot className="w-4 h-4 text-primary" />
-             </div>
-             <div className="bg-surface-secondary rounded-lg p-3 flex items-center gap-2 text-text-tertiary text-sm">
-                <Loader2 className="w-3 h-3 animate-spin" /> 
-                {useLocal ? "Running locally..." : "Thinking..."}
-             </div>
-          </div>
-        )}
+        
+        {/* This div forces scroll to bottom */}
         <div ref={messagesEndRef} />
       </div>
 

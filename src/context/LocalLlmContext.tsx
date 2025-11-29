@@ -14,6 +14,7 @@ interface LocalLlmContextType {
   error: string | null;
   initModel: () => Promise<void>;
   generateResponse: (prompt: string, history?: { role: string; content: string }[]) => Promise<string>;
+  streamResponse: (prompt: string, history: { role: string; content: string }[], onUpdate: (chunk: string) => void) => Promise<void>;
 }
 
 const LocalLlmContext = createContext<LocalLlmContextType | undefined>(undefined);
@@ -39,9 +40,10 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // 2. Check Security Headers (SharedArrayBuffer support)
-    if (!window.crossOriginIsolated) {
-      setIsSupported(false);
-      setError("Browser security restrictions detected. The app needs 'Cross-Origin-Opener-Policy' and 'Cross-Origin-Embedder-Policy' headers to run the AI engine.");
+    // Note: Localhost usually works without headers, but production needs them.
+    // We won't block strictly on this for localhost dev.
+    if (!window.crossOriginIsolated && window.location.hostname !== 'localhost') {
+       console.warn("Missing Cross-Origin headers. WebGPU might fail.");
     }
   }, []);
 
@@ -80,7 +82,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // EXTENDED TIMEOUT: 10 minutes for slow connections
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Download timed out after 10 minutes. Please check your internet connection and try again. The browser may have cached some files, so retrying should be faster.")), DOWNLOAD_TIMEOUT_MS)
+        setTimeout(() => reject(new Error("Download timed out after 10 minutes. Please check your internet connection and try again.")), DOWNLOAD_TIMEOUT_MS)
       );
 
       await Promise.race([
@@ -124,6 +126,33 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return reply.choices[0]?.message?.content || "";
   }, [isReady]);
 
+  const streamResponse = useCallback(async (
+    prompt: string, 
+    history: { role: string; content: string }[], 
+    onUpdate: (chunk: string) => void
+  ) => {
+    if (!engine.current || !isReady) {
+      throw new Error("AI Engine not ready");
+    }
+
+    const messages = [
+      ...history.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
+      { role: "user" as const, content: prompt }
+    ];
+
+    const completion = await engine.current.chat.completions.create({
+      messages,
+      temperature: 0.7,
+      max_tokens: 1024,
+      stream: true, 
+    });
+
+    for await (const chunk of completion) {
+      const content = chunk.choices[0]?.delta?.content || "";
+      if (content) onUpdate(content);
+    }
+  }, [isReady]);
+
   return (
     <LocalLlmContext.Provider value={{
       isReady,
@@ -133,7 +162,8 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       downloadText,
       error,
       initModel,
-      generateResponse
+      generateResponse,
+      streamResponse
     }}>
       {children}
     </LocalLlmContext.Provider>
