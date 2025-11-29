@@ -59,6 +59,13 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]); // Scroll on load change too
 
+  // Auto-close modal when ready
+  useEffect(() => {
+      if (isReady && showDownloadModal) {
+          setShowDownloadModal(false);
+      }
+  }, [isReady, showDownloadModal]);
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -81,8 +88,10 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ isOpen, onClose }) => {
                 
                 try {
                     await initModel(); // This will take a few seconds
-                } catch(e) {
-                    // Context handles error state, but let's clear the message
+                } catch(e: any) {
+                    showToast(e.message || "Failed to initialize AI", 'error');
+                    setMessages(prev => prev.filter(m => m.id !== warmupId));
+                    return; // Stop execution
                 }
                 
                 // Remove the warmup message (the real response will follow)
