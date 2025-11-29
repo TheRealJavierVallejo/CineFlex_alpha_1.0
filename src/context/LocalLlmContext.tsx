@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { WebWorkerMLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
+// Explicit Vite worker import
+import LLMWorker from '../workers/llm.worker.ts?worker';
 
 // Constants
 const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC"; 
@@ -67,23 +69,14 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
          workerRef.current = null;
       }
 
-      console.log("Initializing Worker via new URL()...");
-      // Using new URL(..., import.meta.url) is the standard Vite way for workers
-      const worker = new Worker(new URL('../workers/llm.worker.ts', import.meta.url), { 
-          type: 'module' 
-      });
-      
+      console.log("Initializing Worker via ?worker import...");
+      // Instantiate the imported worker class
+      const worker = new LLMWorker();
       workerRef.current = worker;
 
       worker.onerror = (e) => {
           console.error("Worker startup error:", e);
-          // Try to extract useful info from the event
-          let msg = "The worker script failed to load.";
-          if (e instanceof ErrorEvent) {
-              msg += ` ${e.message}`;
-          } else {
-              msg += " Possible causes: 404 Not Found, Syntax Error, or CSP blocking.";
-          }
+          const msg = e instanceof ErrorEvent ? e.message : "The worker script failed to load. Please check browser console.";
           setError(msg);
           setIsDownloading(false);
       };
@@ -98,7 +91,7 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       engine.current.setInitProgressCallback(onProgress);
 
-      // SAFETY TIMEOUT: 90s (Downloading can be slow)
+      // SAFETY TIMEOUT: 90s
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Engine timed out during initialization. Please check your internet connection.")), 90000)
       );
