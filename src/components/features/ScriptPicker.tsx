@@ -1,6 +1,6 @@
 /*
  * 📜 COMPONENT: SCRIPT PICKER
- * "Paper View" - Clean, minimalist selection tool with gutter indicators
+ * "Paper View" - Matches Studio Editor Exact Styles
  */
 
 import React, { useMemo } from 'react';
@@ -68,43 +68,43 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
     // Precise formatting logic matching standard Screenplay rules
     const getElementStyle = (type: ScriptElement['type']) => {
-        // Base text size 16px/12pt standard
-        const base = "font-screenplay text-[16px] leading-snug whitespace-pre-wrap relative transition-colors duration-200";
+        // Base text size matching ScriptPage
+        const base = "font-screenplay text-[12pt] leading-screenplay whitespace-pre-wrap relative";
         
         switch (type) {
             case 'scene_heading':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary mt-6 mb-4`,
+                    className: `${base} font-bold uppercase mt-8 mb-4`,
                     style: { width: '100%' }
                 };
             case 'action':
                 return {
-                    className: `${base} text-text-primary mt-2 mb-2`,
+                    className: `${base} mt-4 mb-0`,
                     style: { width: '100%' }
                 };
             case 'character':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary mt-4 mb-0`,
-                    style: { marginLeft: '37%', width: '60%' } // ~2.2in visual center
+                    className: `${base} font-bold uppercase mt-4 mb-0`,
+                    style: { marginLeft: '2.0in', width: '4.0in' } 
                 };
             case 'dialogue':
                 return {
-                    className: `${base} text-text-primary mb-1`,
-                    style: { marginLeft: '25%', width: '50%' } // ~1.5in visual block
+                    className: `${base} mb-0`,
+                    style: { marginLeft: '1.0in', width: '3.5in' }
                 };
             case 'parenthetical':
                 return {
-                    className: `${base} italic text-text-secondary text-sm mb-0`,
-                    style: { marginLeft: '31%', width: '40%' } // ~1.9in indent
+                    className: `${base} italic text-sm mb-0`,
+                    style: { marginLeft: '1.6in', width: '3.0in' }
                 };
             case 'transition':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary text-right mt-4 mb-2`,
+                    className: `${base} font-bold uppercase text-right mt-4 mb-0`,
                     style: { width: '100%' }
                 };
             default:
                 return {
-                    className: `${base} text-text-primary`,
+                    className: `${base}`,
                     style: {}
                 };
         }
@@ -117,7 +117,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0 z-10">
+                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0 z-20">
                     <div className="flex items-center gap-3">
                         <Type className="w-4 h-4 text-primary" />
                         <h3 className="font-bold text-text-primary text-sm uppercase tracking-widest">
@@ -130,11 +130,11 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 </div>
 
                 {/* SCROLL CONTAINER */}
-                <div className="flex-1 overflow-y-auto bg-background/50 p-0 flex justify-center custom-scrollbar shadow-inner relative">
+                <div className="flex-1 overflow-y-auto bg-app p-0 flex justify-center custom-scrollbar relative">
                     
-                    {/* PAPER AREA */}
-                    {/* Padding bottom ensures we can scroll past the end comfortably */}
-                    <div className="w-[8.5in] min-h-full bg-background py-16 px-16 shadow-2xl my-8 pb-40">
+                    {/* PAPER AREA (Exact Match to Editor) */}
+                    {/* bg-[#1E1E1E] matches the editor grey paper */}
+                    <div className="w-[8.5in] min-h-full bg-[#1E1E1E] border-x border-[#333] shadow-2xl py-16 px-20 text-[#E0E0E0] mb-20">
                         
                         {groups.length > 0 ? (
                             <div className="space-y-1">
@@ -149,13 +149,14 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                             className={`
                                                 relative group transition-opacity duration-200
                                                 ${isHeading ? 'pointer-events-none mb-6' : 'cursor-pointer'}
-                                                ${isLinked ? 'opacity-40 pointer-events-none grayscale' : 'hover:opacity-100'} 
+                                                ${isLinked ? 'opacity-30 pointer-events-none select-none grayscale' : 'hover:opacity-100'}
                                             `}
                                             onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
                                             {/* Hover Arrow Indicator (Floating in Left Gutter) */}
+                                            {/* Moved further left (-left-20) to sit in the paper margin cleanly */}
                                             {!isHeading && !isLinked && (
-                                                <div className="absolute -left-16 top-1/2 -translate-y-1/2 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-200">
+                                                <div className="absolute -left-20 top-0 pt-4 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-4 group-hover:translate-x-0 duration-150">
                                                     <ChevronRight className="w-6 h-6" strokeWidth={3} />
                                                 </div>
                                             )}
@@ -174,7 +175,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                 })}
                             </div>
                         ) : (
-                            <div className="text-center py-32 flex flex-col items-center opacity-50">
+                            <div className="text-center py-32 flex flex-col items-center opacity-30">
                                 <Type className="w-16 h-16 text-text-tertiary mb-6 opacity-20" />
                                 <p className="font-mono text-sm uppercase tracking-widest text-text-secondary">Scene is Empty</p>
                                 <p className="text-xs text-text-muted mt-2 max-w-xs mx-auto leading-relaxed">
@@ -182,6 +183,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                 </p>
                             </div>
                         )}
+                        
+                        {/* Massive Bottom Spacer to fix scrolling cut-off */}
+                        <div className="h-40 w-full" />
                     </div>
                 </div>
             </div>
