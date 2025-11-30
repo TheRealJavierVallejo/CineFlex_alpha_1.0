@@ -45,10 +45,12 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // NUCLEAR OPTION for removing borders: added border-0, outline-none, ring-0 explicitly in tailwind + style tag override below
-    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-tight transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
+    // Styling Base: 
+    // - leading-snug (approx 1.375) provides standard readable line height without being too loose.
+    // - font-screenplay ensures Courier Prime.
+    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-snug transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
 
-    // Theme Colors - Darkened placeholders for better readability
+    // Theme Colors
     const colors = isLightMode ? {
       heading: "text-black",
       action: "text-black",
@@ -67,71 +69,74 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
       placeholder: "placeholder:text-[#555]"
     };
 
-    // HOLLYWOOD STANDARD MEASUREMENTS (Relative to 1.5" Left Margin)
-    // 1 inch = 96px (approx in web) or use 'ch' units for monospace precision
-    // Courier Prime 12pt is approx 10px wide per char.
-
-    // IMPROVED VERTICAL SPACING (Approximating standard line heights)
-    // - Scene Heading: 2 blank lines before (pt-8), 1 blank line after (pb-4)
-    // - Character: 1 blank line before (pt-4), 0 after
-    // - Dialogue: 0 before, 0 after
-    // - Action: 1 blank line before (pt-4) IF it follows dialogue (handled generically via pt-2 for better flow)
+    // SPACING LOGIC (Top Padding Strategy)
+    // 1 rem = 16px (approx 1 line at 12pt font)
+    // pt-4 = 1 blank line before
+    // pt-8 = 2 blank lines before
+    // pt-0 = 0 blank lines before (tight connection)
 
     switch (element.type) {
       case 'scene_heading':
         return {
-          container: "pt-8 pb-4 group/heading", // Increased from pt-4 pb-2
+          // Scene Heading: Usually 2 blank lines before. 
+          // Note: If it's the absolute first element, parent container padding handles it.
+          container: "pt-8 group/heading", 
           input: `${base} font-bold uppercase text-left ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT./EXT. SCENE LOCATION - DAY",
-          indicator: "top-10", // Adjusted for pt-8
+          indicator: "top-8", // Aligned with pt-8
           style: { paddingLeft: '0in', maxWidth: '6.0in' }
         };
       case 'action':
         return {
-          container: "pb-4", // Increased from pb-2 to mimic blank line after paragraph
+          // Action: 1 blank line before (standard paragraph break)
+          container: "pt-4", 
           input: `${base} text-left ${colors.action} ${colors.placeholder}`,
           placeholder: "Describe action...",
-          indicator: "top-1",
+          indicator: "top-4",
           style: { paddingLeft: '0in', maxWidth: '6.0in' }
         };
       case 'character':
         return {
-          container: "pt-4 pb-0",
+          // Character: 1 blank line before
+          container: "pt-4", 
           input: `${base} font-bold uppercase text-left ${colors.character} ${colors.placeholder}`,
           placeholder: "CHARACTER",
-          indicator: "top-5",
-          style: { paddingLeft: '2.0in', maxWidth: '5.5in' } // Standard is ~3.5" from edge, so 2.0" from margin
+          indicator: "top-4",
+          style: { paddingLeft: '2.0in', maxWidth: '5.5in' } // Standard indent
         };
       case 'dialogue':
         return {
-          container: "pb-0",
+          // Dialogue: 0 blank lines before (follows Character or Parenthetical)
+          container: "pt-0", 
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
           indicator: "top-0",
-          style: { paddingLeft: '1.0in', maxWidth: '4.5in' } // Standard is ~2.5" from edge
+          style: { paddingLeft: '1.0in', maxWidth: '4.5in' } // Standard indent
         };
       case 'parenthetical':
         return {
-          container: "pb-0",
+          // Parenthetical: 0 blank lines before
+          container: "pt-0", 
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(parenthetical)",
           indicator: "top-0",
-          style: { paddingLeft: '1.5in', maxWidth: '3.5in' } // Standard is ~3.0" from edge
+          style: { paddingLeft: '1.5in', maxWidth: '3.5in' } // Standard indent
         };
       case 'transition':
         return {
-          container: "pt-8 pb-4", // Increased separation
+          // Transition: 1 blank line before
+          container: "pt-4", 
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
-          indicator: "top-10",
-          style: { paddingLeft: '4.0in', maxWidth: '6.0in' } // Transitions often right aligned or deep indent
+          indicator: "top-4",
+          style: { paddingLeft: '4.0in', maxWidth: '6.0in' } 
         };
       default:
         return {
-          container: "pb-4", // Increased default spacing
+          container: "pt-4", 
           input: `${base} ${colors.action} ${colors.placeholder}`,
           placeholder: "",
-          indicator: "top-2",
+          indicator: "top-4",
           style: { paddingLeft: '0in', maxWidth: '6.0in' }
         };
     }
@@ -141,7 +146,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-      {/* FORCE STYLES: Explicitly forcing border-width to 0 and transparent */}
+      {/* FORCE STYLES override for input cleanliness */}
       <style>{`
          .script-input-no-border {
            outline: none !important;
@@ -163,12 +168,12 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
            background-image: none !important;
            ring: 0 !important;
          }
-         /* Ensure placeholder opacity is sufficient */
          .script-input-no-border::placeholder {
             opacity: 1 !important; 
          }
        `}</style>
 
+      {/* Type Indicator (Sidebar) */}
       <div className={`
           absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
           ${styles.indicator}
