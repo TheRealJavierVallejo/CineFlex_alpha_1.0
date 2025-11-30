@@ -328,30 +328,37 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   return (
     <div className={`relative ${styles.container}`}>
       
-      {/* 1. INDICATOR LABEL (Aligned with first line of text) */}
+      {/* 1. INDICATOR LABEL (Fixed Gutter Positioning) */}
       <div
         className={`
-          absolute -left-[14rem] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-2 font-mono flex items-center justify-end gap-2
+          absolute w-24 text-[10px] uppercase transition-all duration-200 select-none text-right pr-2 font-mono flex items-center justify-end gap-2
           ${isActive ? 'text-primary opacity-100 font-bold tracking-wide' : 'text-text-muted opacity-0 group-hover:opacity-50'}
         `}
         style={{ 
+            // Lock to precise vertical position: Top padding + slight offset for 12pt line height
             top: paddingTop, 
-            marginTop: '4px' // Optical centering with 12pt/16px text
+            marginTop: '3px', 
+            // Position safely to the left of the line
+            left: '-10rem', 
+            width: '6rem'
         }}
       >
         {element.dual && <Columns className="w-3 h-3 text-text-muted" />}
         {element.type.replace('_', ' ')}
       </div>
 
-      {/* 2. VERTICAL LINE (Spans CONTENT ONLY) */}
+      {/* 2. VERTICAL LINE (Fixed Gutter Positioning) */}
       <div
         className={`
-          absolute -left-[1.6in] w-[2px] transition-all duration-200 rounded-full
+          absolute w-[2px] transition-all duration-200 rounded-full
           ${isActive ? 'bg-primary opacity-100' : 'bg-zinc-700 opacity-0 group-hover:opacity-30'}
         `}
         style={{ 
+            // Vertical: Starts at text baseline, spans to bottom of element
             top: paddingTop,
-            bottom: 0 
+            bottom: 0,
+            // Horizontal: Fixed roughly 0.5 inches into the left margin (-3.5rem relative to content start)
+            left: '-3.5rem' 
         }}
       />
 
