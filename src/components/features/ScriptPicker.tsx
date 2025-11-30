@@ -1,11 +1,11 @@
 /*
  * 📜 COMPONENT: SCRIPT PICKER
  * Selection Modal for linking script lines to shots
- * Redesigned: "Script Page" View with Paper UI
+ * Design: Minimalist Paper View with Hover Arrows
  */
 
 import React, { useMemo } from 'react';
-import { Type, X, Check } from 'lucide-react';
+import { Type, X, ChevronRight } from 'lucide-react';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -69,7 +69,6 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
     // Precise formatting logic matching standard Screenplay rules
     const getElementStyle = (type: ScriptElement['type']) => {
-        // Base text size 16px/12pt standard
         const base = "font-screenplay text-[16px] leading-snug whitespace-pre-wrap relative transition-colors duration-200";
         
         switch (type) {
@@ -118,33 +117,26 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="h-16 border-b border-border flex items-center justify-between px-8 bg-surface shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-surface-secondary rounded-md border border-border">
-                            <Type className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-text-primary text-base uppercase tracking-widest">
-                                Select Script Element
-                            </h3>
-                            <p className="text-[11px] text-text-tertiary">
-                                Click a block to link it to the current shot
-                            </p>
-                        </div>
+                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface shrink-0 z-10">
+                    <div className="flex items-center gap-3">
+                        <Type className="w-4 h-4 text-primary" />
+                        <h3 className="font-bold text-text-primary text-sm uppercase tracking-widest">
+                            Select Script Line
+                        </h3>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-surface-secondary rounded-full text-text-secondary hover:text-text-primary transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Script Viewer Container - "The Page" */}
-                <div className="flex-1 overflow-y-auto bg-background/50 p-0 flex flex-col items-center custom-scrollbar shadow-inner">
+                {/* SCROLL CONTAINER */}
+                <div className="flex-1 overflow-y-auto bg-background/50 p-0 flex justify-center custom-scrollbar shadow-inner relative">
                     
-                    {/* Simulated Paper Area */}
-                    <div className="w-full max-w-[800px] min-h-full bg-background py-10 px-12 shadow-sm">
+                    {/* PAPER AREA */}
+                    <div className="w-full max-w-[800px] min-h-full bg-background py-16 px-16 shadow-sm">
                         
                         {groups.length > 0 ? (
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 {groups.map((group, idx) => {
                                     // Check if ANY item in this block is already linked
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
@@ -154,20 +146,19 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                         <div
                                             key={idx}
                                             className={`
-                                                relative group transition-all duration-200 -mx-6 px-6 py-2 border-l-4
-                                                ${isHeading ? 'pointer-events-none border-transparent mb-6' : 'cursor-pointer'}
-                                                
+                                                relative group transition-all duration-200 pl-6 -ml-6 rounded-sm py-1
+                                                ${isHeading ? 'pointer-events-none mb-6' : ''}
                                                 /* VISUAL STATES */
                                                 ${isLinked 
-                                                    ? 'border-primary bg-primary/10' 
-                                                    : 'border-transparent hover:bg-surface-secondary hover:border-primary/30'}
+                                                    ? 'opacity-40 grayscale pointer-events-none select-none' // Greyed out
+                                                    : !isHeading ? 'cursor-pointer hover:bg-surface-secondary/50' : ''} // Interactive
                                             `}
-                                            onClick={() => !isHeading && onSelect(group.items)}
+                                            onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
-                                            {/* Linked Indicator Badge (Right Side) */}
-                                            {isLinked && (
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1 bg-primary/10 border border-primary/30 rounded text-[9px] font-bold text-primary uppercase tracking-widest shadow-sm">
-                                                    <Check className="w-3 h-3" /> Linked
+                                            {/* Hover Arrow Indicator (Left Margin) */}
+                                            {!isHeading && !isLinked && (
+                                                <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 text-primary opacity-0 group-hover:opacity-100 transition-opacity transform -translate-x-2 group-hover:translate-x-0 duration-200">
+                                                    <ChevronRight className="w-5 h-5" strokeWidth={3} />
                                                 </div>
                                             )}
 
@@ -193,17 +184,10 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                 </p>
                             </div>
                         )}
+                        
+                        {/* Bottom Spacer to prevent cutoff */}
+                        <div className="h-24 w-full" />
                     </div>
-                </div>
-
-                {/* Footer */}
-                <div className="h-16 px-8 border-t border-border bg-surface flex items-center justify-end shrink-0 gap-3">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2.5 text-xs font-bold uppercase tracking-wide text-text-primary hover:bg-surface-secondary rounded transition-colors"
-                    >
-                        Cancel
-                    </button>
                 </div>
             </div>
         </div>
