@@ -4,6 +4,60 @@
  */
 
 import { Project, Scene, ScriptElement } from '../types';
+import { FountainToken } from '../lib/fountain'; // IMPORTED
+
+/**
+ * BRIDGE: Converts Fountain Tokens to CineFlex ScriptElements
+ */
+export const convertFountainToElements = (tokens: FountainToken[]): ScriptElement[] => {
+    const elements: ScriptElement[] = [];
+    let sequence = 1;
+
+    // Filter out irrelevant tokens (structural HTML helpers)
+    const validTokens = tokens.filter(t => 
+        !['dual_dialogue_begin', 'dual_dialogue_end', 'dialogue_begin', 'dialogue_end'].includes(t.type)
+    );
+
+    // Map Fountain Types to CineFlex Types
+    const mapType = (ft: FountainToken['type']): ScriptElement['type'] => {
+        switch (ft) {
+            case 'scene_heading': return 'scene_heading';
+            case 'character': return 'character';
+            case 'parenthetical': return 'parenthetical';
+            case 'dialogue': return 'dialogue';
+            case 'transition': return 'transition';
+            case 'action': 
+            case 'centered': 
+            case 'note':
+                return 'action'; // Map miscellaneous text to Action for now
+            default: return 'action';
+        }
+    };
+
+    validTokens.forEach(token => {
+        // Skip empty text unless it's a page break or something specific
+        if (!token.text && token.type !== 'page_break') return;
+
+        // Clean text (remove HTML comments from notes if present, though parser handles some)
+        let content = token.text || '';
+        
+        // Handle specific content cleanup if needed
+        if (token.type === 'note') {
+            // content is already clean text from parser usually
+        }
+
+        elements.push({
+            id: crypto.randomUUID(),
+            type: mapType(token.type),
+            content: content,
+            sequence: sequence++,
+            // sceneId will be assigned by syncScriptToScenes later
+            // associatedShotIds are empty for new imports
+        });
+    });
+
+    return elements;
+};
 
 /**
  * INTELLIGENT SCRIPT COMPILER
