@@ -67,25 +67,47 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
         return groupElements(sceneEls);
     }, [scriptElements, sceneId]);
 
-    const getElementClasses = (type: ScriptElement['type']) => {
-        // Strict screenplay formatting styles - DARK MODE MATCH
-        const base = "font-screenplay text-[17px] leading-relaxed transition-colors duration-200";
+    const getElementStyles = (type: ScriptElement['type']) => {
+        // Precise margin matching with ScriptBlock.tsx
+        // Using padding-left to simulate standard screenplay tabs
+        const base = "font-screenplay text-[12pt] leading-snug transition-colors duration-200";
 
         switch (type) {
             case 'scene_heading':
-                return `${base} font-bold uppercase pt-8 pb-4 border-b border-white/5 mb-4 block w-full text-text-primary text-left`;
+                return {
+                    className: `${base} font-bold uppercase text-text-primary pt-6 pb-2`,
+                    style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                };
             case 'action':
-                return `${base} text-left mb-4 block w-full text-text-secondary`;
+                return {
+                    className: `${base} text-text-secondary pb-4`,
+                    style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                };
             case 'character':
-                return `${base} font-bold uppercase text-center mt-4 w-full max-w-[22rem] mx-auto tracking-widest block text-text-primary`;
+                return {
+                    className: `${base} font-bold uppercase text-text-primary pt-4`,
+                    style: { paddingLeft: '2.0in', maxWidth: '5.5in' }
+                };
             case 'dialogue':
-                return `${base} text-left w-full max-w-[34rem] mx-auto mb-2 block text-text-secondary`;
+                return {
+                    className: `${base} text-text-secondary`,
+                    style: { paddingLeft: '1.0in', maxWidth: '4.5in' }
+                };
             case 'parenthetical':
-                return `${base} italic text-left w-full max-w-[20rem] mx-auto mb-0 block text-text-muted text-sm`;
+                return {
+                    className: `${base} italic text-text-muted text-sm`,
+                    style: { paddingLeft: '1.5in', maxWidth: '3.5in' }
+                };
             case 'transition':
-                return `${base} font-bold uppercase text-right mt-4 mb-4 block text-text-primary pr-12`;
+                return {
+                    className: `${base} font-bold uppercase text-text-primary text-right pr-4 pt-4`,
+                    style: { paddingLeft: '4.0in', maxWidth: '6.0in' }
+                };
             default:
-                return `${base} text-text-secondary`;
+                return {
+                    className: `${base} text-text-secondary`,
+                    style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                };
         }
     };
 
@@ -107,9 +129,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 </div>
 
                 {/* Content - Dark Editor Look */}
-                <div className="overflow-y-auto p-12 flex-1 bg-background font-screenplay shadow-inner">
+                <div className="overflow-y-auto p-12 flex-1 bg-background font-screenplay shadow-inner flex justify-center">
                     {groups.length > 0 ? (
-                        <div className="max-w-[850px] mx-auto pl-20 pr-12 min-h-full bg-surface border border-border relative p-[100px] shadow-2xl">
+                        <div className="w-full max-w-[8.5in] px-[1in] py-[0.5in] bg-surface border border-border relative shadow-2xl min-h-full">
                             {groups.map((group, idx) => {
                                 const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                 const isHeading = group.items[0].type === 'scene_heading';
@@ -118,31 +140,34 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                     <div
                                         key={idx}
                                         className={`
-                                            relative group transition-opacity duration-200
+                                            relative group transition-opacity duration-200 -mx-4 px-4
                                             ${isHeading ? 'pointer-events-none' : 'cursor-pointer'}
-                                            ${isLinked ? 'opacity-30 grayscale' : 'hover:bg-white/5 rounded-sm -mx-4 px-4'}
+                                            ${isLinked ? 'opacity-30 grayscale' : 'hover:bg-white/5 rounded-sm'}
                                         `}
                                         onClick={() => !isLinked && !isHeading && onSelect(group.items)}
                                     >
                                         {/* Render items in the group */}
-                                        {group.items.map(item => (
-                                            <div key={item.id} className={getElementClasses(item.type)}>
-                                                {item.content}
-                                            </div>
-                                        ))}
+                                        {group.items.map(item => {
+                                            const { className, style } = getElementStyles(item.type);
+                                            return (
+                                                <div key={item.id} className={className} style={style}>
+                                                    {item.content}
+                                                </div>
+                                            );
+                                        })}
 
                                         {/* Hover Arrow (Left Margin) */}
                                         {!isLinked && !isHeading && (
-                                            <div className="absolute -left-20 top-0 bottom-0 flex items-center justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="absolute -left-10 top-0 bottom-0 flex items-center justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <div className="flex items-center gap-1 text-primary font-sans font-bold text-[10px] uppercase tracking-wider">
-                                                    Link <ArrowRight className="w-3 h-3" />
+                                                    <ArrowRight className="w-4 h-4" />
                                                 </div>
                                             </div>
                                         )}
 
                                         {/* Linked Label (Left Margin) */}
                                         {isLinked && (
-                                            <div className="absolute -left-24 top-0 bottom-0 flex items-center justify-end w-20 pr-4">
+                                            <div className="absolute -left-12 top-0 bottom-0 flex items-center justify-end w-20 pr-4">
                                                 <div className="text-text-muted font-sans font-bold text-[9px] uppercase tracking-wider">
                                                     Linked
                                                 </div>

@@ -106,21 +106,33 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                     )}
 
                     {/* Linked Script Elements */}
-                    <div className="space-y-3">
-                        {linkedElements.map(el => (
-                            <div key={el.id} className="relative group/element pl-3 border-l-2 border-primary/20 hover:border-primary transition-colors">
-                                <div className="font-mono text-sm leading-relaxed text-text-secondary">
-                                    {el.character && <div className="font-bold uppercase text-xs mb-0.5 text-primary/70">{el.character}</div>}
-                                    <div className="whitespace-pre-wrap">{el.content}</div>
+                    <div className="space-y-1">
+                        {linkedElements.map((el, index) => {
+                            // Smart Display Logic: 
+                            // Only show the character label if this element HAS a character property
+                            // AND the previous element wasn't a Character element for the same person.
+                            const prevEl = index > 0 ? linkedElements[index - 1] : null;
+                            const isContinuation = prevEl && prevEl.type === 'character' && prevEl.content === el.character;
+                            const showLabel = el.character && !isContinuation;
+
+                            return (
+                                <div key={el.id} className="relative group/element pl-3 border-l-2 border-primary/20 hover:border-primary transition-colors py-1">
+                                    <div className="font-mono text-sm leading-relaxed text-text-secondary">
+                                        {showLabel && (
+                                            <div className="font-bold uppercase text-xs mb-0.5 text-primary/70">{el.character}</div>
+                                        )}
+                                        <div className="whitespace-pre-wrap">{el.content}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => onUnlinkElement(shot.id, el.id)}
+                                        className="absolute top-1 right-0 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity"
+                                        title="Unlink"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => onUnlinkElement(shot.id, el.id)}
-                                    className="absolute top-0 right-0 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Link Button */}
