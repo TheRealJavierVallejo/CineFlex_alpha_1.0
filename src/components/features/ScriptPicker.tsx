@@ -1,7 +1,6 @@
 /*
  * 📜 COMPONENT: SCRIPT PICKER
- * Selection Modal for linking script lines to shots
- * Design: Minimalist Paper View with Hover Arrows
+ * "Paper View" - Clean, minimalist selection tool with gutter indicators
  */
 
 import React, { useMemo } from 'react';
@@ -69,6 +68,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
     // Precise formatting logic matching standard Screenplay rules
     const getElementStyle = (type: ScriptElement['type']) => {
+        // Base text size 16px/12pt standard
         const base = "font-screenplay text-[16px] leading-snug whitespace-pre-wrap relative transition-colors duration-200";
         
         switch (type) {
@@ -113,7 +113,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center overlay-dark backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
             <div
-                className="bg-surface border border-border w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl relative rounded-lg overflow-hidden"
+                className="bg-surface border border-border w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl relative rounded-lg overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
@@ -133,10 +133,11 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 <div className="flex-1 overflow-y-auto bg-background/50 p-0 flex justify-center custom-scrollbar shadow-inner relative">
                     
                     {/* PAPER AREA */}
-                    <div className="w-full max-w-[800px] min-h-full bg-background py-16 px-16 shadow-sm">
+                    {/* Padding bottom ensures we can scroll past the end comfortably */}
+                    <div className="w-[8.5in] min-h-full bg-background py-16 px-16 shadow-2xl my-8 pb-40">
                         
                         {groups.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                                 {groups.map((group, idx) => {
                                     // Check if ANY item in this block is already linked
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
@@ -146,19 +147,16 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                         <div
                                             key={idx}
                                             className={`
-                                                relative group transition-all duration-200 pl-6 -ml-6 rounded-sm py-1
-                                                ${isHeading ? 'pointer-events-none mb-6' : ''}
-                                                /* VISUAL STATES */
-                                                ${isLinked 
-                                                    ? 'opacity-40 grayscale pointer-events-none select-none' // Greyed out
-                                                    : !isHeading ? 'cursor-pointer hover:bg-surface-secondary/50' : ''} // Interactive
+                                                relative group transition-opacity duration-200
+                                                ${isHeading ? 'pointer-events-none mb-6' : 'cursor-pointer'}
+                                                ${isLinked ? 'opacity-40 pointer-events-none grayscale' : 'hover:opacity-100'} 
                                             `}
                                             onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
-                                            {/* Hover Arrow Indicator (Left Margin) */}
+                                            {/* Hover Arrow Indicator (Floating in Left Gutter) */}
                                             {!isHeading && !isLinked && (
-                                                <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 text-primary opacity-0 group-hover:opacity-100 transition-opacity transform -translate-x-2 group-hover:translate-x-0 duration-200">
-                                                    <ChevronRight className="w-5 h-5" strokeWidth={3} />
+                                                <div className="absolute -left-16 top-1/2 -translate-y-1/2 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-200">
+                                                    <ChevronRight className="w-6 h-6" strokeWidth={3} />
                                                 </div>
                                             )}
 
@@ -184,9 +182,6 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                 </p>
                             </div>
                         )}
-                        
-                        {/* Bottom Spacer to prevent cutoff */}
-                        <div className="h-24 w-full" />
                     </div>
                 </div>
             </div>
