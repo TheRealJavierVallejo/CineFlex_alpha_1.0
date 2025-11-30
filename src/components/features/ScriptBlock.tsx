@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useLayoutEffect, memo } from 'react';
 import { ScriptElement } from '../../types';
-import { Columns } from 'lucide-react';
+import { Columns, X } from 'lucide-react';
 
 interface ScriptBlockProps {
   element: ScriptElement;
@@ -8,6 +8,7 @@ interface ScriptBlockProps {
   onChange: (id: string, value: string) => void;
   onKeyDown: (e: React.KeyboardEvent, id: string, type: ScriptElement['type'], selectionStart: number, selectionEnd: number) => void;
   onFocus: (id: string) => void;
+  onDeleteSceneNumber?: (id: string) => void;
   cursorRequest?: number | null;
   isLightMode?: boolean;
 }
@@ -18,6 +19,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   onChange,
   onKeyDown,
   onFocus,
+  onDeleteSceneNumber,
   cursorRequest,
   isLightMode = false
 }) => {
@@ -214,11 +216,20 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       {/* Right Indicator (Scene Number) */}
       {element.type === 'scene_heading' && element.sceneNumber && (
           <div className={`
-              absolute -right-[1.5in] w-12 text-sm font-mono font-bold select-none text-left
+              absolute -right-[1.5in] w-12 text-sm font-mono font-bold select-none text-left group/number
               ${styles.indicator}
               ${isLightMode ? 'text-zinc-400' : 'text-[#666]'}
           `}>
               {element.sceneNumber}
+              
+              {/* Delete Button (Hover) */}
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDeleteSceneNumber?.(element.id); }}
+                className="absolute left-full ml-2 text-text-muted hover:text-red-500 opacity-0 group-hover/number:opacity-100 transition-opacity"
+                title="Remove Scene Number"
+              >
+                  <X className="w-3 h-3" />
+              </button>
           </div>
       )}
 

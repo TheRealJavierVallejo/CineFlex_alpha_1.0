@@ -84,6 +84,7 @@ export const ScriptPage: React.FC = () => {
             const currentEl = prevElements[currentIndex];
             let newType = currentEl.type;
             let dualState = currentEl.dual;
+            let sceneNumber = currentEl.sceneNumber;
 
             const upper = newContent.toUpperCase();
             
@@ -103,22 +104,39 @@ export const ScriptPage: React.FC = () => {
             }
 
             let finalContent = newContent;
+            
+            // Auto-detect Scene Number Magic Snap (e.g. "INT. HOUSE #1#")
+            if (newType === 'scene_heading') {
+                // Regex looks for #ANYTHING# at the end of the string
+                const sceneNumMatch = finalContent.match(/\s#([a-zA-Z0-9\.-]+)#$/);
+                if (sceneNumMatch) {
+                    sceneNumber = sceneNumMatch[1]; // Extract '1A'
+                    finalContent = finalContent.substring(0, sceneNumMatch.index).trim(); // Remove from text
+                }
+            }
+
             if (['scene_heading', 'character', 'transition'].includes(newType)) {
-                finalContent = newContent.toUpperCase();
+                finalContent = finalContent.toUpperCase();
             }
             
             // Only update if changed
-            if (currentEl.content === finalContent && currentEl.type === newType && currentEl.dual === dualState) {
+            if (currentEl.content === finalContent && currentEl.type === newType && currentEl.dual === dualState && currentEl.sceneNumber === sceneNumber) {
                 return prevElements;
             }
 
             const updated = [...prevElements];
-            updated[currentIndex] = { ...currentEl, content: finalContent, type: newType, dual: dualState };
+            updated[currentIndex] = { ...currentEl, content: finalContent, type: newType, dual: dualState, sceneNumber: sceneNumber };
             
             // Trigger sync (side effect)
             triggerSync(updated);
             
             return updated;
+        });
+    }, [setElements]);
+
+    const handleClearSceneNumber = useCallback((id: string) => {
+        setElements(prevElements => {
+            return prevElements.map(el => el.id === id ? { ...el, sceneNumber: undefined } : el);
         });
     }, [setElements]);
 
@@ -462,6 +480,7 @@ export const ScriptPage: React.FC = () => {
                                                 handleNavigation(e, id, start, element.content.length);
                                                 handleKeyDown(e, id, type, start, end);
                                             }}
+                                            onDeleteSceneNumber={handleClearSceneNumber}
                                             onFocus={setActiveElementId}
                                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
                                             isLightMode={isPaperWhite} 
