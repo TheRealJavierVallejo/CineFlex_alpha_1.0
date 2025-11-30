@@ -69,6 +69,26 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
         return isFirst ? "py-1" : "mt-4 py-1";
     };
 
+    // Helper for screenplay formatting classes
+    const getScreenplayClasses = (type: ScriptElement['type']) => {
+        switch (type) {
+            case 'scene_heading':
+                return "font-bold uppercase text-text-primary border-b border-border/30 pb-2 mb-2 pt-2";
+            case 'action':
+                return "text-text-primary";
+            case 'character':
+                return "font-bold uppercase text-text-primary pl-16"; // Deep indent for character
+            case 'dialogue':
+                return "text-text-primary pl-6 pr-6"; // Medium indent for dialogue
+            case 'parenthetical':
+                return "italic text-text-secondary pl-10"; // Slightly more indent than dialogue
+            case 'transition':
+                return "font-bold uppercase text-text-primary text-right";
+            default:
+                return "text-text-primary";
+        }
+    };
+
     return (
         <>
             <div className="group/row grid grid-cols-2 border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[220px]">
@@ -158,27 +178,34 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                         </div>
                     )}
 
-                    {/* Linked Script Elements - Gap 0 to allow borders to connect */}
-                    <div className="flex flex-col">
+                    {/* Linked Script Elements - Screenplay Format */}
+                    <div className="flex flex-col font-screenplay text-[13px]">
                         {sortedElements.map((el, index) => {
-                            // Smart Display Logic
+                            // Smart Display Logic to detect Ghost Characters (implicit speakers)
                             const prevEl = index > 0 ? sortedElements[index - 1] : null;
                             const isContinuation = prevEl && prevEl.type === 'character' && prevEl.content === el.character;
                             const showLabel = el.character && !isContinuation;
                             
                             const spacingClass = getElementSpacing(el, index);
+                            const typeClass = getScreenplayClasses(el.type);
 
                             return (
-                                <div key={el.id} className={`relative group/element pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors ${spacingClass}`}>
-                                    <div className="font-mono text-base leading-relaxed text-text-primary">
+                                <div key={el.id} className={`relative group/element pl-4 border-l-[3px] border-primary/20 hover:border-primary transition-colors ${spacingClass}`}>
+                                    <div className={`leading-snug ${typeClass}`}>
+                                        {/* Ghost Label for implicit dialogue speakers */}
                                         {showLabel && (
-                                            <div className="font-bold uppercase text-xs mb-1 text-primary tracking-wide">{el.character}</div>
+                                            <div className="font-bold uppercase text-text-primary pl-10 mb-0.5 tracking-wide">
+                                                {el.character}
+                                            </div>
                                         )}
+                                        
+                                        {/* Main Content */}
                                         <div className="whitespace-pre-wrap">{el.content}</div>
                                     </div>
+                                    
                                     <button
                                         onClick={() => onUnlinkElement(shot.id, el.id)}
-                                        className="absolute top-1 right-0 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity p-1"
+                                        className="absolute top-1 right-0 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity p-1 bg-surface rounded-full shadow-sm border border-border"
                                         title="Unlink"
                                     >
                                         <X className="w-3 h-3" />
