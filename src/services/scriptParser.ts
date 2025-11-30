@@ -134,10 +134,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
       const y = item.transform[5]; // Y-coordinate (0 at bottom)
       const x = item.transform[4]; // X-coordinate (0 at left)
 
-      // Ignore Headers/Footers (Top 50pt / Bottom 50pt)
-      // Standard Script page is 11" (792pt). 
-      // Top line usually ~750pt. Page numbers ~770pt or ~30pt.
-      if (y > pageHeight - 40 || y < 40) return;
+      // Ignore Headers/Footers (Top 60pt / Bottom 60pt)
+      // Increased buffer to catch page numbers
+      if (y > pageHeight - 60 || y < 60) return;
 
       // Group by Y (4pt tolerance for slight misalignment)
       const line = pageLines.find(l => Math.abs(l.y - y) < 4);
@@ -154,8 +153,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
       // Sort items left-to-right
       line.items.sort((a, b) => a.x - b.x);
       
-      // Join with simple concatenation (PDFJS usually separates words)
-      // Sometimes we need a space if the x gap suggests it, but let's assume raw string is okay for now
+      // Join with simple concatenation
       line.text = line.items.map(i => i.str).join('');
     });
 
@@ -202,6 +200,12 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
       const upper = text.toUpperCase();
       const isUppercase = text === upper && /[A-Z]/.test(text);
 
+      // --- FILTER ARTIFACTS ---
+      // Ignore isolated numbers on the right (Page/Scene numbers like "2." or "2.2.")
+      if (offset > 200 && /^[\d.]+$/.test(text)) {
+          return;
+      }
+
       // --- CLASSIFICATION LOGIC ---
       // Action: 0
       // Dialogue: ~72 (1.0") -> 130pt (safe buffer)
@@ -246,6 +250,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
           if (text.endsWith('TO:') || text.startsWith('FADE')) {
               type = 'transition';
           } else {
+              // Assume transition for right-aligned text that survived artifact filter
               type = 'transition'; 
           }
       }
@@ -266,8 +271,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
           
           // Standard single line spacing is ~12-14pt
           // Standard double spacing (new paragraph) is ~24pt+
-          // We use a threshold of 20pt to allow for some looseness but catch paragraphs
-          const isConsecutive = distance > 0 && distance < 20;
+          // We use a looser threshold of 24pt to ensure single paragraphs don't split
+          // even if the PDF leading is slightly wide.
+          const isConsecutive = distance > 0 && distance < 24;
 
           // Don't merge Scene Headings (they are distinct lines)
           // Don't merge Characters (rare, but keeps safety)
