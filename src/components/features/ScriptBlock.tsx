@@ -17,7 +17,7 @@ interface ScriptBlockProps {
   projectId?: string; 
 }
 
-// Helper to robustly parse scene headings (Shared Logic)
+// Helper to robustly parse scene headings
 const parseSceneHeading = (content: string) => {
   const prefixMatch = content.match(/^(INT\.?\/?\s?EXT\.?|EXT\.?\/?\s?INT\.?|INT\.?|EXT\.?|I\/?E\.?)\s*/i);
 
@@ -243,22 +243,20 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   // --- STYLING & METRICS ---
 
-  // 1. Calculate Padding Top (The whitespace above the element)
-  // This logic must match the container CSS exactly
   const paddingTop = useMemo(() => {
     if (isFirstOnPage) return 0;
     switch (element.type) {
-      case 'scene_heading': return 32; // pt-8 (2rem)
+      case 'scene_heading': return 32; // 2rem
       case 'action':
       case 'character':
-      case 'transition': return 16; // pt-4 (1rem)
+      case 'transition': return 16; // 1rem
       default: return 0;
     }
   }, [element.type, isFirstOnPage]);
 
-  // 2. Get CSS Classes
+  // CSS Styles using MARGINS instead of Padding to prevent squishing
   const getStyles = () => {
-    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
+    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
     
     const colors = isLightMode ? {
       heading: "text-black", action: "text-black", character: "text-black",
@@ -272,58 +270,61 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     const spacingClass = isFirstOnPage ? 'pt-0' : (element.type === 'scene_heading' ? 'pt-8' : (['dialogue', 'parenthetical'].includes(element.type) ? 'pt-0' : 'pt-4'));
 
+    // Widths relative to the ~6.0in printable width (Page is 8.5, Margins 1.5+1.0 = 2.5)
     switch (element.type) {
       case 'scene_heading': return {
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT. SCENE HEADER - DAY",
-          style: { paddingLeft: '0in', maxWidth: '6.0in' }
+          style: { width: '100%' }
       };
       case 'action': return {
           container: `${spacingClass} pb-0`,
           input: `${base} ${colors.action} ${colors.placeholder}`,
           placeholder: "Action...",
-          style: { paddingLeft: '0in', maxWidth: '6.0in' }
+          style: { width: '100%' }
       };
       case 'character': return {
           container: `${spacingClass} pb-0`,
-          input: `${base} font-bold uppercase text-center ${colors.character} ${colors.placeholder}`,
+          input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`, // Removed text-center
           placeholder: "CHARACTER",
-          style: { paddingLeft: '2.0in', maxWidth: '3.5in' }
+          style: { marginLeft: '2.0in', width: '4.0in' } // Margin relative to container
       };
       case 'dialogue': return {
           container: "pt-0 pb-0",
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
-          style: { paddingLeft: '1.0in', maxWidth: '4.5in' }
+          style: { marginLeft: '1.0in', width: '3.5in' } // Margin relative to container
       };
       case 'parenthetical': return {
           container: "pt-0 pb-0",
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(cont'd)",
-          style: { paddingLeft: '1.6in', maxWidth: '3.5in' }
+          style: { marginLeft: '1.6in', width: '3.0in' } // Margin relative to container
       };
       case 'transition': return {
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
-          style: { paddingLeft: '4.0in', maxWidth: '6.0in' }
+          style: { marginLeft: '4.0in', width: '2.0in' } // Margin relative to container
       };
       default: return {
           container: `${spacingClass} pb-0`,
           input: `${base} ${colors.action} ${colors.placeholder}`,
-          style: { paddingLeft: '0in', maxWidth: '6.0in' }
+          style: { width: '100%' }
       };
     }
   };
 
   const styles = getStyles();
 
-  // Content for display
   let displayContent = element.content;
   if (element.type === 'character' && element.isContinued) {
     displayContent = element.content + " (CONT'D)";
   }
+
+  // Calculate top offset for side indicators
+  const indicatorTop = Math.max(paddingTop, 4); 
 
   return (
     <div className={`relative ${styles.container}`}>
@@ -335,11 +336,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           ${isActive ? 'text-primary opacity-100 font-bold tracking-wide' : 'text-text-muted opacity-0 group-hover:opacity-50'}
         `}
         style={{ 
-            // Vertical: Align with text baseline
-            top: paddingTop, 
+            top: indicatorTop,
             marginTop: '2px', 
-            // Horizontal: Further left to be off the paper
-            // Paper margin is ~9rem. We want to be outside that.
             left: '-18rem', 
             width: '7rem'
         }}
@@ -348,17 +346,16 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         {element.type.replace('_', ' ')}
       </div>
 
-      {/* 2. VERTICAL LINE (Off Page - Gutter Border) */}
+      {/* 2. VERTICAL LINE (Fixed Height Tick) */}
       <div
         className={`
           absolute w-[2px] transition-all duration-200 rounded-full
           ${isActive ? 'bg-primary opacity-100' : 'bg-zinc-700 opacity-0 group-hover:opacity-30'}
         `}
         style={{ 
-            top: paddingTop,
-            marginTop: '4px',
-            height: '14px', // FIXED HEIGHT (matches label text height approx)
-            // Horizontal: Just outside the paper edge (approx -1.6in)
+            top: indicatorTop,
+            marginTop: '3px',
+            height: '14px', // FIXED HEIGHT - Does not grow with text
             left: '-10.5rem' 
         }}
       />
@@ -367,7 +364,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       {element.type === 'scene_heading' && element.sceneNumber && (
         <div 
             className={`absolute -right-[1.0in] w-12 text-sm font-mono font-bold select-none text-left group/number ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-            style={{ top: paddingTop }}
+            style={{ top: indicatorTop }}
         >
           {element.sceneNumber}
           <button
