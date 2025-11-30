@@ -67,8 +67,8 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     }, [scriptElements, sceneId]);
 
     // Precise formatting logic matching standard Screenplay rules
+    // Using 'inherit' color to allow the parent container to control Theme (Light/Dark)
     const getElementStyle = (type: ScriptElement['type']) => {
-        // Base text size matching ScriptPage
         const base = "font-screenplay text-[12pt] leading-screenplay whitespace-pre-wrap relative";
         
         switch (type) {
@@ -132,9 +132,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 {/* SCROLL CONTAINER */}
                 <div className="flex-1 overflow-y-auto bg-app p-0 flex justify-center custom-scrollbar relative">
                     
-                    {/* PAPER AREA (Exact Match to Editor) */}
-                    {/* bg-[#1E1E1E] matches the editor grey paper */}
-                    <div className="w-[8.5in] min-h-full bg-[#1E1E1E] border-x border-[#333] shadow-2xl py-16 px-20 text-[#E0E0E0] mb-20">
+                    {/* PAPER AREA */}
+                    {/* Fixed: Use Tailwind dark mode classes for responsiveness */}
+                    <div className="w-[8.5in] min-h-full bg-white dark:bg-[#1E1E1E] border-x border-gray-200 dark:border-[#333] shadow-2xl py-16 px-20 text-black dark:text-[#E0E0E0] mb-20 transition-colors duration-300">
                         
                         {groups.length > 0 ? (
                             <div className="space-y-1">
@@ -143,29 +143,30 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                     const isHeading = group.items[0].type === 'scene_heading';
                                     
-                                    // Determine top alignment based on first element type
+                                    // ALIGNMENT FIX:
+                                    // We check the first element type to determine where the arrow sits vertically.
                                     const firstType = group.items[0].type;
-                                    // Action, Character, Transition all have mt-4. 
-                                    // If we ever have an orphan dialogue (rare), it has 0 margin, so we'd need top-0.
-                                    // For now, default to top-4 to match the standard mt-4 spacing.
+                                    
+                                    // Elements with mt-4 (Character, Action, Transition) -> Arrow needs to be pushed down (top-4)
+                                    // Elements with mt-0 (Dialogue, Paren) -> Arrow stays high (top-0)
                                     const arrowClass = (firstType === 'dialogue' || firstType === 'parenthetical') 
                                         ? "top-0" 
-                                        : "top-4 -mt-1.5"; // -mt-1.5 visually centers the chevron with the cap-height of text
+                                        : "top-4";
 
                                     return (
                                         <div
                                             key={idx}
                                             className={`
-                                                relative group transition-opacity duration-200
+                                                relative group transition-opacity duration-200 flex flex-col
                                                 ${isHeading ? 'pointer-events-none mb-6' : 'cursor-pointer'}
                                                 ${isLinked ? 'opacity-30 pointer-events-none select-none grayscale' : 'hover:opacity-100'}
                                             `}
                                             onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
-                                            {/* Hover Arrow Indicator (Floating in Left Gutter) */}
-                                            {/* Moved -left-20 to stay clear of text */}
+                                            {/* Hover Arrow Indicator */}
+                                            {/* Positioned relative to the block container */}
                                             {!isHeading && !isLinked && (
-                                                <div className={`absolute -left-20 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-4 group-hover:translate-x-0 duration-150 ${arrowClass}`}>
+                                                <div className={`absolute -left-16 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-150 ${arrowClass}`}>
                                                     <ChevronRight className="w-6 h-6" strokeWidth={3} />
                                                 </div>
                                             )}
