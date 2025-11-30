@@ -109,7 +109,7 @@ function parseFDX(xmlText: string): ParsedScript {
   };
 }
 
-// --- 3. PDF PARSER (Optimized Heuristic) ---
+// --- 3. PDF PARSER (Optimized Heuristic with Line Merging) ---
 
 async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
@@ -131,13 +131,15 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
       const str = item.str;
       if (!str || !str.trim()) return;
 
-      const y = item.transform[5];
-      const x = item.transform[4];
+      const y = item.transform[5]; // Y-coordinate (0 at bottom)
+      const x = item.transform[4]; // X-coordinate (0 at left)
 
       // Ignore Headers/Footers (Top 50pt / Bottom 50pt)
-      if (y > pageHeight - 50 || y < 50) return;
+      // Standard Script page is 11" (792pt). 
+      // Top line usually ~750pt. Page numbers ~770pt or ~30pt.
+      if (y > pageHeight - 40 || y < 40) return;
 
-      // Group by Y (4pt tolerance)
+      // Group by Y (4pt tolerance for slight misalignment)
       const line = pageLines.find(l => Math.abs(l.y - y) < 4);
       if (line) {
         line.items.push({ x, str });
@@ -147,22 +149,23 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
       }
     });
 
-    // Construct Text
+    // Construct Text for each line
     pageLines.forEach(line => {
       // Sort items left-to-right
       line.items.sort((a, b) => a.x - b.x);
-      // Join with simple concatenation (PDFJS usually handles spacing, or we accept potential merged words for now)
+      
+      // Join with simple concatenation (PDFJS usually separates words)
+      // Sometimes we need a space if the x gap suggests it, but let's assume raw string is okay for now
       line.text = line.items.map(i => i.str).join('');
     });
 
-    // Sort Top-to-Bottom
+    // Sort Top-to-Bottom (Higher Y is earlier in PDF)
     pageLines.sort((a, b) => b.y - a.y);
 
     pageLines.forEach(l => allLines.push({ ...l, page: i }));
   }
 
   // 2. DETECT MARGINS (Global Stats)
-  // We look for the most common X coordinate (rounded) to find the "Action" margin.
   const xCounts: Record<number, number> = {};
   allLines.forEach(l => {
       const rx = Math.round(l.x / 5) * 5; // Round to nearest 5
@@ -180,35 +183,37 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
   // Sanity check for BaseX
   if (baseX < 50) baseX = 72; // Assume 1.0" if detected edge is too close
 
-  // 3. CLASSIFY ELEMENTS
+  // 3. CLASSIFY & MERGE ELEMENTS
   const elements: ScriptElement[] = [];
   let sequence = 1;
+  let lastY = 0;
+  let lastPage = 0;
 
   allLines.forEach(line => {
       const text = line.text.trim();
       if (!text) return;
       
       const x = line.x;
+      const y = line.y;
+      const page = line.page;
       const offset = x - baseX; // Distance from Action Margin
       
       let type: ScriptElement['type'] = 'action';
       const upper = text.toUpperCase();
       const isUppercase = text === upper && /[A-Z]/.test(text);
 
-      // SCREENPLAY GEOMETRY (Points relative to Action Margin)
+      // --- CLASSIFICATION LOGIC ---
       // Action: 0
-      // Dialogue: ~72 (1.0")
-      // Parenthetical: ~115 (1.6")
-      // Character: ~158 (2.2")
-      // Transition: ~288 (4.0") or Right Aligned
+      // Dialogue: ~72 (1.0") -> 130pt (safe buffer)
+      // Parenthetical: ~115 (1.6") -> 190pt
+      // Character: ~158 (2.2") -> 240pt
+      // Transition: ~288 (4.0") -> 320pt
 
       if (offset < 36) {
-          // ACTION or SCENE HEADING
-          if (/^(INT|EXT|EST|I\/E)(\.|\s)/i.test(text)) {
+          // Left aligned: Scene Heading or Action
+          if (/^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(text)) {
               type = 'scene_heading';
           } else if (isUppercase && !text.endsWith('.')) {
-              // Uppercase Action -> Could be heading or slugline
-              // If it has " - " it's likely a heading
               if (text.includes(' - ')) {
                   type = 'scene_heading';
               } else if (text.endsWith('TO:') || text.startsWith('FADE')) {
@@ -234,14 +239,14 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
           if (isUppercase) {
               type = 'character';
           } else {
-              type = 'dialogue'; // Weirdly formatted dialogue
+              type = 'dialogue';
           }
       }
       else if (offset >= 220) {
           if (text.endsWith('TO:') || text.startsWith('FADE')) {
               type = 'transition';
           } else {
-              type = 'transition'; // Likely right aligned transition
+              type = 'transition'; 
           }
       }
       
@@ -250,12 +255,41 @@ async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
           type = 'parenthetical';
       }
 
-      elements.push({
-          id: crypto.randomUUID(),
-          type,
-          content: text,
-          sequence: sequence++
-      });
+      // --- MERGE LOGIC ---
+      // Check if this line continues the previous element block
+      const lastElement = elements[elements.length - 1];
+      let merged = false;
+
+      if (lastElement && lastElement.type === type && page === lastPage) {
+          // Calculate vertical distance (PDF Y grows upwards, so subtract current from last)
+          const distance = lastY - y; 
+          
+          // Standard single line spacing is ~12-14pt
+          // Standard double spacing (new paragraph) is ~24pt+
+          // We use a threshold of 20pt to allow for some looseness but catch paragraphs
+          const isConsecutive = distance > 0 && distance < 20;
+
+          // Don't merge Scene Headings (they are distinct lines)
+          // Don't merge Characters (rare, but keeps safety)
+          if (isConsecutive && type !== 'scene_heading' && type !== 'character') {
+              // Add space if needed
+              const separator = (/[a-zA-Z0-9.,?!"]$/.test(lastElement.content) && /^[a-zA-Z0-9]/.test(text)) ? ' ' : ' ';
+              lastElement.content += separator + text;
+              merged = true;
+          }
+      }
+
+      if (!merged) {
+          elements.push({
+              id: crypto.randomUUID(),
+              type,
+              content: text,
+              sequence: sequence++
+          });
+      }
+
+      lastY = y;
+      lastPage = page;
   });
 
   return {
