@@ -45,12 +45,8 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
-    // Styling Base: 
-    // - leading-snug (approx 1.375) provides standard readable line height without being too loose.
-    // - font-screenplay ensures Courier Prime.
     const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-snug transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
 
-    // Theme Colors
     const colors = isLightMode ? {
       heading: "text-black",
       action: "text-black",
@@ -58,7 +54,9 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
       dialogue: "text-black",
       parenthetical: "text-black",
       transition: "text-black",
-      placeholder: "placeholder:text-zinc-400"
+      placeholder: "placeholder:text-zinc-400",
+      note: "text-zinc-500",
+      section: "text-zinc-400"
     } : {
       heading: "text-[#E8E8E8]",
       action: "text-[#E8E8E8]",
@@ -66,29 +64,59 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
       dialogue: "text-[#E8E8E8]",
       parenthetical: "text-[#E8E8E8]",
       transition: "text-[#E8E8E8]",
-      placeholder: "placeholder:text-[#555]"
+      placeholder: "placeholder:text-[#555]",
+      note: "text-[#888]",
+      section: "text-[#666]"
     };
 
-    // SPACING LOGIC (Top Padding Strategy)
-    // 1 rem = 16px (approx 1 line at 12pt font)
-    // pt-4 = 1 blank line before
-    // pt-8 = 2 blank lines before
-    // pt-0 = 0 blank lines before (tight connection)
+    // Detection for "Pseudo-Types" (Notes, Centered, Sections)
+    const text = element.content.trim();
+    const isNote = text.startsWith('[[') && text.endsWith(']]');
+    const isCentered = text.startsWith('>') && text.endsWith('<');
+    const isSection = text.startsWith('#');
+
+    // Override Action styles if it detects special formatting
+    if (element.type === 'action') {
+        if (isNote) {
+            return {
+                container: "pt-4 pb-4 opacity-80",
+                input: `${base} ${colors.note} text-left italic ${colors.placeholder}`,
+                placeholder: "[[Note]]",
+                indicator: "top-4",
+                style: { paddingLeft: '0in', maxWidth: '6.0in' }
+            };
+        }
+        if (isCentered) {
+            return {
+                container: "pt-4 pb-4",
+                input: `${base} ${colors.action} text-center ${colors.placeholder}`,
+                placeholder: "> Centered <",
+                indicator: "top-4",
+                style: { paddingLeft: '0in', maxWidth: '6.0in' }
+            };
+        }
+        if (isSection) {
+            return {
+                container: "pt-8 pb-4", // Extra space for sections
+                input: `${base} ${colors.section} font-bold text-left ${colors.placeholder}`,
+                placeholder: "# Section",
+                indicator: "top-8",
+                style: { paddingLeft: '0in', maxWidth: '6.0in' }
+            };
+        }
+    }
 
     switch (element.type) {
       case 'scene_heading':
         return {
-          // Scene Heading: Usually 2 blank lines before. 
-          // Note: If it's the absolute first element, parent container padding handles it.
-          container: "pt-8 group/heading", 
+          container: "pt-8 pb-4 group/heading", 
           input: `${base} font-bold uppercase text-left ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT./EXT. SCENE LOCATION - DAY",
-          indicator: "top-8", // Aligned with pt-8
+          indicator: "top-8", 
           style: { paddingLeft: '0in', maxWidth: '6.0in' }
         };
       case 'action':
         return {
-          // Action: 1 blank line before (standard paragraph break)
           container: "pt-4", 
           input: `${base} text-left ${colors.action} ${colors.placeholder}`,
           placeholder: "Describe action...",
@@ -97,34 +125,30 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         };
       case 'character':
         return {
-          // Character: 1 blank line before
           container: "pt-4", 
           input: `${base} font-bold uppercase text-left ${colors.character} ${colors.placeholder}`,
           placeholder: "CHARACTER",
           indicator: "top-4",
-          style: { paddingLeft: '2.0in', maxWidth: '5.5in' } // Standard indent
+          style: { paddingLeft: '2.0in', maxWidth: '5.5in' }
         };
       case 'dialogue':
         return {
-          // Dialogue: 0 blank lines before (follows Character or Parenthetical)
           container: "pt-0", 
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
           indicator: "top-0",
-          style: { paddingLeft: '1.0in', maxWidth: '4.5in' } // Standard indent
+          style: { paddingLeft: '1.0in', maxWidth: '4.5in' } 
         };
       case 'parenthetical':
         return {
-          // Parenthetical: 0 blank lines before
           container: "pt-0", 
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(parenthetical)",
           indicator: "top-0",
-          style: { paddingLeft: '1.5in', maxWidth: '3.5in' } // Standard indent
+          style: { paddingLeft: '1.5in', maxWidth: '3.5in' } 
         };
       case 'transition':
         return {
-          // Transition: 1 blank line before
           container: "pt-4", 
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
@@ -146,7 +170,6 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-      {/* FORCE STYLES override for input cleanliness */}
       <style>{`
          .script-input-no-border {
            outline: none !important;
@@ -173,7 +196,6 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
          }
        `}</style>
 
-      {/* Type Indicator (Sidebar) */}
       <div className={`
           absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
           ${styles.indicator}

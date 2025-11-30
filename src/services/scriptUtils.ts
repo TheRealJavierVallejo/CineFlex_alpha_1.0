@@ -15,7 +15,7 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
 
     // Filter out irrelevant tokens (structural HTML helpers)
     const validTokens = tokens.filter(t => 
-        !['dual_dialogue_begin', 'dual_dialogue_end', 'dialogue_begin', 'dialogue_end'].includes(t.type)
+        !['dual_dialogue_begin', 'dual_dialogue_end', 'dialogue_begin', 'dialogue_end', 'boneyard_begin', 'boneyard_end'].includes(t.type)
     );
 
     // Map Fountain Types to CineFlex Types
@@ -26,28 +26,46 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
             case 'parenthetical': return 'parenthetical';
             case 'dialogue': return 'dialogue';
             case 'transition': return 'transition';
-            case 'action': 
-            case 'centered': 
-            case 'note':
-                return 'action'; // Map miscellaneous text to Action for now
+            // Map everything else to action to preserve it in the editor
             default: return 'action';
         }
     };
 
     validTokens.forEach(token => {
-        // Skip empty text unless it's a page break or something specific
+        // Skip empty text unless it's a page break
         if (!token.text && token.type !== 'page_break') return;
 
-        // Clean text (remove HTML comments from notes if present, though parser handles some)
         let content = token.text || '';
+        let type = mapType(token.type);
+
+        // PRESERVE SPECIAL FORMATTING
+        // Since our Editor doesn't have dedicated 'note' or 'centered' blocks yet,
+        // we encode them into the text so they aren't lost and can be re-parsed.
         
+        if (token.type === 'note') {
+            content = `[[${content}]]`;
+            type = 'action'; // Render as action, but visually distinct via brackets
+        } 
+        else if (token.type === 'centered') {
+            content = `> ${content} <`;
+            type = 'action';
+        }
+        else if (token.type === 'section') {
+            const depth = token.depth || 1;
+            content = `${'#'.repeat(depth)} ${content}`;
+            type = 'action';
+        }
+        else if (token.type === 'synopsis') {
+            content = `= ${content}`;
+            type = 'action';
+        }
+
         elements.push({
             id: crypto.randomUUID(),
-            type: mapType(token.type),
+            type: type,
             content: content,
             sequence: sequence++,
             // sceneId will be assigned by syncScriptToScenes later
-            // associatedShotIds are empty for new imports
         });
     });
 
@@ -62,22 +80,28 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
     let output = '';
     
     elements.forEach((el, index) => {
-        const prev = elements[index - 1];
-        
         // Add spacing rules based on types
         if (el.type === 'scene_heading') {
+            // Always 2 newlines before a scene heading
             output += `\n\n${el.content.toUpperCase()}\n`;
         } else if (el.type === 'action') {
+            // Action gets a newline before
             output += `\n${el.content}\n`;
         } else if (el.type === 'character') {
+            // Character gets a newline before
             output += `\n${el.content.toUpperCase()}\n`;
         } else if (el.type === 'dialogue') {
+            // Dialogue follows immediately (no extra newline)
             output += `${el.content}\n`;
         } else if (el.type === 'parenthetical') {
+            // Parenthetical follows immediately
             output += `${el.content}\n`;
         } else if (el.type === 'transition') {
+            // Transitions usually get a newline before and align right (in formatting), 
+            // but in raw text they just need separation.
             output += `\n${el.content.toUpperCase()}\n`;
         } else {
+            // Fallback
             output += `\n${el.content}\n`;
         }
     });
@@ -88,13 +112,11 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
 /**
  * INTELLIGENT SCRIPT COMPILER
  * Scans the script top-to-bottom and links dialogue to the active character.
- * NOW WITH SANITIZATION: Removes stale character tags from non-dialogue elements.
  */
 export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[] => {
   let activeCharacterName = '';
 
   return elements.map(el => {
-    // 1. Create a clean copy to ensure no stale properties (like 'character' on an Action line) persist
     const cleanEl: ScriptElement = {
         id: el.id,
         type: el.type,
@@ -104,23 +126,19 @@ export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[]
         associatedShotIds: el.associatedShotIds
     };
 
-    // 2. Found a Character Header? Update active character.
     if (cleanEl.type === 'character') {
-      activeCharacterName = cleanEl.content.trim();
+      // Clean up carat for dual dialogue if present
+      activeCharacterName = cleanEl.content.replace(/\^$/, '').trim();
       return cleanEl;
     }
 
-    // 3. Found Dialogue or Parenthetical? Link it to the active character.
     if (cleanEl.type === 'dialogue' || cleanEl.type === 'parenthetical') {
-      // Only link if we actually have a character context (skips orphaned dialogue at start)
       if (activeCharacterName) {
         cleanEl.character = activeCharacterName;
       }
       return cleanEl;
     }
 
-    // 4. Found a Scene Heading, Action, or Transition? 
-    // Reset active character context.
     activeCharacterName = '';
     return cleanEl;
   });
@@ -128,15 +146,11 @@ export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[]
 
 /**
  * Re-analyzes the entire scriptElements array.
- * 1. Identifies Scene Headings.
- * 2. Creates/Updates Scene objects in project.scenes.
- * 3. Assigns the correct sceneId to every script element.
- * 4. Preserves existing Scene IDs to keep Shots linked.
+ * Syncs Scene objects with the text.
  */
 export const syncScriptToScenes = (project: Project): Project => {
   if (!project.scriptElements) return project;
 
-  // STEP 0: ENRICH (Link Characters to Dialogue & Sanitize)
   const enrichedElements = enrichScriptElements(project.scriptElements);
 
   const newScenes: Scene[] = [];
@@ -145,7 +159,6 @@ export const syncScriptToScenes = (project: Project): Project => {
   let currentScene: Scene | null = null;
   let sceneSequence = 1;
 
-  // 1. Map existing scenes for quick lookup (to preserve IDs if strictly matching)
   const existingScenesMap = new Map(project.scenes.map(s => [s.id, s]));
 
   for (let i = 0; i < enrichedElements.length; i++) {
@@ -155,40 +168,33 @@ export const syncScriptToScenes = (project: Project): Project => {
     if (el.type === 'scene_heading') {
       let sceneId = el.sceneId;
 
-      // If this heading doesn't point to a valid existing scene, create a new one
       if (!sceneId || !existingScenesMap.has(sceneId)) {
-         // Reuse ID if valid, else new
          sceneId = sceneId || crypto.randomUUID(); 
       }
 
-      // Create/Update the Scene Object
-      // We assume the heading text is the source of truth
       const sceneObj: Scene = {
         id: sceneId,
         sequence: sceneSequence++,
         heading: el.content.toUpperCase(),
-        actionNotes: '', // Will populate below
-        scriptElements: [] // Will populate below
+        actionNotes: '', 
+        scriptElements: [] 
       };
 
       currentScene = sceneObj;
       newScenes.push(sceneObj);
       
-      // Update the element to link to this scene
       el.sceneId = sceneId;
     } 
     // CASE B: CONTENT WITHIN SCENE
     else if (currentScene) {
       el.sceneId = currentScene.id;
       
-      // Append Action to scene notes for quick view
       if (el.type === 'action') {
         currentScene.actionNotes += (currentScene.actionNotes ? '\n' : '') + el.content;
       }
     } 
-    // CASE C: ORPHANED CONTENT (Before first heading)
+    // CASE C: ORPHANED CONTENT
     else {
-      // Create a default "Start" scene if none exists
       if (!currentScene) {
           const sceneId = crypto.randomUUID();
           const sceneObj: Scene = {
@@ -215,19 +221,12 @@ export const syncScriptToScenes = (project: Project): Project => {
   };
 };
 
-/**
- * REVERSE SYNC: Generates a basic script from Scene data.
- * Used when the user creates scenes manually in the Timeline but hasn't written a script.
- */
 export const generateScriptFromScenes = (scenes: Scene[]): ScriptElement[] => {
     const elements: ScriptElement[] = [];
     let seq = 1;
-
-    // Sort by sequence to ensure script order matches timeline order
     const sortedScenes = [...scenes].sort((a, b) => a.sequence - b.sequence);
 
     sortedScenes.forEach(scene => {
-        // 1. Create Scene Heading
         elements.push({
             id: crypto.randomUUID(),
             type: 'scene_heading',
@@ -236,7 +235,6 @@ export const generateScriptFromScenes = (scenes: Scene[]): ScriptElement[] => {
             sequence: seq++
         });
 
-        // 2. Create Action Line if notes exist
         if (scene.actionNotes && scene.actionNotes.trim()) {
             elements.push({
                 id: crypto.randomUUID(),
@@ -247,14 +245,12 @@ export const generateScriptFromScenes = (scenes: Scene[]): ScriptElement[] => {
             });
         }
         
-        // 3. Keep existing elements if they are stored on the scene (fallback)
         if (scene.scriptElements && scene.scriptElements.length > 0) {
             scene.scriptElements.forEach(el => {
-                // Avoid duplicating the heading if it was stored
                 if (el.type !== 'scene_heading') {
                     elements.push({
                         ...el,
-                        id: crypto.randomUUID(), // New IDs to avoid conflicts
+                        id: crypto.randomUUID(), 
                         sceneId: scene.id,
                         sequence: seq++
                     });
