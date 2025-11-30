@@ -99,6 +99,9 @@ export interface ScriptElement {
   associatedShotIds?: string[]; // Shots generated from this specific line
   dual?: boolean;          // Is this simultaneous dialogue?
   sceneNumber?: string;    // "1", "2A", etc. (Only for scene_heading)
+  isContinued?: boolean;   // This dialogue continues from previous page
+  continuesNext?: boolean; // This dialogue continues to next page
+  keptTogether?: boolean;  // This element was kept with adjacent elements for pagination
 }
 
 // 🎬 SCENE: A group of shots in one location
@@ -129,7 +132,7 @@ export interface Shot {
   model?: string;          // Which AI brain used (Gemini vs Imagen)
   imageSize?: string;
   linkedElementIds?: string[]; // IDs of the script elements this shot visualizes
-  
+
   // Creative Overrides
   locationId?: string;     // Specific location for this shot (overrides scene default)
   timeOfDay?: string;      // Override global time setting
