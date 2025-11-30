@@ -55,13 +55,14 @@ const mockShot: Shot = {
     description: 'A cat sitting on a wall',
     shotType: 'Wide Shot',
     characterIds: [],
-    generationCandidates: []
+    generationCandidates: [],
+    notes: ''
 };
 
 // --- TESTS ---
 
 describe('Free Tier / Student Mode Deep Tests', () => {
-    
+
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -69,12 +70,12 @@ describe('Free Tier / Student Mode Deep Tests', () => {
     describe('Shot Editor Restrictions', () => {
         it('should default to Base View', () => {
             render(
-                <ShotEditor 
-                    project={mockProject} 
-                    activeShot={mockShot} 
-                    onClose={vi.fn()} 
-                    onUpdateShot={vi.fn()} 
-                    showToast={vi.fn()} 
+                <ShotEditor
+                    project={mockProject}
+                    activeShot={mockShot}
+                    onClose={vi.fn()}
+                    onUpdateShot={vi.fn()}
+                    showToast={vi.fn()}
                 />
             );
 
@@ -88,12 +89,12 @@ describe('Free Tier / Student Mode Deep Tests', () => {
 
         it('should show lock overlay when switching to Pro View', async () => {
             render(
-                <ShotEditor 
-                    project={mockProject} 
-                    activeShot={mockShot} 
-                    onClose={vi.fn()} 
-                    onUpdateShot={vi.fn()} 
-                    showToast={vi.fn()} 
+                <ShotEditor
+                    project={mockProject}
+                    activeShot={mockShot}
+                    onClose={vi.fn()}
+                    onUpdateShot={vi.fn()}
+                    showToast={vi.fn()}
                 />
             );
 
@@ -104,7 +105,7 @@ describe('Free Tier / Student Mode Deep Tests', () => {
             // Expect Lock Overlay
             expect(await screen.findByText(/Pro Studio Locked/i)).toBeInTheDocument();
             expect(screen.getByText(/Upgrade to Pro/i)).toBeInTheDocument();
-            
+
             // Check that inputs behind the lock are effectively disabled/hidden
             // (In our implementation, we use a blurring overlay div)
             expect(screen.getByText(/Upgrade to unlock/i)).toBeInTheDocument();
@@ -112,12 +113,12 @@ describe('Free Tier / Student Mode Deep Tests', () => {
 
         it('should show "Student Mode" badge in preview header', () => {
             render(
-                <ShotEditor 
-                    project={mockProject} 
-                    activeShot={mockShot} 
-                    onClose={vi.fn()} 
-                    onUpdateShot={vi.fn()} 
-                    showToast={vi.fn()} 
+                <ShotEditor
+                    project={mockProject}
+                    activeShot={mockShot}
+                    onClose={vi.fn()}
+                    onUpdateShot={vi.fn()}
+                    showToast={vi.fn()}
                 />
             );
             expect(screen.getByText(/Student Mode/i)).toBeInTheDocument();
@@ -127,12 +128,12 @@ describe('Free Tier / Student Mode Deep Tests', () => {
     describe('Generation Logic (Free)', () => {
         it('should call generateHybridImage with tier="free"', async () => {
             render(
-                <ShotEditor 
-                    project={mockProject} 
-                    activeShot={mockShot} 
-                    onClose={vi.fn()} 
-                    onUpdateShot={vi.fn()} 
-                    showToast={vi.fn()} 
+                <ShotEditor
+                    project={mockProject}
+                    activeShot={mockShot}
+                    onClose={vi.fn()}
+                    onUpdateShot={vi.fn()}
+                    showToast={vi.fn()}
                 />
             );
 
@@ -153,12 +154,12 @@ describe('Free Tier / Student Mode Deep Tests', () => {
 
         it('should disable generation if Pro View is active (Locked)', async () => {
             render(
-                <ShotEditor 
-                    project={mockProject} 
-                    activeShot={mockShot} 
-                    onClose={vi.fn()} 
-                    onUpdateShot={vi.fn()} 
-                    showToast={vi.fn()} 
+                <ShotEditor
+                    project={mockProject}
+                    activeShot={mockShot}
+                    onClose={vi.fn()}
+                    onUpdateShot={vi.fn()}
+                    showToast={vi.fn()}
                 />
             );
 
@@ -174,10 +175,10 @@ describe('Free Tier / Student Mode Deep Tests', () => {
     describe('Asset Manager Restrictions', () => {
         it('should show lock screen instead of content', () => {
             render(
-                <AssetManager 
-                    projectId="p1" 
-                    projectShots={[]} 
-                    showToast={vi.fn()} 
+                <AssetManager
+                    projectId="p1"
+                    projectShots={[]}
+                    showToast={vi.fn()}
                 />
             );
 

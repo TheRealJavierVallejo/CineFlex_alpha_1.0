@@ -16,15 +16,15 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     animate = true
 }) => {
     const baseClasses = `bg-surface-secondary/50 ${animate ? 'animate-pulse' : ''}`;
-    
+
     let radiusClass = "rounded-sm";
     if (variant === "circular") radiusClass = "rounded-full";
     if (variant === "rectangular") radiusClass = "rounded-none";
     if (variant === "rounded") radiusClass = "rounded-md";
 
     return (
-        <div 
-            className={`${baseClasses} ${radiusClass} ${className}`} 
+        <div
+            className={`${baseClasses} ${radiusClass} ${className}`}
             style={{ width, height }}
         />
     );
@@ -43,4 +43,5 @@ export const ShotCardSkeleton = () => (
     </div>
 );
 
+export type { SkeletonProps };
 export default Skeleton;

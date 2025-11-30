@@ -79,14 +79,14 @@ const dbDelete = async (storeName: string, key: string): Promise<void> => {
 };
 
 const dbGetAllKeys = async (storeName: string): Promise<IDBValidKey[]> => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readonly');
-        const store = transaction.objectStore(storeName);
-        const request = store.getAllKeys();
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-    });
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.getAllKeys();
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
 };
 
 // --- HYDRATION ENGINE ---
@@ -215,38 +215,38 @@ export const setActiveProjectId = (id: string | null) => {
 // --- MIGRATION & SANITIZATION ---
 
 const sanitizeForExport = (project: Project): Project => {
-    // 1. Remove volatile state
-    const cleanProject = { ...project };
-    
-    // Clear generation flags
-    cleanProject.shots = cleanProject.shots.map(s => ({
-        ...s,
-        generationInProgress: false
-    }));
-    
-    // Future sanitization steps can go here
-    return cleanProject;
+  // 1. Remove volatile state
+  const cleanProject = { ...project };
+
+  // Clear generation flags
+  cleanProject.shots = cleanProject.shots.map(s => ({
+    ...s,
+    generationInProgress: false
+  }));
+
+  // Future sanitization steps can go here
+  return cleanProject;
 };
 
 const migrateProject = (rawProject: any): Project => {
-    // V1 -> V2 Migration
-    if (!rawProject.shots) rawProject.shots = [];
-    if (!rawProject.scenes) rawProject.scenes = [];
-    
-    // Ensure Script File structure exists
-    if (rawProject.scriptFile === undefined) rawProject.scriptFile = undefined;
-    
-    // Ensure all shots have basic defaults if missing
-    rawProject.shots = rawProject.shots.map((s: any) => ({
-        ...s,
-        shotType: s.shotType || 'Wide Shot',
-        styleStrength: s.styleStrength ?? 100,
-        controlType: s.controlType || 'depth',
-        characterIds: s.characterIds || [],
-        generationCandidates: s.generationCandidates || []
-    }));
+  // V1 -> V2 Migration
+  if (!rawProject.shots) rawProject.shots = [];
+  if (!rawProject.scenes) rawProject.scenes = [];
 
-    return rawProject as Project;
+  // Ensure Script File structure exists
+  if (rawProject.scriptFile === undefined) rawProject.scriptFile = undefined;
+
+  // Ensure all shots have basic defaults if missing
+  rawProject.shots = rawProject.shots.map((s: any) => ({
+    ...s,
+    shotType: s.shotType || 'Wide Shot',
+    styleStrength: s.styleStrength ?? 100,
+    controlType: s.controlType || 'depth',
+    characterIds: s.characterIds || [],
+    generationCandidates: s.generationCandidates || []
+  }));
+
+  return rawProject as Project;
 };
 
 
@@ -293,7 +293,7 @@ export const deleteProject = async (projectId: string) => {
   saveProjectsList(updatedList);
 
   if (getActiveProjectId() === projectId) setActiveProjectId(null);
-  
+
   // Trigger GC after delete to clean up images
   garbageCollect();
 };
@@ -333,9 +333,8 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
 
   // VALIDATE & HEAL (Migration)
   const healedProject = migrateProject(rawProject);
-  
+
   // HYDRATE
-  console.log(`💧 Hydrating Project: ${healedProject.name}`);
   const hydratedProject = await hydrateObject(healedProject);
 
   return hydratedProject;
@@ -461,7 +460,6 @@ export const toggleImageFavorite = async (projectId: string, imageId: string) =>
 // --- GARBAGE COLLECTION ---
 
 export const garbageCollect = async () => {
-  console.log("🧹 Starting Garbage Collection...");
   const projects = getProjectsList();
   const validRefs = new Set<string>();
 
@@ -498,8 +496,8 @@ export const garbageCollect = async () => {
     }
   }
 
-  console.log(`✨ Garbage Collection Complete. Removed ${deletedCount} orphaned images.`);
 };
+
 
 
 // --- EXPORT / IMPORT ---
@@ -587,7 +585,7 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
 
     if (!data.project.scenes || data.project.scenes.length === 0) {
       const defId = crypto.randomUUID();
-      data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '' }];
+      data.project.scenes = [{ id: defId, sequence: 1, heading: 'INT. SCENE - DAY', actionNotes: '', scriptElements: [] }];
       data.project.shots = data.project.shots.map(s => ({ ...s, sceneId: defId }));
     }
 

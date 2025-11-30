@@ -37,7 +37,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({
     // Logic from imageGen.ts for Free Tier
     const getPrompt = () => {
         if (isPro) {
-            return constructPrompt(shot, project, activeChars, outfits, activeLocation, selectedAspectRatio);
+            return constructPrompt(shot, project, activeChars, outfits, activeLocation);
         } else {
             // Student Prompt Logic
             return `${shot.description} ${project.settings.cinematicStyle} style, cinematic lighting, photorealistic, 4k, movie frame`;
@@ -58,7 +58,7 @@ export const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({
                     </button>
                 </div>
                 <div className="p-6 overflow-y-auto bg-background">
-                    
+
                     {!isPro && (
                         <div className="mb-4 p-3 bg-surface-secondary border border-border rounded-md text-xs flex items-center gap-2 text-text-secondary">
                             <GraduationCap className="w-4 h-4" />

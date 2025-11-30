@@ -67,7 +67,7 @@ function parseFountain(text: string): ParsedScript {
   let lastLineWasBlank = true;
 
   // Metadata
-  const metadata: any = {};
+  const metadata: Record<string, string> = {};
 
   // Parsing Loop
   for (let i = 0; i < lines.length; i++) {
@@ -118,7 +118,7 @@ function parseFountain(text: string): ParsedScript {
       const el: ScriptElement = {
         id: crypto.randomUUID(),
         type: 'transition',
-        content: line.startsWith('>') ? line.substring(1).trim() : line,
+        content: (line.startsWith('>') ? line.substring(1).trim() : line).toUpperCase(),
         sceneId: currentScene?.id,
         sequence: elementSequence++
       };
@@ -135,7 +135,7 @@ function parseFountain(text: string): ParsedScript {
       const charEl: ScriptElement = {
         id: crypto.randomUUID(),
         type: 'character',
-        content: characterName,
+        content: characterName.toUpperCase(),
         sceneId: currentScene?.id,
         sequence: elementSequence++
       };
@@ -148,23 +148,23 @@ function parseFountain(text: string): ParsedScript {
       // Helper to flush dialogue buffer
       const flushDialogue = () => {
         if (currentDialogueBuffer) {
-           elements.push({
-             id: crypto.randomUUID(),
-             type: 'dialogue',
-             content: currentDialogueBuffer.trim(),
-             character: characterName,
-             sceneId: currentScene?.id,
-             sequence: elementSequence++
-           });
-           currentDialogueBuffer = '';
+          elements.push({
+            id: crypto.randomUUID(),
+            type: 'dialogue',
+            content: currentDialogueBuffer.trim(),
+            character: characterName,
+            sceneId: currentScene?.id,
+            sequence: elementSequence++
+          });
+          currentDialogueBuffer = '';
         }
       };
 
       while (j < lines.length) {
         const nextLine = lines[j].trim();
         if (!nextLine) {
-           // Blank line ends the dialogue block
-           break; 
+          // Blank line ends the dialogue block
+          break;
         }
 
         // If we hit another element type, stop
@@ -172,20 +172,20 @@ function parseFountain(text: string): ParsedScript {
 
         // Check for Parenthetical
         if (isParenthetical(nextLine)) {
-           flushDialogue(); // Push previous dialogue first
-           
-           // Push Parenthetical
-           elements.push({
-              id: crypto.randomUUID(),
-              type: 'parenthetical',
-              content: nextLine.replace(/[()]/g, ''), // Store without parens for clean editing
-              character: characterName,
-              sceneId: currentScene?.id,
-              sequence: elementSequence++
-           });
+          flushDialogue(); // Push previous dialogue first
+
+          // Push Parenthetical
+          elements.push({
+            id: crypto.randomUUID(),
+            type: 'parenthetical',
+            content: nextLine.replace(/[()]/g, ''), // Store without parens for clean editing
+            character: characterName,
+            sceneId: currentScene?.id,
+            sequence: elementSequence++
+          });
         } else {
-           // Accumulate Dialogue - JOIN WITH SPACE TO PREVENT HARD WRAPS
-           currentDialogueBuffer += (currentDialogueBuffer ? ' ' : '') + nextLine;
+          // Accumulate Dialogue - JOIN WITH SPACE TO PREVENT HARD WRAPS
+          currentDialogueBuffer += (currentDialogueBuffer ? ' ' : '') + nextLine;
         }
         j++;
       }
@@ -235,6 +235,6 @@ function parseFountain(text: string): ParsedScript {
   return {
     scenes,
     elements,
-    metadata
+    metadata: metadata as ParsedScript['metadata']
   };
 }

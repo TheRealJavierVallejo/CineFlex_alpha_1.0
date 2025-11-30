@@ -7,11 +7,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement, Scene } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun, Download } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
+import { exportToPDF, exportToFDX, exportToTXT } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { FeatureGate } from '../ui/FeatureGate';
@@ -273,6 +274,40 @@ export const ScriptPage: React.FC = () => {
                             <span>Screenplay Editor</span>
                         </div>
                         <div className="flex items-center gap-4">
+                            {/* EXPORT DROPDOWN */}
+                            <div className="relative group/export">
+                                <button className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-surface-secondary hover:bg-primary hover:text-white text-text-secondary transition-colors text-xs font-bold uppercase tracking-wide">
+                                    <Download className="w-3.5 h-3.5" /> Export
+                                </button>
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border shadow-xl rounded-sm overflow-hidden hidden group-hover/export:block z-50">
+                                    <button onClick={() => exportToPDF(project)} className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white text-text-secondary text-xs font-bold uppercase tracking-wide transition-colors">
+                                        PDF (Standard)
+                                    </button>
+                                    <button onClick={() => {
+                                        const xml = exportToFDX(project);
+                                        const blob = new Blob([xml], { type: 'text/xml' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `${project.name.replace(/\s+/g, '_')}.fdx`;
+                                        a.click();
+                                    }} className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white text-text-secondary text-xs font-bold uppercase tracking-wide transition-colors">
+                                        Final Draft (.fdx)
+                                    </button>
+                                    <button onClick={() => {
+                                        const txt = exportToTXT(project);
+                                        const blob = new Blob([txt], { type: 'text/plain' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `${project.name.replace(/\s+/g, '_')}.fountain`;
+                                        a.click();
+                                    }} className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white text-text-secondary text-xs font-bold uppercase tracking-wide transition-colors">
+                                        Fountain (.txt)
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="flex items-center bg-surface-secondary rounded border border-border p-0.5">
                                 <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-surface text-text-secondary hover:text-text-primary disabled:opacity-30 rounded-sm transition-colors" title="Undo"><Undo className="w-3.5 h-3.5" /></button>
                                 <div className="w-[1px] h-4 bg-border mx-1" />
@@ -325,7 +360,7 @@ export const ScriptPage: React.FC = () => {
                         {hasElements ? (
                             <div
                                 className={`
-                        w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none p-[100px] border relative transition-colors duration-300
+                        w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none pl-[1.5in] pr-[1.0in] pt-[1.0in] pb-[1.0in] border relative transition-colors duration-300
                         ${isPaperWhite
                                         ? 'bg-white border-zinc-200 shadow-zinc-900/10' // WHITE PAPER (Used in Global Light Mode OR Local Toggle)
                                         : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} // DARK PAPER (Hardcoded Dark Grey)

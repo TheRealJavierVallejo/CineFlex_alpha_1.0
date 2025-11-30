@@ -13,15 +13,15 @@ interface State {
     errorInfo: ErrorInfo | null;
 }
 
+// Note: React 19 ErrorBoundary must be a class component
+// Using explicit type annotations to work around TypeScript inference issues
 class ErrorBoundary extends Component<Props, State> {
-    constructor(props: Props) {
-        super(props);
-        this.state = {
-            hasError: false,
-            error: null,
-            errorInfo: null,
-        };
-    }
+    // Explicitly declare state to avoid TS inference issues with React 19
+    public readonly state: State = {
+        hasError: false,
+        error: null,
+        errorInfo: null,
+    };
 
     static getDerivedStateFromError(error: Error): Partial<State> {
         return {
@@ -30,13 +30,13 @@ class ErrorBoundary extends Component<Props, State> {
         };
     }
 
-    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
         this.setState({ errorInfo });
         this.props.onError?.(error, errorInfo);
     }
 
-    handleReset = () => {
+    private handleReset = (): void => {
         this.setState({
             hasError: false,
             error: null,
@@ -44,7 +44,7 @@ class ErrorBoundary extends Component<Props, State> {
         });
     };
 
-    render() {
+    public render(): ReactNode {
         if (this.state.hasError) {
             if (this.props.fallback) {
                 return this.props.fallback;

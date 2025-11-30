@@ -8,7 +8,7 @@ import { Key, Eye, EyeOff, Palette, Check, X, Moon, Sun, Shield, Sparkles, Scale
 import { UI_COLOR_PALETTE } from '../../constants';
 import Button from '../ui/Button';
 import { ShowToastFn } from '../../types';
-import { useSubscription } from '../../context/SubscriptionContext'; 
+import { useSubscription } from '../../context/SubscriptionContext';
 
 import { getContrastColor, getGlowColor } from '../../utils/themeUtils';
 
@@ -18,7 +18,7 @@ interface AppSettingsProps {
 }
 
 export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) => {
-    const { tier, setTier } = useSubscription(); 
+    const { tier, setTier } = useSubscription();
 
     const [apiKey, setApiKey] = useState('');
     const [showKey, setShowKey] = useState(false);
@@ -62,7 +62,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
         try {
             const glow = getGlowColor(color, 0.5);
             root.style.setProperty('--color-primary-glow', glow);
-        } catch (e) {
+        } catch {
             console.warn("Could not parse color for glow:", color);
         }
     };
@@ -186,7 +186,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                         {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                
+
                                 {tier === 'free' && (
                                     <div className="flex items-center gap-2 text-[10px] text-primary bg-primary/10 p-2 rounded border border-primary/20">
                                         <Sparkles className="w-3 h-3" />
@@ -219,9 +219,9 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                     </div>
                                     {tier === 'pro' && <div className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">ACTIVE</div>}
                                 </div>
-                                
+
                                 <div className="text-[11px] text-text-secondary leading-relaxed">
-                                    {tier === 'pro' 
+                                    {tier === 'pro'
                                         ? "You have full access to high-fidelity generation, character consistency, and advanced exports."
                                         : "You are using the free student tier. Image generation uses basic models and character consistency features are locked."
                                     }
@@ -234,13 +234,13 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                     <Shield className="w-3.5 h-3.5" /> Developer Simulation
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button 
+                                    <button
                                         onClick={() => { setTier('free'); showToast("Switched to Free Tier Simulation", 'info'); }}
                                         className={`p-3 rounded border text-xs font-bold uppercase tracking-wide transition-all ${tier === 'free' ? 'bg-surface border-text-muted text-text-primary' : 'bg-surface-secondary border-transparent text-text-muted hover:text-text-secondary'}`}
                                     >
                                         Simulate Free
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => { setTier('pro'); showToast("Switched to Pro Tier Simulation", 'success'); }}
                                         className={`p-3 rounded border text-xs font-bold uppercase tracking-wide transition-all ${tier === 'pro' ? 'bg-surface border-primary text-primary' : 'bg-surface-secondary border-transparent text-text-muted hover:text-text-secondary'}`}
                                     >
@@ -255,8 +255,8 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                 {/* Footer (Legal) */}
                 <div className="p-4 border-t border-border bg-surface flex items-center justify-between shrink-0">
                     <div className="text-[10px] text-text-tertiary flex gap-4">
-                         <a href="#" className="hover:text-text-primary flex items-center gap-1"><Scale className="w-3 h-3"/> Terms of Service</a>
-                         <a href="#" className="hover:text-text-primary">Privacy Policy</a>
+                        <a href="#" className="hover:text-text-primary flex items-center gap-1"><Scale className="w-3 h-3" /> Terms of Service</a>
+                        <a href="#" className="hover:text-text-primary">Privacy Policy</a>
                     </div>
                     <Button variant="secondary" onClick={onClose} size="sm">Done</Button>
                 </div>

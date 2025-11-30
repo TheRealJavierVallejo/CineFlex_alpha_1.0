@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, X, Command, ArrowRight, LayoutGrid, Clapperboard, 
-  FileText, Settings, Plus, Save, LogOut, Moon, Sun, Monitor 
+import {
+  Search, LayoutGrid, Clapperboard,
+  FileText, Settings, Plus, Save, LogOut, Moon
 } from 'lucide-react';
-import Modal from './ui/Modal';
 import { Project } from '../types';
 
 interface CommandPaletteProps {
@@ -29,13 +28,13 @@ type CommandItem = {
   action: () => void;
 };
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({ 
-  isOpen, 
-  onClose, 
-  project, 
-  onAddShot, 
+export const CommandPalette: React.FC<CommandPaletteProps> = ({
+  isOpen,
+  onClose,
+  project,
+  onAddShot,
   onSave,
-  toggleTheme 
+  toggleTheme
 }) => {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -50,33 +49,33 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       list.push({
         category: "Navigation",
         commands: [
-          { 
-            id: 'nav-dashboard', 
-            label: 'Go to Dashboard', 
-            icon: <LayoutGrid className="w-4 h-4" />, 
-            shortcut: '⌘1', 
-            action: () => navigate(`/project/${project.id}`) 
+          {
+            id: 'nav-dashboard',
+            label: 'Go to Dashboard',
+            icon: <LayoutGrid className="w-4 h-4" />,
+            shortcut: '⌘1',
+            action: () => navigate(`/project/${project.id}`)
           },
-          { 
-            id: 'nav-timeline', 
-            label: 'Go to Timeline', 
-            icon: <Clapperboard className="w-4 h-4" />, 
-            shortcut: '⌘2', 
-            action: () => navigate(`/project/${project.id}/timeline`) 
+          {
+            id: 'nav-timeline',
+            label: 'Go to Timeline',
+            icon: <Clapperboard className="w-4 h-4" />,
+            shortcut: '⌘2',
+            action: () => navigate(`/project/${project.id}/timeline`)
           },
-          { 
-            id: 'nav-script', 
-            label: 'Go to Script Editor', 
-            icon: <FileText className="w-4 h-4" />, 
-            shortcut: '⌘3', 
-            action: () => navigate(`/project/${project.id}/script`) 
+          {
+            id: 'nav-script',
+            label: 'Go to Script Editor',
+            icon: <FileText className="w-4 h-4" />,
+            shortcut: '⌘3',
+            action: () => navigate(`/project/${project.id}/script`)
           },
-          { 
-            id: 'nav-settings', 
-            label: 'Project Settings', 
-            icon: <Settings className="w-4 h-4" />, 
-            shortcut: '⌘4', 
-            action: () => navigate(`/project/${project.id}/settings`) 
+          {
+            id: 'nav-settings',
+            label: 'Project Settings',
+            icon: <Settings className="w-4 h-4" />,
+            shortcut: '⌘4',
+            action: () => navigate(`/project/${project.id}/settings`)
           },
         ]
       });
@@ -85,7 +84,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       const actions: CommandItem[] = [];
       if (onAddShot) actions.push({ id: 'act-new-shot', label: 'Create New Shot', icon: <Plus className="w-4 h-4" />, shortcut: '⌘N', action: onAddShot });
       if (onSave) actions.push({ id: 'act-save', label: 'Save Project', icon: <Save className="w-4 h-4" />, shortcut: '⌘S', action: onSave });
-      
+
       if (actions.length > 0) {
         list.push({ category: "Actions", commands: actions });
       }
@@ -95,17 +94,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     list.push({
       category: "System",
       commands: [
-        { 
-          id: 'sys-theme', 
-          label: 'Toggle Dark/Light Mode', 
-          icon: <Moon className="w-4 h-4" />, 
-          action: () => toggleTheme?.() 
+        {
+          id: 'sys-theme',
+          label: 'Toggle Dark/Light Mode',
+          icon: <Moon className="w-4 h-4" />,
+          action: () => toggleTheme?.()
         },
-        { 
-          id: 'sys-library', 
-          label: 'Back to Project Library', 
-          icon: <LogOut className="w-4 h-4" />, 
-          action: () => navigate('/') 
+        {
+          id: 'sys-library',
+          label: 'Back to Project Library',
+          icon: <LogOut className="w-4 h-4" />,
+          action: () => navigate('/')
         }
       ]
     });
@@ -117,7 +116,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const filteredCommands = useMemo(() => {
     if (!query) return groups;
     const lowerQuery = query.toLowerCase();
-    
+
     return groups.map(group => ({
       ...group,
       commands: group.commands.filter(cmd => cmd.label.toLowerCase().includes(lowerQuery))
@@ -163,7 +162,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   return (
     <div className="fixed inset-0 z-[200] overlay-dark backdrop-blur-sm flex items-start justify-center pt-[20vh] animate-in fade-in duration-100" onClick={onClose}>
-      <div 
+      <div
         className="w-full max-w-xl bg-surface border border-border rounded-lg shadow-2xl overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
@@ -197,8 +196,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                       key={cmd.id}
                       onClick={() => { cmd.action(); onClose(); }}
                       onMouseEnter={() => {
-                         const idx = flatCommands.findIndex(c => c.id === cmd.id);
-                         if(idx !== -1) setSelectedIndex(idx);
+                        const idx = flatCommands.findIndex(c => c.id === cmd.id);
+                        if (idx !== -1) setSelectedIndex(idx);
                       }}
                       className={`
                         w-full flex items-center justify-between px-4 py-3 text-sm transition-colors
@@ -221,12 +220,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             ))
           )}
         </div>
-        
+
         {/* Footer */}
         <div className="bg-surface-secondary border-t border-border px-4 py-2 flex items-center justify-between text-[10px] text-text-tertiary">
           <div className="flex gap-4">
-             <span><strong className="text-text-secondary">↑↓</strong> to navigate</span>
-             <span><strong className="text-text-secondary">↵</strong> to select</span>
+            <span><strong className="text-text-secondary">↑↓</strong> to navigate</span>
+            <span><strong className="text-text-secondary">↵</strong> to select</span>
           </div>
           <span>Pro Tip: Use Cmd+K to open this anytime</span>
         </div>

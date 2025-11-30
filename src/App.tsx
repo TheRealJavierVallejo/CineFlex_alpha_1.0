@@ -6,10 +6,9 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
-import { ProjectLibrary } from './components/features/ProjectLibrary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import { SubscriptionProvider } from './context/SubscriptionContext';
-import { LocalLlmProvider } from './context/LocalLlmContext'; 
+import { LocalLlmProvider } from './context/LocalLlmContext';
 import { UpgradeModal } from './components/ui/UpgradeModal'; // IMPORTED
 import {
     TimelineView,
@@ -17,6 +16,7 @@ import {
     ProjectSettings,
     ScriptPage,
     ProductionSpreadsheet,
+    ProjectLibrary,
     LazyWrapper
 } from './components/features/LazyComponents';
 

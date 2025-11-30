@@ -44,7 +44,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
   // --- STATE ---
   const [viewMode, setViewMode] = useState<'base' | 'pro'>(isPro ? 'pro' : 'base');
-  
+
   const [shot, setShot] = useState<Shot>(activeShot || {
     id: crypto.randomUUID(),
     sequence: project.shots.length + 1,
@@ -84,14 +84,14 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   // Local Settings
   // Force reset if tier changes (Safety Mechanism)
   const [selectedModel, setSelectedModel] = useState(
-      shot.model && tier === 'pro' ? shot.model : (tier === 'free' ? 'pollinations' : MODEL_OPTIONS[0].value)
+    shot.model && tier === 'pro' ? shot.model : (tier === 'free' ? 'pollinations' : MODEL_OPTIONS[0].value)
   );
-  
+
   // Effect to enforce model constraint when tier changes dynamically
   useEffect(() => {
-      if (tier === 'free') {
-          setSelectedModel('pollinations');
-      }
+    if (tier === 'free') {
+      setSelectedModel('pollinations');
+    }
   }, [tier]);
 
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(shot.aspectRatio || project.settings.aspectRatio || '16:9');
@@ -263,17 +263,17 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
       // Use new Hybrid Generator
       const img = await generateHybridImage(
-          tier,
-          effectiveShot,
-          project,
-          effectiveChars,
-          outfits,
-          activeLocation,
-          {
-            model: selectedModel,
-            aspectRatio: selectedAspectRatio,
-            imageSize: selectedResolution
-          }
+        tier,
+        effectiveShot,
+        project,
+        effectiveChars,
+        outfits,
+        activeLocation,
+        {
+          model: selectedModel,
+          aspectRatio: selectedAspectRatio,
+          imageSize: selectedResolution
+        }
       );
 
       // Determine correct model name for metadata
@@ -283,24 +283,24 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
       const imageId = crypto.randomUUID();
       await addToImageLibrary(project.id, {
-          id: imageId,
-          projectId: project.id,
-          url: img,
-          createdAt: Date.now(),
-          shotId: shot.id,
-          prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation, selectedAspectRatio),
-          model: finalModelName, // Use the correct name here
-          aspectRatio: selectedAspectRatio,
-          isFavorite: true
+        id: imageId,
+        projectId: project.id,
+        url: img,
+        createdAt: Date.now(),
+        shotId: shot.id,
+        prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation),
+        model: finalModelName, // Use the correct name here
+        aspectRatio: selectedAspectRatio,
+        isFavorite: true
       });
-      
-      const updated = { 
-          ...shot, 
-          generatedImage: img, 
-          generationCandidates: [img, ...(shot.generationCandidates || [])],
-          model: finalModelName // Update shot model too
+
+      const updated = {
+        ...shot,
+        generatedImage: img,
+        generationCandidates: [img, ...(shot.generationCandidates || [])],
+        model: finalModelName // Update shot model too
       };
-      
+
       setShot(updated);
       onUpdateShot(updated);
       showToast(isBaseModel ? "Draft image generated" : "Pro render successful", 'success');
@@ -335,7 +335,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   };
 
   const handleCopyPrompt = useCallback(() => {
-    const txt = constructPrompt(shot, project, activeChars, outfits, activeLocation, selectedAspectRatio);
+    const txt = constructPrompt(shot, project, activeChars, outfits, activeLocation);
     navigator.clipboard.writeText(txt);
     showToast("Prompt copied to clipboard", 'success');
   }, [shot, project, activeChars, outfits, activeLocation, selectedAspectRatio, showToast]);

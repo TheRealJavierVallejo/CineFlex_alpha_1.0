@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate, useLocation, useOutletContext, NavLink } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
@@ -54,8 +54,6 @@ export const WorkspaceLayout: React.FC = () => {
         }, []),
         {
             delay: 1000,
-            onSave: () => console.log('Auto-saving project...'),
-            onSuccess: () => console.log('Project saved successfully'),
             onError: (error) => {
                 showToast('Failed to auto-save project', 'error');
                 console.error('Auto-save error:', error);
@@ -76,16 +74,16 @@ export const WorkspaceLayout: React.FC = () => {
         description: 'Open Command Palette',
     });
 
-    const showToast: ShowToastFn = (message, type = 'info', action) => {
+    const showToast: ShowToastFn = useCallback((message, type = 'info', action) => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, message, type, action }]);
-    };
+    }, []);
 
-    const closeToast = (id: number) => {
+    const closeToast = useCallback((id: number) => {
         setToasts(prev => prev.filter(t => t.id !== id));
-    };
+    }, []);
 
-    const toggleTheme = () => {
+    const toggleTheme = useCallback(() => {
         const isLight = document.documentElement.classList.contains('light');
         if (isLight) {
             document.documentElement.classList.remove('light');
@@ -94,7 +92,7 @@ export const WorkspaceLayout: React.FC = () => {
             document.documentElement.classList.add('light');
             localStorage.setItem('cinesketch_theme_mode', 'light');
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (!projectId) {
@@ -123,18 +121,18 @@ export const WorkspaceLayout: React.FC = () => {
         }
     };
 
-    const handleUpdateProject = (updated: Project) => {
+    const handleUpdateProject = useCallback((updated: Project) => {
         setProject(updated);
         // Auto-save hook will handle the debounced save
-    };
+    }, []);
 
-    const handleUpdateSettings = (key: keyof WorldSettings, value: any) => {
+    const handleUpdateSettings = useCallback((key: keyof WorldSettings, value: any) => {
         if (!project) return;
         const updated: Project = { ...project, settings: { ...project.settings, [key]: value } };
         handleUpdateProject(updated);
-    };
+    }, [project, handleUpdateProject]);
 
-    const importScript = async (file: File) => {
+    const importScript = useCallback(async (file: File) => {
         if (!project) return;
         try {
             const parsed = await parseScript(file);
@@ -154,16 +152,16 @@ export const WorkspaceLayout: React.FC = () => {
             console.error(e);
             showToast(e.message || "Failed to parse script", 'error');
         }
-    };
+    }, [project, handleUpdateProject, showToast]);
 
-    const updateScriptElements = (elements: ScriptElement[]) => {
+    const updateScriptElements = useCallback((elements: ScriptElement[]) => {
         if (!project) return;
         const tempProject = { ...project, scriptElements: elements };
         const syncedProject = syncScriptToScenes(tempProject);
         handleUpdateProject(syncedProject);
-    };
+    }, [project, handleUpdateProject]);
 
-    const handleAddShot = () => {
+    const handleAddShot = useCallback(() => {
         if (project && project.scenes.length > 0) {
             const newShot: Shot = {
                 id: crypto.randomUUID(),
@@ -181,23 +179,23 @@ export const WorkspaceLayout: React.FC = () => {
         } else {
             showToast("Create a scene first", 'error');
         }
-    };
+    }, [project, showToast]);
 
-    const handleUpdateShot = (shot: Shot) => {
+    const handleUpdateShot = useCallback((shot: Shot) => {
         if (!project) return;
         const exists = project.shots.find(s => s.id === shot.id);
         const newShots = exists ? project.shots.map(s => s.id === shot.id ? shot : s) : [...project.shots, shot];
         handleUpdateProject({ ...project, shots: newShots });
-    };
+    }, [project, handleUpdateProject]);
 
-    const handleBulkUpdateShots = (updatedShots: Shot[]) => {
+    const handleBulkUpdateShots = useCallback((updatedShots: Shot[]) => {
         if (!project) return;
         const shotMap = new Map(updatedShots.map(s => [s.id, s]));
         const newShots = project.shots.map(s => shotMap.get(s.id) || s);
         handleUpdateProject({ ...project, shots: newShots });
-    };
+    }, [project, handleUpdateProject]);
 
-    const handleDeleteShot = (shotId: string) => {
+    const handleDeleteShot = useCallback((shotId: string) => {
         if (!project) return;
         const shotToDelete = project.shots.find(s => s.id === shotId);
         if (!shotToDelete) return;
@@ -219,9 +217,9 @@ export const WorkspaceLayout: React.FC = () => {
                 showToast("Shot restored", 'success');
             }
         });
-    };
+    }, [project, handleUpdateProject, showToast]);
 
-    const handleDuplicateShot = (shotId: string) => {
+    const handleDuplicateShot = useCallback((shotId: string) => {
         if (!project) return;
         const index = project.shots.findIndex(s => s.id === shotId);
         if (index === -1) return;
@@ -239,12 +237,21 @@ export const WorkspaceLayout: React.FC = () => {
         newShots.forEach((s, i) => s.sequence = i + 1);
         handleUpdateProject({ ...project, shots: newShots });
         showToast("Shot duplicated", 'success');
-    };
+    }, [project, handleUpdateProject, showToast]);
 
-    const handleEditShot = (shot: Shot) => {
+    const handleEditShot = useCallback((shot: Shot) => {
         setEditingShot(shot);
         setIsEditorOpen(true);
-    };
+    }, []);
+
+    const contextValue: WorkspaceContextType = useMemo(() => ({
+        project: project!,
+        handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
+        handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
+        importScript, updateScriptElements, showToast
+    }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
+        handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
+        importScript, updateScriptElements, showToast]);
 
     if (isLoading || !project) {
         return (
@@ -256,12 +263,6 @@ export const WorkspaceLayout: React.FC = () => {
             </div>
         );
     }
-
-    const contextValue: WorkspaceContextType = {
-        project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
-        handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, updateScriptElements, showToast
-    };
 
     const SegmentedTab = ({ to, icon: Icon, label, exact = false }: { to: string, icon: any, label: string, exact?: boolean }) => (
         <NavLink
@@ -340,7 +341,7 @@ export const WorkspaceLayout: React.FC = () => {
                 <main className="flex-1 bg-background relative overflow-hidden">
                     {/* Subtle gradient for depth */}
                     <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-transparent pointer-events-none z-10" />
-                    <ErrorBoundary key={location.pathname}>
+                    <ErrorBoundary>
                         <Outlet context={contextValue} />
                     </ErrorBoundary>
                 </main>
@@ -380,9 +381,9 @@ export const WorkspaceLayout: React.FC = () => {
                 </LazyWrapper>
             )}
 
-            <CommandPalette 
-                isOpen={showCommandPalette} 
-                onClose={() => setShowCommandPalette(false)} 
+            <CommandPalette
+                isOpen={showCommandPalette}
+                onClose={() => setShowCommandPalette(false)}
                 project={project}
                 onAddShot={handleAddShot}
                 onSave={saveNow}

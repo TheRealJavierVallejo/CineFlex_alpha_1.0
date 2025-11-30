@@ -4,10 +4,10 @@
  * Currently logs to console, but ready for GA/Posthog integration.
  */
 
-type EventType = 
+type EventType =
     | 'app_init'
-    | 'model_download_start' 
-    | 'model_download_success' 
+    | 'model_download_start'
+    | 'model_download_success'
     | 'model_download_fail'
     | 'generation_start'
     | 'generation_success'
@@ -23,13 +23,10 @@ const IS_PROD = import.meta.env.PROD;
 
 export const logEvent = (event: EventType, properties?: EventProperties) => {
     const timestamp = new Date().toISOString();
-    
+
     // 1. Console Log (Dev Mode)
     if (!IS_PROD) {
-        console.groupCollapsed(`📊 Telemetry: ${event}`);
-        console.log('Timestamp:', timestamp);
-        if (properties) console.table(properties);
-        console.groupEnd();
+        // Production: Send to analytics service here
     }
 
     // 2. Production Analytics (Placeholder)
@@ -39,7 +36,7 @@ export const logEvent = (event: EventType, properties?: EventProperties) => {
 
 export const identifyUser = (userId: string, traits?: EventProperties) => {
     if (!IS_PROD) {
-        console.log(`👤 Identify User: ${userId}`, traits);
+        // Production: Send to analytics service
     }
     // posthog.identify(userId, traits);
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImageLibraryItem, Project } from '../../types';
+import { ImageLibraryItem } from '../../types';
 import { getImageLibrary } from '../../services/storage';
 import { X, Plus, Search, Image as ImageIcon, Loader2, LayoutGrid, Film } from 'lucide-react';
 import Button from '../ui/Button';
