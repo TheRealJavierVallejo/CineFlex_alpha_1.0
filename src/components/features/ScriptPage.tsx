@@ -35,17 +35,29 @@ export const ScriptPage: React.FC = () => {
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
-
+    
     // Pagination
     const [pageMap, setPageMap] = useState<Record<string, number>>({});
 
-    // Theme (Light = Standard Paper, Dark = Night Mode Paper)
-    const isGlobalLight = document.documentElement.classList.contains('light');
+    // Theme (Observer Pattern for Reactivity)
+    const [isGlobalLight, setIsGlobalLight] = useState(document.documentElement.classList.contains('light'));
     const [localPaperWhite, setLocalPaperWhite] = useState(false);
     const isPaperWhite = isGlobalLight || localPaperWhite;
 
     const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
+
+    // Watch for Theme Changes
+    useEffect(() => {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    setIsGlobalLight(document.documentElement.classList.contains('light'));
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+        return () => observer.disconnect();
+    }, []);
 
     // Sync Engine
     const debouncedSync = useCallback(
@@ -121,7 +133,7 @@ export const ScriptPage: React.FC = () => {
         });
     }, [setElements]);
 
-    // ... (Keyboard/Nav logic same as before, simplified for this snippet)
+    // Keydown Logic
     const handleKeyDown = useCallback((e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
             e.preventDefault();
@@ -198,7 +210,7 @@ export const ScriptPage: React.FC = () => {
 
     const handleNavigation = useCallback((e: React.KeyboardEvent, id: string, cursorPosition: number, contentLength: number) => {
         // Simple nav logic
-        const currentEls = elements; // Accessing from closure state
+        const currentEls = elements; 
         const index = currentEls.findIndex(el => el.id === id);
         
         if (e.key === 'ArrowUp' && cursorPosition === 0 && index > 0) {
@@ -218,7 +230,6 @@ export const ScriptPage: React.FC = () => {
         if (isPaperWhite) {
             return "bg-white border-border shadow-xl text-black";
         }
-        // Final Draft Dark Mode look: Dark Gray Paper, White Text
         return "bg-[#1E1E1E] border border-[#333] shadow-2xl text-[#E0E0E0]"; 
     };
 
@@ -233,10 +244,11 @@ export const ScriptPage: React.FC = () => {
 
     return (
         <PageWithToolRail tools={tools} defaultTool={null}>
-            <div className={`relative h-full flex flex-col overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''} bg-[#0C0C0E]`}>
+            {/* The outer container uses app background (silver in light mode, charcoal in dark mode) */}
+            <div className={`relative h-full flex flex-col overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''} bg-app transition-colors duration-300`}>
                 
-                {/* TOOLBAR (Simplified) */}
-                <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10">
+                {/* TOOLBAR */}
+                <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10 transition-colors duration-300">
                     <div className="flex items-center gap-2 text-text-primary font-medium pl-2">
                         <FileText className="w-4 h-4 text-text-muted" />
                         <span>Script</span>
@@ -246,14 +258,14 @@ export const ScriptPage: React.FC = () => {
                             <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-surface text-text-secondary disabled:opacity-30 rounded-sm"><Undo className="w-3.5 h-3.5" /></button>
                             <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-surface text-text-secondary disabled:opacity-30 rounded-sm"><Redo className="w-3.5 h-3.5" /></button>
                         </div>
-                        <button onClick={() => setLocalPaperWhite(!localPaperWhite)} className="p-1.5 text-text-secondary hover:text-white">
+                        <button onClick={() => setLocalPaperWhite(!localPaperWhite)} className="p-1.5 text-text-secondary hover:text-text-primary" title={localPaperWhite ? "Switch to Dark Paper" : "Switch to White Paper"}>
                             {localPaperWhite ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                         </button>
                     </div>
                 </div>
 
                 {/* SCROLL AREA */}
-                <div className="flex-1 overflow-y-auto w-full flex flex-col items-center bg-[#0C0C0E] pb-[50vh]">
+                <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-[50vh]">
                     {elements.length === 0 ? (
                         <div className="mt-20">
                             <EmptyProjectState 
@@ -280,14 +292,13 @@ export const ScriptPage: React.FC = () => {
                                             ${getPageStyle()}
                                         `}
                                         onClick={(e) => {
-                                            // Click empty space at bottom of page focuses last element
                                             if (e.target === e.currentTarget && pageElements.length > 0) {
                                                 setActiveElementId(pageElements[pageElements.length - 1].id);
                                             }
                                         }}
                                     >
                                         {/* Page Number Header */}
-                                        <div className="absolute top-[0.5in] right-[1.0in] text-[12pt] font-screenplay opacity-50 select-none">
+                                        <div className={`absolute top-[0.5in] right-[1.0in] text-[12pt] font-screenplay select-none ${isPaperWhite ? 'text-black opacity-50' : 'text-zinc-500'}`}>
                                             {pageNum}.
                                         </div>
 

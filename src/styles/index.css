@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 /* ============================================
-   CINEFLEX STUDIO - COMMAND SYSTEM v4.1
+   CINEFLEX STUDIO - COMMAND SYSTEM v4.2
    Philosophy: Soft Charcoal & Silver Paper
    ============================================ */
 
@@ -16,38 +16,28 @@
   /* CONTRAST FOREGROUND (Auto-calculated: White or Black) */
   --color-primary-foreground: #FFFFFF;
 
-  /* DARK MODE: SOFT CHARCOAL (Lifted from Void) */
-  /* Reduced contrast strain by moving from #030303 to #0C0C0E */
+  /* DARK MODE: SOFT CHARCOAL */
   --bg-app: #0C0C0E;
-  
   --bg-panel: #141416;
-  /* Slightly lighter panels */
   --bg-surface: #1C1C1F;
-  /* Cards/Elements */
   --bg-surface-hover: #27272A;
   --bg-surface-secondary: #222225;
-  /* Inputs */
 
-  /* BORDERS (Subtle Division) */
+  /* BORDERS */
   --color-border: #2A2A2D;
   --color-border-subtle: #202022;
   --color-border-focus: var(--color-primary);
 
-  /* TYPOGRAPHY (High Legibility) */
+  /* TYPOGRAPHY */
   --color-text-primary: #EEEEEE;
-  /* Almost White */
   --color-text-secondary: #888888;
-  /* Neutral Grey */
   --color-text-tertiary: #555555;
-  /* Darker Grey */
   --color-text-muted: #444444;
-  /* Muted Grey */
 
-  /* SPECIAL: Always-dark elements (modals, overlays, media players) */
+  /* SPECIAL */
   --color-overlay-bg: rgba(0, 0, 0, 0.8);
   --color-modal-bg: rgba(0, 0, 0, 0.9);
   --color-media-bg: #000000;
-  /* Always black for image/video backgrounds */
   --color-media-control: rgba(0, 0, 0, 0.6);
 
   --header-height: 48px;
@@ -55,37 +45,26 @@
 
 /* LIGHT MODE OVERRIDES */
 :root.light {
-  /* LIGHT MODE: SILVER PAPER (Reduced Glare) */
-  /* Darkened background from #F4F4F5 to #E4E4E7 to reduce eye strain */
+  /* LIGHT MODE: SILVER PAPER */
   --bg-app: #E4E4E7;
-  
   --bg-panel: #F8F8FA;
-  /* Off-white panels */
   --bg-surface: #FFFFFF;
-  /* Pure white cards */
   --bg-surface-hover: #F4F4F5;
   --bg-surface-secondary: #F0F0F3;
-  /* Inputs */
 
   /* BORDERS */
   --color-border: #D4D4D8;
-  /* Darker borders for better definition */
   --color-border-subtle: #E4E4E7;
 
   /* TYPOGRAPHY */
   --color-text-primary: #09090B;
-  /* Zinc-950 */
   --color-text-secondary: #52525B;
-  /* Zinc-600 */
   --color-text-tertiary: #71717A;
-  /* Zinc-500 */
   --color-text-muted: #A1A1AA;
-  /* Zinc-400 */
 
-  /* SPECIAL: Overlays and modals remain dark for better visibility */
+  /* SPECIAL */
   --color-overlay-bg: rgba(0, 0, 0, 0.8);
   --color-modal-bg: rgba(0, 0, 0, 0.9);
-  /* Media backgrounds stay pure black for best image display */
   --color-media-bg: #000000;
   --color-media-control: rgba(0, 0, 0, 0.6);
 }
@@ -115,7 +94,7 @@
   --color-text-tertiary: var(--color-text-tertiary);
   --color-text-muted: var(--color-text-muted);
 
-  /* Radius (Industrial/Sharp) */
+  /* Radius */
   --radius-sm: 2px;
   --radius-DEFAULT: 3px;
   --radius-md: 4px;
@@ -134,11 +113,9 @@
     color: var(--color-text-primary);
     font-family: var(--font-sans);
     letter-spacing: -0.01em;
-    /* Tighter, modern tracking */
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Selection State */
   ::selection {
     background-color: var(--color-primary);
     color: var(--color-primary-foreground);
@@ -147,11 +124,9 @@
 
 @layer components {
 
-  /* Strict Screenplay Leading
-     Courier 12pt usually has ~14.4pt to 16pt line height.
-     We lock it to unitless 1.2 or pixel value for calc consistency. */
+  /* Strict Screenplay Leading: 16px (1.0rem) matches 6 lines/inch exactly at 96DPI */
   .leading-screenplay {
-    line-height: 1.2 !important; /* ~19.2px for 16px font */
+    line-height: 1.0rem !important; 
   }
 
   /* Minimal Scrollbar */
@@ -207,41 +182,29 @@
     opacity: 1 !important; 
   }
 
-  /* 
-   * CRITICAL CONTRAST ENFORCEMENT
-   * When using bg-primary, force text to be readable.
-   * This overrides default Tailwind behavior to ensure accessibility.
-   */
-
-  /* Solid Primary Elements */
+  /* Accessibility Overrides */
   .bg-primary {
     color: var(--color-primary-foreground) !important;
   }
-
-  /* Force children (like icons or specific text spans) to match */
   .bg-primary .text-white,
   .bg-primary svg,
   .bg-primary .text-primary-foreground {
     color: var(--color-primary-foreground) !important;
   }
-
-  /* Hover States: Only apply when actually hovering */
   .hover\:bg-primary:hover {
     background-color: var(--color-primary) !important;
     color: var(--color-primary-foreground) !important;
   }
-
   .hover\:bg-primary:hover .text-white,
   .hover\:bg-primary:hover svg {
     color: var(--color-primary-foreground) !important;
   }
 
-  /* Keyboard Navigation Accessibility */
+  /* Focus rings */
   .focus-visible-ring {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
-
-  /* Enhanced focus states for better keyboard navigation */
+  
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
@@ -250,12 +213,8 @@
     @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
   }
 
-  /* Reduce motion for accessibility */
   @media (prefers-reduced-motion: reduce) {
-
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -263,59 +222,22 @@
     }
   }
 
-  /* Skip link for screen readers */
   .skip-link {
     @apply absolute left-0 top-0 bg-primary text-white px-4 py-2 z-[100] transition-transform -translate-y-full;
   }
-
   .skip-link:focus {
     @apply translate-y-0;
   }
 
-  /* ===== THEME-AWARE UTILITIES ===== */
-  /* Use these instead of hardcoded bg-black/text-white */
-
-  /* Modal overlays - always dark for visibility */
-  .overlay-dark {
-    background-color: var(--color-overlay-bg);
-  }
-
-  .modal-bg-dark {
-    background-color: var(--color-modal-bg);
-  }
-
-  /* Media/Image backgrounds - always pure black for best display */
-  .media-bg {
-    background-color: var(--color-media-bg);
-  }
-
-  .media-control {
-    background-color: var(--color-media-control);
-  }
-
-  /* Adaptive backgrounds that respect theme */
-  .bg-app {
-    background-color: var(--bg-app);
-  }
-
-  .bg-panel {
-    background-color: var(--bg-panel);
-  }
-
-  .bg-surface-adaptive {
-    background-color: var(--bg-surface);
-  }
-
-  .bg-surface-hover-adaptive {
-    background-color: var(--bg-surface-hover);
-  }
-
-  /* Input-specific backgrounds */
-  .input-bg {
-    background-color: var(--bg-surface-secondary);
-  }
-
-  .input-bg-focus {
-    background-color: var(--bg-app);
-  }
+  /* Theme-Aware Utilities */
+  .overlay-dark { background-color: var(--color-overlay-bg); }
+  .modal-bg-dark { background-color: var(--color-modal-bg); }
+  .media-bg { background-color: var(--color-media-bg); }
+  .media-control { background-color: var(--color-media-control); }
+  .bg-app { background-color: var(--bg-app); }
+  .bg-panel { background-color: var(--bg-panel); }
+  .bg-surface-adaptive { background-color: var(--bg-surface); }
+  .bg-surface-hover-adaptive { background-color: var(--bg-surface-hover); }
+  .input-bg { background-color: var(--bg-surface-secondary); }
+  .input-bg-focus { background-color: var(--bg-app); }
 }
