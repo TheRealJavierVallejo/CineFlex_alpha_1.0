@@ -1,5 +1,6 @@
 import { Project, ScriptElement } from '../types';
 import jsPDF from 'jspdf';
+import { generateFountainText } from './scriptUtils';
 
 /**
  * EXPORT SERVICE
@@ -8,39 +9,18 @@ import jsPDF from 'jspdf';
 
 // --- 1. FOUNTAIN (TXT) EXPORT ---
 export const exportToTXT = (project: Project): string => {
+    // Generate Header
     let output = '';
-
-    // Title Page (Basic)
     output += `Title: ${project.name}\n`;
     output += `Credit: Written by\n`;
     output += `Author: CineFlex User\n`;
     output += `Draft date: ${new Date().toLocaleDateString()}\n`;
     output += `\n`; // End title page
 
-    project.scriptElements?.forEach(el => {
-        switch (el.type) {
-            case 'scene_heading':
-                output += `\n${el.content.toUpperCase()}\n`;
-                break;
-            case 'action':
-                output += `\n${el.content}\n`;
-                break;
-            case 'character':
-                output += `\n${el.content.toUpperCase()}\n`;
-                break;
-            case 'dialogue':
-                output += `${el.content}\n`;
-                break;
-            case 'parenthetical':
-                output += `${el.content}\n`;
-                break;
-            case 'transition':
-                output += `\n${el.content.toUpperCase()}\n`;
-                break;
-            default:
-                output += `\n${el.content}\n`;
-        }
-    });
+    // Use shared utility for consistency
+    if (project.scriptElements) {
+        output += generateFountainText(project.scriptElements);
+    }
 
     return output;
 };

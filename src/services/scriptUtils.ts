@@ -41,11 +41,6 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
         // Clean text (remove HTML comments from notes if present, though parser handles some)
         let content = token.text || '';
         
-        // Handle specific content cleanup if needed
-        if (token.type === 'note') {
-            // content is already clean text from parser usually
-        }
-
         elements.push({
             id: crypto.randomUUID(),
             type: mapType(token.type),
@@ -57,6 +52,37 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
     });
 
     return elements;
+};
+
+/**
+ * REVERSE BRIDGE: Converts ScriptElements back to Fountain Text
+ * Used for "Auto-Format" feature and Exports
+ */
+export const generateFountainText = (elements: ScriptElement[]): string => {
+    let output = '';
+    
+    elements.forEach((el, index) => {
+        const prev = elements[index - 1];
+        
+        // Add spacing rules based on types
+        if (el.type === 'scene_heading') {
+            output += `\n\n${el.content.toUpperCase()}\n`;
+        } else if (el.type === 'action') {
+            output += `\n${el.content}\n`;
+        } else if (el.type === 'character') {
+            output += `\n${el.content.toUpperCase()}\n`;
+        } else if (el.type === 'dialogue') {
+            output += `${el.content}\n`;
+        } else if (el.type === 'parenthetical') {
+            output += `${el.content}\n`;
+        } else if (el.type === 'transition') {
+            output += `\n${el.content.toUpperCase()}\n`;
+        } else {
+            output += `\n${el.content}\n`;
+        }
+    });
+
+    return output.trim();
 };
 
 /**
@@ -95,7 +121,6 @@ export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[]
 
     // 4. Found a Scene Heading, Action, or Transition? 
     // Reset active character context.
-    // Crucially, 'cleanEl' does NOT have a 'character' property here, fixing the ghost bug.
     activeCharacterName = '';
     return cleanEl;
   });

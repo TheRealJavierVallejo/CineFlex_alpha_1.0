@@ -7,18 +7,19 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement, Scene } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun, Download } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun, Download, Wand2 } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
-import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
+import { enrichScriptElements, generateScriptFromScenes, generateFountainText, convertFountainToElements } from '../../services/scriptUtils'; // Added imports
+import { parseFountain } from '../../lib/fountain'; // Added import
 import { exportToPDF, exportToFDX, exportToTXT } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { FeatureGate } from '../ui/FeatureGate';
 
 export const ScriptPage: React.FC = () => {
-    const { project, updateScriptElements, importScript, handleUpdateProject } = useWorkspace(); // Added handleUpdateProject
+    const { project, updateScriptElements, importScript, handleUpdateProject, showToast } = useWorkspace();
 
     // --- 1. HISTORY STATE (Undo/Redo) ---
     const {
@@ -99,6 +100,23 @@ export const ScriptPage: React.FC = () => {
         const updated = [...elements];
         updated[currentIndex] = { ...currentEl, content: finalContent, type: newType };
         updateLocal(updated);
+    };
+
+    const handleAutoFormat = () => {
+        // 1. Serialize
+        const rawText = generateFountainText(elements);
+        
+        // 2. Parse via Fountain.js
+        const fountainOutput = parseFountain(rawText);
+        
+        // 3. Convert back to Elements
+        // NOTE: We try to preserve IDs if possible, but for a full format we might regenerate structure
+        // Ideally we map back to existing IDs if content matches, but for now strict re-generation ensures clean structure
+        const formattedElements = convertFountainToElements(fountainOutput.tokens);
+        
+        // 4. Update
+        updateLocal(formattedElements);
+        showToast("Script Auto-Formatted", 'success');
     };
 
     const handleKeyDown = (e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
@@ -221,6 +239,7 @@ export const ScriptPage: React.FC = () => {
     const scrollToElement = (id: string) => {
         setActiveElementId(id);
         const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
     // --- TOOL DEFINITIONS ---
@@ -274,6 +293,16 @@ export const ScriptPage: React.FC = () => {
                             <span>Screenplay Editor</span>
                         </div>
                         <div className="flex items-center gap-4">
+                            
+                            {/* AUTO FORMAT BUTTON (NEW) */}
+                            <button 
+                                onClick={handleAutoFormat}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-surface-secondary hover:bg-primary hover:text-white text-text-secondary transition-colors text-xs font-bold uppercase tracking-wide border border-border hover:border-primary"
+                                title="Standardize Format (Fountain)"
+                            >
+                                <Wand2 className="w-3.5 h-3.5" /> Auto-Format
+                            </button>
+
                             {/* EXPORT DROPDOWN */}
                             <div className="relative group/export">
                                 <button className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-surface-secondary hover:bg-primary hover:text-white text-text-secondary transition-colors text-xs font-bold uppercase tracking-wide">
