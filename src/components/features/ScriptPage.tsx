@@ -1,29 +1,27 @@
 /*
  * 🎬 PAGE: SCRIPT EDITOR (True Page View)
- * Renders individual pages based on calculated pagination.
+ * OPTIMIZED: Implements CSS Content-Visibility for performance on long scripts.
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
-import { ScriptElement, Scene } from '../../types';
-import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, AlignLeft, Moon, Sun, Download, Wand2 } from 'lucide-react';
+import { ScriptElement } from '../../types';
+import { Sparkles, Wand2 } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { SmartTypeManager } from './script-editor/SmartTypeManager';
 import { ScriptPageToolbar } from './script-editor/ScriptPageToolbar';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
-import { enrichScriptElements, generateScriptFromScenes, generateFountainText, convertFountainToElements } from '../../services/scriptUtils';
-import { parseFountain } from '../../lib/fountain';
-import { exportToPDF, exportToFDX, exportToTXT } from '../../services/exportService';
+import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
+import { exportToPDF } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
-import { getCharacters, getLocations } from '../../services/storage';
 import { calculatePagination } from '../../services/pagination';
 import { learnFromScript } from '../../services/smartType';
 
 export const ScriptPage: React.FC = () => {
-    const { project, updateScriptElements, importScript, handleUpdateProject, showToast } = useWorkspace();
+    const { project, updateScriptElements, importScript, showToast } = useWorkspace();
 
     // History & State
     const {
@@ -37,21 +35,20 @@ export const ScriptPage: React.FC = () => {
 
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
-    const [isZenMode, setIsZenMode] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
 
-    // Pagination
+    // Pagination State
     const [pageMap, setPageMap] = useState<Record<string, number>>({});
 
-    // Theme (Observer Pattern for Reactivity)
+    // Theme Detection
     const [isGlobalLight, setIsGlobalLight] = useState(document.documentElement.classList.contains('light'));
     const [localPaperWhite, setLocalPaperWhite] = useState(false);
     const isPaperWhite = isGlobalLight || localPaperWhite;
 
     const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
 
-    // Watch for Theme Changes
+    // Observer for Theme Changes
     useEffect(() => {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -64,14 +61,24 @@ export const ScriptPage: React.FC = () => {
         return () => observer.disconnect();
     }, []);
 
-    // Sync to Project (Debounced)
-    const debouncedSync = useCallback(
-        debounce((newElements: ScriptElement[]) => {
+    // OPTIMIZATION: Memoize project ID to prevent closure staleness in debounce
+    const projectId = project.id;
+
+    // OPTIMIZATION: Debounced Sync & Learning
+    const debouncedSync = useMemo(
+        () => debounce((newElements: ScriptElement[]) => {
             setSaveStatus('saving');
             setIsSyncing(true);
+            
+            // 1. Enrich/Sequence
             const sequenced = newElements.map((el, idx) => ({ ...el, sequence: idx + 1 }));
             const enriched = enrichScriptElements(sequenced);
+            
+            // 2. Update Context
             updateScriptElements(enriched);
+
+            // 3. Learn SmartTypes (Async)
+            learnFromScript(projectId, newElements);
 
             // Simulate save completion
             setTimeout(() => {
@@ -81,31 +88,23 @@ export const ScriptPage: React.FC = () => {
 
             setIsSyncing(false);
         }, 1000),
-        [updateScriptElements]
+        [updateScriptElements, projectId]
     );
 
-    // Initial Load & SmartType Learning
-    const [lastScriptHash, setLastScriptHash] = useState('');
-
+    // Initial Load
     useEffect(() => {
-        if (project.scriptElements && project.scriptElements.length > 0) {
-            if (elements.length === 0) setElements(project.scriptElements);
-
-            // Optimize learning: only run if script content has changed
-            const scriptHash = JSON.stringify(project.scriptElements.map(e => e.id + e.content));
-            if (scriptHash !== lastScriptHash) {
+        if (elements.length === 0) {
+            if (project.scriptElements && project.scriptElements.length > 0) {
+                setElements(project.scriptElements);
                 learnFromScript(project.id, project.scriptElements);
-                setLastScriptHash(scriptHash);
+            } else if (project.scenes.length > 0) {
+                const generated = generateScriptFromScenes(project.scenes);
+                setElements(generated);
             }
-            return;
         }
-        if (project.scenes.length > 0 && elements.length === 0) {
-            const generated = generateScriptFromScenes(project.scenes);
-            setElements(generated);
-        }
-    }, [project.scriptElements, project.scenes, project.id]);
+    }, [project.scriptElements, project.scenes, project.id, elements.length, setElements]);
 
-    // Recalculate Pagination (memoized for performance)
+    // Recalculate Pagination (Memoized)
     const calculatedPageMap = useMemo(() => {
         return calculatePagination(elements);
     }, [elements]);
@@ -127,14 +126,14 @@ export const ScriptPage: React.FC = () => {
         return grouped;
     }, [elements, pageMap]);
 
-    // Calculate current page for page indicator
     const currentPageNum = useMemo(() => {
         if (!activeElementId) return 1;
-        const pageNum = pageMap[activeElementId];
-        return pageNum || 1;
+        return pageMap[activeElementId] || 1;
     }, [activeElementId, pageMap]);
 
     const totalPages = Object.keys(pages).length || 1;
+
+    // --- STABLE HANDLERS ---
 
     const handleContentChange = useCallback((id: string, newContent: string) => {
         setElements(prevElements => {
@@ -157,24 +156,40 @@ export const ScriptPage: React.FC = () => {
 
             const updated = [...prevElements];
             updated[currentIndex] = { ...currentEl, content: newContent, type: newType };
-            // REMOVED: Real-time uppercase conversion (now happens on blur)
 
-            triggerSync(updated);
+            debouncedSync(updated);
             return updated;
+        });
+    }, [setElements, debouncedSync]);
+
+    const handleNavigation = useCallback((e: React.KeyboardEvent, id: string, cursorPosition: number, contentLength: number) => {
+        setElements(currentEls => {
+            const index = currentEls.findIndex(el => el.id === id);
+            if (index === -1) return currentEls;
+
+            if (e.key === 'ArrowUp' && cursorPosition === 0 && index > 0) {
+                e.preventDefault();
+                setActiveElementId(currentEls[index - 1].id);
+            }
+            if (e.key === 'ArrowDown' && cursorPosition === contentLength && index < currentEls.length - 1) {
+                e.preventDefault();
+                setActiveElementId(currentEls[index + 1].id);
+            }
+            return currentEls;
         });
     }, [setElements]);
 
-    // Keydown Logic
     const handleKeyDown = useCallback((e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
+        // Undo/Redo
         if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
             e.preventDefault();
             e.shiftKey ? (canRedo && redo()) : (canUndo && undo());
             return;
         }
+        
+        // Split Block (Enter)
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-
-            // Generate ID upfront
             const newId = crypto.randomUUID();
 
             setElements(prevElements => {
@@ -186,6 +201,7 @@ export const ScriptPage: React.FC = () => {
                 const contentAfter = currentEl.content.slice(cursorPosition);
 
                 let nextType: ScriptElement['type'] = 'action';
+                // Type Logic
                 if (type === 'scene_heading') nextType = 'action';
                 else if (type === 'character') nextType = 'dialogue';
                 else if (type === 'dialogue') nextType = 'character';
@@ -198,23 +214,26 @@ export const ScriptPage: React.FC = () => {
                 updated[index] = { ...currentEl, content: contentBefore };
                 updated.splice(index + 1, 0, newElement);
 
-                triggerSync(updated);
+                debouncedSync(updated);
                 return updated;
             });
 
-            // Update active state immediately (batched with setElements)
             setActiveElementId(newId);
             cursorTargetRef.current = { id: newId, position: 0 };
         }
+
+        // Merge Blocks (Backspace)
         if (e.key === 'Backspace' && cursorPosition === 0 && selectionEnd === 0) {
             setElements(prevElements => {
                 const index = prevElements.findIndex(el => el.id === id);
                 if (index <= 0) return prevElements;
                 e.preventDefault();
+                
                 const prevIndex = index - 1;
                 const prevEl = prevElements[prevIndex];
                 const currentEl = prevElements[index];
                 const newCursorPos = prevEl.content.length;
+                
                 const updated = [...prevElements];
                 updated[prevIndex] = { ...prevEl, content: prevEl.content + currentEl.content };
                 updated.splice(index, 1);
@@ -223,41 +242,31 @@ export const ScriptPage: React.FC = () => {
                     setActiveElementId(prevEl.id);
                     cursorTargetRef.current = { id: prevEl.id, position: newCursorPos };
                 });
-                triggerSync(updated);
+                
+                debouncedSync(updated);
                 return updated;
             });
         }
+
+        // Cycle Types (Tab)
         if (e.key === 'Tab') {
             e.preventDefault();
             setElements(prevElements => {
                 const index = prevElements.findIndex(el => el.id === id);
+                if (index === -1) return prevElements;
+                
                 const types: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition'];
                 const currentIdx = types.indexOf(type);
                 const nextType = types[(currentIdx + 1) % types.length];
+                
                 const updated = [...prevElements];
                 updated[index] = { ...updated[index], type: nextType };
-                triggerSync(updated);
+                
+                debouncedSync(updated);
                 return updated;
             });
         }
-    }, [canUndo, canRedo, undo, redo, setElements]);
-
-    const handleNavigation = useCallback((e: React.KeyboardEvent, id: string, cursorPosition: number, contentLength: number) => {
-        // Simple nav logic
-        const currentEls = elements;
-        const index = currentEls.findIndex(el => el.id === id);
-
-        if (e.key === 'ArrowUp' && cursorPosition === 0 && index > 0) {
-            e.preventDefault();
-            setActiveElementId(currentEls[index - 1].id);
-        }
-        if (e.key === 'ArrowDown' && cursorPosition === contentLength && index < currentEls.length - 1) {
-            e.preventDefault();
-            setActiveElementId(currentEls[index + 1].id);
-        }
-    }, [elements]);
-
-    const triggerSync = (newElements: ScriptElement[]) => debouncedSync(newElements);
+    }, [canUndo, canRedo, undo, redo, setElements, debouncedSync]);
 
     const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -265,8 +274,6 @@ export const ScriptPage: React.FC = () => {
         setIsImporting(true);
         try {
             await importScript(file);
-            // The useEffect listening to project.scriptElements will pick this up 
-            // and populate the editor because elements.length is 0.
         } catch (e) {
             console.error(e);
         } finally {
@@ -274,37 +281,7 @@ export const ScriptPage: React.FC = () => {
         }
     };
 
-    // Global Keyboard Shortcuts
-    useEffect(() => {
-        const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            if (!activeElementId) return;
-
-            // Tab for indentation / element cycling
-            if (e.key === 'Tab') {
-                e.preventDefault();
-            }
-
-            // Ctrl+Enter / Cmd+Enter to force Scene Heading
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                setElements(prev => {
-                    const index = prev.findIndex(el => el.id === activeElementId);
-                    if (index === -1) return prev;
-
-                    const updated = [...prev];
-                    updated[index] = { ...updated[index], type: 'scene_heading', content: updated[index].content.toUpperCase() };
-                    triggerSync(updated);
-                    return updated;
-                });
-            }
-        };
-
-        window.addEventListener('keydown', handleGlobalKeyDown);
-        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-    }, [activeElementId]);
-
-    // --- RENDER HELPERS ---
-    // Memoize page style to avoid recalculating on every render
+    // --- PAGE STYLING ---
     const pageStyle = useMemo(() => {
         if (isPaperWhite) {
             return "bg-white border-border shadow-xl text-black";
@@ -329,10 +306,8 @@ export const ScriptPage: React.FC = () => {
 
     return (
         <PageWithToolRail tools={tools} defaultTool={null}>
-            {/* The outer container uses app background (silver in light mode, charcoal in dark mode) */}
-            <div className={`relative h-full flex flex-col overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''} bg-app transition-colors duration-300`}>
+            <div className="relative h-full flex flex-col overflow-hidden font-sans bg-app transition-colors duration-300">
 
-                {/* TOOLBAR */}
                 <ScriptPageToolbar
                     canUndo={canUndo}
                     canRedo={canRedo}
@@ -346,11 +321,9 @@ export const ScriptPage: React.FC = () => {
                     totalPages={totalPages}
                 />
 
-                {/* SCROLL AREA */}
                 <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-[50vh]">
                     {elements.length === 0 ? (
                         <div className="mt-20">
-                            {/* FIX: Ensure Import button is visible */}
                             <EmptyProjectState
                                 title="Start Writing"
                                 description="Create your first scene or import an existing screenplay."
@@ -376,18 +349,17 @@ export const ScriptPage: React.FC = () => {
                                             pt-[1.0in] pb-[1.0in] pl-[1.5in] pr-[1.0in]
                                             ${pageStyle}
                                         `}
-                                        // FIX: Removed logic that jumped to bottom on click
-                                        onClick={(e) => {
-                                            // Optional: If user clicks page but not element, we could focus *closest* element, 
-                                            // but for now, do nothing to prevent the annoying jump.
+                                        style={{
+                                            // OPTIMIZATION: Native browser virtualization
+                                            contentVisibility: 'auto', 
+                                            containIntrinsicSize: '11in 11in'
                                         }}
                                     >
-                                        {/* Page Number Header */}
+                                        {/* Page Number */}
                                         <div className={`absolute top-[0.5in] right-[1.0in] text-[12pt] font-screenplay select-none ${isPaperWhite ? 'text-black opacity-50' : 'text-zinc-500'}`}>
                                             {pageNum}.
                                         </div>
 
-                                        {/* Content */}
                                         <div className="flex flex-col">
                                             {pageElements.map((element, index) => (
                                                 <ScriptBlock

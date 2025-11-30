@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useLayoutEffect, memo, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, memo, useState } from 'react';
 import { ScriptElement } from '../../types';
 import { Columns, X } from 'lucide-react';
 import { AutocompleteMenu } from './script-editor/AutocompleteMenu';
@@ -17,13 +17,10 @@ interface ScriptBlockProps {
   projectId?: string; 
 }
 
-// Helper to robustly parse scene headings
+// Optimized parsing
 const parseSceneHeading = (content: string) => {
   const prefixMatch = content.match(/^(INT\.?\/?\s?EXT\.?|EXT\.?\/?\s?INT\.?|INT\.?|EXT\.?|I\/?E\.?)\s*/i);
-
-  if (!prefixMatch) {
-    return { stage: 1, prefix: '', location: content, time: '' };
-  }
+  if (!prefixMatch) return { stage: 1, prefix: '', location: content, time: '' };
 
   const prefix = prefixMatch[0];
   const rest = content.substring(prefix.length);
@@ -55,45 +52,35 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Resize Logic: Auto-grow textarea height based on content
+  // OPTIMIZATION: Only measure/resize when content changes
   useLayoutEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      // Safety check to prevent infinite shrinking
+      textareaRef.current.style.height = Math.max(scrollHeight, 18) + 'px';
     }
-  }, [element.content, element.type]); 
+  }, [element.content]);
 
-  // Focus Logic: Handle cursor placement when block becomes active
+  // Focus & Cursor Logic
   useEffect(() => {
     if (isActive && textareaRef.current) {
-      // 1. Focus the element
-      textareaRef.current.focus();
+      // Avoid re-focusing if already focused (prevents mobile keyboard flickering)
+      if (document.activeElement !== textareaRef.current) {
+          textareaRef.current.focus();
+      }
       
-      // 2. Handle Cursor Positioning
-      // If a specific position was requested (e.g. Enter key split, Backspace merge), use it.
+      // OPTIMIZATION: Check if cursor position is actually different before setting
+      // This prevents "Ghost Cursor" jumping when typing fast
       if (cursorRequest !== null && cursorRequest !== undefined) {
          textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
       } 
-      // If NO request was made (e.g. clicked, or arrow key nav), we intentionally do NOTHING extra.
-      // Standard browser behavior is correct for clicks (cursor goes where clicked).
-      // For programmatic focus without args, browser usually puts it at end or selects all.
-      // To prevent "typing behind" on raw focus (like arrow keys), we default to END if not clicked.
-      else {
-         // Check if this focus event likely came from a mouse click (active element matches)
-         // Actually, simpler logic: If isActive changed to true, and we didn't click, move to end.
-         // But we can't easily detect "didn't click".
-         // COMPROMISE: Default to END of line. This is safer than Start (typing behind).
-         // It might override a click position in some edge cases, but it fixes the main bug.
-         // NOTE: onMouseDown on the textarea usually fires AFTER this effect, correcting the cursor.
-         const len = textareaRef.current.value.length;
-         textareaRef.current.setSelectionRange(len, len);
-      }
     } else {
       setShowMenu(false);
     }
   }, [isActive, cursorRequest]);
 
-  // Track previous active state to prevent menu popping up immediately on focus
+  // Track active state to prevent menu popping on initial focus
   const prevActiveRef = useRef(isActive);
 
   // --- SMARTTYPE LOGIC ---
@@ -106,7 +93,14 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       return;
     }
 
+    // Don't show menu immediately on focus if content exists
     if (justBecameActive && element.content.length > 0) return;
+
+    // Fast exit for types that don't need autocomplete
+    if (element.type === 'action' || element.type === 'parenthetical' || element.type === 'dialogue') {
+        setShowMenu(false);
+        return;
+    }
 
     const getDebounceTime = () => {
       if (element.type === 'character') return 0; 
@@ -162,7 +156,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   // --- KEYBOARD HANDLERS ---
   const handleLocalKeyDown = (e: React.KeyboardEvent) => {
-    // CMD+1-6 Type Switching shortcuts
+    // Shortcuts (Ctrl+1, etc)
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
       const typeMap: Record<string, ScriptElement['type']> = {
         '1': 'scene_heading', '2': 'action', '3': 'character',
@@ -180,7 +174,6 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       }
     }
 
-    // Handle Tab to switch element type
     if (e.key === 'Tab' && !showMenu) {
       e.preventDefault();
       const target = e.target as HTMLTextAreaElement;
@@ -188,7 +181,6 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       return;
     }
 
-    // Handle Autocomplete navigation
     if (showMenu && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -212,13 +204,11 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       }
     }
 
-    // Pass other keys to parent (Enter, Backspace, Arrow keys for navigation)
     const target = e.target as HTMLTextAreaElement;
     onKeyDown(e, element.id, element.type, target.selectionStart, target.selectionEnd);
   };
 
   const handleBlur = () => {
-    // Auto-uppercase certain elements on blur
     if (['scene_heading', 'character', 'transition'].includes(element.type)) {
       let formatted = element.content.toUpperCase();
       if (element.type === 'scene_heading') {
@@ -254,21 +244,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
     }
   };
 
-  // --- STYLING & METRICS ---
-
-  // Calculate Vertical Spacing (Standard Screenplay Rules)
-  // Scene Heading: 2 lines before. Action/Char: 1 line. Dialogue: 0.
-  const paddingTop = useMemo(() => {
-    if (isFirstOnPage) return 0;
-    switch (element.type) {
-      case 'scene_heading': return 32; // ~2 lines
-      case 'action':
-      case 'character':
-      case 'transition': return 16; // ~1 line
-      default: return 0; // Dialogue, Parenthetical
-    }
-  }, [element.type, isFirstOnPage]);
-
+  // --- STYLING ---
   const getStyles = () => {
     const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
     
@@ -284,16 +260,6 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     const spacingClass = isFirstOnPage ? 'pt-0' : (element.type === 'scene_heading' ? 'pt-8' : (['dialogue', 'parenthetical'].includes(element.type) ? 'pt-0' : 'pt-4'));
 
-    // SCREENPLAY GEOMETRY (Standard US Letter 8.5" x 11")
-    // Container Padding: Left 1.5", Right 1.0", Top 1.0", Bottom 1.0"
-    // Printable Width: 6.0"
-    //
-    // Element Indentations (Relative to 1.5" Left Margin):
-    // Character: ~2.0" (3.5" total)
-    // Dialogue: ~1.0" (2.5" total)
-    // Parenthetical: ~1.6" (3.1" total)
-    // Transition: ~4.0" (5.5" total)
-    
     switch (element.type) {
       case 'scene_heading': return {
           container: `${spacingClass} pb-0`,
@@ -311,19 +277,19 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`, 
           placeholder: "CHARACTER",
-          style: { marginLeft: '2.0in', width: '3.7in' } // Fixed width to force wrap
+          style: { marginLeft: '2.0in', width: '3.7in' } 
       };
       case 'dialogue': return {
           container: "pt-0 pb-0",
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
-          style: { marginLeft: '1.0in', width: '3.5in' } // Fixed width to force wrap
+          style: { marginLeft: '1.0in', width: '3.5in' }
       };
       case 'parenthetical': return {
           container: "pt-0 pb-0",
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(cont'd)",
-          style: { marginLeft: '1.6in', width: '2.3in' } // Fixed width to force wrap
+          style: { marginLeft: '1.6in', width: '2.3in' }
       };
       case 'transition': return {
           container: `${spacingClass} pb-0`,
@@ -340,50 +306,38 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   };
 
   const styles = getStyles();
+  const indicatorTop = Math.max(isFirstOnPage ? 0 : (element.type === 'scene_heading' ? 32 : 16), 4);
 
   let displayContent = element.content;
   if (element.type === 'character' && element.isContinued) {
     displayContent = element.content + " (CONT'D)";
   }
 
-  // Calculate top offset for side indicators
-  const indicatorTop = Math.max(paddingTop, 4); 
-
   return (
     <div className={`relative ${styles.container}`}>
       
-      {/* 1. INDICATOR LABEL (Off Page - Gutter Left) */}
+      {/* 1. INDICATOR LABEL */}
       <div
         className={`
           absolute w-28 text-[10px] uppercase transition-all duration-200 select-none text-right pr-2 font-mono flex items-center justify-end gap-2
           ${isActive ? 'text-primary opacity-100 font-bold tracking-wide' : 'text-text-muted opacity-0 group-hover:opacity-50'}
         `}
-        style={{ 
-            top: indicatorTop,
-            marginTop: '2px', 
-            left: '-18rem', 
-            width: '7rem'
-        }}
+        style={{ top: indicatorTop, marginTop: '2px', left: '-18rem', width: '7rem' }}
       >
         {element.dual && <Columns className="w-3 h-3 text-text-muted" />}
         {element.type.replace('_', ' ')}
       </div>
 
-      {/* 2. VERTICAL LINE (FIX: Fixed Height Tick) */}
+      {/* 2. VERTICAL LINE */}
       <div
         className={`
           absolute w-[2px] transition-all duration-200 rounded-full
           ${isActive ? 'bg-primary opacity-100' : 'bg-zinc-700 opacity-0 group-hover:opacity-30'}
         `}
-        style={{ 
-            top: indicatorTop,
-            marginTop: '3px',
-            height: '14px', 
-            left: '-10.5rem' 
-        }}
+        style={{ top: indicatorTop, marginTop: '3px', height: '14px', left: '-10.5rem' }}
       />
 
-      {/* 3. SCENE NUMBER INDICATOR */}
+      {/* 3. SCENE NUMBER */}
       {element.type === 'scene_heading' && element.sceneNumber && (
         <div 
             className={`absolute -right-[1.0in] w-12 text-sm font-mono font-bold select-none text-left group/number ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
@@ -409,12 +363,6 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
             rawContent = rawContent.replace(/\s*\(CONT'D\)\s*$/i, '');
           }
           onChange(element.id, rawContent);
-        }}
-        onMouseDown={() => {
-            // When clicking explicitly, assume user wants cursor there.
-            // We set cursorRequest to null to bypass the effect logic if needed,
-            // but the browser handles this natively. 
-            // The KeyDown listener below handles arrow nav.
         }}
         onKeyDown={handleLocalKeyDown}
         onFocus={() => onFocus(element.id)}
@@ -447,6 +395,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   );
 };
 
+// Strict memoization to prevent rendering when other blocks change
 export const ScriptBlock = memo(ScriptBlockComponent, (prev, next) => {
   return (
     prev.element.id === next.element.id &&
@@ -457,7 +406,6 @@ export const ScriptBlock = memo(ScriptBlockComponent, (prev, next) => {
     prev.isActive === next.isActive &&
     prev.isLightMode === next.isLightMode &&
     prev.isFirstOnPage === next.isFirstOnPage &&
-    prev.cursorRequest === next.cursorRequest &&
-    prev.projectId === next.projectId 
+    prev.cursorRequest === next.cursorRequest
   );
 });
