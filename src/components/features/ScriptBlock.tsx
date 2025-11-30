@@ -276,7 +276,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       case 'scene_heading': return {
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase ${colors.heading} ${colors.placeholder}`,
-          placeholder: "SCENE HEADING",
+          placeholder: "INT. SCENE HEADER - DAY",
           style: { paddingLeft: '0in', maxWidth: '6.0in' }
       };
       case 'action': return {
