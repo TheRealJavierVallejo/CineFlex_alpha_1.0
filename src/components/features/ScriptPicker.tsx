@@ -1,11 +1,11 @@
 /*
  * 📜 COMPONENT: SCRIPT PICKER
  * Selection Modal for linking script lines to shots
- * Theme: Dark Mode / Professional Screenplay Format
+ * Commercial Quality Update: Themed & Formatted
  */
 
 import React, { useMemo } from 'react';
-import { Type, X, Plus, ArrowRight } from 'lucide-react';
+import { Type, X, Check } from 'lucide-react';
 import { ScriptElement } from '../../types';
 
 interface ScriptPickerProps {
@@ -67,140 +67,135 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
         return groupElements(sceneEls);
     }, [scriptElements, sceneId]);
 
-    const getElementStyles = (type: ScriptElement['type']) => {
-        // Precise margin matching with ScriptBlock.tsx
-        const base = "font-screenplay text-[12pt] leading-snug transition-colors duration-200";
-
+    // Precise formatting logic matching ShotRow
+    const getElementStyle = (type: ScriptElement['type']) => {
+        // Base text size 16px/12pt standard
+        const base = "font-screenplay text-[16px] leading-snug whitespace-pre-wrap relative transition-colors duration-200";
+        
         switch (type) {
             case 'scene_heading':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary pt-8 pb-4`,
-                    style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                    className: `${base} font-bold uppercase text-text-primary mt-6 mb-2`,
+                    style: { width: '100%' }
                 };
             case 'action':
                 return {
-                    className: `${base} text-text-secondary pt-4`,
-                    style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                    className: `${base} text-text-primary mt-2 mb-2`,
+                    style: { width: '100%' }
                 };
             case 'character':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary pt-4`,
-                    style: { paddingLeft: '2.0in', maxWidth: '5.5in' }
+                    className: `${base} font-bold uppercase text-text-primary mt-4 mb-0`,
+                    style: { marginLeft: '35%', width: '60%' } // Approx 2.0in visual center
                 };
             case 'dialogue':
                 return {
-                    className: `${base} text-text-secondary pt-0`,
-                    style: { paddingLeft: '1.0in', maxWidth: '4.5in' }
+                    className: `${base} text-text-primary mb-1`,
+                    style: { marginLeft: '15%', width: '70%' } // Approx 1.0in visual block
                 };
             case 'parenthetical':
                 return {
-                    className: `${base} italic text-text-muted text-sm pt-0`,
-                    style: { paddingLeft: '1.5in', maxWidth: '3.5in' }
+                    className: `${base} italic text-text-secondary text-sm mb-0`,
+                    style: { marginLeft: '25%', width: '50%' } // Approx 1.6in indent
                 };
             case 'transition':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary text-right pr-4 pt-4`,
-                    style: { paddingLeft: '4.0in', maxWidth: '6.0in' }
+                    className: `${base} font-bold uppercase text-text-primary text-right mt-4 mb-2`,
+                    style: { width: '100%' }
                 };
             default:
                 return {
-                    className: `${base} text-text-secondary pt-4`,
-                    style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                    className: `${base} text-text-primary`,
+                    style: {}
                 };
         }
-    };
-
-    // Calculate Arrow Top Position based on Padding
-    const getArrowClass = (firstType: ScriptElement['type']) => {
-        // Action/Char/Trans have pt-4 (1rem = 16px). Center of first line ~24px down.
-        // Heading has pt-8 (2rem = 32px). Center of first line ~40px down.
-        if (firstType === 'scene_heading') return 'top-10'; // 2.5rem = 40px
-        return 'top-6'; // 1.5rem = 24px
     };
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center overlay-dark backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
             <div
-                className="bg-surface border border-border w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative rounded-sm overflow-hidden"
+                className="bg-surface border border-border w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl relative rounded-lg overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="h-12 border-b border-border flex items-center justify-between px-8 bg-surface-secondary shrink-0">
-                    <h3 className="font-bold text-text-primary flex items-center gap-2 text-xs uppercase tracking-widest font-sans">
-                        <Type className="w-4 h-4 text-primary" />
-                        Select Script Element
-                    </h3>
-                    <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
+                <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-surface-secondary shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-md border border-primary/20">
+                            <Type className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-text-primary text-sm uppercase tracking-widest">
+                                Select Script Element
+                            </h3>
+                            <p className="text-[10px] text-text-tertiary">
+                                Click a block to link it to the current shot
+                            </p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-surface rounded-full text-text-secondary hover:text-text-primary transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="overflow-y-auto p-8 flex-1 bg-[#0C0C0E] font-screenplay shadow-inner flex justify-center">
-                    {groups.length > 0 ? (
-                        <div className="w-full max-w-[850px] pl-[1.5in] pr-[1.0in] pt-[0.5in] pb-[0.5in] bg-[#121212] border border-[#222] relative shadow-2xl min-h-full">
-                            {groups.map((group, idx) => {
-                                const isLinked = group.items.some(item => usedElementIds.has(item.id));
-                                const isHeading = group.items[0].type === 'scene_heading';
-                                const arrowTopClass = getArrowClass(group.items[0].type);
-
-                                return (
-                                    <div
-                                        key={idx}
-                                        className={`
-                                            relative group transition-opacity duration-200 -mx-4 px-4
-                                            ${isHeading ? 'pointer-events-none' : 'cursor-pointer'}
-                                            ${isLinked ? 'opacity-30 grayscale' : 'hover:bg-white/5 rounded-sm'}
-                                        `}
-                                        onClick={() => !isLinked && !isHeading && onSelect(group.items)}
-                                    >
-                                        {/* Render items in the group */}
-                                        {group.items.map(item => {
-                                            const { className, style } = getElementStyles(item.type);
-                                            return (
-                                                <div key={item.id} className={className} style={style}>
-                                                    {item.content}
+                {/* Script Viewer Container */}
+                <div className="flex-1 overflow-y-auto bg-background p-8 flex justify-center custom-scrollbar shadow-inner">
+                    <div className="w-full max-w-3xl">
+                        {groups.length > 0 ? (
+                            <div className="space-y-1">
+                                {groups.map((group, idx) => {
+                                    // Check if ANY item in this block is already linked
+                                    const isLinked = group.items.some(item => usedElementIds.has(item.id));
+                                    const isHeading = group.items[0].type === 'scene_heading';
+                                    
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className={`
+                                                relative group transition-all duration-200 rounded-sm -mx-4 px-4 py-2 border-l-4
+                                                ${isHeading ? 'pointer-events-none border-transparent' : 'cursor-pointer'}
+                                                
+                                                /* State: Linked (Active) */
+                                                ${isLinked 
+                                                    ? 'border-primary bg-primary/5' 
+                                                    : 'border-transparent hover:bg-surface-secondary hover:border-text-muted'}
+                                            `}
+                                            onClick={() => !isLinked && !isHeading && onSelect(group.items)}
+                                        >
+                                            {/* Linked Indicator Badge */}
+                                            {isLinked && (
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 px-2 py-1 bg-primary/10 border border-primary/20 rounded text-[10px] font-bold text-primary uppercase tracking-wider">
+                                                    <Check className="w-3 h-3" /> Linked
                                                 </div>
-                                            );
-                                        })}
+                                            )}
 
-                                        {/* Hover Arrow (Points to first line) */}
-                                        {!isLinked && !isHeading && (
-                                            <div className={`absolute -left-8 flex justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity ${arrowTopClass}`}>
-                                                <div className="flex items-center gap-1 text-primary font-sans font-bold text-[10px] uppercase tracking-wider">
-                                                    <ArrowRight className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Linked Label */}
-                                        {isLinked && (
-                                            <div className={`absolute -left-12 flex items-center justify-end w-20 pr-4 ${arrowTopClass}`}>
-                                                <div className="text-text-muted font-sans font-bold text-[9px] uppercase tracking-wider">
-                                                    Linked
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="text-center py-32 text-text-muted">
-                            <p className="mb-2 font-mono text-sm uppercase tracking-widest text-text-secondary">Page is Blank</p>
-                            <p className="text-xs font-sans text-text-muted">Add content in the Script Editor to see it here.</p>
-                        </div>
-                    )}
+                                            {/* Render Items */}
+                                            {group.items.map(item => {
+                                                const { className, style } = getElementStyle(item.type);
+                                                return (
+                                                    <div key={item.id} className={className} style={style}>
+                                                        {item.content}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-32 flex flex-col items-center opacity-50">
+                                <Type className="w-12 h-12 text-text-tertiary mb-4" />
+                                <p className="font-mono text-sm uppercase tracking-widest text-text-secondary">Scene is Empty</p>
+                                <p className="text-xs text-text-muted mt-2">Add content in the Script Editor first.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}
-                <div className="h-14 px-8 border-t border-border bg-surface-secondary flex items-center justify-between shrink-0">
-                    <div className="text-[10px] text-text-secondary font-sans uppercase tracking-wider">
-                        Click text to link to shot
-                    </div>
+                <div className="h-12 px-6 border-t border-border bg-surface flex items-center justify-end shrink-0">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-text-muted hover:text-white transition-colors hover:bg-white/5 rounded-sm border border-transparent hover:border-border"
+                        className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-text-secondary hover:text-text-primary transition-colors hover:bg-surface-secondary rounded-sm"
                     >
                         Cancel
                     </button>
