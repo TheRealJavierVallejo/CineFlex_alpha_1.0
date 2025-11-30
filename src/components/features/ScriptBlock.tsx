@@ -175,32 +175,6 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-      <style>{`
-         .script-input-no-border {
-           outline: none !important;
-           border-width: 0px !important;
-           border-style: none !important;
-           border-color: transparent !important;
-           box-shadow: none !important;
-           background-image: none !important;
-           --tw-ring-color: transparent !important;
-         }
-         .script-input-no-border:focus,
-         .script-input-no-border:active,
-         .script-input-no-border:focus-visible {
-           outline: none !important;
-           border-width: 0px !important;
-           border-style: none !important;
-           border-color: transparent !important;
-           box-shadow: none !important;
-           background-image: none !important;
-           ring: 0 !important;
-         }
-         .script-input-no-border::placeholder {
-            opacity: 1 !important; 
-         }
-       `}</style>
-
       {/* Left Indicator (Type) */}
       <div className={`
           absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r flex items-center justify-end gap-2
