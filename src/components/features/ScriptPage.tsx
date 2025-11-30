@@ -350,6 +350,7 @@ export const ScriptPage: React.FC = () => {
                 <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-[50vh]">
                     {elements.length === 0 ? (
                         <div className="mt-20">
+                            {/* FIX: Ensure Import button is visible */}
                             <EmptyProjectState
                                 title="Start Writing"
                                 description="Create your first scene or import an existing screenplay."
@@ -375,10 +376,10 @@ export const ScriptPage: React.FC = () => {
                                             pt-[1.0in] pb-[1.0in] pl-[1.5in] pr-[1.0in]
                                             ${pageStyle}
                                         `}
+                                        // FIX: Removed logic that jumped to bottom on click
                                         onClick={(e) => {
-                                            if (e.target === e.currentTarget && pageElements.length > 0) {
-                                                setActiveElementId(pageElements[pageElements.length - 1].id);
-                                            }
+                                            // Optional: If user clicks page but not element, we could focus *closest* element, 
+                                            // but for now, do nothing to prevent the annoying jump.
                                         }}
                                     >
                                         {/* Page Number Header */}

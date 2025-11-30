@@ -55,7 +55,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Resize Logic
+  // Resize Logic: Auto-grow textarea height based on content
   useLayoutEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -63,16 +63,23 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
     }
   }, [element.content, element.type]); 
 
-  // Focus Logic
+  // Focus Logic: Handle cursor placement when block becomes active
   useEffect(() => {
     if (isActive && textareaRef.current) {
       textareaRef.current.focus();
+      
+      // FIX: If no specific cursor position requested, move to END
+      // This prevents the "typing behind" issue where cursor defaults to index 0
+      if (cursorRequest === null || cursorRequest === undefined) {
+         const len = textareaRef.current.value.length;
+         textareaRef.current.setSelectionRange(len, len);
+      }
     } else {
       setShowMenu(false);
     }
   }, [isActive]);
 
-  // Cursor Positioning
+  // Specific Cursor Request (e.g. splitting a line or backspacing)
   useEffect(() => {
     if (isActive && cursorRequest !== null && cursorRequest !== undefined && textareaRef.current) {
       requestAnimationFrame(() => {
@@ -83,7 +90,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
     }
   }, [cursorRequest, isActive]);
 
-  // Track previous active state
+  // Track previous active state to prevent menu popping up immediately on focus
   const prevActiveRef = useRef(isActive);
 
   // --- SMARTTYPE LOGIC ---
@@ -152,7 +159,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   // --- KEYBOARD HANDLERS ---
   const handleLocalKeyDown = (e: React.KeyboardEvent) => {
-    // CMD+1-6 Type Switching
+    // CMD+1-6 Type Switching shortcuts
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
       const typeMap: Record<string, ScriptElement['type']> = {
         '1': 'scene_heading', '2': 'action', '3': 'character',
@@ -170,14 +177,15 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       }
     }
 
+    // Handle Tab to switch element type
     if (e.key === 'Tab' && !showMenu) {
       e.preventDefault();
-      // Tab cycling logic handled by parent via onKeyDown usually
       const target = e.target as HTMLTextAreaElement;
       onKeyDown(e, element.id, element.type, target.selectionStart, target.selectionEnd);
       return;
     }
 
+    // Handle Autocomplete navigation
     if (showMenu && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -201,11 +209,13 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       }
     }
 
+    // Pass other keys to parent (Enter, Backspace, Arrow keys for navigation)
     const target = e.target as HTMLTextAreaElement;
     onKeyDown(e, element.id, element.type, target.selectionStart, target.selectionEnd);
   };
 
   const handleBlur = () => {
+    // Auto-uppercase certain elements on blur
     if (['scene_heading', 'character', 'transition'].includes(element.type)) {
       let formatted = element.content.toUpperCase();
       if (element.type === 'scene_heading') {
@@ -243,18 +253,20 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   // --- STYLING & METRICS ---
 
+  // Calculate Vertical Spacing (Standard Screenplay Rules)
   const paddingTop = useMemo(() => {
     if (isFirstOnPage) return 0;
     switch (element.type) {
-      case 'scene_heading': return 32; // 2rem
+      case 'scene_heading': return 32; // ~2 lines before
       case 'action':
       case 'character':
-      case 'transition': return 16; // 1rem
+      case 'transition': return 16; // ~1 line before
       default: return 0;
     }
   }, [element.type, isFirstOnPage]);
 
-  // CSS Styles using MARGINS instead of Padding to prevent squishing
+  // FIX: Using MARGINS instead of Padding for indentation.
+  // This prevents the text box from squishing the content and behaves like real tab stops.
   const getStyles = () => {
     const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
     
@@ -270,48 +282,49 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     const spacingClass = isFirstOnPage ? 'pt-0' : (element.type === 'scene_heading' ? 'pt-8' : (['dialogue', 'parenthetical'].includes(element.type) ? 'pt-0' : 'pt-4'));
 
-    // Widths relative to the ~6.0in printable width (Page is 8.5, Margins 1.5+1.0 = 2.5)
+    // Widths relative to the ~6.0in printable width (Page is 8.5in, Margins 1.5+1.0 = 2.5)
+    // We use marginLeft on the INPUT to push it over, while the CONTAINER stays full width.
     switch (element.type) {
       case 'scene_heading': return {
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT. SCENE HEADER - DAY",
-          style: { width: '100%' }
+          style: { width: '100%', marginLeft: '0in' }
       };
       case 'action': return {
           container: `${spacingClass} pb-0`,
           input: `${base} ${colors.action} ${colors.placeholder}`,
           placeholder: "Action...",
-          style: { width: '100%' }
+          style: { width: '100%', marginLeft: '0in' }
       };
       case 'character': return {
           container: `${spacingClass} pb-0`,
-          input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`, // Removed text-center
+          input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`, 
           placeholder: "CHARACTER",
-          style: { marginLeft: '2.0in', width: '4.0in' } // Margin relative to container
+          style: { marginLeft: '2.0in', maxWidth: '3.5in' } // Standard indentation
       };
       case 'dialogue': return {
           container: "pt-0 pb-0",
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
-          style: { marginLeft: '1.0in', width: '3.5in' } // Margin relative to container
+          style: { marginLeft: '1.0in', maxWidth: '3.5in' } // Standard indentation
       };
       case 'parenthetical': return {
           container: "pt-0 pb-0",
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(cont'd)",
-          style: { marginLeft: '1.6in', width: '3.0in' } // Margin relative to container
+          style: { marginLeft: '1.6in', maxWidth: '3.0in' } // Standard indentation
       };
       case 'transition': return {
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
-          style: { marginLeft: '4.0in', width: '2.0in' } // Margin relative to container
+          style: { marginLeft: '4.0in', maxWidth: '2.0in' } // Right alignment
       };
       default: return {
           container: `${spacingClass} pb-0`,
           input: `${base} ${colors.action} ${colors.placeholder}`,
-          style: { width: '100%' }
+          style: { width: '100%', marginLeft: '0in' }
       };
     }
   };
@@ -346,7 +359,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         {element.type.replace('_', ' ')}
       </div>
 
-      {/* 2. VERTICAL LINE (Fixed Height Tick) */}
+      {/* 2. VERTICAL LINE (FIX: Fixed Height "Tick") */}
+      {/* This prevents the line from growing with the paragraph */}
       <div
         className={`
           absolute w-[2px] transition-all duration-200 rounded-full
@@ -355,7 +369,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         style={{ 
             top: indicatorTop,
             marginTop: '3px',
-            height: '14px', // FIXED HEIGHT - Does not grow with text
+            height: '14px', // Hardcoded height so it doesn't stretch
             left: '-10.5rem' 
         }}
       />
