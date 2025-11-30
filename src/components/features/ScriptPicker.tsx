@@ -143,6 +143,15 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                     const isHeading = group.items[0].type === 'scene_heading';
                                     
+                                    // Determine top alignment based on first element type
+                                    const firstType = group.items[0].type;
+                                    // Action, Character, Transition all have mt-4. 
+                                    // If we ever have an orphan dialogue (rare), it has 0 margin, so we'd need top-0.
+                                    // For now, default to top-4 to match the standard mt-4 spacing.
+                                    const arrowClass = (firstType === 'dialogue' || firstType === 'parenthetical') 
+                                        ? "top-0" 
+                                        : "top-4 -mt-1.5"; // -mt-1.5 visually centers the chevron with the cap-height of text
+
                                     return (
                                         <div
                                             key={idx}
@@ -154,9 +163,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                             onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
                                             {/* Hover Arrow Indicator (Floating in Left Gutter) */}
-                                            {/* Moved further left (-left-20) to sit in the paper margin cleanly */}
+                                            {/* Moved -left-20 to stay clear of text */}
                                             {!isHeading && !isLinked && (
-                                                <div className="absolute -left-20 top-0 pt-4 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-4 group-hover:translate-x-0 duration-150">
+                                                <div className={`absolute -left-20 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-4 group-hover:translate-x-0 duration-150 ${arrowClass}`}>
                                                     <ChevronRight className="w-6 h-6" strokeWidth={3} />
                                                 </div>
                                             )}
@@ -185,7 +194,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                         )}
                         
                         {/* Massive Bottom Spacer to fix scrolling cut-off */}
-                        <div className="h-40 w-full" />
+                        <div className="h-60 w-full" />
                     </div>
                 </div>
             </div>
