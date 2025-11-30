@@ -43,49 +43,48 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
         return { aspectRatio: `${w}/${h}` };
     }, [shot.aspectRatio]);
 
-    // Dynamic Spacing Class Generator
-    const getElementSpacing = (el: ScriptElement, index: number) => {
-        const isFirst = index === 0;
-        const prev = index > 0 ? sortedElements[index - 1] : null;
-
-        // DIALOGUE BLOCK CONTINUATION (Connect the lines)
-        // If this is Dialogue/Paren following a Character/Dialogue/Paren
-        const isBlockContinuation = 
-            (el.type === 'dialogue' || el.type === 'parenthetical') &&
-            prev && 
-            (prev.type === 'character' || prev.type === 'parenthetical' || prev.type === 'dialogue');
-
-        if (isBlockContinuation) {
-            return "mt-0 pt-0 pb-1"; // Fuse with above
-        }
-
-        // NEW BLOCK (Character starts here, or Action separated)
-        // Character: Needs space above, but tight bottom for dialogue to attach
-        if (el.type === 'character') {
-            return isFirst ? "pt-1 pb-0" : "mt-4 pt-1 pb-0";
-        }
-
-        // Action/Heading: Standalone blocks
-        return isFirst ? "py-1" : "mt-4 py-1";
-    };
-
-    // Helper for screenplay formatting classes
-    const getScreenplayClasses = (type: ScriptElement['type']) => {
+    // Screenplay Standard Formatting Logic (Matching ScriptPage exactly)
+    const getElementStyle = (type: ScriptElement['type']) => {
+        const base = "font-screenplay text-[16px] leading-snug text-text-primary whitespace-pre-wrap relative";
+        
+        // Using standard screenplay indentations (approximate for web display)
+        // 1 inch approx 96px or 6rem
         switch (type) {
             case 'scene_heading':
-                return "font-bold uppercase text-text-primary border-b border-border/30 pb-2 mb-2 pt-2";
+                return {
+                    className: `${base} font-bold uppercase mt-4 mb-2`,
+                    style: { width: '100%' }
+                };
             case 'action':
-                return "text-text-primary";
+                return {
+                    className: `${base} mt-2 mb-2`,
+                    style: { width: '100%' }
+                };
             case 'character':
-                return "font-bold uppercase text-text-primary pl-16"; // Deep indent for character
+                return {
+                    className: `${base} font-bold uppercase mt-4 mb-0`,
+                    style: { marginLeft: '35%', width: '60%' } // Approx 2.0in visual center
+                };
             case 'dialogue':
-                return "text-text-primary pl-6 pr-6"; // Medium indent for dialogue
+                return {
+                    className: `${base} mb-1`,
+                    style: { marginLeft: '15%', width: '70%' } // Approx 1.0in visual block
+                };
             case 'parenthetical':
-                return "italic text-text-secondary pl-10"; // Slightly more indent than dialogue
+                return {
+                    className: `${base} italic text-sm mb-0`,
+                    style: { marginLeft: '25%', width: '50%' } // Approx 1.6in indent
+                };
             case 'transition':
-                return "font-bold uppercase text-text-primary text-right";
+                return {
+                    className: `${base} font-bold uppercase text-right mt-4 mb-2`,
+                    style: { width: '100%' }
+                };
             default:
-                return "text-text-primary";
+                return {
+                    className: `${base}`,
+                    style: {}
+                };
         }
     };
 
@@ -94,7 +93,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
             <div className="group/row grid grid-cols-2 border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[220px]">
                 
                 {/* 1. VISUAL COLUMN (50% Width) */}
-                <div className="p-4 border-r border-border flex flex-col gap-3 bg-surface justify-center relative">
+                <div className="p-6 border-r border-border flex flex-col gap-4 bg-surface justify-center relative">
                     {/* Header: Shot Number & Meta */}
                     <div className="flex justify-between items-center px-1">
                         <div className="flex items-center gap-3">
@@ -123,7 +122,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                             className="w-full relative group/visual cursor-pointer hover:border-primary transition-all duration-200 rounded-sm overflow-hidden bg-[#050505] border border-border shadow-sm"
                             style={{ 
                                 ...aspectRatioStyle, 
-                                maxHeight: '400px' // Prevent extremely tall vertical shots from breaking flow
+                                maxHeight: '400px'
                             }}
                             onClick={() => {
                                 if (shot.generatedImage) {
@@ -164,7 +163,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                 </div>
 
                 {/* 2. SCRIPT / CONTENT COLUMN (50% Width) */}
-                <div className="p-8 flex flex-col justify-center relative">
+                <div className="p-8 flex flex-col justify-center relative bg-surface/50">
                     {/* Description Input (if no linked script) */}
                     {sortedElements.length === 0 && (
                         <div className="h-full flex flex-col">
@@ -178,48 +177,37 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                         </div>
                     )}
 
-                    {/* Linked Script Elements - Screenplay Format */}
-                    <div className="flex flex-col font-screenplay text-[13px]">
-                        {sortedElements.map((el, index) => {
-                            // Smart Display Logic to detect Ghost Characters (implicit speakers)
-                            const prevEl = index > 0 ? sortedElements[index - 1] : null;
-                            const isContinuation = prevEl && prevEl.type === 'character' && prevEl.content === el.character;
-                            const showLabel = el.character && !isContinuation;
-                            
-                            const spacingClass = getElementSpacing(el, index);
-                            const typeClass = getScreenplayClasses(el.type);
-
-                            return (
-                                <div key={el.id} className={`relative group/element pl-4 border-l-[3px] border-primary/20 hover:border-primary transition-colors ${spacingClass}`}>
-                                    <div className={`leading-snug ${typeClass}`}>
-                                        {/* Ghost Label for implicit dialogue speakers */}
-                                        {showLabel && (
-                                            <div className="font-bold uppercase text-text-primary pl-10 mb-0.5 tracking-wide">
-                                                {el.character}
-                                            </div>
-                                        )}
+                    {/* Linked Script Elements - Clean Page Format */}
+                    {sortedElements.length > 0 && (
+                        <div className="flex flex-col w-full max-w-[600px] mx-auto">
+                            {sortedElements.map((el) => {
+                                const { className, style } = getElementStyle(el.type);
+                                
+                                return (
+                                    <div key={el.id} className="relative group/element">
+                                        <div className={className} style={style}>
+                                            {el.content}
+                                        </div>
                                         
-                                        {/* Main Content */}
-                                        <div className="whitespace-pre-wrap">{el.content}</div>
+                                        {/* Subtle Unlink on Hover */}
+                                        <button
+                                            onClick={() => onUnlinkElement(shot.id, el.id)}
+                                            className="absolute -left-6 top-1 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity p-1"
+                                            title="Unlink"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
                                     </div>
-                                    
-                                    <button
-                                        onClick={() => onUnlinkElement(shot.id, el.id)}
-                                        className="absolute top-1 right-0 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity p-1 bg-surface rounded-full shadow-sm border border-border"
-                                        title="Unlink"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Link Button */}
-                    <div className="mt-6 pt-4 border-t border-border/20 flex items-center justify-between opacity-0 group-hover/row:opacity-100 transition-opacity">
+                    <div className="mt-8 pt-4 border-t border-border/10 flex items-center justify-between opacity-0 group-hover/row:opacity-100 transition-opacity">
                         <button
                             onClick={() => onLinkElement(shot.id, 'script')}
-                            className="text-[10px] uppercase font-bold text-text-secondary hover:text-primary flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-surface"
+                            className="text-[10px] uppercase font-bold text-text-secondary hover:text-primary flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-surface border border-transparent hover:border-border"
                         >
                             <Type className="w-3 h-3" /> Link Script Line
                         </button>
