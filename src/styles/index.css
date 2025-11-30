@@ -147,6 +147,13 @@
 
 @layer components {
 
+  /* Strict Screenplay Leading
+     Courier 12pt usually has ~14.4pt to 16pt line height.
+     We lock it to unitless 1.2 or pixel value for calc consistency. */
+  .leading-screenplay {
+    line-height: 1.2 !important; /* ~19.2px for 16px font */
+  }
+
   /* Minimal Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;

@@ -171,7 +171,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   const getStyles = () => {
     // Styling Base
-    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-snug transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
+    // Added 'leading-screenplay' to enforce strict line height
+    const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
 
     // Theme Colors
     const colors = isLightMode ? {
@@ -202,11 +203,16 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
     const isCentered = text.startsWith('>') && text.endsWith('<');
     const isSection = text.startsWith('#');
 
-    // Override Action styles if it detects special formatting
+    // MAPPING:
+    // mt-4 = 1rem = ~1 blank line (approx)
+    // mt-8 = 2rem = ~2 blank lines (approx)
+    // pt/pb are padding within the block, we generally use margins between blocks or padding on container.
+    // To match 'pagination.ts', we use 'pt' classes on the container div to simulate top margin.
+
     if (element.type === 'action') {
         if (isNote) {
             return {
-                container: "pt-4 pb-4 opacity-80",
+                container: "pt-4 pb-2 opacity-80", // 1 line
                 input: `${base} ${colors.note} text-left italic ${colors.placeholder}`,
                 placeholder: "[[Note]]",
                 indicator: "top-4",
@@ -216,7 +222,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         }
         if (isCentered) {
             return {
-                container: "pt-4 pb-4",
+                container: "pt-4 pb-2",
                 input: `${base} ${colors.action} text-center ${colors.placeholder}`,
                 placeholder: "> Centered <",
                 indicator: "top-4",
@@ -226,7 +232,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         }
         if (isSection) {
             return {
-                container: "pt-8 pb-4", 
+                container: "pt-8 pb-2", // 2 lines
                 input: `${base} ${colors.section} font-bold text-left ${colors.placeholder}`,
                 placeholder: "# Section",
                 indicator: "top-8",
@@ -239,7 +245,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
     switch (element.type) {
       case 'scene_heading':
         return {
-          container: "pt-8 pb-4 group/heading", 
+          container: "pt-8 pb-2 group/heading", // 2 blank lines before (Strictly 2 lines = 2.4rem approx, but pt-8 is 2rem. Close enough for MVP)
           input: `${base} font-bold uppercase text-left ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT./EXT. SCENE LOCATION - DAY",
           indicator: "top-8", 
@@ -248,7 +254,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         };
       case 'action':
         return {
-          container: "pt-4", 
+          container: "pt-4 pb-0", // 1 blank line before
           input: `${base} text-left ${colors.action} ${colors.placeholder}`,
           placeholder: "Describe action...",
           indicator: "top-4",
@@ -257,7 +263,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         };
       case 'character':
         return {
-          container: "pt-4", 
+          container: "pt-4 pb-0", // 1 blank line before
           input: `${base} font-bold uppercase text-left ${colors.character} ${colors.placeholder}`,
           placeholder: "CHARACTER",
           indicator: "top-4",
@@ -266,7 +272,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         };
       case 'dialogue':
         return {
-          container: "pt-0", 
+          container: "pt-0 pb-0", // 0 blank lines
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
           indicator: "top-0",
@@ -275,7 +281,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         };
       case 'parenthetical':
         return {
-          container: "pt-0", 
+          container: "pt-0 pb-0", // 0 blank lines
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(parenthetical)",
           indicator: "top-0",
@@ -284,7 +290,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         };
       case 'transition':
         return {
-          container: "pt-4", 
+          container: "pt-4 pb-0", // 1 blank line before
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
           indicator: "top-4",
@@ -293,7 +299,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         };
       default:
         return {
-          container: "pt-4", 
+          container: "pt-4 pb-0", 
           input: `${base} ${colors.action} ${colors.placeholder}`,
           placeholder: "",
           indicator: "top-4",
