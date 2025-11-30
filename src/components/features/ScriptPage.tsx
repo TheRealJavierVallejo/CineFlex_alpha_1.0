@@ -39,6 +39,7 @@ export const ScriptPage: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [isImporting, setIsImporting] = useState(false);
 
     // Pagination
     const [pageMap, setPageMap] = useState<Record<string, number>>({});
@@ -258,6 +259,21 @@ export const ScriptPage: React.FC = () => {
 
     const triggerSync = (newElements: ScriptElement[]) => debouncedSync(newElements);
 
+    const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsImporting(true);
+        try {
+            await importScript(file);
+            // The useEffect listening to project.scriptElements will pick this up 
+            // and populate the editor because elements.length is 0.
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
     // Global Keyboard Shortcuts
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -336,12 +352,14 @@ export const ScriptPage: React.FC = () => {
                         <div className="mt-20">
                             <EmptyProjectState
                                 title="Start Writing"
-                                description="Create your first scene."
+                                description="Create your first scene or import an existing screenplay."
                                 onCreate={() => {
                                     const id = crypto.randomUUID();
                                     setElements([{ id, type: 'scene_heading', content: 'INT. START - DAY', sequence: 1 }]);
                                     setActiveElementId(id);
                                 }}
+                                onImport={handleImportScript}
+                                isImporting={isImporting}
                             />
                         </div>
                     ) : (
