@@ -17,6 +17,8 @@ import { exportToPDF, exportToFDX, exportToTXT } from '../../services/exportServ
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { getCharacters, getLocations } from '../../services/storage';
+import { calculatePagination } from '../../services/pagination';
+import { PageDivider } from './script-editor/PageDivider';
 
 export const ScriptPage: React.FC = () => {
     const { project, updateScriptElements, importScript, handleUpdateProject, showToast } = useWorkspace();
@@ -39,6 +41,9 @@ export const ScriptPage: React.FC = () => {
     // SmartType Data
     const [savedCharacters, setSavedCharacters] = useState<string[]>([]);
     const [savedLocations, setSavedLocations] = useState<string[]>([]);
+
+    // Pagination Data
+    const [pageMap, setPageMap] = useState<Record<string, number>>({});
 
     // --- PAPER THEME LOGIC ---
     const isGlobalLight = document.documentElement.classList.contains('light');
@@ -85,22 +90,25 @@ export const ScriptPage: React.FC = () => {
         loadSmartData();
     }, [project.id]);
 
+    // Recalculate Pagination when elements change
+    useEffect(() => {
+        const map = calculatePagination(elements);
+        setPageMap(map);
+    }, [elements]);
+
     // Derived Autocomplete Lists
     const autocompleteData = useMemo(() => {
-        // 1. Characters: Saved Assets + Any Character typed in script so far
         const scriptCharNames = new Set(elements.filter(e => e.type === 'character').map(e => e.content.trim().toUpperCase()));
         savedCharacters.forEach(c => scriptCharNames.add(c.toUpperCase()));
         
-        // 2. Locations: Saved Assets + Any Scene Heading location part
         const scriptLocs = new Set<string>();
         savedLocations.forEach(l => scriptLocs.add(l.toUpperCase()));
         
         elements.filter(e => e.type === 'scene_heading').forEach(e => {
-            // Strip INT./EXT. to get just location
             const content = e.content.toUpperCase();
             const parts = content.split(/^(INT\.\/EXT\.|INT\/EXT|INT\.|EXT\.|I\/E)\s*/);
             if (parts.length > 1 && parts[parts.length - 1].trim()) {
-                scriptLocs.add(parts[parts.length - 1].trim()); // Add just "OFFICE"
+                scriptLocs.add(parts[parts.length - 1].trim());
             }
         });
 
@@ -115,7 +123,7 @@ export const ScriptPage: React.FC = () => {
         debouncedSync(newElements);
     };
 
-    // --- 3. EDITING LOGIC (Stable Handlers) ---
+    // --- 3. EDITING LOGIC ---
 
     const handleContentChange = useCallback((id: string, newContent: string) => {
         setElements(prevElements => {
@@ -146,13 +154,12 @@ export const ScriptPage: React.FC = () => {
 
             let finalContent = newContent;
             
-            // Auto-detect Scene Number Magic Snap (e.g. "INT. HOUSE #1#")
+            // Auto-detect Scene Number
             if (newType === 'scene_heading') {
-                // Regex looks for #ANYTHING# at the end of the string
                 const sceneNumMatch = finalContent.match(/\s#([a-zA-Z0-9\.-]+)#$/);
                 if (sceneNumMatch) {
-                    sceneNumber = sceneNumMatch[1]; // Extract '1A'
-                    finalContent = finalContent.substring(0, sceneNumMatch.index).trim(); // Remove from text
+                    sceneNumber = sceneNumMatch[1];
+                    finalContent = finalContent.substring(0, sceneNumMatch.index).trim();
                 }
             }
 
@@ -160,17 +167,13 @@ export const ScriptPage: React.FC = () => {
                 finalContent = finalContent.toUpperCase();
             }
             
-            // Only update if changed
             if (currentEl.content === finalContent && currentEl.type === newType && currentEl.dual === dualState && currentEl.sceneNumber === sceneNumber) {
                 return prevElements;
             }
 
             const updated = [...prevElements];
             updated[currentIndex] = { ...currentEl, content: finalContent, type: newType, dual: dualState, sceneNumber: sceneNumber };
-            
-            // Trigger sync (side effect)
             triggerSync(updated);
-            
             return updated;
         });
     }, [setElements]);
@@ -201,7 +204,6 @@ export const ScriptPage: React.FC = () => {
 
                 const currentEl = prevElements[index];
                 
-                // DUAL DIALOGUE CLEANUP
                 let cleanContent = currentEl.content;
                 if (currentEl.type === 'character' && cleanContent.trim().endsWith('^')) {
                     cleanContent = cleanContent.replace(/\^$/, '').trim();
@@ -224,8 +226,6 @@ export const ScriptPage: React.FC = () => {
                 updated[index] = { ...currentEl, content: contentBefore }; 
                 updated.splice(index + 1, 0, newElement);
                 
-                // Focus Management (Side Effect)
-                // We use requestAnimationFrame to ensure render cycle completes
                 requestAnimationFrame(() => {
                     setActiveElementId(newId);
                     cursorTargetRef.current = { id: newId, position: 0 };
@@ -282,7 +282,6 @@ export const ScriptPage: React.FC = () => {
         }
     }, [isZenMode, canUndo, canRedo, undo, redo, setElements]); 
     
-    // NAVIGATION HANDLER
     const elementsRef = useRef(elements);
     useEffect(() => { elementsRef.current = elements; }, [elements]);
 
@@ -380,7 +379,7 @@ export const ScriptPage: React.FC = () => {
 
     return (
         <PageWithToolRail tools={tools} defaultTool={null}>
-            <div className={`relative h-full flex flex-col overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''} ${isGlobalLight ? 'bg-background' : 'bg-surface'}`}>
+            <div className={`relative h-full flex flex-col overflow-hidden font-sans ${isZenMode ? 'fixed inset-0 z-[100] w-screen h-screen' : ''} ${isGlobalLight ? 'bg-background' : 'bg-[#0C0C0E]'}`}>
 
                 {/* Toolbar */}
                 {hasElements && (
@@ -473,7 +472,7 @@ export const ScriptPage: React.FC = () => {
                 <div className="flex-1 flex overflow-hidden relative">
                     <div
                         ref={containerRef}
-                        className={`flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 ${isGlobalLight ? 'bg-surface-secondary' : 'bg-surface'}`}
+                        className={`flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 ${isGlobalLight ? 'bg-surface-secondary' : 'bg-[#0C0C0E]'}`}
                         onClick={(e) => {
                             if (e.target === containerRef.current && hasElements) {
                                 setActiveElementId(elements[elements.length - 1].id);
@@ -489,25 +488,41 @@ export const ScriptPage: React.FC = () => {
                                         : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} 
                     `}
                             >
+                                <div className="absolute top-12 right-12 text-[10px] font-mono opacity-30 select-none">
+                                    PAGE 1
+                                </div>
+
                                 <div className="flex flex-col">
-                                    {elements.map(element => (
-                                        <ScriptBlock
-                                            key={element.id}
-                                            element={element}
-                                            isActive={activeElementId === element.id}
-                                            onChange={handleContentChange}
-                                            onKeyDown={(e, id, type, start, end) => {
-                                                handleNavigation(e, id, start, element.content.length);
-                                                handleKeyDown(e, id, type, start, end);
-                                            }}
-                                            onDeleteSceneNumber={handleClearSceneNumber}
-                                            onFocus={setActiveElementId}
-                                            cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                                            isLightMode={isPaperWhite}
-                                            knownCharacters={autocompleteData.characters}
-                                            knownLocations={autocompleteData.locations}
-                                        />
-                                    ))}
+                                    {elements.map((element, index) => {
+                                        const prevEl = elements[index - 1];
+                                        const pageNum = pageMap[element.id];
+                                        const prevPageNum = prevEl ? pageMap[prevEl.id] : 1;
+                                        
+                                        // Detect if we need a visual break
+                                        const showBreak = index > 0 && pageNum > prevPageNum;
+
+                                        return (
+                                            <React.Fragment key={element.id}>
+                                                {showBreak && <PageDivider pageNumber={pageNum} />}
+                                                
+                                                <ScriptBlock
+                                                    element={element}
+                                                    isActive={activeElementId === element.id}
+                                                    onChange={handleContentChange}
+                                                    onKeyDown={(e, id, type, start, end) => {
+                                                        handleNavigation(e, id, start, element.content.length);
+                                                        handleKeyDown(e, id, type, start, end);
+                                                    }}
+                                                    onDeleteSceneNumber={handleClearSceneNumber}
+                                                    onFocus={setActiveElementId}
+                                                    cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
+                                                    isLightMode={isPaperWhite}
+                                                    knownCharacters={autocompleteData.characters}
+                                                    knownLocations={autocompleteData.locations}
+                                                />
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         ) : (
