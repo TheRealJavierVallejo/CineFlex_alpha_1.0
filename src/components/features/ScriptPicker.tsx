@@ -132,15 +132,8 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 <div className="flex-1 overflow-y-auto bg-app p-0 flex justify-center custom-scrollbar relative">
                     
                     {/* PAPER AREA */}
-                    {/* 
-                        FIX: Using [.light_&] selector to strictly enforce light mode colors when .light class is on html/body.
-                        This overrides the default dark mode colors.
-                        
-                        Theme Logic:
-                        - Default (Dark): bg-[#1E1E1E], text-[#E0E0E0], border-[#333]
-                        - Light: bg-white, text-black, border-gray-200
-                    */}
-                    <div className="w-[8.5in] min-h-full bg-[#1E1E1E] [.light_&]:bg-white border-x border-[#333] [.light_&]:border-gray-200 shadow-2xl py-16 px-20 text-[#E0E0E0] [.light_&]:text-black mb-20 transition-colors duration-300">
+                    {/* Explicitly defining colors to ensure Light Mode works properly */}
+                    <div className="w-[8.5in] min-h-full bg-white dark:bg-[#1E1E1E] border-x border-gray-200 dark:border-[#333] shadow-2xl py-16 px-20 text-black dark:text-[#E0E0E0] mb-20 transition-colors duration-300">
                         
                         {groups.length > 0 ? (
                             <div className="space-y-1">
@@ -149,16 +142,14 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                     const isHeading = group.items[0].type === 'scene_heading';
                                     
-                                    // Determine top alignment based on first element type
-                                    const firstType = group.items[0].type;
-                                    
-                                    // ALIGNMENT FIX:
-                                    // Adjusted pixel values to visually align the arrow center with the text cap-height.
-                                    // Dialogue/Paren (mt-0): Arrow needs to move up slightly to center on first line. -top-1 is ~ -4px.
-                                    // Action/Char (mt-4): Arrow needs to move down to clear margin. top-4 is 16px.
-                                    const arrowClass = (firstType === 'dialogue' || firstType === 'parenthetical') 
-                                        ? "-top-1" 
-                                        : "top-4"; // Changed from top-3 to top-4 for better alignment with mt-4
+                                    // DETERMINE ARROW TARGET
+                                    // For Dialogue Blocks: Target the first 'dialogue' line
+                                    // For Action Blocks: Target the first element (Action)
+                                    let targetIndex = 0;
+                                    if (group.items[0].type === 'character') {
+                                        const dialogIdx = group.items.findIndex(i => i.type === 'dialogue');
+                                        if (dialogIdx !== -1) targetIndex = dialogIdx;
+                                    }
 
                                     return (
                                         <div
@@ -170,19 +161,21 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                             `}
                                             onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
-                                            {/* Hover Arrow Indicator */}
-                                            {/* Positioned relative to the block container */}
-                                            {!isHeading && !isLinked && (
-                                                <div className={`absolute -left-16 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-150 ${arrowClass}`}>
-                                                    <ChevronRight className="w-6 h-6" strokeWidth={3} />
-                                                </div>
-                                            )}
-
                                             {/* Render Items */}
-                                            {group.items.map(item => {
+                                            {group.items.map((item, itemIdx) => {
                                                 const { className, style } = getElementStyle(item.type);
+                                                
+                                                // Should we show the arrow on this specific line?
+                                                const showArrow = !isHeading && !isLinked && itemIdx === targetIndex;
+
                                                 return (
                                                     <div key={item.id} className={className} style={style}>
+                                                        {/* Arrow Indicator - Rendered Relative to Text Line */}
+                                                        {showArrow && (
+                                                            <div className="absolute -left-12 top-[-2px] text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-150">
+                                                                <ChevronRight className="w-6 h-6" strokeWidth={3} />
+                                                            </div>
+                                                        )}
                                                         {item.content}
                                                     </div>
                                                 );
