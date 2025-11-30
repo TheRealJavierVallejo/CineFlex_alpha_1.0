@@ -1,6 +1,6 @@
 import React, { useState, memo, useMemo } from 'react';
 import { Shot, ScriptElement } from '../../types';
-import { Plus, Type, X, Edit2, GraduationCap, Maximize2 } from 'lucide-react';
+import { Plus, Type, X, Edit2, GraduationCap } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import { LazyImage } from '../ui/LazyImage';
@@ -42,6 +42,32 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
         if (isNaN(w) || isNaN(h)) return { aspectRatio: '16/9' };
         return { aspectRatio: `${w}/${h}` };
     }, [shot.aspectRatio]);
+
+    // Dynamic Spacing Class Generator
+    const getElementSpacing = (el: ScriptElement, index: number) => {
+        const isFirst = index === 0;
+        const prev = index > 0 ? sortedElements[index - 1] : null;
+
+        // DIALOGUE BLOCK CONTINUATION (Connect the lines)
+        // If this is Dialogue/Paren following a Character/Dialogue/Paren
+        const isBlockContinuation = 
+            (el.type === 'dialogue' || el.type === 'parenthetical') &&
+            prev && 
+            (prev.type === 'character' || prev.type === 'parenthetical' || prev.type === 'dialogue');
+
+        if (isBlockContinuation) {
+            return "mt-0 pt-0 pb-1"; // Fuse with above
+        }
+
+        // NEW BLOCK (Character starts here, or Action separated)
+        // Character: Needs space above, but tight bottom for dialogue to attach
+        if (el.type === 'character') {
+            return isFirst ? "pt-1 pb-0" : "mt-4 pt-1 pb-0";
+        }
+
+        // Action/Heading: Standalone blocks
+        return isFirst ? "py-1" : "mt-4 py-1";
+    };
 
     return (
         <>
@@ -89,7 +115,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                         >
                             <LazyImage 
                                 src={shot.generatedImage} 
-                                className="w-full h-full object-contain" // Changed to object-contain to show full image without cropping
+                                className="w-full h-full object-contain" 
                                 placeholder={
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-text-muted group-hover/visual:text-text-secondary transition-colors bg-surface-secondary/20">
                                         <Plus className="w-8 h-8 opacity-50" />
@@ -132,16 +158,18 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                         </div>
                     )}
 
-                    {/* Linked Script Elements */}
-                    <div className="space-y-4">
+                    {/* Linked Script Elements - Gap 0 to allow borders to connect */}
+                    <div className="flex flex-col">
                         {sortedElements.map((el, index) => {
                             // Smart Display Logic
                             const prevEl = index > 0 ? sortedElements[index - 1] : null;
                             const isContinuation = prevEl && prevEl.type === 'character' && prevEl.content === el.character;
                             const showLabel = el.character && !isContinuation;
+                            
+                            const spacingClass = getElementSpacing(el, index);
 
                             return (
-                                <div key={el.id} className="relative group/element pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors py-1">
+                                <div key={el.id} className={`relative group/element pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors ${spacingClass}`}>
                                     <div className="font-mono text-base leading-relaxed text-text-primary">
                                         {showLabel && (
                                             <div className="font-bold uppercase text-xs mb-1 text-primary tracking-wide">{el.character}</div>
