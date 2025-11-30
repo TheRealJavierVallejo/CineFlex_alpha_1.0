@@ -11,7 +11,6 @@ import { convertFountainToElements } from './scriptUtils';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up PDF.js worker
-// We use unpkg to fetch the worker that matches the installed version to avoid build complexities
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export interface ParsedScript {
@@ -52,7 +51,7 @@ function parseFountain(text: string): ParsedScript {
   const elements = convertFountainToElements(output.tokens);
   
   return {
-    scenes: [], // Scenes are synced later by WorkspaceLayout
+    scenes: [],
     elements,
     metadata: {
       title: output.title || 'Untitled Script'
@@ -74,15 +73,13 @@ function parseFDX(xmlText: string): ParsedScript {
     const typeRaw = p.getAttribute('Type');
     const textNodes = p.querySelectorAll('Text');
     
-    // Combine text nodes (handling formatting like bold/underline which FDX splits)
+    // Combine text nodes
     let content = Array.from(textNodes).map(n => n.textContent).join('');
-    
     if (!content.trim()) return;
 
     let type: ScriptElement['type'] = 'action';
-    let dual = p.getAttribute('Dual') === 'Yes'; // FDX stores dual dialogue in attribute
+    let dual = p.getAttribute('Dual') === 'Yes'; 
 
-    // Map FDX types to internal types
     switch (typeRaw) {
       case 'Scene Heading': type = 'scene_heading'; break;
       case 'Action': type = 'action'; break;
@@ -112,114 +109,154 @@ function parseFDX(xmlText: string): ParsedScript {
   };
 }
 
-// --- 3. PDF PARSER (Heuristic) ---
+// --- 3. PDF PARSER (Optimized Heuristic) ---
 
 async function parsePDF(arrayBuffer: ArrayBuffer): Promise<ParsedScript> {
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
   const pdf = await loadingTask.promise;
-  const elements: ScriptElement[] = [];
-  let sequence = 1;
+  
+  const allLines: { y: number, x: number, text: string, page: number }[] = [];
 
+  // 1. EXTRACT ALL LINES
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    
-    // Get viewport to normalize coordinates (72 DPI standard)
-    // Most scripts are 8.5" x 11" (612pt x 792pt)
-    // Left margin is usually 1.0" or 1.5" (72pt or 108pt)
-    
-    // Process items
-    // We sort by Y (descending, top to bottom) then X (ascending)
-    const items = textContent.items as any[];
-    
-    // Group by line (approximate Y)
-    const lines: { y: number, x: number, text: string }[] = [];
-    
-    items.forEach(item => {
-      const y = Math.round(item.transform[5]); // Round Y to group same-line items
-      const x = item.transform[4];
-      const text = decodeURIComponent(item.str);
-      
-      if (!text.trim()) return;
+    const viewport = page.getViewport({ scale: 1.0 }); // Standardize to 72DPI
+    const pageHeight = viewport.height;
 
-      const existingLine = lines.find(l => Math.abs(l.y - y) < 4); // 4pt tolerance
-      if (existingLine) {
-        existingLine.text += text;
-        // Keep smallest X (start of line)
-        existingLine.x = Math.min(existingLine.x, x);
+    const items = textContent.items as any[];
+    const pageLines: { y: number, x: number, text: string, items: any[] }[] = [];
+
+    items.forEach(item => {
+      const str = item.str;
+      if (!str || !str.trim()) return;
+
+      const y = item.transform[5];
+      const x = item.transform[4];
+
+      // Ignore Headers/Footers (Top 50pt / Bottom 50pt)
+      if (y > pageHeight - 50 || y < 50) return;
+
+      // Group by Y (4pt tolerance)
+      const line = pageLines.find(l => Math.abs(l.y - y) < 4);
+      if (line) {
+        line.items.push({ x, str });
+        line.x = Math.min(line.x, x);
       } else {
-        lines.push({ y, x, text });
+        pageLines.push({ y, x, text: '', items: [{ x, str }] });
       }
     });
 
-    // Sort lines top to bottom
-    lines.sort((a, b) => b.y - a.y);
+    // Construct Text
+    pageLines.forEach(line => {
+      // Sort items left-to-right
+      line.items.sort((a, b) => a.x - b.x);
+      // Join with simple concatenation (PDFJS usually handles spacing, or we accept potential merged words for now)
+      line.text = line.items.map(i => i.str).join('');
+    });
 
-    // Heuristics for Script Elements based on X indentation (Points)
-    // Standard left margin is 108pt (1.5") or 72pt (1.0")
-    // Character: ~200pt+ 
-    // Dialogue: ~140pt+
-    // Parenthetical: ~180pt+
-    // Transition: ~350pt+ or Right Aligned
-    
-    lines.forEach(line => {
-      let type: ScriptElement['type'] = 'action';
-      const x = line.x;
+    // Sort Top-to-Bottom
+    pageLines.sort((a, b) => b.y - a.y);
+
+    pageLines.forEach(l => allLines.push({ ...l, page: i }));
+  }
+
+  // 2. DETECT MARGINS (Global Stats)
+  // We look for the most common X coordinate (rounded) to find the "Action" margin.
+  const xCounts: Record<number, number> = {};
+  allLines.forEach(l => {
+      const rx = Math.round(l.x / 5) * 5; // Round to nearest 5
+      xCounts[rx] = (xCounts[rx] || 0) + 1;
+  });
+  
+  let baseX = 108; // Default 1.5" (108pt)
+  let maxCount = 0;
+  for (const [xStr, count] of Object.entries(xCounts)) {
+      if (count > maxCount) {
+          maxCount = count;
+          baseX = parseInt(xStr);
+      }
+  }
+  // Sanity check for BaseX
+  if (baseX < 50) baseX = 72; // Assume 1.0" if detected edge is too close
+
+  // 3. CLASSIFY ELEMENTS
+  const elements: ScriptElement[] = [];
+  let sequence = 1;
+
+  allLines.forEach(line => {
       const text = line.text.trim();
+      if (!text) return;
+      
+      const x = line.x;
+      const offset = x - baseX; // Distance from Action Margin
+      
+      let type: ScriptElement['type'] = 'action';
       const upper = text.toUpperCase();
+      const isUppercase = text === upper && /[A-Z]/.test(text);
 
-      // Detection Logic
-      if (x < 130) {
-        // Left aligned: Scene Heading or Action
-        if (text.startsWith('INT') || text.startsWith('EXT') || text.startsWith('I/E') || text === text.toUpperCase()) {
-           // Basic guess: If mostly uppercase, it's likely a heading or slugline. 
-           // NOTE: Action can be uppercase too, but headings usually start with INT/EXT.
-           if (/^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(text)) {
-             type = 'scene_heading';
-           } else {
-             type = 'action';
-           }
-        } else {
-          type = 'action';
-        }
-      } else if (x >= 130 && x < 190) {
-        // Slight indent: Dialogue
-        type = 'dialogue';
-      } else if (x >= 190 && x < 240) {
-        // Medium indent: Parenthetical or Dialogue
-        if (text.startsWith('(')) {
+      // SCREENPLAY GEOMETRY (Points relative to Action Margin)
+      // Action: 0
+      // Dialogue: ~72 (1.0")
+      // Parenthetical: ~115 (1.6")
+      // Character: ~158 (2.2")
+      // Transition: ~288 (4.0") or Right Aligned
+
+      if (offset < 36) {
+          // ACTION or SCENE HEADING
+          if (/^(INT|EXT|EST|I\/E)(\.|\s)/i.test(text)) {
+              type = 'scene_heading';
+          } else if (isUppercase && !text.endsWith('.')) {
+              // Uppercase Action -> Could be heading or slugline
+              // If it has " - " it's likely a heading
+              if (text.includes(' - ')) {
+                  type = 'scene_heading';
+              } else if (text.endsWith('TO:') || text.startsWith('FADE')) {
+                  type = 'transition';
+              } else {
+                  type = 'action';
+              }
+          } else {
+              type = 'action';
+          }
+      } 
+      else if (offset >= 36 && offset < 93) {
+          type = 'dialogue';
+      }
+      else if (offset >= 93 && offset < 136) {
+          if (text.startsWith('(')) {
+              type = 'parenthetical';
+          } else {
+              type = 'dialogue';
+          }
+      }
+      else if (offset >= 136 && offset < 220) {
+          if (isUppercase) {
+              type = 'character';
+          } else {
+              type = 'dialogue'; // Weirdly formatted dialogue
+          }
+      }
+      else if (offset >= 220) {
+          if (text.endsWith('TO:') || text.startsWith('FADE')) {
+              type = 'transition';
+          } else {
+              type = 'transition'; // Likely right aligned transition
+          }
+      }
+      
+      // Cleanup Heuristics
+      if (type === 'dialogue' && text.startsWith('(') && text.endsWith(')')) {
           type = 'parenthetical';
-        } else {
-          // Sometimes dialogue spills here? Or dual dialogue?
-          // Let's assume dialogue if not parenthetical.
-          type = 'dialogue';
-        }
-      } else if (x >= 240 && x < 320) {
-        // Deep indent: Character
-        // Characters are usually uppercase
-        if (text === upper && text.length < 50) {
-          type = 'character';
-        } else {
-          // If mixed case, might be parenthetical or weirdly formatted dialogue
-          type = 'dialogue';
-        }
-      } else if (x >= 320) {
-        // Far right: Transition or Cut
-        if (text.endsWith('TO:') || text.startsWith('FADE')) {
-          type = 'transition';
-        } else {
-          type = 'action'; // Fallback
-        }
       }
 
       elements.push({
-        id: crypto.randomUUID(),
-        type,
-        content: text,
-        sequence: sequence++
+          id: crypto.randomUUID(),
+          type,
+          content: text,
+          sequence: sequence++
       });
-    });
-  }
+  });
 
   return {
     scenes: [],
