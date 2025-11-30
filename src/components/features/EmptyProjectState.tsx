@@ -14,7 +14,7 @@ export const EmptyProjectState: React.FC<EmptyProjectStateProps> = ({
   onImport, 
   onCreate, 
   title = "No Script Found",
-  description = "Import a .fountain file or start writing. We'll automatically build your Timeline scenes.",
+  description = "Import a screenplay or start writing. We support Fountain, PDF, and Final Draft (.fdx).",
   isImporting = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +26,7 @@ export const EmptyProjectState: React.FC<EmptyProjectStateProps> = ({
           type="file" 
           ref={fileInputRef} 
           className="hidden" 
-          accept=".fountain,.txt" 
+          accept=".fountain,.txt,.pdf,.fdx" 
           onChange={onImport} 
         />
       )}
