@@ -199,7 +199,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
          }
        `}</style>
 
-      {/* Indicator */}
+      {/* Left Indicator (Type) */}
       <div className={`
           absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r flex items-center justify-end gap-2
           ${styles.indicator}
@@ -210,6 +210,17 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         {element.dual && <Columns className="w-3 h-3 text-text-muted" title="Dual Dialogue" />}
         {element.type.replace('_', ' ')}
       </div>
+
+      {/* Right Indicator (Scene Number) */}
+      {element.type === 'scene_heading' && element.sceneNumber && (
+          <div className={`
+              absolute -right-[1.5in] w-12 text-sm font-mono font-bold select-none text-left
+              ${styles.indicator}
+              ${isLightMode ? 'text-zinc-400' : 'text-[#666]'}
+          `}>
+              {element.sceneNumber}
+          </div>
+      )}
 
       <textarea
         ref={textareaRef}

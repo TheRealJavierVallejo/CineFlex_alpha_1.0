@@ -73,7 +73,8 @@ export const ScriptElementSchema = z.object({
   sequence: z.number(),
   character: z.string().optional(),
   associatedShotIds: safeArray(z.string()),
-  dual: z.boolean().optional() // Added field
+  dual: z.boolean().optional(),
+  sceneNumber: z.string().optional() // Added field
 });
 
 export const SceneSchema = z.object({

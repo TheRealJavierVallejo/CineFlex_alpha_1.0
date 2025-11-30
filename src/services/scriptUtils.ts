@@ -37,10 +37,16 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
         let content = token.text || '';
         let type: ScriptElement['type'] = 'action';
         let dual = false;
+        let sceneNumber: string | undefined = undefined;
 
         // Map Fountain Types to CineFlex Types
         switch (token.type) {
-            case 'scene_heading': type = 'scene_heading'; break;
+            case 'scene_heading': 
+                type = 'scene_heading'; 
+                if (token.scene_number) {
+                    sceneNumber = token.scene_number;
+                }
+                break;
             case 'character': 
                 type = 'character'; 
                 // Apply dual flag if we are inside a dual block
@@ -83,6 +89,8 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
 
         // Only add 'dual' property if true (cleaner JSON)
         if (dual) element.dual = true;
+        // Only add 'sceneNumber' if present
+        if (sceneNumber) element.sceneNumber = sceneNumber;
 
         elements.push(element);
     });
@@ -101,7 +109,12 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
         // Add spacing rules based on types
         if (el.type === 'scene_heading') {
             // Always 2 newlines before a scene heading
-            output += `\n\n${el.content.toUpperCase()}\n`;
+            output += `\n\n${el.content.toUpperCase()}`;
+            // APPEND SCENE NUMBER
+            if (el.sceneNumber) {
+                output += ` #${el.sceneNumber}#`;
+            }
+            output += `\n`;
         } else if (el.type === 'action') {
             // Action gets a newline before
             output += `\n${el.content}\n`;
@@ -143,7 +156,8 @@ export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[]
         sequence: el.sequence,
         sceneId: el.sceneId,
         associatedShotIds: el.associatedShotIds,
-        dual: el.dual // Preserve dual property
+        dual: el.dual, // Preserve dual property
+        sceneNumber: el.sceneNumber // Preserve scene number
     };
 
     if (cleanEl.type === 'character') {

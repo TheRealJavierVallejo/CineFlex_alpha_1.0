@@ -98,6 +98,7 @@ export interface ScriptElement {
   character?: string;      // Name of the character speaking (if dialogue)
   associatedShotIds?: string[]; // Shots generated from this specific line
   dual?: boolean;          // Is this simultaneous dialogue?
+  sceneNumber?: string;    // "1", "2A", etc. (Only for scene_heading)
 }
 
 // 🎬 SCENE: A group of shots in one location
