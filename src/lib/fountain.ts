@@ -261,7 +261,7 @@ const inlineLexer = (s: string) => {
     return s.replace(/\[star\]/g, '*').replace(/\[underline\]/g, '_').trim();
 };
 
-export const parseFountain = (script: string): FountainOutput => {
+export const parseFountain = (script: string, raw: boolean = false): FountainOutput => {
     const tokens = tokenize(script);
     let i = tokens.length;
     let token: FountainToken;
@@ -271,46 +271,51 @@ export const parseFountain = (script: string): FountainOutput => {
 
     while (i--) {
         token = tokens[i];
-        token.text = inlineLexer(token.text || '');
+        // If raw is true, we SKIP the inlineLexer which adds HTML tags
+        token.text = raw ? (token.text || '') : inlineLexer(token.text || '');
 
         switch (token.type) {
             case 'title':
-                title_page.push('<h1>' + token.text + '</h1>');
-                title = token.text!.replace('<br />', ' ').replace(/<(?:.|\n)*?>/g, '');
+                if (!raw) {
+                    title_page.push('<h1>' + token.text + '</h1>');
+                    title = token.text!.replace('<br />', ' ').replace(/<(?:.|\n)*?>/g, '');
+                } else {
+                    title = token.text || 'Untitled';
+                }
                 break;
-            case 'credit': title_page.push('<p class="credit">' + token.text + '</p>'); break;
-            case 'author': title_page.push('<p class="authors">' + token.text + '</p>'); break;
-            case 'authors': title_page.push('<p class="authors">' + token.text + '</p>'); break;
-            case 'source': title_page.push('<p class="source">' + token.text + '</p>'); break;
-            case 'notes': title_page.push('<p class="notes">' + token.text + '</p>'); break;
-            case 'draft_date': title_page.push('<p class="draft-date">' + token.text + '</p>'); break;
-            case 'date': title_page.push('<p class="date">' + token.text + '</p>'); break;
-            case 'contact': title_page.push('<p class="contact">' + token.text + '</p>'); break;
-            case 'copyright': title_page.push('<p class="copyright">' + token.text + '</p>'); break;
+            case 'credit': if (!raw) title_page.push('<p class="credit">' + token.text + '</p>'); break;
+            case 'author': if (!raw) title_page.push('<p class="authors">' + token.text + '</p>'); break;
+            case 'authors': if (!raw) title_page.push('<p class="authors">' + token.text + '</p>'); break;
+            case 'source': if (!raw) title_page.push('<p class="source">' + token.text + '</p>'); break;
+            case 'notes': if (!raw) title_page.push('<p class="notes">' + token.text + '</p>'); break;
+            case 'draft_date': if (!raw) title_page.push('<p class="draft-date">' + token.text + '</p>'); break;
+            case 'date': if (!raw) title_page.push('<p class="date">' + token.text + '</p>'); break;
+            case 'contact': if (!raw) title_page.push('<p class="contact">' + token.text + '</p>'); break;
+            case 'copyright': if (!raw) title_page.push('<p class="copyright">' + token.text + '</p>'); break;
 
-            case 'scene_heading': html.push('<h3' + (token.scene_number ? ' id="' + token.scene_number + '">' : '>') + token.text + '</h3>'); break;
-            case 'transition': html.push('<h2>' + token.text + '</h2>'); break;
+            case 'scene_heading': if (!raw) html.push('<h3' + (token.scene_number ? ' id="' + token.scene_number + '">' : '>') + token.text + '</h3>'); break;
+            case 'transition': if (!raw) html.push('<h2>' + token.text + '</h2>'); break;
 
-            case 'dual_dialogue_begin': html.push('<div class="dual-dialogue">'); break;
-            case 'dialogue_begin': html.push('<div class="dialogue' + (token.dual ? ' ' + token.dual : '') + '">'); break;
-            case 'character': html.push('<h4>' + token.text + '</h4>'); break;
-            case 'parenthetical': html.push('<p class="parenthetical">' + token.text + '</p>'); break;
-            case 'dialogue': html.push('<p>' + token.text + '</p>'); break;
-            case 'dialogue_end': html.push('</div> '); break;
-            case 'dual_dialogue_end': html.push('</div> '); break;
+            case 'dual_dialogue_begin': if (!raw) html.push('<div class="dual-dialogue">'); break;
+            case 'dialogue_begin': if (!raw) html.push('<div class="dialogue' + (token.dual ? ' ' + token.dual : '') + '">'); break;
+            case 'character': if (!raw) html.push('<h4>' + token.text + '</h4>'); break;
+            case 'parenthetical': if (!raw) html.push('<p class="parenthetical">' + token.text + '</p>'); break;
+            case 'dialogue': if (!raw) html.push('<p>' + token.text + '</p>'); break;
+            case 'dialogue_end': if (!raw) html.push('</div> '); break;
+            case 'dual_dialogue_end': if (!raw) html.push('</div> '); break;
 
-            case 'section': html.push('<p class="section" data-depth="' + token.depth + '">' + token.text + '</p>'); break;
-            case 'synopsis': html.push('<p class="synopsis">' + token.text + '</p>'); break;
+            case 'section': if (!raw) html.push('<p class="section" data-depth="' + token.depth + '">' + token.text + '</p>'); break;
+            case 'synopsis': if (!raw) html.push('<p class="synopsis">' + token.text + '</p>'); break;
 
-            case 'note': html.push('<!-- ' + token.text + '-->'); break;
-            case 'boneyard_begin': html.push('<!-- '); break;
-            case 'boneyard_end': html.push(' -->'); break;
+            case 'note': if (!raw) html.push('<!-- ' + token.text + '-->'); break;
+            case 'boneyard_begin': if (!raw) html.push('<!-- '); break;
+            case 'boneyard_end': if (!raw) html.push(' -->'); break;
 
-            case 'action': html.push('<p>' + token.text + '</p>'); break;
-            case 'centered': html.push('<p class="centered">' + token.text + '</p>'); break;
+            case 'action': if (!raw) html.push('<p>' + token.text + '</p>'); break;
+            case 'centered': if (!raw) html.push('<p class="centered">' + token.text + '</p>'); break;
 
-            case 'page_break': html.push('<hr />'); break;
-            case 'line_break': html.push('<br />'); break;
+            case 'page_break': if (!raw) html.push('<hr />'); break;
+            case 'line_break': if (!raw) html.push('<br />'); break;
         }
     }
 

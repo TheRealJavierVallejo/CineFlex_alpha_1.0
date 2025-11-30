@@ -35,7 +35,8 @@ export async function parseScript(file: File): Promise<ParsedScript> {
 // 🖋️ FOUNTAIN PARSER IMPLEMENTATION (Now powered by Fountain.js)
 function parseFountain(text: string): ParsedScript {
   // 1. Run the heavy lifting via the library
-  const output = parseFountainLib(text);
+  // IMPORTANT: Pass 'true' for raw mode to avoid HTML tags (<br/>, <span>) in the output text
+  const output = parseFountainLib(text, true);
 
   // 2. Convert tokens to CineFlex elements
   const elements = convertFountainToElements(output.tokens);

@@ -106,8 +106,8 @@ export const ScriptPage: React.FC = () => {
         // 1. Serialize
         const rawText = generateFountainText(elements);
         
-        // 2. Parse via Fountain.js
-        const fountainOutput = parseFountain(rawText);
+        // 2. Parse via Fountain.js using RAW mode (true) to prevent HTML tags
+        const fountainOutput = parseFountain(rawText, true);
         
         // 3. Convert back to Elements
         // NOTE: We try to preserve IDs if possible, but for a full format we might regenerate structure

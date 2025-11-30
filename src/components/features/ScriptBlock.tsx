@@ -71,18 +71,24 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
     // 1 inch = 96px (approx in web) or use 'ch' units for monospace precision
     // Courier Prime 12pt is approx 10px wide per char.
 
+    // IMPROVED VERTICAL SPACING (Approximating standard line heights)
+    // - Scene Heading: 2 blank lines before (pt-8), 1 blank line after (pb-4)
+    // - Character: 1 blank line before (pt-4), 0 after
+    // - Dialogue: 0 before, 0 after
+    // - Action: 1 blank line before (pt-4) IF it follows dialogue (handled generically via pt-2 for better flow)
+
     switch (element.type) {
       case 'scene_heading':
         return {
-          container: "pt-4 pb-2 group/heading",
+          container: "pt-8 pb-4 group/heading", // Increased from pt-4 pb-2
           input: `${base} font-bold uppercase text-left ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT./EXT. SCENE LOCATION - DAY",
-          indicator: "top-5",
+          indicator: "top-10", // Adjusted for pt-8
           style: { paddingLeft: '0in', maxWidth: '6.0in' }
         };
       case 'action':
         return {
-          container: "pb-2",
+          container: "pb-4", // Increased from pb-2 to mimic blank line after paragraph
           input: `${base} text-left ${colors.action} ${colors.placeholder}`,
           placeholder: "Describe action...",
           indicator: "top-1",
@@ -114,15 +120,15 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         };
       case 'transition':
         return {
-          container: "pt-4 pb-4",
+          container: "pt-8 pb-4", // Increased separation
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
-          indicator: "top-6",
+          indicator: "top-10",
           style: { paddingLeft: '4.0in', maxWidth: '6.0in' } // Transitions often right aligned or deep indent
         };
       default:
         return {
-          container: "pb-2",
+          container: "pb-4", // Increased default spacing
           input: `${base} ${colors.action} ${colors.placeholder}`,
           placeholder: "",
           indicator: "top-2",
