@@ -48,11 +48,16 @@ export function useHistory<T>(initialPresent: T) {
     });
   }, []);
 
-  const set = useCallback((newPresent: T) => {
+  // Updated SET to accept value OR function
+  const set = useCallback((newPresentOrFn: T | ((prev: T) => T)) => {
     setState((currentState) => {
       const { past, present } = currentState;
       
-      // Optional: Deep compare here to prevent duplicate states if needed
+      const newPresent = typeof newPresentOrFn === 'function' 
+        ? (newPresentOrFn as (prev: T) => T)(present)
+        : newPresentOrFn;
+
+      // Deep compare to prevent duplicate states (optional optimization)
       if (JSON.stringify(present) === JSON.stringify(newPresent)) {
           return currentState;
       }
@@ -65,9 +70,14 @@ export function useHistory<T>(initialPresent: T) {
     });
   }, []);
 
-  // Helper to update without adding to history (for minor tweaks like cursor tracking, though typically state shouldn't hold cursor)
-  const setPresentQuietly = useCallback((newPresent: T) => {
-      setState(curr => ({ ...curr, present: newPresent }));
+  // Helper to update without adding to history (for minor tweaks like cursor tracking)
+  const setPresentQuietly = useCallback((newPresentOrFn: T | ((prev: T) => T)) => {
+      setState(curr => {
+          const newPresent = typeof newPresentOrFn === 'function' 
+            ? (newPresentOrFn as (prev: T) => T)(curr.present)
+            : newPresentOrFn;
+          return { ...curr, present: newPresent };
+      });
   }, []);
 
   return { 

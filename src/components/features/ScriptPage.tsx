@@ -56,8 +56,10 @@ export const ScriptPage: React.FC = () => {
         []
     );
 
+    // Initial Load
     useEffect(() => {
         if (project.scriptElements && project.scriptElements.length > 0) {
+            // Only set if history is empty (first load) to avoid overwriting edits
             if (elements.length === 0) setElements(project.scriptElements);
             return;
         }
@@ -65,62 +67,62 @@ export const ScriptPage: React.FC = () => {
             const generated = generateScriptFromScenes(project.scenes);
             setElements(generated);
         }
-    }, [project.scriptElements, project.scenes]);
+    }, [project.scriptElements, project.scenes]); // Dependencies ok, condition protects loop
 
-    // --- 3. EDITING LOGIC ---
-    const updateLocal = (newElements: ScriptElement[]) => {
-        const enriched = enrichScriptElements(newElements);
-        setElements(enriched);
-        debouncedSync(enriched);
+    // Helper: Triggers sync side-effect without re-rendering
+    const triggerSync = (newElements: ScriptElement[]) => {
+        debouncedSync(newElements);
     };
 
-    const handleContentChange = (id: string, newContent: string) => {
-        const currentIndex = elements.findIndex(el => el.id === id);
-        if (currentIndex === -1) return;
-        const currentEl = elements[currentIndex];
-        let newType = currentEl.type;
-        let dualState = currentEl.dual;
+    // --- 3. EDITING LOGIC (Stable Handlers) ---
 
-        const upper = newContent.toUpperCase();
-        
-        // Auto-detect Types
-        if (currentEl.type !== 'scene_heading' && /^(INT\.|EXT\.|INT\/EXT|I\/E)(\s|$)/.test(upper)) {
-            newType = 'scene_heading';
-        }
-        if (currentEl.type !== 'transition' && (upper.endsWith(' TO:') || upper === 'FADE OUT.')) {
-            newType = 'transition';
-        }
+    const handleContentChange = useCallback((id: string, newContent: string) => {
+        setElements(prevElements => {
+            const currentIndex = prevElements.findIndex(el => el.id === id);
+            if (currentIndex === -1) return prevElements;
+            
+            const currentEl = prevElements[currentIndex];
+            let newType = currentEl.type;
+            let dualState = currentEl.dual;
 
-        // Auto-detect Dual Dialogue Caret
-        if (currentEl.type === 'character' && newContent.trim().endsWith('^')) {
-            dualState = true;
-            // We don't strip the caret yet, wait for blur/enter to clean it up visually, 
-            // or keep it to show user it's active. 
-            // Better UX: Keep it in content, convert on render/export.
-        } else if (currentEl.type === 'character' && !newContent.includes('^') && dualState) {
-            // User backspaced the caret?
-            dualState = false;
-        }
+            const upper = newContent.toUpperCase();
+            
+            // Auto-detect Types
+            if (currentEl.type !== 'scene_heading' && /^(INT\.|EXT\.|INT\/EXT|I\/E)(\s|$)/.test(upper)) {
+                newType = 'scene_heading';
+            }
+            if (currentEl.type !== 'transition' && (upper.endsWith(' TO:') || upper === 'FADE OUT.')) {
+                newType = 'transition';
+            }
 
-        let finalContent = newContent;
-        if (['scene_heading', 'character', 'transition'].includes(newType)) {
-            finalContent = newContent.toUpperCase();
-        }
-        
-        const updated = [...elements];
-        updated[currentIndex] = { ...currentEl, content: finalContent, type: newType, dual: dualState };
-        updateLocal(updated);
-    };
+            // Auto-detect Dual Dialogue Caret
+            if (currentEl.type === 'character' && newContent.trim().endsWith('^')) {
+                dualState = true;
+            } else if (currentEl.type === 'character' && !newContent.includes('^') && dualState) {
+                dualState = false;
+            }
 
-    const handleAutoFormat = () => {
-        const rawText = generateFountainText(elements);
-        const fountainOutput = parseFountain(rawText, true);
-        const formattedElements = convertFountainToElements(fountainOutput.tokens);
-        updateLocal(formattedElements);
-        showToast("Script Auto-Formatted", 'success');
-    };
+            let finalContent = newContent;
+            if (['scene_heading', 'character', 'transition'].includes(newType)) {
+                finalContent = newContent.toUpperCase();
+            }
+            
+            // Only update if changed
+            if (currentEl.content === finalContent && currentEl.type === newType && currentEl.dual === dualState) {
+                return prevElements;
+            }
 
-    const handleKeyDown = (e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
+            const updated = [...prevElements];
+            updated[currentIndex] = { ...currentEl, content: finalContent, type: newType, dual: dualState };
+            
+            // Trigger sync (side effect)
+            triggerSync(updated);
+            
+            return updated;
+        });
+    }, [setElements]);
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
             e.preventDefault();
             e.shiftKey ? (canRedo && redo()) : (canUndo && undo());
@@ -131,85 +133,144 @@ export const ScriptPage: React.FC = () => {
             setIsZenMode(false);
         }
 
-        const index = elements.findIndex(el => el.id === id);
-        if (index === -1) return;
-
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            const currentEl = elements[index];
             
-            // DUAL DIALOGUE CLEANUP ON ENTER
-            // If user typed 'VADER ^', hitting enter should strip the caret from the content
-            // but keep the 'dual' flag true (which we set in handleContentChange).
-            let cleanContent = currentEl.content;
-            if (currentEl.type === 'character' && cleanContent.trim().endsWith('^')) {
-                cleanContent = cleanContent.replace(/\^$/, '').trim();
-            }
+            setElements(prevElements => {
+                const index = prevElements.findIndex(el => el.id === id);
+                if (index === -1) return prevElements;
 
-            const contentBefore = cleanContent.slice(0, cursorPosition);
-            const contentAfter = cleanContent.slice(cursorPosition);
-            
-            let nextType: ScriptElement['type'] = 'action';
-            if (type === 'scene_heading') nextType = 'action';
-            else if (type === 'character') nextType = 'dialogue';
-            else if (type === 'dialogue') nextType = 'character';
-            else if (type === 'parenthetical') nextType = 'dialogue';
-            else if (type === 'transition') nextType = 'scene_heading';
+                const currentEl = prevElements[index];
+                
+                // DUAL DIALOGUE CLEANUP
+                let cleanContent = currentEl.content;
+                if (currentEl.type === 'character' && cleanContent.trim().endsWith('^')) {
+                    cleanContent = cleanContent.replace(/\^$/, '').trim();
+                }
 
-            const newId = crypto.randomUUID();
-            const newElement: ScriptElement = { id: newId, type: nextType, content: contentAfter, sequence: index + 2 };
-            
-            const updated = [...elements];
-            updated[index] = { ...currentEl, content: contentBefore }; // Update current with cleaned text
-            updated.splice(index + 1, 0, newElement);
-            updateLocal(updated);
-            
-            setTimeout(() => {
-                setActiveElementId(newId);
-                cursorTargetRef.current = { id: newId, position: 0 };
-            }, 0);
+                const contentBefore = cleanContent.slice(0, cursorPosition);
+                const contentAfter = cleanContent.slice(cursorPosition);
+                
+                let nextType: ScriptElement['type'] = 'action';
+                if (type === 'scene_heading') nextType = 'action';
+                else if (type === 'character') nextType = 'dialogue';
+                else if (type === 'dialogue') nextType = 'character';
+                else if (type === 'parenthetical') nextType = 'dialogue';
+                else if (type === 'transition') nextType = 'scene_heading';
+
+                const newId = crypto.randomUUID();
+                const newElement: ScriptElement = { id: newId, type: nextType, content: contentAfter, sequence: index + 2 };
+                
+                const updated = [...prevElements];
+                updated[index] = { ...currentEl, content: contentBefore }; 
+                updated.splice(index + 1, 0, newElement);
+                
+                // Focus Management (Side Effect)
+                // We use requestAnimationFrame to ensure render cycle completes
+                requestAnimationFrame(() => {
+                    setActiveElementId(newId);
+                    cursorTargetRef.current = { id: newId, position: 0 };
+                });
+
+                triggerSync(updated);
+                return updated;
+            });
         }
 
         if (e.key === 'Backspace' && cursorPosition === 0 && selectionEnd === 0) {
-            if (index > 0) {
+            setElements(prevElements => {
+                const index = prevElements.findIndex(el => el.id === id);
+                if (index <= 0) return prevElements;
+
                 e.preventDefault();
                 const prevIndex = index - 1;
-                const prevEl = elements[prevIndex];
-                const currentEl = elements[index];
+                const prevEl = prevElements[prevIndex];
+                const currentEl = prevElements[index];
                 const newCursorPos = prevEl.content.length;
                 const mergedContent = prevEl.content + currentEl.content;
-                const updated = [...elements];
+                const updated = [...prevElements];
                 updated[prevIndex] = { ...prevEl, content: mergedContent };
                 updated.splice(index, 1);
-                updateLocal(updated);
-                setTimeout(() => {
+                
+                requestAnimationFrame(() => {
                     setActiveElementId(prevEl.id);
                     cursorTargetRef.current = { id: prevEl.id, position: newCursorPos };
-                }, 0);
-            }
+                });
+
+                triggerSync(updated);
+                return updated;
+            });
         }
 
         if (e.key === 'Tab') {
             e.preventDefault();
-            const types: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition'];
-            const currentIdx = types.indexOf(type);
-            const nextType = types[(currentIdx + 1) % types.length];
-            const updated = [...elements];
-            updated[index] = { ...updated[index], type: nextType };
-            if (['scene_heading', 'character', 'transition'].includes(nextType)) {
-                updated[index].content = updated[index].content.toUpperCase();
-            }
-            updateLocal(updated);
+            setElements(prevElements => {
+                const index = prevElements.findIndex(el => el.id === id);
+                if (index === -1) return prevElements;
+
+                const types: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition'];
+                const currentIdx = types.indexOf(type);
+                const nextType = types[(currentIdx + 1) % types.length];
+                const updated = [...prevElements];
+                updated[index] = { ...updated[index], type: nextType };
+                if (['scene_heading', 'character', 'transition'].includes(nextType)) {
+                    updated[index].content = updated[index].content.toUpperCase();
+                }
+                
+                triggerSync(updated);
+                return updated;
+            });
         }
 
-        if (e.key === 'ArrowUp' && index > 0 && cursorPosition === 0) {
-            e.preventDefault();
-            setActiveElementId(elements[index - 1].id);
+        if (e.key === 'ArrowUp') {
+            // Need access to current elements to check index
+            // We can't access state inside event handler cleanly without dependency
+            // But since this is navigation, we can just use the prop passed to the function
+            // Wait, we need to know the PREVIOUS element ID.
+            // This logic relies on `elements` being fresh. 
+            // Since this handler is memoized with [elements] dep in the standard way, 
+            // it would re-render.
+            // OPTIMIZATION: We don't update state here, just focus.
+            // We can pass `elements` as a dependency here. 
+            // BUT, `handleKeyDown` changing breaks `ScriptBlock` memoization.
+            // FIX: ScriptBlock passes us the ID. We can find it in the ref or state.
+            // Actually, for navigation, it's acceptable to re-create the handler *if* 
+            // we accept that nav changes focus anyway.
+            // HOWEVER, to keep `ScriptBlock` pure, we should use a Ref for elements
+            // so the callback is stable.
         }
-        if (e.key === 'ArrowDown' && index < elements.length - 1 && cursorPosition === elements[index].content.length) {
+    }, [isZenMode, canUndo, canRedo, undo, redo, setElements]); 
+    
+    // NAVIGATION HANDLER (Separate to break dependency cycle if needed, but handled inside main for now)
+    // To implement Up/Down without breaking Memo, we need to look up neighbors.
+    // We can use a Ref to store the current element order.
+    const elementsRef = useRef(elements);
+    useEffect(() => { elementsRef.current = elements; }, [elements]);
+
+    const handleNavigation = useCallback((e: React.KeyboardEvent, id: string, cursorPosition: number, contentLength: number) => {
+        if (e.key === 'ArrowUp' && cursorPosition === 0) {
             e.preventDefault();
-            setActiveElementId(elements[index + 1].id);
+            const currentEls = elementsRef.current;
+            const index = currentEls.findIndex(el => el.id === id);
+            if (index > 0) setActiveElementId(currentEls[index - 1].id);
         }
+        if (e.key === 'ArrowDown' && cursorPosition === contentLength) {
+            e.preventDefault();
+            const currentEls = elementsRef.current;
+            const index = currentEls.findIndex(el => el.id === id);
+            if (index < currentEls.length - 1) setActiveElementId(currentEls[index + 1].id);
+        }
+    }, []);
+
+    const handleAutoFormat = () => {
+        const rawText = generateFountainText(elements);
+        const fountainOutput = parseFountain(rawText, true);
+        const formattedElements = convertFountainToElements(fountainOutput.tokens);
+        // We use setElements directly here
+        const enriched = enrichScriptElements(formattedElements);
+        setElements(enriched);
+        triggerSync(enriched);
+        showToast("Script Auto-Formatted", 'success');
     };
 
     const handleStartWriting = () => {
@@ -397,7 +458,10 @@ export const ScriptPage: React.FC = () => {
                                             element={element}
                                             isActive={activeElementId === element.id}
                                             onChange={handleContentChange}
-                                            onKeyDown={handleKeyDown}
+                                            onKeyDown={(e, id, type, start, end) => {
+                                                handleNavigation(e, id, start, element.content.length);
+                                                handleKeyDown(e, id, type, start, end);
+                                            }}
                                             onFocus={setActiveElementId}
                                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
                                             isLightMode={isPaperWhite} 

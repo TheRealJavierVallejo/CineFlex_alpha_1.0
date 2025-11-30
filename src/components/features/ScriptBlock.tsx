@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, memo } from 'react';
 import { ScriptElement } from '../../types';
 import { Columns } from 'lucide-react';
 
@@ -12,7 +12,7 @@ interface ScriptBlockProps {
   isLightMode?: boolean;
 }
 
-export const ScriptBlock: React.FC<ScriptBlockProps> = ({
+const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   element,
   isActive,
   onChange,
@@ -247,3 +247,17 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
     </div>
   );
 };
+
+export const ScriptBlock = memo(ScriptBlockComponent, (prev, next) => {
+    // Custom Comparator to prevent re-renders when other lines change
+    return (
+        prev.element.id === next.element.id &&
+        prev.element.content === next.element.content &&
+        prev.element.type === next.element.type &&
+        prev.element.dual === next.element.dual &&
+        prev.element.sceneNumber === next.element.sceneNumber &&
+        prev.isActive === next.isActive &&
+        prev.isLightMode === next.isLightMode &&
+        prev.cursorRequest === next.cursorRequest
+    );
+});
