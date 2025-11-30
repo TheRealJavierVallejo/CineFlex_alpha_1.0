@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { ScriptElement } from '../../types';
+import { Columns } from 'lucide-react';
 
 interface ScriptBlockProps {
   element: ScriptElement;
@@ -45,8 +46,10 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
   }, [cursorRequest, isActive]);
 
   const getStyles = () => {
+    // Styling Base
     const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-snug transition-colors duration-200 w-full p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
 
+    // Theme Colors
     const colors = isLightMode ? {
       heading: "text-black",
       action: "text-black",
@@ -97,7 +100,7 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
         }
         if (isSection) {
             return {
-                container: "pt-8 pb-4", // Extra space for sections
+                container: "pt-8 pb-4", 
                 input: `${base} ${colors.section} font-bold text-left ${colors.placeholder}`,
                 placeholder: "# Section",
                 indicator: "top-8",
@@ -196,13 +199,15 @@ export const ScriptBlock: React.FC<ScriptBlockProps> = ({
          }
        `}</style>
 
+      {/* Indicator */}
       <div className={`
-          absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r
+          absolute -left-[240px] w-32 text-[10px] uppercase transition-all duration-200 select-none text-right pr-4 font-sans border-r flex items-center justify-end gap-2
           ${styles.indicator}
           ${isActive ? 'text-primary border-primary opacity-100 font-bold' : 'border-transparent opacity-0 group-hover:opacity-30'}
           ${isLightMode && !isActive ? 'text-zinc-400' : ''}
           ${!isLightMode && !isActive ? 'text-[#444]' : ''}
        `}>
+        {element.dual && <Columns className="w-3 h-3 text-text-muted" title="Dual Dialogue" />}
         {element.type.replace('_', ' ')}
       </div>
 

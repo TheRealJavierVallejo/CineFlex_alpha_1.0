@@ -12,61 +12,79 @@ import { FountainToken } from '../lib/fountain'; // IMPORTED
 export const convertFountainToElements = (tokens: FountainToken[]): ScriptElement[] => {
     const elements: ScriptElement[] = [];
     let sequence = 1;
+    let isDualBlock = false; // State tracker for dual dialogue
 
-    // Filter out irrelevant tokens (structural HTML helpers)
-    const validTokens = tokens.filter(t => 
-        !['dual_dialogue_begin', 'dual_dialogue_end', 'dialogue_begin', 'dialogue_end', 'boneyard_begin', 'boneyard_end'].includes(t.type)
-    );
+    // We no longer filter upfront because we need structural tokens like 'dialogue_begin'
+    // to determine state, even if we don't save them as elements.
 
-    // Map Fountain Types to CineFlex Types
-    const mapType = (ft: FountainToken['type']): ScriptElement['type'] => {
-        switch (ft) {
-            case 'scene_heading': return 'scene_heading';
-            case 'character': return 'character';
-            case 'parenthetical': return 'parenthetical';
-            case 'dialogue': return 'dialogue';
-            case 'transition': return 'transition';
-            // Map everything else to action to preserve it in the editor
-            default: return 'action';
+    tokens.forEach(token => {
+        // STATE TRACKING
+        if (token.type === 'dialogue_begin' && token.dual) {
+            isDualBlock = true;
         }
-    };
+        if (token.type === 'dialogue_end' || token.type === 'dual_dialogue_end') {
+            isDualBlock = false;
+        }
 
-    validTokens.forEach(token => {
+        // Filter out structural tokens for the final list
+        if (['dual_dialogue_begin', 'dual_dialogue_end', 'dialogue_begin', 'dialogue_end', 'boneyard_begin', 'boneyard_end'].includes(token.type)) {
+            return;
+        }
+
         // Skip empty text unless it's a page break
         if (!token.text && token.type !== 'page_break') return;
 
         let content = token.text || '';
-        let type = mapType(token.type);
+        let type: ScriptElement['type'] = 'action';
+        let dual = false;
 
-        // PRESERVE SPECIAL FORMATTING
-        // Since our Editor doesn't have dedicated 'note' or 'centered' blocks yet,
-        // we encode them into the text so they aren't lost and can be re-parsed.
-        
-        if (token.type === 'note') {
-            content = `[[${content}]]`;
-            type = 'action'; // Render as action, but visually distinct via brackets
-        } 
-        else if (token.type === 'centered') {
-            content = `> ${content} <`;
-            type = 'action';
-        }
-        else if (token.type === 'section') {
-            const depth = token.depth || 1;
-            content = `${'#'.repeat(depth)} ${content}`;
-            type = 'action';
-        }
-        else if (token.type === 'synopsis') {
-            content = `= ${content}`;
-            type = 'action';
+        // Map Fountain Types to CineFlex Types
+        switch (token.type) {
+            case 'scene_heading': type = 'scene_heading'; break;
+            case 'character': 
+                type = 'character'; 
+                // Apply dual flag if we are inside a dual block
+                if (isDualBlock) dual = true;
+                break;
+            case 'parenthetical': type = 'parenthetical'; break;
+            case 'dialogue': type = 'dialogue'; break;
+            case 'transition': type = 'transition'; break;
+            
+            // PRESERVE SPECIAL FORMATTING (Mapped to Action)
+            case 'note':
+                content = `[[${content}]]`;
+                type = 'action';
+                break;
+            case 'centered':
+                content = `> ${content} <`;
+                type = 'action';
+                break;
+            case 'section':
+                const depth = token.depth || 1;
+                content = `${'#'.repeat(depth)} ${content}`;
+                type = 'action';
+                break;
+            case 'synopsis':
+                content = `= ${content}`;
+                type = 'action';
+                break;
+            default:
+                type = 'action';
+                break;
         }
 
-        elements.push({
+        const element: ScriptElement = {
             id: crypto.randomUUID(),
             type: type,
             content: content,
             sequence: sequence++,
             // sceneId will be assigned by syncScriptToScenes later
-        });
+        };
+
+        // Only add 'dual' property if true (cleaner JSON)
+        if (dual) element.dual = true;
+
+        elements.push(element);
     });
 
     return elements;
@@ -89,7 +107,9 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
             output += `\n${el.content}\n`;
         } else if (el.type === 'character') {
             // Character gets a newline before
-            output += `\n${el.content.toUpperCase()}\n`;
+            // RESTORE DUAL CARET
+            const content = el.content.toUpperCase() + (el.dual ? ' ^' : '');
+            output += `\n${content}\n`;
         } else if (el.type === 'dialogue') {
             // Dialogue follows immediately (no extra newline)
             output += `${el.content}\n`;
@@ -97,8 +117,7 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
             // Parenthetical follows immediately
             output += `${el.content}\n`;
         } else if (el.type === 'transition') {
-            // Transitions usually get a newline before and align right (in formatting), 
-            // but in raw text they just need separation.
+            // Transitions usually get a newline before
             output += `\n${el.content.toUpperCase()}\n`;
         } else {
             // Fallback
@@ -123,12 +142,18 @@ export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[]
         content: el.content,
         sequence: el.sequence,
         sceneId: el.sceneId,
-        associatedShotIds: el.associatedShotIds
+        associatedShotIds: el.associatedShotIds,
+        dual: el.dual // Preserve dual property
     };
 
     if (cleanEl.type === 'character') {
-      // Clean up carat for dual dialogue if present
-      activeCharacterName = cleanEl.content.replace(/\^$/, '').trim();
+      // Clean up caret for dual dialogue if present in raw text
+      // (This handles manual typing of caret in editor)
+      if (cleanEl.content.trim().endsWith('^')) {
+          cleanEl.content = cleanEl.content.replace(/\^$/, '').trim();
+          cleanEl.dual = true;
+      }
+      activeCharacterName = cleanEl.content;
       return cleanEl;
     }
 

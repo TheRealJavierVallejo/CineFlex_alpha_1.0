@@ -97,6 +97,7 @@ export interface ScriptElement {
   sequence: number;        // Order in the script
   character?: string;      // Name of the character speaking (if dialogue)
   associatedShotIds?: string[]; // Shots generated from this specific line
+  dual?: boolean;          // Is this simultaneous dialogue?
 }
 
 // 🎬 SCENE: A group of shots in one location
