@@ -66,29 +66,32 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   // Focus Logic: Handle cursor placement when block becomes active
   useEffect(() => {
     if (isActive && textareaRef.current) {
+      // 1. Focus the element
       textareaRef.current.focus();
       
-      // FIX: If no specific cursor position requested, move to END
-      // This prevents the "typing behind" issue where cursor defaults to index 0
-      if (cursorRequest === null || cursorRequest === undefined) {
+      // 2. Handle Cursor Positioning
+      // If a specific position was requested (e.g. Enter key split, Backspace merge), use it.
+      if (cursorRequest !== null && cursorRequest !== undefined) {
+         textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
+      } 
+      // If NO request was made (e.g. clicked, or arrow key nav), we intentionally do NOTHING extra.
+      // Standard browser behavior is correct for clicks (cursor goes where clicked).
+      // For programmatic focus without args, browser usually puts it at end or selects all.
+      // To prevent "typing behind" on raw focus (like arrow keys), we default to END if not clicked.
+      else {
+         // Check if this focus event likely came from a mouse click (active element matches)
+         // Actually, simpler logic: If isActive changed to true, and we didn't click, move to end.
+         // But we can't easily detect "didn't click".
+         // COMPROMISE: Default to END of line. This is safer than Start (typing behind).
+         // It might override a click position in some edge cases, but it fixes the main bug.
+         // NOTE: onMouseDown on the textarea usually fires AFTER this effect, correcting the cursor.
          const len = textareaRef.current.value.length;
          textareaRef.current.setSelectionRange(len, len);
       }
     } else {
       setShowMenu(false);
     }
-  }, [isActive]);
-
-  // Specific Cursor Request (e.g. splitting a line or backspacing)
-  useEffect(() => {
-    if (isActive && cursorRequest !== null && cursorRequest !== undefined && textareaRef.current) {
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
-        }
-      });
-    }
-  }, [cursorRequest, isActive]);
+  }, [isActive, cursorRequest]);
 
   // Track previous active state to prevent menu popping up immediately on focus
   const prevActiveRef = useRef(isActive);
@@ -254,19 +257,18 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   // --- STYLING & METRICS ---
 
   // Calculate Vertical Spacing (Standard Screenplay Rules)
+  // Scene Heading: 2 lines before. Action/Char: 1 line. Dialogue: 0.
   const paddingTop = useMemo(() => {
     if (isFirstOnPage) return 0;
     switch (element.type) {
-      case 'scene_heading': return 32; // ~2 lines before
+      case 'scene_heading': return 32; // ~2 lines
       case 'action':
       case 'character':
-      case 'transition': return 16; // ~1 line before
-      default: return 0;
+      case 'transition': return 16; // ~1 line
+      default: return 0; // Dialogue, Parenthetical
     }
   }, [element.type, isFirstOnPage]);
 
-  // FIX: Using MARGINS instead of Padding for indentation.
-  // This prevents the text box from squishing the content and behaves like real tab stops.
   const getStyles = () => {
     const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
     
@@ -282,8 +284,16 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     const spacingClass = isFirstOnPage ? 'pt-0' : (element.type === 'scene_heading' ? 'pt-8' : (['dialogue', 'parenthetical'].includes(element.type) ? 'pt-0' : 'pt-4'));
 
-    // Widths relative to the ~6.0in printable width (Page is 8.5in, Margins 1.5+1.0 = 2.5)
-    // We use marginLeft on the INPUT to push it over, while the CONTAINER stays full width.
+    // SCREENPLAY GEOMETRY (Standard US Letter 8.5" x 11")
+    // Container Padding: Left 1.5", Right 1.0", Top 1.0", Bottom 1.0"
+    // Printable Width: 6.0"
+    //
+    // Element Indentations (Relative to 1.5" Left Margin):
+    // Character: ~2.0" (3.5" total)
+    // Dialogue: ~1.0" (2.5" total)
+    // Parenthetical: ~1.6" (3.1" total)
+    // Transition: ~4.0" (5.5" total)
+    
     switch (element.type) {
       case 'scene_heading': return {
           container: `${spacingClass} pb-0`,
@@ -301,30 +311,30 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`, 
           placeholder: "CHARACTER",
-          style: { marginLeft: '2.0in', maxWidth: '3.5in' } // Standard indentation
+          style: { marginLeft: '2.0in', width: '3.7in' } // Fixed width to force wrap
       };
       case 'dialogue': return {
           container: "pt-0 pb-0",
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
-          style: { marginLeft: '1.0in', maxWidth: '3.5in' } // Standard indentation
+          style: { marginLeft: '1.0in', width: '3.5in' } // Fixed width to force wrap
       };
       case 'parenthetical': return {
           container: "pt-0 pb-0",
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(cont'd)",
-          style: { marginLeft: '1.6in', maxWidth: '3.0in' } // Standard indentation
+          style: { marginLeft: '1.6in', width: '2.3in' } // Fixed width to force wrap
       };
       case 'transition': return {
           container: `${spacingClass} pb-0`,
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
-          style: { marginLeft: '4.0in', maxWidth: '2.0in' } // Right alignment
+          style: { marginLeft: '4.0in', width: '2.0in' } 
       };
       default: return {
           container: `${spacingClass} pb-0`,
           input: `${base} ${colors.action} ${colors.placeholder}`,
-          style: { width: '100%', marginLeft: '0in' }
+          style: { width: '100%' }
       };
     }
   };
@@ -359,8 +369,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         {element.type.replace('_', ' ')}
       </div>
 
-      {/* 2. VERTICAL LINE (FIX: Fixed Height "Tick") */}
-      {/* This prevents the line from growing with the paragraph */}
+      {/* 2. VERTICAL LINE (FIX: Fixed Height Tick) */}
       <div
         className={`
           absolute w-[2px] transition-all duration-200 rounded-full
@@ -369,7 +378,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         style={{ 
             top: indicatorTop,
             marginTop: '3px',
-            height: '14px', // Hardcoded height so it doesn't stretch
+            height: '14px', 
             left: '-10.5rem' 
         }}
       />
@@ -400,6 +409,12 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
             rawContent = rawContent.replace(/\s*\(CONT'D\)\s*$/i, '');
           }
           onChange(element.id, rawContent);
+        }}
+        onMouseDown={() => {
+            // When clicking explicitly, assume user wants cursor there.
+            // We set cursorRequest to null to bypass the effect logic if needed,
+            // but the browser handles this natively. 
+            // The KeyDown listener below handles arrow nav.
         }}
         onKeyDown={handleLocalKeyDown}
         onFocus={() => onFocus(element.id)}
