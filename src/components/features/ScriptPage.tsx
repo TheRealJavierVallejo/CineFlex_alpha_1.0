@@ -11,8 +11,8 @@ import { FileText, Sparkles, RefreshCw, Save, Undo, Redo, Maximize2, Minimize2, 
 import { ScriptChat } from './ScriptChat';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
-import { enrichScriptElements, generateScriptFromScenes, generateFountainText, convertFountainToElements } from '../../services/scriptUtils'; // Added imports
-import { parseFountain } from '../../lib/fountain'; // Added import
+import { enrichScriptElements, generateScriptFromScenes, generateFountainText, convertFountainToElements } from '../../services/scriptUtils'; 
+import { parseFountain } from '../../lib/fountain'; 
 import { exportToPDF, exportToFDX, exportToTXT } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
@@ -37,13 +37,8 @@ export const ScriptPage: React.FC = () => {
     const [isImporting, setIsImporting] = useState(false);
 
     // --- PAPER THEME LOGIC ---
-    // Check Global Theme (This is static per session unless we listen to changes, but usually settings requires navigation)
     const isGlobalLight = document.documentElement.classList.contains('light');
-
-    // Local Toggle: Only active in Dark Mode. Defaults to Dark Paper (false).
     const [localPaperWhite, setLocalPaperWhite] = useState(false);
-
-    // Effective State: If Global Light -> Force White Paper. Else -> Use Local Toggle.
     const isPaperWhite = isGlobalLight || localPaperWhite;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -62,12 +57,10 @@ export const ScriptPage: React.FC = () => {
     );
 
     useEffect(() => {
-        // Priority: If script elements exist in DB, use them.
         if (project.scriptElements && project.scriptElements.length > 0) {
             if (elements.length === 0) setElements(project.scriptElements);
             return;
         }
-        // Fallback: If no script exists, try to rebuild from scenes (only on first load)
         if (project.scenes.length > 0 && elements.length === 0) {
             const generated = generateScriptFromScenes(project.scenes);
             setElements(generated);
@@ -86,35 +79,43 @@ export const ScriptPage: React.FC = () => {
         if (currentIndex === -1) return;
         const currentEl = elements[currentIndex];
         let newType = currentEl.type;
+        let dualState = currentEl.dual;
+
         const upper = newContent.toUpperCase();
+        
+        // Auto-detect Types
         if (currentEl.type !== 'scene_heading' && /^(INT\.|EXT\.|INT\/EXT|I\/E)(\s|$)/.test(upper)) {
             newType = 'scene_heading';
         }
         if (currentEl.type !== 'transition' && (upper.endsWith(' TO:') || upper === 'FADE OUT.')) {
             newType = 'transition';
         }
+
+        // Auto-detect Dual Dialogue Caret
+        if (currentEl.type === 'character' && newContent.trim().endsWith('^')) {
+            dualState = true;
+            // We don't strip the caret yet, wait for blur/enter to clean it up visually, 
+            // or keep it to show user it's active. 
+            // Better UX: Keep it in content, convert on render/export.
+        } else if (currentEl.type === 'character' && !newContent.includes('^') && dualState) {
+            // User backspaced the caret?
+            dualState = false;
+        }
+
         let finalContent = newContent;
         if (['scene_heading', 'character', 'transition'].includes(newType)) {
             finalContent = newContent.toUpperCase();
         }
+        
         const updated = [...elements];
-        updated[currentIndex] = { ...currentEl, content: finalContent, type: newType };
+        updated[currentIndex] = { ...currentEl, content: finalContent, type: newType, dual: dualState };
         updateLocal(updated);
     };
 
     const handleAutoFormat = () => {
-        // 1. Serialize
         const rawText = generateFountainText(elements);
-        
-        // 2. Parse via Fountain.js using RAW mode (true) to prevent HTML tags
         const fountainOutput = parseFountain(rawText, true);
-        
-        // 3. Convert back to Elements
-        // NOTE: We try to preserve IDs if possible, but for a full format we might regenerate structure
-        // Ideally we map back to existing IDs if content matches, but for now strict re-generation ensures clean structure
         const formattedElements = convertFountainToElements(fountainOutput.tokens);
-        
-        // 4. Update
         updateLocal(formattedElements);
         showToast("Script Auto-Formatted", 'success');
     };
@@ -135,9 +136,19 @@ export const ScriptPage: React.FC = () => {
 
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            const currentContent = elements[index].content;
-            const contentBefore = currentContent.slice(0, cursorPosition);
-            const contentAfter = currentContent.slice(cursorPosition);
+            const currentEl = elements[index];
+            
+            // DUAL DIALOGUE CLEANUP ON ENTER
+            // If user typed 'VADER ^', hitting enter should strip the caret from the content
+            // but keep the 'dual' flag true (which we set in handleContentChange).
+            let cleanContent = currentEl.content;
+            if (currentEl.type === 'character' && cleanContent.trim().endsWith('^')) {
+                cleanContent = cleanContent.replace(/\^$/, '').trim();
+            }
+
+            const contentBefore = cleanContent.slice(0, cursorPosition);
+            const contentAfter = cleanContent.slice(cursorPosition);
+            
             let nextType: ScriptElement['type'] = 'action';
             if (type === 'scene_heading') nextType = 'action';
             else if (type === 'character') nextType = 'dialogue';
@@ -145,19 +156,14 @@ export const ScriptPage: React.FC = () => {
             else if (type === 'parenthetical') nextType = 'dialogue';
             else if (type === 'transition') nextType = 'scene_heading';
 
-            if ((type === 'character' || type === 'dialogue') && currentContent.trim() === '') {
-                const updated = [...elements];
-                updated[index].type = 'action';
-                updateLocal(updated);
-                return;
-            }
-
             const newId = crypto.randomUUID();
             const newElement: ScriptElement = { id: newId, type: nextType, content: contentAfter, sequence: index + 2 };
+            
             const updated = [...elements];
-            updated[index] = { ...updated[index], content: contentBefore };
+            updated[index] = { ...currentEl, content: contentBefore }; // Update current with cleaned text
             updated.splice(index + 1, 0, newElement);
             updateLocal(updated);
+            
             setTimeout(() => {
                 setActiveElementId(newId);
                 cursorTargetRef.current = { id: newId, position: 0 };
@@ -207,19 +213,16 @@ export const ScriptPage: React.FC = () => {
     };
 
     const handleStartWriting = () => {
-        // Initialize project if starting fresh
         const sceneId = crypto.randomUUID();
         const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. EXAMPLE - DAY', actionNotes: '' };
         const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. EXAMPLE - DAY', sceneId, sequence: 1 };
 
-        // Save to global project state to unlock other views
         handleUpdateProject({
             ...project,
             scenes: [firstScene],
             scriptElements: [firstElement]
         });
 
-        // Set local state
         setElements([firstElement]);
         setActiveElementId(firstElement.id);
     };
@@ -233,8 +236,6 @@ export const ScriptPage: React.FC = () => {
     };
 
     const hasElements = elements.length > 0;
-
-    // Navigation Helper
     const headings = elements.filter(el => el.type === 'scene_heading');
     const scrollToElement = (id: string) => {
         setActiveElementId(id);
@@ -242,7 +243,6 @@ export const ScriptPage: React.FC = () => {
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
-    // --- TOOL DEFINITIONS ---
     const tools: Tool[] = [
         {
             id: 'outline',
@@ -293,8 +293,6 @@ export const ScriptPage: React.FC = () => {
                             <span>Screenplay Editor</span>
                         </div>
                         <div className="flex items-center gap-4">
-                            
-                            {/* AUTO FORMAT BUTTON (NEW) */}
                             <button 
                                 onClick={handleAutoFormat}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-surface-secondary hover:bg-primary hover:text-white text-text-secondary transition-colors text-xs font-bold uppercase tracking-wide border border-border hover:border-primary"
@@ -303,7 +301,6 @@ export const ScriptPage: React.FC = () => {
                                 <Wand2 className="w-3.5 h-3.5" /> Auto-Format
                             </button>
 
-                            {/* EXPORT DROPDOWN */}
                             <div className="relative group/export">
                                 <button className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-surface-secondary hover:bg-primary hover:text-white text-text-secondary transition-colors text-xs font-bold uppercase tracking-wide">
                                     <Download className="w-3.5 h-3.5" /> Export
@@ -353,7 +350,6 @@ export const ScriptPage: React.FC = () => {
 
                             <div className="h-4 w-[1px] bg-border" />
 
-                            {/* Paper Mode Switch - ONLY VISIBLE IN DARK MODE */}
                             {!isGlobalLight && (
                                 <button
                                     onClick={() => setLocalPaperWhite(!localPaperWhite)}
@@ -378,7 +374,6 @@ export const ScriptPage: React.FC = () => {
                 <div className="flex-1 flex overflow-hidden relative">
                     <div
                         ref={containerRef}
-                        // "Desk" Background: In Light Mode = App Background. In Dark Mode = Black (Void).
                         className={`flex-1 overflow-y-auto w-full flex flex-col items-center p-8 pb-[50vh] cursor-text transition-all duration-300 ${isGlobalLight ? 'bg-surface-secondary' : 'bg-surface'}`}
                         onClick={(e) => {
                             if (e.target === containerRef.current && hasElements) {
@@ -391,8 +386,8 @@ export const ScriptPage: React.FC = () => {
                                 className={`
                         w-full max-w-[850px] shadow-2xl min-h-[1100px] h-fit flex-none pl-[1.5in] pr-[1.0in] pt-[1.0in] pb-[1.0in] border relative transition-colors duration-300
                         ${isPaperWhite
-                                        ? 'bg-white border-zinc-200 shadow-zinc-900/10' // WHITE PAPER (Used in Global Light Mode OR Local Toggle)
-                                        : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} // DARK PAPER (Hardcoded Dark Grey)
+                                        ? 'bg-white border-zinc-200 shadow-zinc-900/10' 
+                                        : 'bg-[#121212] border-[#333] shadow-[0_0_50px_rgba(0,0,0,0.5)]'} 
                     `}
                             >
                                 <div className="flex flex-col">
@@ -405,7 +400,7 @@ export const ScriptPage: React.FC = () => {
                                             onKeyDown={handleKeyDown}
                                             onFocus={setActiveElementId}
                                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                                            isLightMode={isPaperWhite} // This passes true if global light OR local toggle
+                                            isLightMode={isPaperWhite} 
                                         />
                                     ))}
                                 </div>
