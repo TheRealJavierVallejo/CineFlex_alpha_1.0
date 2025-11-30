@@ -328,37 +328,37 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   return (
     <div className={`relative ${styles.container}`}>
       
-      {/* 1. INDICATOR LABEL (Fixed Gutter Positioning) */}
+      {/* 1. INDICATOR LABEL (Off Page - Gutter Left) */}
       <div
         className={`
-          absolute w-24 text-[10px] uppercase transition-all duration-200 select-none text-right pr-2 font-mono flex items-center justify-end gap-2
+          absolute w-28 text-[10px] uppercase transition-all duration-200 select-none text-right pr-2 font-mono flex items-center justify-end gap-2
           ${isActive ? 'text-primary opacity-100 font-bold tracking-wide' : 'text-text-muted opacity-0 group-hover:opacity-50'}
         `}
         style={{ 
-            // Lock to precise vertical position: Top padding + slight offset for 12pt line height
+            // Vertical: Align with text baseline
             top: paddingTop, 
-            marginTop: '3px', 
-            // Position safely to the left of the line
-            left: '-10rem', 
-            width: '6rem'
+            marginTop: '2px', 
+            // Horizontal: Further left to be off the paper
+            // Paper margin is ~9rem. We want to be outside that.
+            left: '-18rem', 
+            width: '7rem'
         }}
       >
         {element.dual && <Columns className="w-3 h-3 text-text-muted" />}
         {element.type.replace('_', ' ')}
       </div>
 
-      {/* 2. VERTICAL LINE (Fixed Gutter Positioning) */}
+      {/* 2. VERTICAL LINE (Off Page - Gutter Border) */}
       <div
         className={`
           absolute w-[2px] transition-all duration-200 rounded-full
           ${isActive ? 'bg-primary opacity-100' : 'bg-zinc-700 opacity-0 group-hover:opacity-30'}
         `}
         style={{ 
-            // Vertical: Starts at text baseline, spans to bottom of element
             top: paddingTop,
             bottom: 0,
-            // Horizontal: Fixed roughly 0.5 inches into the left margin (-3.5rem relative to content start)
-            left: '-3.5rem' 
+            // Horizontal: Just outside the paper edge (approx -1.6in)
+            left: '-10.5rem' 
         }}
       />
 
