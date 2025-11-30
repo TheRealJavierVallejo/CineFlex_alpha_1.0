@@ -70,6 +70,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     const getElementStyles = (type: ScriptElement['type']) => {
         // Precise margin matching with ScriptBlock.tsx
         // Using padding-left to simulate standard screenplay tabs
+        // Font size 12pt is approx 16px
         const base = "font-screenplay text-[12pt] leading-snug transition-colors duration-200";
 
         switch (type) {
@@ -128,10 +129,10 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                     </button>
                 </div>
 
-                {/* Content - Dark Editor Look */}
-                <div className="overflow-y-auto p-12 flex-1 bg-background font-screenplay shadow-inner flex justify-center">
+                {/* Content - Dark Editor Look (MATCHING METRICS OF SCRIPT PAGE) */}
+                <div className="overflow-y-auto p-8 flex-1 bg-[#0C0C0E] font-screenplay shadow-inner flex justify-center">
                     {groups.length > 0 ? (
-                        <div className="w-full max-w-[8.5in] px-[1in] py-[0.5in] bg-surface border border-border relative shadow-2xl min-h-full">
+                        <div className="w-full max-w-[850px] pl-[1.5in] pr-[1.0in] pt-[0.5in] pb-[0.5in] bg-[#121212] border border-[#222] relative shadow-2xl min-h-full">
                             {groups.map((group, idx) => {
                                 const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                 const isHeading = group.items[0].type === 'scene_heading';
@@ -158,7 +159,7 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
                                         {/* Hover Arrow (Left Margin) */}
                                         {!isLinked && !isHeading && (
-                                            <div className="absolute -left-10 top-0 bottom-0 flex items-center justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="absolute -left-8 top-0 bottom-0 flex items-center justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <div className="flex items-center gap-1 text-primary font-sans font-bold text-[10px] uppercase tracking-wider">
                                                     <ArrowRight className="w-4 h-4" />
                                                 </div>

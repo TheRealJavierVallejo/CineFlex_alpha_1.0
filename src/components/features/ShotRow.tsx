@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import { Shot, ScriptElement } from '../../types';
 import { Plus, Type, X, Edit2, GraduationCap } from 'lucide-react';
 import Button from '../ui/Button';
@@ -29,6 +29,11 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
     onAddVisual
 }) => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    // CRITICAL: Ensure elements are sorted by sequence to correctly detect character headers
+    const sortedElements = useMemo(() => {
+        return [...linkedElements].sort((a, b) => a.sequence - b.sequence);
+    }, [linkedElements]);
 
     return (
         <>
@@ -94,7 +99,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                 {/* 2. SCRIPT / CONTENT COLUMN */}
                 <div className="flex-1 p-4 flex flex-col justify-center">
                     {/* Description Input (if no linked script) */}
-                    {linkedElements.length === 0 && (
+                    {sortedElements.length === 0 && (
                         <div className="mb-2 h-full">
                             <DebouncedTextarea
                                 value={shot.description}
@@ -107,11 +112,11 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
 
                     {/* Linked Script Elements */}
                     <div className="space-y-1">
-                        {linkedElements.map((el, index) => {
+                        {sortedElements.map((el, index) => {
                             // Smart Display Logic: 
                             // Only show the character label if this element HAS a character property
                             // AND the previous element wasn't a Character element for the same person.
-                            const prevEl = index > 0 ? linkedElements[index - 1] : null;
+                            const prevEl = index > 0 ? sortedElements[index - 1] : null;
                             const isContinuation = prevEl && prevEl.type === 'character' && prevEl.content === el.character;
                             const showLabel = el.character && !isContinuation;
 
