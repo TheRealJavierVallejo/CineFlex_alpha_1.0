@@ -356,7 +356,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         `}
         style={{ 
             top: paddingTop,
-            bottom: 0,
+            marginTop: '4px',
+            height: '14px', // FIXED HEIGHT (matches label text height approx)
             // Horizontal: Just outside the paper edge (approx -1.6in)
             left: '-10.5rem' 
         }}
