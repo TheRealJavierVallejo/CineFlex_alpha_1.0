@@ -69,19 +69,17 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
 
     const getElementStyles = (type: ScriptElement['type']) => {
         // Precise margin matching with ScriptBlock.tsx
-        // Using padding-left to simulate standard screenplay tabs
-        // Font size 12pt is approx 16px
         const base = "font-screenplay text-[12pt] leading-snug transition-colors duration-200";
 
         switch (type) {
             case 'scene_heading':
                 return {
-                    className: `${base} font-bold uppercase text-text-primary pt-6 pb-2`,
+                    className: `${base} font-bold uppercase text-text-primary pt-8 pb-4`,
                     style: { paddingLeft: '0in', maxWidth: '6.0in' }
                 };
             case 'action':
                 return {
-                    className: `${base} text-text-secondary pb-4`,
+                    className: `${base} text-text-secondary pt-4`,
                     style: { paddingLeft: '0in', maxWidth: '6.0in' }
                 };
             case 'character':
@@ -91,12 +89,12 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 };
             case 'dialogue':
                 return {
-                    className: `${base} text-text-secondary`,
+                    className: `${base} text-text-secondary pt-0`,
                     style: { paddingLeft: '1.0in', maxWidth: '4.5in' }
                 };
             case 'parenthetical':
                 return {
-                    className: `${base} italic text-text-muted text-sm`,
+                    className: `${base} italic text-text-muted text-sm pt-0`,
                     style: { paddingLeft: '1.5in', maxWidth: '3.5in' }
                 };
             case 'transition':
@@ -106,10 +104,18 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 };
             default:
                 return {
-                    className: `${base} text-text-secondary`,
+                    className: `${base} text-text-secondary pt-4`,
                     style: { paddingLeft: '0in', maxWidth: '6.0in' }
                 };
         }
+    };
+
+    // Calculate Arrow Top Position based on Padding
+    const getArrowClass = (firstType: ScriptElement['type']) => {
+        // Action/Char/Trans have pt-4 (1rem = 16px). Center of first line ~24px down.
+        // Heading has pt-8 (2rem = 32px). Center of first line ~40px down.
+        if (firstType === 'scene_heading') return 'top-10'; // 2.5rem = 40px
+        return 'top-6'; // 1.5rem = 24px
     };
 
     return (
@@ -129,13 +135,14 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                     </button>
                 </div>
 
-                {/* Content - Dark Editor Look (MATCHING METRICS OF SCRIPT PAGE) */}
+                {/* Content */}
                 <div className="overflow-y-auto p-8 flex-1 bg-[#0C0C0E] font-screenplay shadow-inner flex justify-center">
                     {groups.length > 0 ? (
                         <div className="w-full max-w-[850px] pl-[1.5in] pr-[1.0in] pt-[0.5in] pb-[0.5in] bg-[#121212] border border-[#222] relative shadow-2xl min-h-full">
                             {groups.map((group, idx) => {
                                 const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                 const isHeading = group.items[0].type === 'scene_heading';
+                                const arrowTopClass = getArrowClass(group.items[0].type);
 
                                 return (
                                     <div
@@ -157,18 +164,18 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                             );
                                         })}
 
-                                        {/* Hover Arrow (Left Margin) */}
+                                        {/* Hover Arrow (Points to first line) */}
                                         {!isLinked && !isHeading && (
-                                            <div className="absolute -left-8 top-0 bottom-0 flex items-center justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className={`absolute -left-8 flex justify-end w-16 opacity-0 group-hover:opacity-100 transition-opacity ${arrowTopClass}`}>
                                                 <div className="flex items-center gap-1 text-primary font-sans font-bold text-[10px] uppercase tracking-wider">
                                                     <ArrowRight className="w-4 h-4" />
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Linked Label (Left Margin) */}
+                                        {/* Linked Label */}
                                         {isLinked && (
-                                            <div className="absolute -left-12 top-0 bottom-0 flex items-center justify-end w-20 pr-4">
+                                            <div className={`absolute -left-12 flex items-center justify-end w-20 pr-4 ${arrowTopClass}`}>
                                                 <div className="text-text-muted font-sans font-bold text-[9px] uppercase tracking-wider">
                                                     Linked
                                                 </div>
