@@ -37,7 +37,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
 
     return (
         <>
-            <div className="group/row flex border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[120px]">
+            <div className="group/row flex border-b border-border hover:bg-surface-secondary/30 transition-colors relative min-h-[140px]">
                 {/* 1. VISUAL COLUMN */}
                 <div className="w-[240px] p-3 border-r border-border flex flex-col gap-2 shrink-0 bg-surface">
                     <div className="flex justify-between items-center">
@@ -97,54 +97,92 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                 </div>
 
                 {/* 2. SCRIPT / CONTENT COLUMN */}
-                <div className="flex-1 p-4 flex flex-col justify-center">
-                    {/* Description Input (if no linked script) */}
+                <div className="flex-1 p-4 flex flex-col justify-center bg-background/50">
+                    {/* Description Input (only if no linked script) */}
                     {sortedElements.length === 0 && (
-                        <div className="mb-2 h-full">
+                        <div className="mb-2 h-full flex items-center">
                             <DebouncedTextarea
                                 value={shot.description}
                                 onChange={(val) => onUpdateShot(shot.id, { description: val })}
                                 placeholder="// Describe shot action..."
-                                className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono h-full min-h-[60px]"
+                                className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-muted outline-none resize-none font-mono min-h-[60px]"
                             />
                         </div>
                     )}
 
-                    {/* Linked Script Elements */}
-                    <div className="space-y-1">
+                    {/* Linked Script Elements - SCREENPLAY FORMAT */}
+                    <div className="space-y-1 w-full max-w-3xl mx-auto">
                         {sortedElements.map((el, index) => {
-                            // Smart Display Logic: 
-                            // Only show the character label if this element HAS a character property
-                            // AND the previous element wasn't a Character element for the same person.
-                            const prevEl = index > 0 ? sortedElements[index - 1] : null;
-                            const isContinuation = prevEl && prevEl.type === 'character' && prevEl.content === el.character;
-                            const showLabel = el.character && !isContinuation;
+                            const isCharacter = el.type === 'character';
+                            const isDialogue = el.type === 'dialogue';
+                            const isParenthetical = el.type === 'parenthetical';
+                            const isTransition = el.type === 'transition';
+                            const isAction = el.type === 'action';
+                            const isHeading = el.type === 'scene_heading';
 
                             return (
-                                <div key={el.id} className="relative group/element pl-3 border-l-2 border-primary/20 hover:border-primary transition-colors py-1">
-                                    <div className="font-mono text-sm leading-relaxed text-text-secondary">
-                                        {showLabel && (
-                                            <div className="font-bold uppercase text-xs mb-0.5 text-primary/70">{el.character}</div>
-                                        )}
-                                        <div className="whitespace-pre-wrap">{el.content}</div>
-                                    </div>
+                                <div key={el.id} className="relative group/element hover:bg-white/5 rounded-sm px-4 py-1 transition-colors">
+                                    
+                                    {/* Remove Button (Hover) */}
                                     <button
                                         onClick={() => onUnlinkElement(shot.id, el.id)}
-                                        className="absolute top-1 right-0 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-red-500 opacity-0 group-hover/element:opacity-100 transition-opacity p-1"
                                         title="Unlink"
                                     >
                                         <X className="w-3 h-3" />
                                     </button>
+
+                                    {/* Action (Left Aligned with Marker) */}
+                                    {isAction && (
+                                        <div className="text-left pl-3 border-l-2 border-primary/30 text-sm text-text-secondary leading-relaxed font-sans py-1">
+                                            {el.content}
+                                        </div>
+                                    )}
+
+                                    {/* Character (Centered, Bold) */}
+                                    {isCharacter && (
+                                        <div className="flex justify-center mt-3">
+                                            <span className="font-bold text-xs uppercase text-text-primary tracking-widest">{el.content}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Dialogue (Centered) */}
+                                    {isDialogue && (
+                                        <div className="flex justify-center">
+                                            <span className="text-sm text-text-primary/90 text-center max-w-[85%] font-medium leading-relaxed font-mono">{el.content}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Parenthetical (Centered, Italic) */}
+                                    {isParenthetical && (
+                                        <div className="flex justify-center -my-0.5">
+                                            <span className="text-xs italic text-text-muted text-center">{el.content}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Transition (Right Aligned) */}
+                                    {isTransition && (
+                                        <div className="flex justify-end pr-10 mt-3 mb-2">
+                                            <span className="font-bold text-xs uppercase text-text-primary tracking-widest">{el.content}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Scene Heading (Rare in shots, but supported) */}
+                                    {isHeading && (
+                                        <div className="font-bold uppercase text-xs text-text-tertiary border-b border-border/30 pb-1 mb-2 mt-2">
+                                            {el.content}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
                     </div>
 
                     {/* Link Button */}
-                    <div className="mt-4 pt-2 border-t border-border/20 flex items-center gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                    <div className="mt-4 pt-2 border-t border-border/20 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
                         <button
                             onClick={() => onLinkElement(shot.id, 'script')}
-                            className="text-[10px] uppercase font-bold text-text-secondary hover:text-primary flex items-center gap-1 transition-colors"
+                            className="text-[10px] uppercase font-bold text-text-secondary hover:text-primary flex items-center gap-1 transition-colors px-3 py-1 rounded hover:bg-surface-secondary"
                         >
                             <Type className="w-3 h-3" /> Link Script Element
                         </button>
