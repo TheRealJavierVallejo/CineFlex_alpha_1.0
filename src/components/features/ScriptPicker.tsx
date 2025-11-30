@@ -67,7 +67,6 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     }, [scriptElements, sceneId]);
 
     // Precise formatting logic matching standard Screenplay rules
-    // Using 'inherit' color to allow the parent container to control Theme (Light/Dark)
     const getElementStyle = (type: ScriptElement['type']) => {
         const base = "font-screenplay text-[12pt] leading-screenplay whitespace-pre-wrap relative";
         
@@ -133,8 +132,15 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                 <div className="flex-1 overflow-y-auto bg-app p-0 flex justify-center custom-scrollbar relative">
                     
                     {/* PAPER AREA */}
-                    {/* Fixed: Use Tailwind dark mode classes for responsiveness */}
-                    <div className="w-[8.5in] min-h-full bg-white dark:bg-[#1E1E1E] border-x border-gray-200 dark:border-[#333] shadow-2xl py-16 px-20 text-black dark:text-[#E0E0E0] mb-20 transition-colors duration-300">
+                    {/* 
+                        FIX: Using [.light_&] selector to strictly enforce light mode colors when .light class is on html/body.
+                        This overrides the default dark mode colors.
+                        
+                        Theme Logic:
+                        - Default (Dark): bg-[#1E1E1E], text-[#E0E0E0], border-[#333]
+                        - Light: bg-white, text-black, border-gray-200
+                    */}
+                    <div className="w-[8.5in] min-h-full bg-[#1E1E1E] [.light_&]:bg-white border-x border-[#333] [.light_&]:border-gray-200 shadow-2xl py-16 px-20 text-[#E0E0E0] [.light_&]:text-black mb-20 transition-colors duration-300">
                         
                         {groups.length > 0 ? (
                             <div className="space-y-1">
@@ -143,15 +149,16 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                     const isHeading = group.items[0].type === 'scene_heading';
                                     
-                                    // ALIGNMENT FIX:
-                                    // We check the first element type to determine where the arrow sits vertically.
+                                    // Determine top alignment based on first element type
                                     const firstType = group.items[0].type;
                                     
-                                    // Elements with mt-4 (Character, Action, Transition) -> Arrow needs to be pushed down (top-4)
-                                    // Elements with mt-0 (Dialogue, Paren) -> Arrow stays high (top-0)
+                                    // ALIGNMENT FIX:
+                                    // Adjusted pixel values to visually align the arrow center with the text cap-height.
+                                    // Dialogue/Paren (mt-0): Arrow needs to move up slightly to center on first line. -top-1 is ~ -4px.
+                                    // Action/Char (mt-4): Arrow needs to move down to clear margin. top-4 is 16px.
                                     const arrowClass = (firstType === 'dialogue' || firstType === 'parenthetical') 
-                                        ? "top-0" 
-                                        : "top-4";
+                                        ? "-top-1" 
+                                        : "top-4"; // Changed from top-3 to top-4 for better alignment with mt-4
 
                                     return (
                                         <div
