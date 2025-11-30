@@ -3,7 +3,7 @@
  * Optimized for Pro Writers: Zero-Latency Typing & Advanced Editing Logic
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement, Scene } from '../../types';
@@ -16,7 +16,7 @@ import { parseFountain } from '../../lib/fountain';
 import { exportToPDF, exportToFDX, exportToTXT } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
-import { FeatureGate } from '../ui/FeatureGate';
+import { getCharacters, getLocations } from '../../services/storage';
 
 export const ScriptPage: React.FC = () => {
     const { project, updateScriptElements, importScript, handleUpdateProject, showToast } = useWorkspace();
@@ -35,6 +35,10 @@ export const ScriptPage: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isZenMode, setIsZenMode] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+
+    // SmartType Data
+    const [savedCharacters, setSavedCharacters] = useState<string[]>([]);
+    const [savedLocations, setSavedLocations] = useState<string[]>([]);
 
     // --- PAPER THEME LOGIC ---
     const isGlobalLight = document.documentElement.classList.contains('light');
@@ -67,7 +71,44 @@ export const ScriptPage: React.FC = () => {
             const generated = generateScriptFromScenes(project.scenes);
             setElements(generated);
         }
-    }, [project.scriptElements, project.scenes]); // Dependencies ok, condition protects loop
+    }, [project.scriptElements, project.scenes]);
+
+    // Load SmartType Data
+    useEffect(() => {
+        const loadSmartData = async () => {
+            const chars = await getCharacters(project.id);
+            setSavedCharacters(chars.map(c => c.name));
+            
+            const locs = await getLocations(project.id);
+            setSavedLocations(locs.map(l => l.name));
+        };
+        loadSmartData();
+    }, [project.id]);
+
+    // Derived Autocomplete Lists
+    const autocompleteData = useMemo(() => {
+        // 1. Characters: Saved Assets + Any Character typed in script so far
+        const scriptCharNames = new Set(elements.filter(e => e.type === 'character').map(e => e.content.trim().toUpperCase()));
+        savedCharacters.forEach(c => scriptCharNames.add(c.toUpperCase()));
+        
+        // 2. Locations: Saved Assets + Any Scene Heading location part
+        const scriptLocs = new Set<string>();
+        savedLocations.forEach(l => scriptLocs.add(l.toUpperCase()));
+        
+        elements.filter(e => e.type === 'scene_heading').forEach(e => {
+            // Strip INT./EXT. to get just location
+            const content = e.content.toUpperCase();
+            const parts = content.split(/^(INT\.\/EXT\.|INT\/EXT|INT\.|EXT\.|I\/E)\s*/);
+            if (parts.length > 1 && parts[parts.length - 1].trim()) {
+                scriptLocs.add(parts[parts.length - 1].trim()); // Add just "OFFICE"
+            }
+        });
+
+        return {
+            characters: Array.from(scriptCharNames).sort(),
+            locations: Array.from(scriptLocs).sort()
+        };
+    }, [elements, savedCharacters, savedLocations]);
 
     // Helper: Triggers sync side-effect without re-rendering
     const triggerSync = (newElements: ScriptElement[]) => {
@@ -239,29 +280,9 @@ export const ScriptPage: React.FC = () => {
                 return updated;
             });
         }
-
-        if (e.key === 'ArrowUp') {
-            // Need access to current elements to check index
-            // We can't access state inside event handler cleanly without dependency
-            // But since this is navigation, we can just use the prop passed to the function
-            // Wait, we need to know the PREVIOUS element ID.
-            // This logic relies on `elements` being fresh. 
-            // Since this handler is memoized with [elements] dep in the standard way, 
-            // it would re-render.
-            // OPTIMIZATION: We don't update state here, just focus.
-            // We can pass `elements` as a dependency here. 
-            // BUT, `handleKeyDown` changing breaks `ScriptBlock` memoization.
-            // FIX: ScriptBlock passes us the ID. We can find it in the ref or state.
-            // Actually, for navigation, it's acceptable to re-create the handler *if* 
-            // we accept that nav changes focus anyway.
-            // HOWEVER, to keep `ScriptBlock` pure, we should use a Ref for elements
-            // so the callback is stable.
-        }
     }, [isZenMode, canUndo, canRedo, undo, redo, setElements]); 
     
-    // NAVIGATION HANDLER (Separate to break dependency cycle if needed, but handled inside main for now)
-    // To implement Up/Down without breaking Memo, we need to look up neighbors.
-    // We can use a Ref to store the current element order.
+    // NAVIGATION HANDLER
     const elementsRef = useRef(elements);
     useEffect(() => { elementsRef.current = elements; }, [elements]);
 
@@ -284,7 +305,6 @@ export const ScriptPage: React.FC = () => {
         const rawText = generateFountainText(elements);
         const fountainOutput = parseFountain(rawText, true);
         const formattedElements = convertFountainToElements(fountainOutput.tokens);
-        // We use setElements directly here
         const enriched = enrichScriptElements(formattedElements);
         setElements(enriched);
         triggerSync(enriched);
@@ -483,7 +503,9 @@ export const ScriptPage: React.FC = () => {
                                             onDeleteSceneNumber={handleClearSceneNumber}
                                             onFocus={setActiveElementId}
                                             cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                                            isLightMode={isPaperWhite} 
+                                            isLightMode={isPaperWhite}
+                                            knownCharacters={autocompleteData.characters}
+                                            knownLocations={autocompleteData.locations}
                                         />
                                     ))}
                                 </div>

@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useLayoutEffect, memo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, memo, useState } from 'react';
 import { ScriptElement } from '../../types';
 import { Columns, X } from 'lucide-react';
+import { AutocompleteMenu } from './script-editor/AutocompleteMenu';
 
 interface ScriptBlockProps {
   element: ScriptElement;
@@ -11,6 +12,10 @@ interface ScriptBlockProps {
   onDeleteSceneNumber?: (id: string) => void;
   cursorRequest?: number | null;
   isLightMode?: boolean;
+  
+  // SmartType Props
+  knownCharacters?: string[];
+  knownLocations?: string[]; // Includes "INT.", "EXT." prefixes
 }
 
 const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
@@ -21,9 +26,16 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   onFocus,
   onDeleteSceneNumber,
   cursorRequest,
-  isLightMode = false
+  isLightMode = false,
+  knownCharacters = [],
+  knownLocations = []
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // SmartType State
+  const [showMenu, setShowMenu] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Resize Logic
   useLayoutEffect(() => {
@@ -37,6 +49,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
   useEffect(() => {
     if (isActive && textareaRef.current) {
       textareaRef.current.focus();
+    } else {
+        setShowMenu(false); // Close menu on blur
     }
   }, [isActive]);
 
@@ -46,6 +60,114 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
     }
   }, [cursorRequest, isActive]);
+
+  // --- SMART TYPE LOGIC ---
+  useEffect(() => {
+      if (!isActive) return;
+
+      const text = element.content;
+      
+      // 1. CHARACTER MODE
+      if (element.type === 'character') {
+          if (text.length > 0) {
+              const matches = knownCharacters.filter(c => 
+                  c.toUpperCase().startsWith(text.toUpperCase()) && 
+                  c.toUpperCase() !== text.toUpperCase() // Don't suggest if already typed fully
+              ).slice(0, 5); // Limit to 5
+              
+              if (matches.length > 0) {
+                  setSuggestions(matches);
+                  setShowMenu(true);
+                  setSelectedIndex(0);
+                  return;
+              }
+          }
+      }
+
+      // 2. SCENE HEADING MODE
+      if (element.type === 'scene_heading') {
+          const upper = text.toUpperCase();
+          
+          // Case A: Just starting (Suggest INT/EXT)
+          const prefixes = ["INT. ", "EXT. ", "I/E ", "INT./EXT. "];
+          if (text.length < 5 && text.length > 0) {
+               const matches = prefixes.filter(p => p.startsWith(upper) && p !== upper);
+               if (matches.length > 0) {
+                   setSuggestions(matches);
+                   setShowMenu(true);
+                   setSelectedIndex(0);
+                   return;
+               }
+          }
+
+          // Case B: Has Prefix, typing location (Suggest History)
+          // Find if we have a prefix
+          const prefix = prefixes.find(p => upper.startsWith(p));
+          if (prefix && text.length >= prefix.length) {
+              const locationPart = upper.substring(prefix.length); // Everything after "INT. "
+              // Filter locations
+              if (locationPart.length > 0) {
+                  const locMatches = knownLocations.filter(l => 
+                      l.startsWith(locationPart) && l !== locationPart
+                  ).slice(0, 5);
+
+                  if (locMatches.length > 0) {
+                      // Map back to full strings: Prefix + Location
+                      const fullSuggestions = locMatches.map(l => prefix + l);
+                      setSuggestions(fullSuggestions);
+                      setShowMenu(true);
+                      setSelectedIndex(0);
+                      return;
+                  }
+              }
+          }
+      }
+
+      // Default: Hide
+      setShowMenu(false);
+
+  }, [element.content, element.type, isActive, knownCharacters, knownLocations]);
+
+  const confirmSelection = (value: string) => {
+      onChange(element.id, value.toUpperCase());
+      setShowMenu(false);
+      // Wait for React to update value, then move cursor to end
+      setTimeout(() => {
+          if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(value.length, value.length);
+          }
+      }, 0);
+  };
+
+  const handleLocalKeyDown = (e: React.KeyboardEvent) => {
+      if (showMenu && suggestions.length > 0) {
+          if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setSelectedIndex(prev => (prev + 1) % suggestions.length);
+              return;
+          }
+          if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+              return;
+          }
+          if (e.key === 'Enter' || e.key === 'Tab') {
+              e.preventDefault();
+              e.stopPropagation(); // Stop ScriptPage from creating new line
+              confirmSelection(suggestions[selectedIndex]);
+              return;
+          }
+          if (e.key === 'Escape') {
+              e.preventDefault();
+              setShowMenu(false);
+              return;
+          }
+      }
+      
+      // Fallback to parent handler
+      const target = e.target as HTMLTextAreaElement;
+      onKeyDown(e, element.id, element.type, target.selectionStart, target.selectionEnd);
+  };
 
   const getStyles = () => {
     // Styling Base
@@ -88,7 +210,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
                 input: `${base} ${colors.note} text-left italic ${colors.placeholder}`,
                 placeholder: "[[Note]]",
                 indicator: "top-4",
-                style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                style: { paddingLeft: '0in', maxWidth: '6.0in' },
+                menuOffset: '0in'
             };
         }
         if (isCentered) {
@@ -97,7 +220,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
                 input: `${base} ${colors.action} text-center ${colors.placeholder}`,
                 placeholder: "> Centered <",
                 indicator: "top-4",
-                style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                style: { paddingLeft: '0in', maxWidth: '6.0in' },
+                menuOffset: '3.0in'
             };
         }
         if (isSection) {
@@ -106,7 +230,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
                 input: `${base} ${colors.section} font-bold text-left ${colors.placeholder}`,
                 placeholder: "# Section",
                 indicator: "top-8",
-                style: { paddingLeft: '0in', maxWidth: '6.0in' }
+                style: { paddingLeft: '0in', maxWidth: '6.0in' },
+                menuOffset: '0in'
             };
         }
     }
@@ -118,7 +243,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} font-bold uppercase text-left ${colors.heading} ${colors.placeholder}`,
           placeholder: "INT./EXT. SCENE LOCATION - DAY",
           indicator: "top-8", 
-          style: { paddingLeft: '0in', maxWidth: '6.0in' }
+          style: { paddingLeft: '0in', maxWidth: '6.0in' },
+          menuOffset: '0in'
         };
       case 'action':
         return {
@@ -126,7 +252,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} text-left ${colors.action} ${colors.placeholder}`,
           placeholder: "Describe action...",
           indicator: "top-4",
-          style: { paddingLeft: '0in', maxWidth: '6.0in' }
+          style: { paddingLeft: '0in', maxWidth: '6.0in' },
+          menuOffset: '0in'
         };
       case 'character':
         return {
@@ -134,7 +261,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} font-bold uppercase text-left ${colors.character} ${colors.placeholder}`,
           placeholder: "CHARACTER",
           indicator: "top-4",
-          style: { paddingLeft: '2.0in', maxWidth: '5.5in' }
+          style: { paddingLeft: '2.0in', maxWidth: '5.5in' },
+          menuOffset: '2.0in'
         };
       case 'dialogue':
         return {
@@ -142,7 +270,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
           placeholder: "Dialogue",
           indicator: "top-0",
-          style: { paddingLeft: '1.0in', maxWidth: '4.5in' } 
+          style: { paddingLeft: '1.0in', maxWidth: '4.5in' },
+          menuOffset: '1.0in' 
         };
       case 'parenthetical':
         return {
@@ -150,7 +279,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
           placeholder: "(parenthetical)",
           indicator: "top-0",
-          style: { paddingLeft: '1.5in', maxWidth: '3.5in' } 
+          style: { paddingLeft: '1.5in', maxWidth: '3.5in' },
+          menuOffset: '1.5in' 
         };
       case 'transition':
         return {
@@ -158,7 +288,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
           placeholder: "CUT TO:",
           indicator: "top-4",
-          style: { paddingLeft: '4.0in', maxWidth: '6.0in' } 
+          style: { paddingLeft: '4.0in', maxWidth: '6.0in' },
+          menuOffset: '4.0in' 
         };
       default:
         return {
@@ -166,7 +297,8 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
           input: `${base} ${colors.action} ${colors.placeholder}`,
           placeholder: "",
           indicator: "top-4",
-          style: { paddingLeft: '0in', maxWidth: '6.0in' }
+          style: { paddingLeft: '0in', maxWidth: '6.0in' },
+          menuOffset: '0in'
         };
     }
   };
@@ -211,10 +343,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         ref={textareaRef}
         value={element.content}
         onChange={(e) => onChange(element.id, e.target.value)}
-        onKeyDown={(e) => {
-          const target = e.target as HTMLTextAreaElement;
-          onKeyDown(e, element.id, element.type, target.selectionStart, target.selectionEnd);
-        }}
+        onKeyDown={handleLocalKeyDown}
         onFocus={() => onFocus(element.id)}
         className={styles.input}
         style={{
@@ -229,6 +358,15 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
         placeholder={styles.placeholder}
         spellCheck={false}
       />
+
+      {showMenu && (
+          <AutocompleteMenu 
+              suggestions={suggestions} 
+              selectedIndex={selectedIndex} 
+              onSelect={confirmSelection}
+              leftOffset={styles.menuOffset}
+          />
+      )}
     </div>
   );
 };
@@ -243,6 +381,11 @@ export const ScriptBlock = memo(ScriptBlockComponent, (prev, next) => {
         prev.element.sceneNumber === next.element.sceneNumber &&
         prev.isActive === next.isActive &&
         prev.isLightMode === next.isLightMode &&
-        prev.cursorRequest === next.cursorRequest
+        prev.cursorRequest === next.cursorRequest &&
+        // We assume knownCharacters/Locations don't change often enough to break this, 
+        // or we accept they might be stale until next deep render.
+        // For performance, we can do shallow compare on lengths.
+        prev.knownCharacters?.length === next.knownCharacters?.length &&
+        prev.knownLocations?.length === next.knownLocations?.length
     );
 });
