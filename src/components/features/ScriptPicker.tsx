@@ -56,9 +56,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
     usedElementIds,
     onSelect
 }) => {
+    // 1. Hooks MUST come before any conditional returns
+    
     // --- THEME STATE ---
-    // We use a local observer to ensure this component reacts instantly to global theme changes
-    // This avoids CSS selector specificity wars
     const [isLightMode, setIsLightMode] = useState(document.documentElement.classList.contains('light'));
 
     useEffect(() => {
@@ -73,10 +73,9 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
         return () => observer.disconnect();
     }, []);
 
-    if (!isOpen || !sceneId) return null;
-
     // Filter elements for this scene and group them
     const groups = useMemo(() => {
+        if (!sceneId) return [];
         const sceneEls = scriptElements
             .filter(el => el.sceneId === sceneId)
             .sort((a, b) => a.sequence - b.sequence);
@@ -126,7 +125,10 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
         }
     };
 
-    // Style logic based on JS state - Guaranteed to work
+    // 2. Conditional Return
+    if (!isOpen || !sceneId) return null;
+
+    // Style logic based on JS state (Fixes theme issue)
     const paperStyles = isLightMode 
         ? "bg-white border-gray-200 text-black" 
         : "bg-[#1E1E1E] border-[#333] text-[#E0E0E0]";
@@ -163,18 +165,13 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                     const isLinked = group.items.some(item => usedElementIds.has(item.id));
                                     const isHeading = group.items[0].type === 'scene_heading';
                                     
-                                    // PRE-CALCULATE ARROW POSITION
-                                    // We want the arrow to point to:
-                                    // 1. First line of DIALOGUE (if block has dialogue)
-                                    // 2. Or just the Action line (if simple block)
-                                    // 3. Or Transition
-                                    
-                                    let arrowTargetId = group.items[0].id; // Default to first item
-                                    
-                                    // If this is a Character block, find the first Dialogue
+                                    // DETERMINE ARROW TARGET
+                                    // For Dialogue Blocks: Target the first 'dialogue' line
+                                    // For Action Blocks: Target the first element (Action)
+                                    let targetIndex = 0;
                                     if (group.items[0].type === 'character') {
-                                        const dialogue = group.items.find(i => i.type === 'dialogue');
-                                        if (dialogue) arrowTargetId = dialogue.id;
+                                        const dialogIdx = group.items.findIndex(i => i.type === 'dialogue');
+                                        if (dialogIdx !== -1) targetIndex = dialogIdx;
                                     }
 
                                     return (
@@ -188,18 +185,18 @@ export const ScriptPicker: React.FC<ScriptPickerProps> = ({
                                             onClick={() => !isHeading && !isLinked && onSelect(group.items)}
                                         >
                                             {/* Render Items */}
-                                            {group.items.map((item) => {
+                                            {group.items.map((item, itemIdx) => {
                                                 const { className, style } = getElementStyle(item.type);
                                                 
-                                                // Show arrow if this specific item is the target
-                                                const showArrow = !isHeading && !isLinked && item.id === arrowTargetId;
+                                                // Should we show the arrow on this specific line?
+                                                const showArrow = !isHeading && !isLinked && itemIdx === targetIndex;
 
                                                 return (
                                                     <div key={item.id} className={className} style={style}>
-                                                        {/* Arrow Indicator - Rendered DIRECTLY inside the target line */}
+                                                        {/* Arrow Indicator - Rendered Relative to Text Line */}
                                                         {showArrow && (
-                                                            <div className="absolute -left-12 top-0 text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-150 flex items-start h-full pt-0.5">
-                                                                <ChevronRight className="w-5 h-5" strokeWidth={3} />
+                                                            <div className="absolute -left-12 top-[-2px] text-primary opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 duration-150">
+                                                                <ChevronRight className="w-6 h-6" strokeWidth={3} />
                                                             </div>
                                                         )}
                                                         {item.content}
