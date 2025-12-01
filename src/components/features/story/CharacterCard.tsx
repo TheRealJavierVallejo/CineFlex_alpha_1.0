@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { User, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { CharacterDevelopment } from '../../../types';
 import { FieldWithSyd } from './FieldWithSyd';
 
@@ -11,13 +11,13 @@ interface CharacterCardProps {
     activeSydField: string | null;
 }
 
-const ARCHETYPES = [
-    "Dynamic Character",
-    "Flat Character",
-    "Round Character",
-    "Stock Character",
-    "Foil Character",
-    "Static Character"
+const ARCHETYPES_DATA = [
+    { name: "Dynamic Character", desc: "Changes significantly throughout the story (e.g., Breaking Bad's Walter White)" },
+    { name: "Flat Character", desc: "Stays the same from start to finish, no major growth (e.g., Sherlock Holmes)" },
+    { name: "Round Character", desc: "Complex and realistic with multiple dimensions (e.g., Harry Potter)" },
+    { name: "Stock Character", desc: "Stereotypical role with predictable traits (e.g., 'the mentor' or 'comic relief')" },
+    { name: "Foil Character", desc: "Contrasts with protagonist to highlight their traits (e.g., Draco Malfoy to Harry Potter)" },
+    { name: "Static Character", desc: "Remains unchanged despite events (e.g., James Bond)" }
 ];
 
 export const CharacterCard: React.FC<CharacterCardProps> = ({
@@ -28,9 +28,25 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
     activeSydField
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    
+    // Check if current archetype is in our known list
+    const isKnownArchetype = ARCHETYPES_DATA.some(a => a.name === character.archetype);
     const [isCustomArchetype, setIsCustomArchetype] = useState(
-        character.archetype && !ARCHETYPES.includes(character.archetype)
+        !!character.archetype && !isKnownArchetype
     );
+    const [isArchetypeOpen, setIsArchetypeOpen] = useState(false);
+    const archetypeRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (archetypeRef.current && !archetypeRef.current.contains(event.target as Node)) {
+                setIsArchetypeOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
         <div className="bg-surface border border-border rounded-lg p-5 space-y-5 relative transition-colors hover:border-border/80">
@@ -115,26 +131,64 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                                 autoFocus
                             />
                         ) : (
-                            <div className="relative">
-                                <select
-                                    value={character.archetype || ''}
-                                    onChange={(e) => {
-                                        if (e.target.value === 'custom') {
-                                            setIsCustomArchetype(true);
-                                            onChange({ archetype: '' });
-                                        } else {
-                                            onChange({ archetype: e.target.value });
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none appearance-none cursor-pointer pr-10 transition-all"
+                            <div className="relative" ref={archetypeRef}>
+                                <button
+                                    onClick={() => setIsArchetypeOpen(!isArchetypeOpen)}
+                                    className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none text-left flex items-center justify-between transition-all"
                                 >
-                                    <option value="" disabled>Select Archetype...</option>
-                                    {ARCHETYPES.map(a => (
-                                        <option key={a} value={a}>{a}</option>
-                                    ))}
-                                    <option value="custom">Custom...</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-text-muted pointer-events-none" />
+                                    <span className={!character.archetype ? "text-text-muted/50" : ""}>
+                                        {character.archetype || "Select Archetype..."}
+                                    </span>
+                                    <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${isArchetypeOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isArchetypeOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-surface border border-border shadow-xl rounded-md z-50 max-h-60 overflow-y-auto">
+                                        <div className="p-1 space-y-0.5">
+                                            {ARCHETYPES_DATA.map((item) => (
+                                                <button
+                                                    key={item.name}
+                                                    onClick={() => {
+                                                        onChange({ archetype: item.name });
+                                                        setIsArchetypeOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2 rounded-sm transition-colors flex flex-col gap-0.5 group ${
+                                                        character.archetype === item.name 
+                                                            ? 'bg-primary/10' 
+                                                            : 'hover:bg-surface-secondary'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-xs font-medium ${
+                                                            character.archetype === item.name ? 'text-primary' : 'text-text-primary'
+                                                        }`}>
+                                                            {item.name}
+                                                        </span>
+                                                        {character.archetype === item.name && (
+                                                            <Check className="w-3 h-3 text-primary" />
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-text-muted group-hover:text-text-secondary leading-tight">
+                                                        {item.desc}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                            
+                                            <div className="h-[1px] bg-border my-1" />
+                                            
+                                            <button
+                                                onClick={() => {
+                                                    setIsCustomArchetype(true);
+                                                    onChange({ archetype: '' });
+                                                    setIsArchetypeOpen(false);
+                                                }}
+                                                className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-surface-secondary rounded-sm font-medium transition-colors"
+                                            >
+                                                Custom Archetype...
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
