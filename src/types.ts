@@ -193,14 +193,23 @@ export interface CharacterDevelopment {
   role: 'protagonist' | 'antagonist' | 'supporting';
 
   // Arc fields (progressive unlock)
-  physicalDescription?: string;
-  personality?: string;
+  age?: string;         // New: "25", "30s"
+  description?: string; // New: "Appearance, personality"
+  physicalDescription?: string; // Legacy
+  personality?: string; // Legacy
   archetypes?: string[];
+  
   want?: string;        // External goal
   need?: string;        // Internal growth
   lie?: string;         // False belief
   ghost?: string;       // Past trauma
-  characterArc?: string; // Overall arc summary
+  
+  strengths?: string;   // New: Skills/Talents
+  weaknesses?: string;  // New: Flaws
+  
+  characterArc?: string; // Legacy arc field
+  arcSummary?: string;   // New: "How they change"
+  
   notes?: string;
 }
 
