@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Trash2, ChevronDown, ChevronUp, ChevronRight, Check } from 'lucide-react';
+import { User, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { CharacterDevelopment } from '../../../types';
 import { FieldWithSyd } from './FieldWithSyd';
 
@@ -33,23 +33,23 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
     );
 
     return (
-        <div className="bg-surface border border-border rounded-lg p-4 space-y-4 relative group transition-colors hover:border-border/80">
+        <div className="bg-surface border border-border rounded-lg p-5 space-y-5 relative group transition-colors hover:border-border/80">
             {/* Header / Basic Info */}
-            <div className="space-y-4">
+            <div className="space-y-5">
                 {/* Top Bar: Icon + Role + Delete */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center border border-border">
                             <User className="w-4 h-4 text-text-secondary" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-secondary px-2 py-1 rounded border border-border/50">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted bg-surface-secondary px-2 py-1 rounded border border-border/50">
                             {character.role}
                         </span>
                     </div>
                     
                     <button
                         onClick={onDelete}
-                        className="text-text-secondary hover:text-red-500 transition-colors p-1.5 rounded-md hover:bg-surface-secondary"
+                        className="text-text-secondary hover:text-red-500 transition-opacity opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-surface-secondary"
                         title="Delete Character"
                     >
                         <Trash2 className="w-4 h-4" />
@@ -57,18 +57,20 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                 </div>
 
                 {/* Name (Full Width) */}
-                <FieldWithSyd
-                    id={`char-name-${character.id}`}
-                    label="Character Name"
-                    value={character.name}
-                    onChange={(val) => onChange({ name: val })}
-                    onRequestSyd={(el) => onRequestSyd('identity', el)}
-                    isActiveSyd={activeSydField === 'identity'}
-                    placeholder="Enter name..."
-                />
+                <div className="mb-4">
+                    <FieldWithSyd
+                        id={`char-name-${character.id}`}
+                        label="Character Name"
+                        value={character.name}
+                        onChange={(val) => onChange({ name: val })}
+                        onRequestSyd={(el) => onRequestSyd('identity', el)}
+                        isActiveSyd={activeSydField === 'identity'}
+                        placeholder="Enter name..."
+                    />
+                </div>
 
                 {/* Basic Details Grid */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-5">
                     <FieldWithSyd
                         id={`char-age-${character.id}`}
                         label="Age"
@@ -82,8 +84,8 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                     {/* Archetype Selector */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                                Character Archetype (Optional)
+                            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider transition-colors">
+                                Character Archetype
                             </label>
                             {isCustomArchetype && (
                                 <button 
@@ -118,7 +120,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                                             onChange({ archetype: e.target.value });
                                         }
                                     }}
-                                    className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none appearance-none cursor-pointer pr-10"
+                                    className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none appearance-none cursor-pointer pr-10 transition-all"
                                 >
                                     <option value="" disabled>Select Archetype...</option>
                                     {ARCHETYPES.map(a => (
@@ -147,20 +149,22 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
             </div>
 
             {/* Toggle for Deep Fields */}
-            <button 
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-center py-2 text-xs font-medium text-text-muted hover:text-text-primary transition-colors border-t border-border mt-2 gap-2"
-            >
-                {isExpanded ? (
-                    <>Hide Character Arc <ChevronUp className="w-3 h-3" /></>
-                ) : (
-                    <>Develop Character Arc <ChevronDown className="w-3 h-3" /></>
-                )}
-            </button>
+            <div className="pt-2 border-t border-border/50 mt-4">
+                <button 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-full flex items-center justify-center py-2 text-[10px] font-bold text-text-muted hover:text-text-primary transition-colors uppercase tracking-widest gap-2"
+                >
+                    {isExpanded ? (
+                        <>Hide Character Arc <ChevronUp className="w-3 h-3" /></>
+                    ) : (
+                        <>Develop Character Arc <ChevronDown className="w-3 h-3" /></>
+                    )}
+                </button>
+            </div>
 
             {/* Deep Arc Fields */}
             {isExpanded && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-top-1">
                     {/* Row 1: Goals */}
                     <FieldWithSyd
                         id={`char-want-${character.id}`}

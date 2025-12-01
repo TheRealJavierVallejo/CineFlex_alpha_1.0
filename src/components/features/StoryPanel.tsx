@@ -524,8 +524,10 @@ export const StoryPanel: React.FC = () => {
                     <CollapsibleSection
                         title="Cast & Character Arcs"
                         defaultExpanded={false}
-                        rightElement={
-                            <div className="flex gap-2">
+                    >
+                        <div className="space-y-4 pt-4">
+                            {/* Generic Add Character Button (Only visible when expanded) */}
+                            <div className="flex justify-end mb-4">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleAddCharacter(); }}
                                     className="text-[10px] px-3 py-1.5 bg-surface-secondary border border-border rounded-full hover:bg-surface hover:text-primary transition-colors font-bold uppercase tracking-wide flex items-center gap-1.5"
@@ -533,13 +535,11 @@ export const StoryPanel: React.FC = () => {
                                     <UserPlus className="w-3 h-3" /> Add Character
                                 </button>
                             </div>
-                        }
-                    >
-                        <div className="space-y-4 pt-4">
+
                             {characters.length === 0 && (
                                 <div className="text-center py-10 text-text-secondary bg-surface-secondary/30 rounded-lg border border-border/50 border-dashed">
                                     <div className="flex justify-center mb-3">
-                                        <BrainCircuit className="w-8 h-8 opacity-20" />
+                                        <BrainCircuit className="w-10 h-10 opacity-20" />
                                     </div>
                                     <p className="text-sm font-medium">No characters defined</p>
                                     <p className="text-xs text-text-muted mt-1">Add a character to begin building the emotional core.</p>
