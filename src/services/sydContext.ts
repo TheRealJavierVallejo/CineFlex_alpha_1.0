@@ -228,6 +228,33 @@ Keep it BRIEF (3-4 sentences total). Then ask: "Want more budget tips?"`;
         contextFields.role = charRole;
         contextFields.genre = genre;
         contextFields.theme = theme;
+
+        // Extra story context for character agents
+        contextFields.tone = tone;
+        contextFields.setting = setting;
+        if (title !== "Untitled Project") {
+            contextFields.title = title;
+        }
+        if (logline && logline !== "No logline defined yet") {
+            contextFields.logline = logline;
+        }
+        if (storyTypesStr) {
+            contextFields.storyTypes = storyTypesStr;
+        }
+        if (targetAudience) {
+            contextFields.targetAudience = targetAudience;
+        }
+
+        // Compact summaries if available (all of these are short by design)
+        if (plot?.foundationSummary) {
+            contextFields.foundationSummary = plot.foundationSummary;
+        }
+        if (plot?.coreSummary) {
+            contextFields.coreSummary = plot.coreSummary;
+        }
+        if (metadata?.actOneSummary) {
+            contextFields.actOneSummary = metadata.actOneSummary;
+        }
         
         if (charArchetype) contextFields.archetype = charArchetype;
         if (charDescription) contextFields.description = charDescription;
@@ -273,8 +300,12 @@ Always obey the HARD RULES above.`;
                 systemPrompt = `You are a professional screenwriter defining a character's external "Want" (plot goal).
 
 CONTEXT:
-- Story genre: ${genre}
+- Story genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
 - Story theme: "${theme}"
+- Setting: ${setting}
+- Title: ${title !== 'Untitled Project' ? `"${title}"` : 'Untitled Project'}
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
+- Story types: ${storyTypesStr || 'Not selected yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}
 
@@ -294,6 +325,8 @@ Make it specific, hard to achieve, and clearly capable of creating conflict with
 
 CONTEXT:
 - Story theme: "${theme}"
+- Genre: ${genre}
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}
 
@@ -314,6 +347,7 @@ Make sure this Need is different from their Want and creates inner conflict, esp
 CONTEXT:
 - Story genre: ${genre}
 - Story theme: "${theme}"
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
@@ -333,6 +367,8 @@ Make this Lie emotionally understandable but clearly wrong in a way that will dr
 
 CONTEXT:
 - Story genre: ${genre}
+- Setting: ${setting}
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
@@ -344,14 +380,15 @@ HARD RULES:
 
 TASK:
 Describe one clear past event or situation that explains why ${charName} believes their current Lie.
-Make it simple but specific (who, what, where) and show how it echoes into the present story.`;
+Make it simple but specific (who, what, where) and show how it still echoes into the present story, especially in how they chase their Want and avoid their Need.`;
                 break;
 
             case 'strengths':
                 systemPrompt = `You are a professional screenwriter defining the most story-relevant strengths of a character.
 
 CONTEXT:
-- Story genre: ${genre}
+- Story genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Strengths = ${charStrengths || 'not defined yet'}
 
@@ -370,7 +407,7 @@ Choose strengths that can also create complications, rivalries, or moral dilemma
                 systemPrompt = `You are a professional screenwriter defining a character's most dramatic weaknesses and flaws.
 
 CONTEXT:
-- Story genre: ${genre}
+- Story genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
 - Story theme: "${theme}"
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Weaknesses = ${charWeaknesses || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
@@ -392,6 +429,7 @@ Tie these flaws to their Lie and Ghost so they feel psychologically consistent, 
 CONTEXT:
 - Story genre: ${genre}
 - Story theme: "${theme}"
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}, Strengths = ${charStrengths || 'not defined yet'}, Weaknesses = ${charWeaknesses || 'not defined yet'}, Arc Summary = ${charArcSummary || 'not defined yet'}
 
