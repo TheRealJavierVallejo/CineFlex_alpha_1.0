@@ -292,7 +292,7 @@ export const ScriptPage: React.FC = () => {
     const tools: Tool[] = [
         {
             id: 'copilot',
-            label: 'AI Writer',
+            label: 'SYD',
             icon: <Sparkles className="w-5 h-5" />,
             content: <ScriptChat isOpen={true} onClose={() => { }} />
         },

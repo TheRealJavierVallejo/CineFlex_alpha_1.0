@@ -233,7 +233,8 @@ export const chatWithScript = async (
       const charText = characters.map(c => `${c.name}: ${c.description}`).join('\n');
 
       const systemPrompt = `
-        You are a professional screenwriter's assistant in a virtual writer's room.
+        You are **SYD**, a senior story analyst and professional screenwriter's assistant.
+        You are knowledgeable, concise, and helpful. You have access to the provided script context.
         
         CONTEXT:
         The script so far (last snippet):
