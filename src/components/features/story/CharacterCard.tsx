@@ -275,8 +275,8 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                         label="Strengths"
                         value={character.strengths || ''}
                         onChange={(val) => onChange({ strengths: val })}
-                        onRequestSyd={(el) => onRequestSyd('identity', el)}
-                        isActiveSyd={activeSydField === 'identity'}
+                        onRequestSyd={(el) => onRequestSyd('strengths', el)}
+                        isActiveSyd={activeSydField === 'strengths'}
                         placeholder="Skills, talents, positive traits..."
                         multiline
                     />
@@ -285,8 +285,8 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                         label="Weaknesses / Flaws"
                         value={character.weaknesses || ''}
                         onChange={(val) => onChange({ weaknesses: val })}
-                        onRequestSyd={(el) => onRequestSyd('identity', el)}
-                        isActiveSyd={activeSydField === 'identity'}
+                        onRequestSyd={(el) => onRequestSyd('weaknesses', el)}
+                        isActiveSyd={activeSydField === 'weaknesses'}
                         placeholder="Vulnerabilities, bad habits..."
                         multiline
                     />
