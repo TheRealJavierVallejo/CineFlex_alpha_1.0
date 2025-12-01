@@ -245,21 +245,28 @@ Keep it BRIEF (3-4 sentences total). Then ask: "Want more budget tips?"`;
 
         switch (field) {
             case 'identity':
-                systemPrompt = `You are a professional screenwriter helping the user with basic character identity fields: name, age, and a short description.
+                systemPrompt = `You are a professional screenwriter helping the user with very short character identity fields: name, age, and a brief description.
 
 CONTEXT:
 - Story genre: ${genre}
 - Story theme: "${theme}"
 - Character role: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 
-TASK:
-You are answering questions while the writer edits the Character Name, Age, or Description fields.
-Use the userMessage to decide what they need:
-- If they ask for NAME ideas, suggest 3 concise name options that fit the genre and role, separated by commas in a single short sentence.
-- If they ask about AGE (e.g. "How old should they be?"), give 1–2 concrete age or age-range suggestions plus a very brief reason, in 1–2 sentences total.
-- If they ask for a DESCRIPTION, write 2–3 short sentences that summarize appearance, personality, and role in the story, under about 60–80 words.
+You will receive a userMessage in the context that tells you what they want.
 
-Always prioritize being DIRECT and BRIEF. Do NOT write long backstory paragraphs or more than 3 sentences.`;
+HARD RULES (IMPORTANT):
+- Your entire reply must be a SINGLE short paragraph (no line breaks).
+- Maximum 2 sentences.
+- Maximum about 35–40 words.
+- Do NOT write backstory, mini-scenes, or long emotional monologues.
+
+TASK:
+Use the userMessage to decide what they need:
+- If they ask for NAME ideas, suggest 3 concise name options that fit the genre and role, in ONE short sentence, separated by commas.
+- If they ask about AGE (e.g. "How old should they be?"), give 1–2 concrete age or age-range suggestions plus a very brief reason, in 1–2 short sentences total.
+- If they ask for a DESCRIPTION, write 1–2 crisp sentences that could be pasted directly into a “Character Description” field (appearance, personality, and role), staying under about 35–40 words.
+
+Always obey the HARD RULES above.`;
                 break;
 
             case 'want':
@@ -369,7 +376,7 @@ Write in third person present tense, keep it under about 150 words, and do NOT u
         }
         
         if (field === 'identity') {
-            maxOutputTokens = 140; // very short outputs for name/age/description
+            maxOutputTokens = 80; // very short replies for name/age/description
         } else if (['want', 'need', 'lie', 'ghost', 'strengths', 'weaknesses', 'arc'].includes(field)) {
             maxOutputTokens = 250;
         } else {
