@@ -152,41 +152,45 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
     // --- STATUS HEADER LOGIC ---
     let statusElement = null;
+    const baseStatusClasses = "flex items-center gap-2 text-text-primary text-xs font-bold px-2.5 py-1.5 bg-primary/10 rounded border border-primary/20 shadow-sm w-full justify-center transition-all";
     
     if (tier === 'free') {
         if (error) {
              statusElement = (
-                <div className="flex items-center gap-2 text-red-300 text-xs font-bold px-2.5 py-1.5 bg-red-900/40 rounded border border-red-500/50 shadow-sm w-full justify-center">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Error: {error.slice(0, 15)}...</span>
+                <div className={baseStatusClasses}>
+                    <AlertCircle className="w-3.5 h-3.5 text-text-primary" />
+                    <span className="text-text-primary">Error: {error.slice(0, 15)}...</span>
                 </div>
              );
         } else if (isDownloading) {
              statusElement = (
-                <div className="flex items-center gap-2 text-yellow-300 text-xs font-bold px-2.5 py-1.5 bg-yellow-900/40 rounded border border-yellow-500/50 shadow-sm w-full justify-center animate-pulse">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Warming up: {downloadProgress}%</span>
+                <div className={baseStatusClasses}>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-text-primary" />
+                    <span className="text-text-primary">Warming up: {downloadProgress}%</span>
                 </div>
              );
         } else if (isGenerating) {
              statusElement = (
-                <div className="flex items-center gap-2 text-blue-200 text-xs font-bold px-2.5 py-1.5 bg-blue-900/40 rounded border border-blue-500/50 shadow-sm w-full justify-center animate-pulse">
-                    <BrainCircuit className="w-3.5 h-3.5 animate-pulse" />
-                    <span>Generating Response...</span>
+                <div className={baseStatusClasses}>
+                    <BrainCircuit className="w-3.5 h-3.5 animate-pulse text-text-primary" />
+                    <span className="text-text-primary">Generating Response...</span>
                 </div>
              );
         } else if (!isReady) {
              statusElement = (
-                <button onClick={initModel} className="flex items-center justify-center gap-2 text-text-primary hover:text-white text-xs font-bold px-3 py-1.5 bg-surface hover:bg-primary/20 rounded border border-border hover:border-primary transition-all w-full shadow-sm">
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Load Engine</span>
+                <button 
+                    onClick={initModel} 
+                    className={`${baseStatusClasses} hover:bg-primary/20 cursor-pointer`}
+                >
+                    <Download className="w-3.5 h-3.5 text-text-primary" />
+                    <span className="text-text-primary">Load Engine</span>
                 </button>
              );
         } else {
             statusElement = (
-                <div className="flex items-center gap-2 text-green-400 text-xs font-bold px-2.5 py-1.5 bg-green-900/20 rounded border border-green-500/30 shadow-sm w-full justify-center">
-                    <Cpu className="w-3.5 h-3.5" />
-                    <span>Syd Jr. Ready</span>
+                <div className={baseStatusClasses}>
+                    <Cpu className="w-3.5 h-3.5 text-text-primary" />
+                    <span className="text-text-primary">Syd Jr. Ready</span>
                 </div>
             );
         }
@@ -194,16 +198,16 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
         // PRO TIER (Cloud)
         if (isGenerating) {
             statusElement = (
-                <div className="flex items-center gap-2 text-purple-300 text-xs font-bold px-2.5 py-1.5 bg-purple-900/30 rounded border border-purple-500/30 shadow-sm w-full justify-center animate-pulse">
-                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
-                    <span>Syd Pro Thinking...</span>
+                <div className={baseStatusClasses}>
+                    <Sparkles className="w-3.5 h-3.5 animate-spin text-text-primary" />
+                    <span className="text-text-primary">Syd Pro Thinking...</span>
                 </div>
             );
         } else {
             statusElement = (
-                <div className="flex items-center gap-2 text-primary text-xs font-bold px-2.5 py-1.5 bg-primary/10 rounded border border-primary/20 shadow-sm w-full justify-center">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Syd Pro Active</span>
+                <div className={baseStatusClasses}>
+                    <Sparkles className="w-3.5 h-3.5 text-text-primary" />
+                    <span className="text-text-primary">Syd Pro Active</span>
                 </div>
             );
         }
