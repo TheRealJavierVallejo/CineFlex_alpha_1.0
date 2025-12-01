@@ -6,7 +6,7 @@ interface FieldWithSydProps {
     label: string;
     value: string;
     onChange: (value: string) => void;
-    disabled?: boolean;
+    // disabled?: boolean; // REMOVED DISABLED PROP
     multiline?: boolean;
     onRequestSyd: (element: HTMLElement) => void;
     isActiveSyd: boolean;
@@ -19,7 +19,7 @@ export const FieldWithSyd: React.FC<FieldWithSydProps> = ({
     label,
     value,
     onChange,
-    disabled = false,
+    // disabled = false, // REMOVED DISABLED PROP
     multiline = false,
     onRequestSyd,
     isActiveSyd,
@@ -64,9 +64,9 @@ export const FieldWithSyd: React.FC<FieldWithSydProps> = ({
                         id={id}
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        disabled={disabled}
+                        // disabled={disabled} // REMOVED DISABLED PROP
                         placeholder={placeholder}
-                        className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none resize-none disabled:opacity-50 transition-all leading-relaxed placeholder:text-text-muted/50"
+                        className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none resize-none transition-all leading-relaxed placeholder:text-text-muted/50"
                         style={{ minHeight }}
                     />
                 ) : (
@@ -75,9 +75,9 @@ export const FieldWithSyd: React.FC<FieldWithSydProps> = ({
                         type="text"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        disabled={disabled}
+                        // disabled={disabled} // REMOVED DISABLED PROP
                         placeholder={placeholder}
-                        className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none disabled:opacity-50 transition-all placeholder:text-text-muted/50"
+                        className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none transition-all placeholder:text-text-muted/50"
                     />
                 )}
 
@@ -85,7 +85,7 @@ export const FieldWithSyd: React.FC<FieldWithSydProps> = ({
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
                     <button
                         onClick={handleSydClick}
-                        disabled={disabled}
+                        // disabled={disabled} // REMOVED DISABLED PROP
                         className={`
                             p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm
                             ${isActiveSyd
