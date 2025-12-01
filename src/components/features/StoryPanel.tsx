@@ -386,19 +386,21 @@ export const StoryPanel: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {/* Syd Button */}
-                                    <button 
-                                        onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement as HTMLElement)}
-                                        className={`
-                                            absolute right-2 top-2 p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm
-                                            ${activeSydField === 'story_types'
-                                                ? 'bg-primary text-white border border-primary'
-                                                : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50 opacity-0 group-hover:opacity-100 focus-within:opacity-100'}
-                                        `}
-                                        title="Ask Syd for suggestions"
-                                    >
-                                        <Sparkles className="w-3.5 h-3.5" />
-                                    </button>
+                                    {/* Syd Button for Story Types */}
+                                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+                                        <button 
+                                            onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement?.parentElement as HTMLElement)}
+                                            className={`
+                                                p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm
+                                                ${activeSydField === 'story_types'
+                                                    ? 'bg-primary text-white border border-primary'
+                                                    : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
+                                            `}
+                                            title="Ask Syd for story type suggestions"
+                                        >
+                                            <Sparkles className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
