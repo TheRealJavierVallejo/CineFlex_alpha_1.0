@@ -22,6 +22,7 @@ import { BeatCard } from './story/BeatCard';
 import { SydPopoutPanel } from './SydPopoutPanel';
 import { useStoryProgress } from '../../hooks/useStoryProgress';
 import { summarizer } from '../../services/syd/summarizer';
+import { ModelDownloadModal } from '../ui/ModelDownloadModal';
 
 // Save the Cat beat names
 const STORY_BEAT_NAMES = [
@@ -40,7 +41,7 @@ const BEAT_AGENT_TYPES: SydAgentType[] = [
 
 export const StoryPanel: React.FC = () => {
     const { project, showToast } = useWorkspace();
-    const { isReady, generateMicroAgent, initModel, isModelCached } = useLocalLlm();
+    const { isReady, generateMicroAgent, initModel, isModelCached, isSupported } = useLocalLlm();
     const { tier } = useSubscription();
 
     // Data State
@@ -54,6 +55,8 @@ export const StoryPanel: React.FC = () => {
     const [activeSydField, setActiveSydField] = useState<string | null>(null);
     const [sydContext, setSydContext] = useState<SydContext | null>(null);
     const [sydAnchor, setSydAnchor] = useState<HTMLElement | null>(null);
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
+    const [pendingSydRequest, setPendingSydRequest] = useState<{ agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string } | null>(null);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -119,6 +122,14 @@ export const StoryPanel: React.FC = () => {
         });
     }, [project]);
 
+    // Retry pending request after download/init
+    useEffect(() => {
+        if (isReady && pendingSydRequest) {
+            handleRequestSyd(pendingSydRequest.agentType, pendingSydRequest.fieldId, pendingSydRequest.anchorEl, pendingSydRequest.charId);
+            setPendingSydRequest(null);
+        }
+    }, [isReady, pendingSydRequest]);
+
     // Save Handlers
     const handlePlotChange = async (updates: Partial<PlotDevelopment>) => {
         const newPlot = { ...plot, ...updates };
@@ -155,19 +166,30 @@ export const StoryPanel: React.FC = () => {
         await saveStoryBeats(project.id, newBeats);
     };
 
-    // Syd Interaction
+    // Syd Interaction (The Gatekeeper)
     const handleRequestSyd = async (agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string) => {
         if (activeSydField === fieldId) {
             handleCloseSyd();
             return;
         }
 
-        if (!isReady && tier === 'free') {
-            if (isModelCached) {
-                await initModel();
-            } else {
-                showToast('Download Syd Jr. first from Settings', 'info');
+        // --- READINESS CHECK ---
+        if (tier === 'free') {
+            if (!isSupported) {
+                showToast("Your browser does not support Local AI (WebGPU).", 'error');
                 return;
+            }
+
+            if (!isReady) {
+                if (isModelCached) {
+                    // Cached but cold: Start warming up and proceed to open UI (UI will show "Warming up")
+                    initModel(); 
+                } else {
+                    // Not cached: Must download first. Stop and show modal.
+                    setPendingSydRequest({ agentType, fieldId, anchorEl, charId });
+                    setShowDownloadModal(true);
+                    return;
+                }
             }
         }
 
@@ -208,6 +230,16 @@ export const StoryPanel: React.FC = () => {
 
     return (
         <>
+            <ModelDownloadModal 
+                isOpen={showDownloadModal}
+                onClose={() => { setShowDownloadModal(false); setPendingSydRequest(null); }}
+                onConfirm={() => {
+                    initModel();
+                    setShowDownloadModal(false);
+                    // Pending request will trigger via useEffect when isReady becomes true
+                }}
+            />
+
             <div ref={scrollContainerRef} className="h-full overflow-y-auto bg-background pb-32">
                 {/* Header (Native Feel) */}
                 <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-8 py-6">
@@ -343,10 +375,22 @@ export const StoryPanel: React.FC = () => {
                             ))}
                         </div>
                     </CollapsibleSection>
+                    
+                    {/* 4. BRAINSTORMING (Free form) */}
+                    <CollapsibleSection title="Brainstorming Notes" className="border-none">
+                         <div className="pt-4">
+                             <textarea 
+                                className="w-full bg-surface-secondary/50 border border-border rounded-lg p-4 min-h-[200px] text-sm text-text-primary focus:border-primary focus:outline-none transition-colors leading-relaxed placeholder:text-text-muted/30"
+                                placeholder="Free space for random ideas, dialogue snippets, or notes..."
+                                onChange={(e) => handlePlotChange({ notes: e.target.value })}
+                                value={plot.notes || ''}
+                             />
+                         </div>
+                    </CollapsibleSection>
                 </div>
             </div>
 
-            {/* Inline Syd Popout - Z-INDEX 70 (Highest Overlay) */}
+            {/* Inline Syd Popout - Z-INDEX 100 (Highest Overlay) */}
             <SydPopoutPanel
                 isOpen={!!activeSydField}
                 context={sydContext}
