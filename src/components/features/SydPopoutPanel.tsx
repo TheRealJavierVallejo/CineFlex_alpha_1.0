@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles, X, Send, Loader2, Cpu, Zap, AlertCircle, Download } from 'lucide-react';
+import { Sparkles, X, Send, Loader2, Cpu, Zap, AlertCircle, Download, BrainCircuit } from 'lucide-react';
 import { SydContext } from '../../services/sydContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
@@ -63,7 +63,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     // 2. Auto-scroll on new messages or status changes
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages.length, isReady, downloadText]);
+    }, [messages.length, isReady, downloadText, isGenerating]);
 
     // 3. Optimized Positioning Loop
     useEffect(() => {
@@ -149,40 +149,57 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     if (tier === 'free') {
         if (error) {
              statusElement = (
-                <div className="flex items-center gap-2 text-red-400 text-[10px] font-bold px-2 py-1 bg-red-900/20 rounded border border-red-900/50">
-                    <AlertCircle className="w-3 h-3" />
+                <div className="flex items-center gap-2 text-red-300 text-xs font-bold px-2.5 py-1.5 bg-red-900/40 rounded border border-red-500/50 shadow-sm w-full justify-center">
+                    <AlertCircle className="w-3.5 h-3.5" />
                     <span>Error: {error.slice(0, 15)}...</span>
                 </div>
              );
         } else if (isDownloading) {
              statusElement = (
-                <div className="flex items-center gap-2 text-yellow-500 text-[10px] font-bold px-2 py-1 bg-yellow-900/20 rounded border border-yellow-900/50">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>{downloadText || "Loading..."} ({downloadProgress}%)</span>
+                <div className="flex items-center gap-2 text-yellow-300 text-xs font-bold px-2.5 py-1.5 bg-yellow-900/40 rounded border border-yellow-500/50 shadow-sm w-full justify-center animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Warming up: {downloadProgress}%</span>
+                </div>
+             );
+        } else if (isGenerating) {
+             statusElement = (
+                <div className="flex items-center gap-2 text-blue-200 text-xs font-bold px-2.5 py-1.5 bg-blue-900/40 rounded border border-blue-500/50 shadow-sm w-full justify-center animate-pulse">
+                    <BrainCircuit className="w-3.5 h-3.5 animate-pulse" />
+                    <span>Generating Response...</span>
                 </div>
              );
         } else if (!isReady) {
              statusElement = (
-                <button onClick={initModel} className="flex items-center gap-2 text-text-secondary hover:text-primary text-[10px] font-bold px-2 py-1 bg-surface rounded border border-border hover:border-primary transition-colors">
-                    <Download className="w-3 h-3" />
+                <button onClick={initModel} className="flex items-center justify-center gap-2 text-text-primary hover:text-white text-xs font-bold px-3 py-1.5 bg-surface hover:bg-primary/20 rounded border border-border hover:border-primary transition-all w-full shadow-sm">
+                    <Download className="w-3.5 h-3.5" />
                     <span>Load Engine</span>
                 </button>
              );
         } else {
             statusElement = (
-                <div className="flex items-center gap-2 text-green-500 text-[10px] font-bold px-2 py-1 bg-green-900/20 rounded border border-green-900/50">
-                    <Cpu className="w-3 h-3" />
-                    <span>Syd Jr. Active</span>
+                <div className="flex items-center gap-2 text-green-400 text-xs font-bold px-2.5 py-1.5 bg-green-900/20 rounded border border-green-500/30 shadow-sm w-full justify-center">
+                    <Cpu className="w-3.5 h-3.5" />
+                    <span>Syd Jr. Ready</span>
                 </div>
             );
         }
     } else {
-        statusElement = (
-            <div className="flex items-center gap-2 text-primary text-[10px] font-bold px-2 py-1 bg-primary/10 rounded border border-primary/20">
-                <Sparkles className="w-3 h-3" />
-                <span>Syd Pro</span>
-            </div>
-        );
+        // PRO TIER (Cloud)
+        if (isGenerating) {
+            statusElement = (
+                <div className="flex items-center gap-2 text-purple-300 text-xs font-bold px-2.5 py-1.5 bg-purple-900/30 rounded border border-purple-500/30 shadow-sm w-full justify-center animate-pulse">
+                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                    <span>Syd Pro Thinking...</span>
+                </div>
+            );
+        } else {
+            statusElement = (
+                <div className="flex items-center gap-2 text-primary text-xs font-bold px-2.5 py-1.5 bg-primary/10 rounded border border-primary/20 shadow-sm w-full justify-center">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Syd Pro Active</span>
+                </div>
+            );
+        }
     }
 
     return (
@@ -192,21 +209,23 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             style={panelStyle}
         >
             {/* Header */}
-            <div className="h-10 bg-surface-secondary/80 border-b border-border flex items-center justify-between px-3 shrink-0">
-                <div className="flex items-center gap-2">
-                    {statusElement}
+            <div className="bg-surface-secondary/90 border-b border-border p-2 shrink-0">
+                <div className="flex items-center justify-between mb-2 px-1">
                     {context && (
-                        <span className="text-[9px] text-text-muted uppercase tracking-wider font-mono border-l border-white/10 pl-2">
+                        <span className="text-[10px] text-text-muted uppercase tracking-wider font-mono font-bold">
                             {context.agentType.replace(/_/g, ' ')}
                         </span>
                     )}
+                    <button
+                        onClick={onClose}
+                        className="text-text-secondary hover:text-text-primary transition-colors p-1 hover:bg-white/5 rounded"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
                 </div>
-                <button
-                    onClick={onClose}
-                    className="text-text-secondary hover:text-text-primary transition-colors p-1 hover:bg-white/5 rounded"
-                >
-                    <X className="w-3.5 h-3.5" />
-                </button>
+                
+                {/* Status Bar */}
+                {statusElement}
             </div>
 
             {/* Messages Area */}
@@ -242,10 +261,11 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 ))}
 
                 {isGenerating && (
-                    <div className="flex items-center gap-2 text-text-secondary text-xs pl-2 animate-pulse">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce delay-75" />
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce delay-150" />
+                    <div className="flex items-center gap-2 text-text-secondary text-xs pl-2 py-2">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-[10px] text-text-muted ml-2 animate-pulse">Thinking...</span>
                     </div>
                 )}
                 <div ref={messagesEndRef} />
