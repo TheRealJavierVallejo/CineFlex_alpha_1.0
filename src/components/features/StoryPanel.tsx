@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, X, Loader2, Check } from 'lucide-react';
+import { BookOpen, X, Loader2, Check, BrainCircuit } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -38,12 +38,7 @@ const BEAT_AGENT_TYPES: SydAgentType[] = [
     'beat_break_into_three', 'beat_finale', 'beat_final_image'
 ];
 
-interface StoryPanelProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
-
-export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
+export const StoryPanel: React.FC = () => {
     const { project, showToast } = useWorkspace();
     const { isReady, generateMicroAgent, initModel, isModelCached } = useLocalLlm();
     const { tier } = useSubscription();
@@ -70,21 +65,16 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
         if (!isReady) return;
 
         const checkAndSummarize = async () => {
-            // 1. Foundation Summary (Genre/Theme/Tone)
             if (progress.foundationComplete && !plot.foundationSummary) {
                 const content = `Genre: ${plot.genre}\nTheme: ${plot.theme}\nTone: ${plot.tone}`;
                 const summary = await summarizer.generateSummary(content, 50, generateMicroAgent);
                 handlePlotChange({ foundationSummary: summary });
             }
-
-            // 2. Core Summary (Title/Logline)
             if (progress.coreComplete && !plot.coreSummary) {
                 const content = `Title: ${plot.title}\nLogline: ${plot.logline}`;
                 const summary = await summarizer.generateSummary(content, 50, generateMicroAgent);
                 handlePlotChange({ coreSummary: summary });
             }
-
-            // 3. Act 1 Summary
             if (progress.actOneComplete && !metadata.actOneSummary) {
                 const act1Content = beats.slice(0, 6).map(b => `${b.beatName}: ${b.content}`).join('\n');
                 const summary = await summarizer.generateSummary(act1Content, 100, generateMicroAgent);
@@ -93,14 +83,13 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
             }
         };
 
-        // Debounce slightly to avoid rapid firing
         const timer = setTimeout(checkAndSummarize, 2000);
         return () => clearTimeout(timer);
-    }, [progress, isReady, plot, beats, metadata, project.id, generateMicroAgent]);
+    }, [progress, isReady, plot, beats, metadata, project?.id, generateMicroAgent]);
 
     // Load Data
     useEffect(() => {
-        if (!project || !isOpen) return;
+        if (!project) return;
 
         setIsLoading(true);
         Promise.all([
@@ -128,7 +117,7 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
             setMetadata(metaData);
             setIsLoading(false);
         });
-    }, [project, isOpen]);
+    }, [project]);
 
     // Save Handlers
     const handlePlotChange = async (updates: Partial<PlotDevelopment>) => {
@@ -167,14 +156,12 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
     };
 
     // Syd Interaction
-    const handleRequestSyd = async (agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement) => {
-        // If clicking same field, close it
+    const handleRequestSyd = async (agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string) => {
         if (activeSydField === fieldId) {
             handleCloseSyd();
             return;
         }
 
-        // Initialize model if needed
         if (!isReady && tier === 'free') {
             if (isModelCached) {
                 await initModel();
@@ -184,10 +171,12 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
             }
         }
 
+        const character = charId ? characters.find(c => c.id === charId) : undefined;
+
         const context = selectContextForAgent(
             agentType,
             plot,
-            undefined, // TODO: Pass specific character context if needed
+            character,
             beats,
             metadata
         );
@@ -213,164 +202,151 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({ isOpen, onClose }) => {
         );
     };
 
+    if (!project) {
+        return <div className="p-8 text-text-secondary">No project loaded</div>;
+    }
+
     return (
         <>
-            {/* Main Slide-out Panel - Z-INDEX 30 (Below Sidebar & Header) */}
-            <div
-                className={`
-                    fixed top-12 left-[50px] bottom-0 w-[400px] bg-surface border-r border-border z-30
-                    transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col
-                    ${isOpen ? 'translate-x-0 shadow-2xl pointer-events-auto' : '-translate-x-full shadow-none pointer-events-none'}
-                `}
-            >
-                {/* Header */}
-                <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
-                    <div className="flex items-center gap-3 text-text-primary font-semibold">
-                        <BookOpen className="w-5 h-5 text-primary" />
-                        Story Development
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-surface-secondary rounded transition-colors text-text-secondary hover:text-text-primary"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+            <div ref={scrollContainerRef} className="h-full overflow-y-auto bg-background pb-32">
+                {/* Header (Native Feel) */}
+                <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-8 py-6">
+                    <h1 className="text-xl font-bold text-text-primary tracking-tight">Story Development</h1>
+                    <p className="text-sm text-text-secondary mt-1 max-w-md">
+                        Define the soul of your story. Use Syd to brainstorm, refine, and structure your narrative.
+                    </p>
                 </div>
 
-                {/* Content */}
-                <div
-                    ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto p-6 space-y-6 relative"
-                >
-                    {isLoading ? (
-                        <div className="flex items-center justify-center h-40 text-text-secondary">
-                            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                            Loading story data...
+                <div className="p-8 space-y-12 max-w-3xl mx-auto">
+
+                    {/* 1. FOUNDATION */}
+                    <CollapsibleSection
+                        title="Plot Foundation"
+                        defaultExpanded={true}
+                        rightElement={progress.foundationComplete ? <Check className="w-5 h-5 text-green-500" /> : null}
+                    >
+                        <div className="space-y-8 pt-4">
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Genre</label>
+                                    <input
+                                        value={plot.genre || ''}
+                                        onChange={(e) => handlePlotChange({ genre: e.target.value })}
+                                        className="w-full px-3 py-2.5 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors"
+                                        placeholder="Sci-Fi"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Theme</label>
+                                    <input
+                                        value={plot.theme || ''}
+                                        onChange={(e) => handlePlotChange({ theme: e.target.value })}
+                                        className="w-full px-3 py-2.5 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors"
+                                        placeholder="Hope vs. Fear"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Tone</label>
+                                    <input
+                                        value={plot.tone || ''}
+                                        onChange={(e) => handlePlotChange({ tone: e.target.value })}
+                                        className="w-full px-3 py-2.5 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors"
+                                        placeholder="Dark & Gritty"
+                                    />
+                                </div>
+                            </div>
+
+                            <FieldWithSyd
+                                id="title"
+                                label="Working Title"
+                                value={plot.title || ''}
+                                onChange={(val) => handlePlotChange({ title: val })}
+                                disabled={!progress.foundationComplete}
+                                onRequestSyd={(el) => handleRequestSyd('title', 'title', el)}
+                                isActiveSyd={activeSydField === 'title'}
+                                placeholder="Enter title or ask Syd to brainstorm..."
+                            />
+
+                            <FieldWithSyd
+                                id="logline"
+                                label="Logline (The Hook)"
+                                value={plot.logline || ''}
+                                onChange={(val) => handlePlotChange({ logline: val })}
+                                disabled={!progress.foundationComplete}
+                                multiline={true}
+                                minHeight="120px"
+                                onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
+                                isActiveSyd={activeSydField === 'logline'}
+                                placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
+                            />
                         </div>
-                    ) : (
-                        <>
-                            {/* Plot Foundation */}
-                            <CollapsibleSection
-                                title="Plot Foundation"
-                                defaultExpanded={true}
-                                rightElement={progress.foundationComplete ? <Check className="w-4 h-4 text-green-500" /> : null}
-                            >
-                                <div className="space-y-4 pt-2">
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-text-secondary">Genre</label>
-                                            <input
-                                                value={plot.genre || ''}
-                                                onChange={(e) => handlePlotChange({ genre: e.target.value })}
-                                                className="w-full px-3 py-2 bg-surface border border-border rounded text-text-primary text-sm focus:border-primary focus:outline-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-text-secondary">Theme</label>
-                                            <input
-                                                value={plot.theme || ''}
-                                                onChange={(e) => handlePlotChange({ theme: e.target.value })}
-                                                className="w-full px-3 py-2 bg-surface border border-border rounded text-text-primary text-sm focus:border-primary focus:outline-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-text-secondary">Tone</label>
-                                            <input
-                                                value={plot.tone || ''}
-                                                onChange={(e) => handlePlotChange({ tone: e.target.value })}
-                                                className="w-full px-3 py-2 bg-surface border border-border rounded text-text-primary text-sm focus:border-primary focus:outline-none"
-                                            />
-                                        </div>
+                    </CollapsibleSection>
+
+                    {/* 2. CHARACTERS */}
+                    <CollapsibleSection
+                        title="Cast & Character Arcs"
+                        rightElement={
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter('protagonist'); }}
+                                    className="text-[10px] px-3 py-1.5 bg-surface-secondary border border-border rounded-full hover:bg-surface hover:text-primary transition-colors font-bold uppercase tracking-wide"
+                                >
+                                    + Protag
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter('antagonist'); }}
+                                    className="text-[10px] px-3 py-1.5 bg-surface-secondary border border-border rounded-full hover:bg-surface hover:text-primary transition-colors font-bold uppercase tracking-wide"
+                                >
+                                    + Antag
+                                </button>
+                            </div>
+                        }
+                        isLocked={!progress.coreComplete}
+                    >
+                        <div className="space-y-4 pt-4">
+                            {characters.length === 0 && (
+                                <div className="text-center py-10 text-text-secondary bg-surface-secondary/30 rounded-lg border border-border/50 border-dashed">
+                                    <div className="flex justify-center mb-3">
+                                        <BrainCircuit className="w-8 h-8 opacity-20" />
                                     </div>
-
-                                    <FieldWithSyd
-                                        id="title"
-                                        label="Title"
-                                        value={plot.title || ''}
-                                        onChange={(val) => handlePlotChange({ title: val })}
-                                        disabled={!progress.foundationComplete}
-                                        onRequestSyd={(el) => handleRequestSyd('title', 'title', el)}
-                                        isActiveSyd={activeSydField === 'title'}
-                                        placeholder="Working Title"
-                                    />
-
-                                    <FieldWithSyd
-                                        id="logline"
-                                        label="Logline"
-                                        value={plot.logline || ''}
-                                        onChange={(val) => handlePlotChange({ logline: val })}
-                                        disabled={!progress.foundationComplete}
-                                        multiline={true}
-                                        onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
-                                        isActiveSyd={activeSydField === 'logline'}
-                                        placeholder="One-sentence pitch..."
-                                    />
+                                    <p className="text-sm font-medium">No characters defined</p>
+                                    <p className="text-xs text-text-muted mt-1">Add a Protagonist to begin building the emotional core.</p>
                                 </div>
-                            </CollapsibleSection>
+                            )}
+                            {characters.map(char => (
+                                <CharacterCard
+                                    key={char.id}
+                                    character={char}
+                                    onChange={(updates) => handleCharacterChange(char.id, updates)}
+                                    onDelete={() => handleDeleteCharacter(char.id)}
+                                    onRequestSyd={(fieldSuffix, el) => handleRequestSyd(`character_${fieldSuffix}` as SydAgentType, `char-${char.id}-${fieldSuffix}`, el, char.id)}
+                                    activeSydField={activeSydField?.startsWith(`char-${char.id}`) ? activeSydField.split('-').pop() || null : null}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleSection>
 
-                            {/* Characters */}
-                            <CollapsibleSection
-                                title="Characters"
-                                rightElement={
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleAddCharacter('protagonist'); }}
-                                            className="text-[10px] px-2 py-1 bg-surface-secondary border border-border rounded hover:bg-surface hover:text-primary transition-colors"
-                                        >
-                                            + PROTAG
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleAddCharacter('antagonist'); }}
-                                            className="text-[10px] px-2 py-1 bg-surface-secondary border border-border rounded hover:bg-surface hover:text-primary transition-colors"
-                                        >
-                                            + ANTAG
-                                        </button>
-                                    </div>
-                                }
-                                isLocked={!progress.coreComplete}
-                            >
-                                <div className="space-y-3 pt-2">
-                                    {characters.length === 0 && (
-                                        <div className="text-center py-4 text-text-secondary text-xs italic">
-                                            No characters added yet.
-                                        </div>
-                                    )}
-                                    {characters.map(char => (
-                                        <CharacterCard
-                                            key={char.id}
-                                            character={char}
-                                            onChange={(updates) => handleCharacterChange(char.id, updates)}
-                                            onDelete={() => handleDeleteCharacter(char.id)}
-                                            onRequestSyd={(field, el) => handleRequestSyd('character_identity', `char-${char.id}-${field}`, el)}
-                                            activeSydField={activeSydField === `char-${char.id}-name` ? 'name' : null}
-                                        />
-                                    ))}
-                                </div>
-                            </CollapsibleSection>
-
-                            {/* Story Beats */}
-                            <CollapsibleSection
-                                title="Story Beats (Save the Cat)"
-                                isLocked={!progress.charactersComplete}
-                            >
-                                <div className="space-y-3 pt-2">
-                                    {beats.map(beat => (
-                                        <BeatCard
-                                            key={beat.id}
-                                            beat={beat}
-                                            onChange={(updates) => handleBeatChange(beat.id, updates)}
-                                            onRequestSyd={(el) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
-                                            isActiveSyd={activeSydField === `beat-${beat.id}`}
-                                        />
-                                    ))}
-                                </div>
-                            </CollapsibleSection>
-                        </>
-                    )}
+                    {/* 3. STORY STRUCTURE */}
+                    <CollapsibleSection
+                        title="Beat Sheet (Save the Cat)"
+                        isLocked={!progress.charactersComplete}
+                    >
+                        <div className="space-y-4 pt-4">
+                            {beats.map(beat => (
+                                <BeatCard
+                                    key={beat.id}
+                                    beat={beat}
+                                    onChange={(updates) => handleBeatChange(beat.id, updates)}
+                                    onRequestSyd={(el) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
+                                    isActiveSyd={activeSydField === `beat-${beat.id}`}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleSection>
                 </div>
             </div>
 
-            {/* Inline Syd Popout - Z-INDEX 60 (Highest Overlay) */}
+            {/* Inline Syd Popout - Z-INDEX 70 (Highest Overlay) */}
             <SydPopoutPanel
                 isOpen={!!activeSydField}
                 context={sydContext}
