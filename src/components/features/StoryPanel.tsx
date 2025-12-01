@@ -241,13 +241,14 @@ export const StoryPanel: React.FC = () => {
         setSydAnchor(null);
     };
 
-    const handleSydMessage = async (message: string): Promise<string> => {
+    const handleSydMessage = async (message: string, messageHistory?: Array<{role: string, content: string}>): Promise<string> => {
         if (!sydContext) return '';
 
         return await generateMicroAgent(
             sydContext.systemPrompt,
             { ...sydContext.contextFields, userMessage: message },
-            sydContext.maxOutputTokens
+            sydContext.maxOutputTokens,
+            messageHistory
         );
     };
 

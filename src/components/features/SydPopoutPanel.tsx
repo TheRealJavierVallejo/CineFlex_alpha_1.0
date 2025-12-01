@@ -16,7 +16,7 @@ interface SydPopoutPanelProps {
     anchorElement: HTMLElement | null;
     scrollContainer: HTMLElement | null;
     onClose: () => void;
-    onSendMessage: (message: string) => Promise<string>;
+    onSendMessage: (message: string, messageHistory?: Array<{role: string, content: string}>) => Promise<string>;
     initialMessages?: ChatMessage[];
 }
 
@@ -132,7 +132,14 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
         setIsGenerating(true);
 
         try {
-            const response = await onSendMessage(inputValue);
+            // Filter out system messages and convert to simple history format
+            const conversationHistory = messages
+                .filter(msg => msg.role !== 'system')
+                .map(msg => ({ role: msg.role as string, content: msg.content }));
+
+            // Pass history to the handler
+            const response = await onSendMessage(inputValue, conversationHistory);
+            
             setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: response }]);
         } catch (error) {
             setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'system', content: 'Error generating response.' }]);

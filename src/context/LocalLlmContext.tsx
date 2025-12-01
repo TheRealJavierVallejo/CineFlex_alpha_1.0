@@ -19,7 +19,12 @@ interface LocalLlmContextType {
   generateResponse: (prompt: string, history?: { role: string; content: string }[]) => Promise<string>;
   streamResponse: (prompt: string, history: { role: string; content: string }[], onUpdate: (chunk: string) => void) => Promise<void>;
   // NEW: Focused micro-agent generation
-  generateMicroAgent: (systemPrompt: string, context: Record<string, any>, maxTokens: number) => Promise<string>;
+  generateMicroAgent: (
+    systemPrompt: string, 
+    context: Record<string, any>, 
+    maxTokens: number,
+    messageHistory?: Array<{role: string, content: string}>
+  ) => Promise<string>;
 }
 
 const LocalLlmContext = createContext<LocalLlmContextType | undefined>(undefined);
@@ -182,7 +187,8 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const generateMicroAgent = useCallback(async (
     systemPrompt: string,
     context: Record<string, any>,
-    maxTokens: number
+    maxTokens: number,
+    messageHistory?: Array<{role: string, content: string}>
   ): Promise<string> => {
     if (!engine.current) throw new Error("AI Engine not initialized");
 
@@ -199,11 +205,23 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Embed context into system prompt
     const fullSystemPrompt = `${systemPrompt}\n\n=== STORY CONTEXT ===\n${contextString}\n\nRespond to the user's question based on this context.`;
 
-    // Send proper message structure
-    const messages = [
-      { role: "system" as const, content: fullSystemPrompt },
-      { role: "user" as const, content: userMessage }
+    // Build messages array with history
+    const messages: Array<{role: 'system' | 'user' | 'assistant', content: string}> = [
+      { role: "system", content: fullSystemPrompt }
     ];
+
+    // Add previous conversation if it exists
+    if (messageHistory && messageHistory.length > 0) {
+      // Need to cast the string roles to the literal type expected by the engine
+      const formattedHistory = messageHistory.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content
+      }));
+      messages.push(...formattedHistory);
+    }
+
+    // Add current user message
+    messages.push({ role: "user", content: userMessage });
 
     const reply = await engine.current.chat.completions.create({
       messages,
