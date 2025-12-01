@@ -20,6 +20,8 @@ export type SydAgentType =
     | 'character_need'
     | 'character_lie'
     | 'character_ghost'
+    | 'character_strengths'
+    | 'character_weaknesses'
     | 'character_arc'
     | 'beat_opening_image'
     | 'beat_theme_stated'
@@ -216,10 +218,22 @@ Keep it BRIEF (3-4 sentences total). Then ask: "Want more budget tips?"`;
         const charRole = character?.role || "character";
         const field = agentType.replace('character_', ''); // identity, want, need, etc.
 
+        const charArchetype = character?.archetype || "";
+        const charDescription = character?.description || "";
+        const charStrengths = character?.strengths || "";
+        const charWeaknesses = character?.weaknesses || "";
+        const charArcSummary = character?.arcSummary || "";
+
         contextFields.name = charName;
         contextFields.role = charRole;
         contextFields.genre = genre;
         contextFields.theme = theme;
+        
+        if (charArchetype) contextFields.archetype = charArchetype;
+        if (charDescription) contextFields.description = charDescription;
+        if (charStrengths) contextFields.strengths = charStrengths;
+        if (charWeaknesses) contextFields.weaknesses = charWeaknesses;
+        if (charArcSummary) contextFields.arcSummary = charArcSummary;
         
         // Add existing arc fields for context
         if (character) {
@@ -231,43 +245,129 @@ Keep it BRIEF (3-4 sentences total). Then ask: "Want more budget tips?"`;
 
         switch (field) {
             case 'identity':
-                systemPrompt = `You are a character development coach. Help flesh out ${charName}, the ${charRole} in a ${genre} story.
-Suggest:
-1. A unique personality trait.
-2. A distinct visual detail.
-3. How they embody or challenge the theme: "${theme}".`;
+                systemPrompt = `You are a professional screenwriter helping flesh out a character's core identity.
+
+CONTEXT:
+- Story genre: ${genre}
+- Story theme: "${theme}"
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+
+TASK:
+In 3–4 sentences, describe this character's overall vibe: personality, a distinctive visual detail, and how they either embody or challenge the story's theme.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
                 break;
+
             case 'want':
-                systemPrompt = `You are a character expert. Define the "External Want" for ${charName} (${charRole}).
-This should be a concrete, visible goal they chase throughout the story.
-It should be something they *think* will make them happy (but might not).
-Context: Genre is ${genre}.`;
+                systemPrompt = `You are a professional screenwriter defining a character's external "Want" (plot goal).
+
+CONTEXT:
+- Story genre: ${genre}
+- Story theme: "${theme}"
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe what ${charName} consciously wants in this story — a visible, concrete goal they can actively pursue on screen.
+Make it specific and difficult, and be sure it creates conflict with other characters or the world.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
                 break;
+
             case 'need':
-                systemPrompt = `You are a character expert. Define the "Internal Need" for ${charName} (${charRole}).
-This is the spiritual lesson or growth they actually require to be whole.
-It usually conflicts with their "Want".
-Theme: ${theme}.`;
+                systemPrompt = `You are a professional screenwriter defining a character's internal "Need" (emotional growth).
+
+CONTEXT:
+- Story theme: "${theme}"
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
+Make sure this Need is different from their Want and creates inner conflict, especially around the story's theme.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
                 break;
+
             case 'lie':
-                systemPrompt = `You are a character expert. Identify "The Lie" that ${charName} believes.
-This is a misconception about themselves or the world that holds them back at the start.
-It usually stems from their "Ghost" (past trauma).`;
+                systemPrompt = `You are a professional screenwriter defining "The Lie" a character believes.
+
+CONTEXT:
+- Story genre: ${genre}
+- Story theme: "${theme}"
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe the core false belief ${charName} holds about themself, other people, or the world that blocks their growth.
+Make this Lie emotionally understandable (because of their past) but clearly wrong in a way that will drive bad decisions and conflict throughout the story.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
                 break;
+
             case 'ghost':
-                systemPrompt = `You are a backstory expert. Create a "Ghost" for ${charName}.
-This is a past trauma or event that haunts them and created "The Lie" they believe.
-It explains why they are the way they are at the start of the movie.`;
+                systemPrompt = `You are a professional screenwriter defining a character's "Ghost" — the past wound that created their Lie.
+
+CONTEXT:
+- Story genre: ${genre}
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe one clear past event or situation that explains why ${charName} believes their current Lie.
+Make it simple but specific (who, what, where) and show how it still echoes into the present story, especially in how they chase their Want and avoid their Need.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
                 break;
+
+            case 'strengths':
+                systemPrompt = `You are a professional screenwriter defining the most story-relevant strengths of a character.
+
+CONTEXT:
+- Story genre: ${genre}
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Existing notes: Strengths = ${charStrengths || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe 2–4 key strengths, skills, or resources that help ${charName} pursue their Want and navigate the plot.
+Choose strengths that can also create complications, rivalries, or moral dilemmas — not just neutral "good" traits.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+                break;
+
+            case 'weaknesses':
+                systemPrompt = `You are a professional screenwriter defining a character's most dramatic weaknesses and flaws.
+
+CONTEXT:
+- Story genre: ${genre}
+- Story theme: "${theme}"
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Existing notes: Weaknesses = ${charWeaknesses || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe 2–4 key weaknesses, flaws, or vulnerabilities that repeatedly get ${charName} into trouble.
+Tie these flaws to their Lie and Ghost so they feel psychologically consistent, and make sure they interfere with their Want and relationships.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+                break;
+
             case 'arc':
-                systemPrompt = `Summarize the Character Arc for ${charName}.
-How do they change from the beginning (believing the Lie) to the end (embracing the Need)?`;
+                systemPrompt = `You are a professional screenwriter summarizing a character arc for a beat sheet.
+
+CONTEXT:
+- Story genre: ${genre}
+- Story theme: "${theme}"
+- Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
+- Notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}, Strengths = ${charStrengths || 'not defined yet'}, Weaknesses = ${charWeaknesses || 'not defined yet'}, Arc Summary = ${charArcSummary || 'not defined yet'}
+
+TASK:
+In 3–4 sentences, describe how ${charName} changes from the beginning to the end of the story.
+Show how their Want, Need, Lie, Ghost, strengths, and weaknesses collide to create at least one major crisis or low point, and how they end up different by the finale.
+Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
                 break;
+
             default:
-                systemPrompt = `You are a character consultant. Help develop ${charName}.`;
+                systemPrompt = `You are a character consultant. Help develop ${charName} with concise, conflict-focused suggestions (3–4 sentences max).`;
         }
         
-        maxOutputTokens = 400;
+        if (['identity', 'want', 'need', 'lie', 'ghost', 'strengths', 'weaknesses', 'arc'].includes(field)) {
+            maxOutputTokens = 250;
+        } else {
+            maxOutputTokens = 200;
+        }
     }
 
     // --------------------------------------------------------
