@@ -14,7 +14,7 @@ export type SydAgentType =
     | 'logline'
     | 'story_types'
     | 'target_audience'
-    | 'budget' // NEW
+    | 'budget'
     | 'character_identity'
     | 'character_want'
     | 'character_need'
@@ -87,8 +87,16 @@ export function selectContextForAgent(
     const genre = plot?.genre || "Unknown Genre";
     const theme = plot?.theme || "Unknown Theme";
     const tone = plot?.tone || "Unknown Tone";
+    const setting = plot?.setting || "Unknown Setting";
     const logline = plot?.logline || "No logline defined yet";
     const title = plot?.title || "Untitled Project";
+    
+    // Construct audience string
+    const targetRating = plot?.targetAudienceRating || "";
+    const targetDesc = plot?.targetAudienceDescription || "";
+    const targetAudience = [targetRating, targetDesc].filter(Boolean).join(" - ") || "";
+
+    const storyTypesStr = plot?.storyTypes?.join(', ') || "";
     
     // --------------------------------------------------------
     // 1. FOUNDATION AGENTS
@@ -98,60 +106,84 @@ export function selectContextForAgent(
         contextFields.genre = genre;
         contextFields.theme = theme;
         contextFields.tone = tone;
+        contextFields.setting = setting;
         
-        systemPrompt = `You are a story structure expert. The user is working on a ${genre} story with the theme "${theme}" and tone "${tone}".
-Suggest 3 narrative structures (e.g., Hero's Journey, Save the Cat, Fated Tragedy, Rags to Riches) that would work well for this specific story.
-Explain briefly why each fits.`;
+        systemPrompt = `You are a narrative structure expert helping a screenwriter choose the right story structure. The user is writing a ${genre} story with the theme "${theme}" and a ${tone} tone, set in ${setting}.
+
+Suggest 2-3 narrative structures that would work well (e.g., Hero's Journey, Save the Cat, Three-Act Structure, etc.). For each structure, briefly explain WHY it fits this type of story.
+
+Keep your response concise (3-4 sentences per structure). Be encouraging and practical.`;
+        
+        maxOutputTokens = 250;
     } 
     
     else if (agentType === 'target_audience') {
         contextFields.genre = genre;
+        contextFields.theme = theme;
         contextFields.tone = tone;
-        contextFields.storyTypes = plot?.storyTypes?.join(', ') || '';
         
-        systemPrompt = `You are a film marketing expert. Profile the ideal target audience for a ${genre} film with a ${tone} tone.
-Identify:
-1. Primary Demographic (Age/Gender/Interests)
-2. Psychographics (Why they watch this genre)
-3. Comparable Films (Comps) that this audience loves.`;
+        systemPrompt = `You are an audience profiling expert helping a screenwriter identify their target audience. The user is writing a ${genre} story with the theme "${theme}" and a ${tone} tone.
+
+Suggest the ideal target audience (age range, demographics, interests). Reference similar films or shows this audience enjoys. Suggest an appropriate MPAA rating (G, PG, PG-13, R, etc.).
+
+Keep your response concise (4-5 sentences). Be specific and practical.`;
+        
+        maxOutputTokens = 200;
     }
 
     else if (agentType === 'title') {
         contextFields.genre = genre;
-        contextFields.tone = tone;
-        contextFields.logline = logline;
         contextFields.theme = theme;
+        contextFields.tone = tone;
+        contextFields.setting = setting;
+        if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
 
-        systemPrompt = `You are a creative titling expert. Brainstorm 5 catchy, marketable titles for a ${genre} movie.
-Context:
-- Tone: ${tone}
-- Theme: ${theme}
-- Logline: ${logline}
+        systemPrompt = `You are a title brainstorming expert helping a screenwriter create a compelling working title. The user is writing a ${genre} story with the theme "${theme}", a ${tone} tone, set in ${setting}.${storyTypesStr ? ` They're using the ${storyTypesStr} structure.` : ''}
 
-Provide titles that evoke the genre and tone.`;
+Suggest 3-5 potential titles that capture the story's essence. For each title, explain in one sentence why it works. Titles should be memorable, marketable, and hint at the genre/theme.
+
+Keep your response concise. Be creative but practical.`;
+
+        maxOutputTokens = 200;
     }
 
     else if (agentType === 'logline') {
         contextFields.genre = genre;
         contextFields.theme = theme;
-        contextFields.protagonist = character?.name || "the protagonist"; // Fallback if no char passed
+        contextFields.tone = tone;
+        contextFields.setting = setting;
+        if (title !== "Untitled Project") contextFields.title = title;
+        if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
+        if (targetAudience) contextFields.targetAudience = targetAudience;
         
-        systemPrompt = `You are a logline specialist. Craft 3 compelling one-sentence pitches for a ${genre} film.
-Formula: "When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]."
-Focus on irony, high stakes, and clarity.`;
+        systemPrompt = `You are a logline specialist helping a screenwriter craft a compelling one-sentence pitch. The user is writing a ${genre} story${title !== "Untitled Project" ? ` titled "${title}"` : ''} with the theme "${theme}", set in ${setting}.${storyTypesStr ? ` Using ${storyTypesStr} structure.` : ''}${targetAudience ? ` Target audience: ${targetAudience}.` : ''}
+
+Help them create a logline using this formula: 'When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES].'
+
+Ask clarifying questions if they haven't told you about their protagonist or main conflict yet. If they give you details, craft 1-2 logline options.
+
+Be conversational and helpful.`;
+
+        maxOutputTokens = 300;
     }
 
     else if (agentType === 'budget') {
         contextFields.genre = genre;
+        contextFields.theme = theme;
+        contextFields.setting = setting;
+        if (logline && logline !== "No logline defined yet") contextFields.logline = logline;
         contextFields.budget = plot?.budget || "Unspecified";
-        contextFields.setting = plot?.setting || "Unspecified";
 
-        systemPrompt = `You are a practical film producer and low-budget advisor.
-The user is working on a ${genre} film.
-Budget Level: ${contextFields.budget}.
-Setting: ${contextFields.setting}.
+        systemPrompt = `You are a practical filmmaking advisor helping a screenwriter work within budget constraints. The user is writing a ${genre} story set in ${setting}.${logline && logline !== "No logline defined yet" ? ` Logline: ${logline}` : ''}
 
-Give specific, actionable advice on how to execute this story within these constraints. Suggest creative workarounds for expensive tropes in this genre.`;
+Give specific, actionable advice for making this story work on their stated budget level (${contextFields.budget}). Suggest:
+- Creative ways to achieve expensive elements cheaply
+- Similar films that succeeded on low budgets
+- What to prioritize vs. what to simplify
+
+Be encouraging and practical. Keep response concise (5-6 sentences).`;
+
+        maxOutputTokens = 250;
     }
 
     // --------------------------------------------------------
