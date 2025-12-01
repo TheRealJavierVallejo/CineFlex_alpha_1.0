@@ -4,9 +4,11 @@
  * Uses Syd micro-agents for assistance
  */
 
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Lock, Check, Edit3 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronRight, Lock, Check } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useLocalLlm } from '../../context/LocalLlmContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import {
     getPlotDevelopment,
     savePlotDevelopment,
@@ -17,45 +19,58 @@ import {
     getStoryMetadata,
     saveStoryMetadata
 } from '../../services/storage';
+import { selectContextForAgent, SydAgentType, SydContext } from '../../services/sydContext';
 import type { PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata } from '../../types';
+import { CollapsibleSection } from './story/CollapsibleSection';
+import { FieldWithSyd } from './story/FieldWithSyd';
+import { CharacterCard } from './story/CharacterCard';
+import { BeatCard } from './story/BeatCard';
+import { SydPopoutPanel } from './SydPopoutPanel';
+import { useStoryProgress } from '../../hooks/useStoryProgress';
+import { summarizer } from '../../services/syd/summarizer';
 
 // Save the Cat beat names
 const STORY_BEAT_NAMES = [
-    'Opening Image',
-    'Theme Stated',
-    'Setup',
-    'Catalyst',
-    'Debate',
-    'Break into Two',
-    'B Story',
-    'Fun and Games',
-    'Midpoint',
-    'Bad Guys Close In',
-    'All Is Lost',
-    'Dark Night of the Soul',
-    'Break into Three',
-    'Finale',
-    'Final Image'
+    'Opening Image', 'Theme Stated', 'Setup', 'Catalyst', 'Debate',
+    'Break into Two', 'B Story', 'Fun and Games', 'Midpoint',
+    'Bad Guys Close In', 'All Is Lost', 'Dark Night of the Soul',
+    'Break into Three', 'Finale', 'Final Image'
+];
+
+const BEAT_AGENT_TYPES: SydAgentType[] = [
+    'beat_opening_image', 'beat_theme_stated', 'beat_setup', 'beat_catalyst', 'beat_debate',
+    'beat_break_into_two', 'beat_b_story', 'beat_fun_and_games', 'beat_midpoint',
+    'beat_bad_guys_close_in', 'beat_all_is_lost', 'beat_dark_night_of_the_soul',
+    'beat_break_into_three', 'beat_finale', 'beat_final_image'
 ];
 
 export const StoryDevelopment: React.FC = () => {
     const { project, showToast } = useWorkspace();
+    const { isReady, generateMicroAgent, initModel, isModelCached } = useLocalLlm();
+    const { tier } = useSubscription();
 
-    // State
+    // Data State
     const [plot, setPlot] = useState<PlotDevelopment>({});
     const [characters, setCharacters] = useState<CharacterDevelopment[]>([]);
     const [beats, setBeats] = useState<StoryBeat[]>([]);
     const [metadata, setMetadata] = useState<StoryMetadata>({ lastUpdated: Date.now() });
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Expansion state
-    const [plotExpanded, setPlotExpanded] = useState(true);
-    const [charsExpanded, setCharsExpanded] = useState(false);
-    const [beatsExpanded, setBeatsExpanded] = useState(false);
+    // Syd State
+    const [activeSydField, setActiveSydField] = useState<string | null>(null);
+    const [sydContext, setSydContext] = useState<SydContext | null>(null);
+    const [sydAnchor, setSydAnchor] = useState<HTMLElement | null>(null);
 
-    // Load data
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Progressive Disclosure
+    const progress = useStoryProgress(plot, characters, beats);
+
+    // Load Data
     useEffect(() => {
         if (!project) return;
 
+        setIsLoading(true);
         Promise.all([
             getPlotDevelopment(project.id),
             getCharacterDevelopments(project.id),
@@ -65,7 +80,6 @@ export const StoryDevelopment: React.FC = () => {
             setPlot(plotData || {});
             setCharacters(charData);
 
-            // Initialize beats if empty
             if (beatData.length === 0) {
                 const initialBeats: StoryBeat[] = STORY_BEAT_NAMES.map((name, i) => ({
                     id: crypto.randomUUID(),
@@ -80,32 +94,11 @@ export const StoryDevelopment: React.FC = () => {
             }
 
             setMetadata(metaData);
+            setIsLoading(false);
         });
     }, [project]);
 
-    // Field unlock logic
-    const hasFoundation = Boolean(plot.genre && plot.theme && plot.tone);
-    const hasTitle = Boolean(plot.title);
-    const hasLogline = Boolean(plot.logline);
-    const hasProtagonist = characters.some(c => c.role === 'protagonist');
-
-    const canUnlockCharacters = hasLogline;
-    const canUnlockBeats = hasProtagonist;
-
-    // Progress calculation
-    const totalFields = 25; // Rough estimate
-    let completedFields = 0;
-    if (hasFoundation) completedFields += 3;
-    if (hasTitle) completedFields += 1;
-    if (hasLogline) completedFields += 1;
-    completedFields += characters.reduce((sum, c) => {
-        return sum + [c.want, c.need, c.lie, c.ghost, c.characterArc].filter(Boolean).length;
-    }, 0);
-    completedFields += beats.filter(b => b.isComplete).length;
-
-    const progress = Math.round((completedFields / totalFields) * 100);
-
-    // Save handlers
+    // Save Handlers
     const handlePlotChange = async (updates: Partial<PlotDevelopment>) => {
         const newPlot = { ...plot, ...updates };
         setPlot(newPlot);
@@ -121,7 +114,7 @@ export const StoryDevelopment: React.FC = () => {
     const handleAddCharacter = async (role: 'protagonist' | 'antagonist' | 'supporting') => {
         const newChar: CharacterDevelopment = {
             id: crypto.randomUUID(),
-            name: '',
+            name: `New ${role.charAt(0).toUpperCase() + role.slice(1)}`,
             role,
         };
         const newChars = [...characters, newChar];
@@ -129,248 +122,213 @@ export const StoryDevelopment: React.FC = () => {
         await saveCharacterDevelopments(project.id, newChars);
     };
 
+    const handleDeleteCharacter = async (charId: string) => {
+        const newChars = characters.filter(c => c.id !== charId);
+        setCharacters(newChars);
+        await saveCharacterDevelopments(project.id, newChars);
+    };
+
+    const handleBeatChange = async (beatId: string, updates: Partial<StoryBeat>) => {
+        const newBeats = beats.map(b => b.id === beatId ? { ...b, ...updates } : b);
+        setBeats(newBeats);
+        await saveStoryBeats(project.id, newBeats);
+    };
+
+    // Syd Interaction
+    const handleRequestSyd = async (agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string) => {
+        // If clicking same field, close it
+        if (activeSydField === fieldId) {
+            handleCloseSyd();
+            return;
+        }
+
+        // Initialize model if needed
+        if (!isReady && tier === 'free') {
+            if (isModelCached) {
+                await initModel();
+            } else {
+                showToast('Download Syd Jr. first from Settings', 'info');
+                return;
+            }
+        }
+
+        const character = charId ? characters.find(c => c.id === charId) : undefined;
+
+        const context = selectContextForAgent(
+            agentType,
+            plot,
+            character,
+            beats,
+            metadata
+        );
+
+        setSydContext(context);
+        setSydAnchor(anchorEl);
+        setActiveSydField(fieldId);
+    };
+
+    const handleCloseSyd = () => {
+        setActiveSydField(null);
+        setSydContext(null);
+        setSydAnchor(null);
+    };
+
+    const handleSydMessage = async (message: string): Promise<string> => {
+        if (!sydContext) return '';
+
+        return await generateMicroAgent(
+            sydContext.systemPrompt,
+            { ...sydContext.contextFields, userMessage: message },
+            sydContext.maxOutputTokens
+        );
+    };
+
     if (!project) {
         return <div className="p-8 text-text-secondary">No project loaded</div>;
     }
 
     return (
-        <div className="h-full overflow-y-auto bg-background">
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-surface border-b border-border px-6 py-4">
-                <h1 className="text-xl font-bold text-text-primary">Story Development</h1>
-                <div className="mt-2 flex items-center gap-3">
-                    <div className="flex-1 bg-background rounded-full h-2 overflow-hidden">
-                        <div
-                            className="h-full bg-primary transition-all duration-300"
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                    <span className="text-sm text-text-secondary">{completedFields}/{totalFields} fields</span>
+        <>
+            <div ref={scrollContainerRef} className="h-full overflow-y-auto bg-background pb-32">
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-surface border-b border-border px-6 py-4 shadow-sm">
+                    <h1 className="text-lg font-bold text-text-primary uppercase tracking-wider">Story Development</h1>
+                    <p className="text-xs text-text-secondary mt-1">Define the soul of your story. Syd Jr. is ready to help.</p>
+                </div>
+
+                <div className="p-6 space-y-6 max-w-4xl mx-auto">
+
+                    {/* Plot Foundation */}
+                    <CollapsibleSection
+                        title="Plot Foundation"
+                        defaultExpanded={true}
+                        rightElement={progress.foundationComplete ? <Check className="w-4 h-4 text-green-500" /> : null}
+                    >
+                        <div className="space-y-4 pt-2">
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-text-secondary">Genre</label>
+                                    <input
+                                        value={plot.genre || ''}
+                                        onChange={(e) => handlePlotChange({ genre: e.target.value })}
+                                        className="w-full px-3 py-2 bg-surface border border-border rounded text-text-primary text-sm focus:border-primary focus:outline-none"
+                                        placeholder="e.g. Sci-Fi"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-text-secondary">Theme</label>
+                                    <input
+                                        value={plot.theme || ''}
+                                        onChange={(e) => handlePlotChange({ theme: e.target.value })}
+                                        className="w-full px-3 py-2 bg-surface border border-border rounded text-text-primary text-sm focus:border-primary focus:outline-none"
+                                        placeholder="e.g. Hope"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-text-secondary">Tone</label>
+                                    <input
+                                        value={plot.tone || ''}
+                                        onChange={(e) => handlePlotChange({ tone: e.target.value })}
+                                        className="w-full px-3 py-2 bg-surface border border-border rounded text-text-primary text-sm focus:border-primary focus:outline-none"
+                                        placeholder="e.g. Dark"
+                                    />
+                                </div>
+                            </div>
+
+                            <FieldWithSyd
+                                id="title"
+                                label="Title"
+                                value={plot.title || ''}
+                                onChange={(val) => handlePlotChange({ title: val })}
+                                disabled={!progress.foundationComplete}
+                                onRequestSyd={(el) => handleRequestSyd('title', 'title', el)}
+                                isActiveSyd={activeSydField === 'title'}
+                                placeholder="Working Title"
+                            />
+
+                            <FieldWithSyd
+                                id="logline"
+                                label="Logline"
+                                value={plot.logline || ''}
+                                onChange={(val) => handlePlotChange({ logline: val })}
+                                disabled={!progress.foundationComplete}
+                                multiline={true}
+                                onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
+                                isActiveSyd={activeSydField === 'logline'}
+                                placeholder="A protagonist must [goal] or else [stakes]..."
+                            />
+                        </div>
+                    </CollapsibleSection>
+
+                    {/* Characters */}
+                    <CollapsibleSection
+                        title="Characters & Arcs"
+                        rightElement={
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter('protagonist'); }}
+                                    className="text-[10px] px-2 py-1 bg-surface-secondary border border-border rounded hover:bg-surface hover:text-primary transition-colors"
+                                >
+                                    + PROTAG
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter('antagonist'); }}
+                                    className="text-[10px] px-2 py-1 bg-surface-secondary border border-border rounded hover:bg-surface hover:text-primary transition-colors"
+                                >
+                                    + ANTAG
+                                </button>
+                            </div>
+                        }
+                        isLocked={!progress.coreComplete}
+                    >
+                        <div className="space-y-3 pt-2">
+                            {characters.length === 0 && (
+                                <div className="text-center py-4 text-text-secondary text-xs italic bg-surface-secondary/50 rounded border border-border/50 border-dashed">
+                                    No characters added yet. Define a Protagonist to unlock beats.
+                                </div>
+                            )}
+                            {characters.map(char => (
+                                <CharacterCard
+                                    key={char.id}
+                                    character={char}
+                                    onChange={(updates) => handleCharacterChange(char.id, updates)}
+                                    onDelete={() => handleDeleteCharacter(char.id)}
+                                    onRequestSyd={(fieldSuffix, el) => handleRequestSyd(`character_${fieldSuffix}` as SydAgentType, `char-${char.id}-${fieldSuffix}`, el, char.id)}
+                                    activeSydField={activeSydField?.startsWith(`char-${char.id}`) ? activeSydField.split('-').pop() || null : null}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleSection>
+
+                    {/* Story Beats */}
+                    <CollapsibleSection
+                        title="Story Beats (Save the Cat)"
+                        isLocked={!progress.charactersComplete}
+                    >
+                        <div className="space-y-3 pt-2">
+                            {beats.map(beat => (
+                                <BeatCard
+                                    key={beat.id}
+                                    beat={beat}
+                                    onChange={(updates) => handleBeatChange(beat.id, updates)}
+                                    onRequestSyd={(el) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
+                                    isActiveSyd={activeSydField === `beat-${beat.id}`}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleSection>
                 </div>
             </div>
 
-            <div className="p-6 space-y-4 max-w-4xl">
-
-                {/* Plot Foundation Section */}
-                <section className="bg-surface border border-border rounded-lg overflow-hidden">
-                    <button
-                        onClick={() => setPlotExpanded(!plotExpanded)}
-                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-secondary transition-colors"
-                    >
-                        <div className="flex items-center gap-3">
-                            {plotExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                            <h2 className="text-lg font-semibold text-text-primary">Plot Foundation</h2>
-                            {hasFoundation && hasTitle && hasLogline && <Check className="w-5 h-5 text-green-500" />}
-                        </div>
-                        <span className="text-sm text-text-muted">
-                            {[plot.genre, plot.theme, plot.tone, plot.title, plot.logline].filter(Boolean).length}/5
-                        </span>
-                    </button>
-
-                    {plotExpanded && (
-                        <div className="px-6 py-4 space-y-4 border-t border-border">
-                            {/* Genre/Theme/Tone */}
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1">Genre *</label>
-                                    <input
-                                        type="text"
-                                        value={plot.genre || ''}
-                                        onChange={(e) => handlePlotChange({ genre: e.target.value })}
-                                        placeholder="e.g., Sci-Fi"
-                                        className="w-full px-3 py-2 bg-background border border-border rounded text-text-primary text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1">Theme *</label>
-                                    <input
-                                        type="text"
-                                        value={plot.theme || ''}
-                                        onChange={(e) => handlePlotChange({ theme: e.target.value })}
-                                        placeholder="e.g., Hope vs Despair"
-                                        className="w-full px-3 py-2 bg-background border border-border rounded text-text-primary text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1">Tone *</label>
-                                    <input
-                                        type="text"
-                                        value={plot.tone || ''}
-                                        onChange={(e) => handlePlotChange({ tone: e.target.value })}
-                                        placeholder="e.g., Dark, Serious"
-                                        className="w-full px-3 py-2 bg-background border border-border rounded text-text-primary text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Title */}
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary mb-1">Title</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={plot.title || ''}
-                                        onChange={(e) => handlePlotChange({ title: e.target.value })}
-                                        placeholder="Working title for your screenplay"
-                                        disabled={!hasFoundation}
-                                        className="flex-1 px-3 py-2 bg-background border border-border rounded text-text-primary text-sm disabled:opacity-50"
-                                    />
-                                    <button
-                                        disabled={!hasFoundation}
-                                        className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Ask Syd
-                                    </button>
-                                </div>
-                                {!hasFoundation && (
-                                    <p className="mt-1 text-xs text-text-muted flex items-center gap-1">
-                                        <Lock className="w-3 h-3" /> Complete Genre, Theme, and Tone first
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Logline */}
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary mb-1">Logline</label>
-                                <div className="flex gap-2">
-                                    <textarea
-                                        value={plot.logline || ''}
-                                        onChange={(e) => handlePlotChange({ logline: e.target.value })}
-                                        placeholder="One-sentence story pitch: protagonist + goal + stakes"
-                                        disabled={!hasFoundation || !hasTitle}
-                                        rows={2}
-                                        className="flex-1 px-3 py-2 bg-background border border-border rounded text-text-primary text-sm resize-none disabled:opacity-50"
-                                    />
-                                    <button
-                                        disabled={!hasFoundation || !hasTitle}
-                                        className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed h-fit"
-                                    >
-                                        Ask Syd
-                                    </button>
-                                </div>
-                                {(!hasFoundation || !hasTitle) && (
-                                    <p className="mt-1 text-xs text-text-muted flex items-center gap-1">
-                                        <Lock className="w-3 h-3" /> Complete Title first
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </section>
-
-                {/* Character Development Section */}
-                <section className="bg-surface border border-border rounded-lg overflow-hidden">
-                    <button
-                        onClick={() => canUnlockCharacters && setCharsExpanded(!charsExpanded)}
-                        className={`w-full px-6 py-4 flex items-center justify-between transition-colors ${canUnlockCharacters ? 'hover:bg-surface-secondary' : 'cursor-not-allowed opacity-50'}`}
-                    >
-                        <div className="flex items-center gap-3">
-                            {canUnlockCharacters ? (
-                                charsExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />
-                            ) : (
-                                <Lock className="w-5 h-5" />
-                            )}
-                            <h2 className="text-lg font-semibold text-text-primary">Character Development</h2>
-                        </div>
-                        <span className="text-sm text-text-muted">{characters.length} characters</span>
-                    </button>
-
-                    {!canUnlockCharacters && (
-                        <div className="px-6 py-3 border-t border-border bg-background/50">
-                            <p className="text-sm text-text-muted flex items-center gap-2">
-                                <Lock className="w-4 h-4" /> Complete Plot Foundation (including logline) to unlock
-                            </p>
-                        </div>
-                    )}
-
-                    {charsExpanded && canUnlockCharacters && (
-                        <div className="px-6 py-4 space-y-4 border-t border-border">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleAddCharacter('protagonist')}
-                                    className="px-3 py-1.5 bg-background border border-border rounded text-sm hover:bg-surface-secondary"
-                                >
-                                    + Protagonist
-                                </button>
-                                <button
-                                    onClick={() => handleAddCharacter('antagonist')}
-                                    className="px-3 py-1.5 bg-background border border-border rounded text-sm hover:bg-surface-secondary"
-                                >
-                                    + Antagonist
-                                </button>
-                                <button
-                                    onClick={() => handleAddCharacter('supporting')}
-                                    className="px-3 py-1.5 bg-background border border-border rounded text-sm hover:bg-surface-secondary"
-                                >
-                                    + Supporting
-                                </button>
-                            </div>
-
-                            {characters.map(char => (
-                                <div key={char.id} className="p-4 bg-background border border-border rounded space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="text"
-                                            value={char.name}
-                                            onChange={(e) => handleCharacterChange(char.id, { name: e.target.value })}
-                                            placeholder="Character name"
-                                            className="flex-1 px-3 py-2 bg-surface border border-border rounded text-text-primary font-medium"
-                                        />
-                                        <span className="text-sm text-text-muted capitalize">{char.role}</span>
-                                    </div>
-
-                                    {/* Character arc fields - simplified for space */}
-                                    <div className="text-sm text-text-secondary">
-                                        Character arc fields: Want, Need, Lie, Ghost, Arc (to be implemented)
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
-
-                {/* Story Beats Section */}
-                <section className="bg-surface border border-border rounded-lg overflow-hidden">
-                    <button
-                        onClick={() => canUnlockBeats && setBeatsExpanded(!beatsExpanded)}
-                        className={`w-full px-6 py-4 flex items-center justify-between transition-colors ${canUnlockBeats ? 'hover:bg-surface-secondary' : 'cursor-not-allowed opacity-50'}`}
-                    >
-                        <div className="flex items-center gap-3">
-                            {canUnlockBeats ? (
-                                beatsExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />
-                            ) : (
-                                <Lock className="w-5 h-5" />
-                            )}
-                            <h2 className="text-lg font-semibold text-text-primary">Story Beats (Save the Cat)</h2>
-                        </div>
-                        <span className="text-sm text-text-muted">{beats.filter(b => b.isComplete).length}/15</span>
-                    </button>
-
-                    {!canUnlockBeats && (
-                        <div className="px-6 py-3 border-t border-border bg-background/50">
-                            <p className="text-sm text-text-muted flex items-center gap-2">
-                                <Lock className="w-4 h-4" /> Create a protagonist character to unlock
-                            </p>
-                        </div>
-                    )}
-
-                    {beatsExpanded && canUnlockBeats && (
-                        <div className="px-6 py-4 space-y-2 border-t border-border">
-                            {beats.map(beat => (
-                                <div key={beat.id} className="p-3 bg-background border border-border rounded flex items-center gap-3">
-                                    <span className="text-xs text-text-muted w-6">{beat.sequence}</span>
-                                    <span className="flex-1 text-sm text-text-primary">{beat.beatName}</span>
-                                    {beat.isComplete ? (
-                                        <Check className="w-4 h-4 text-green-500" />
-                                    ) : (
-                                        <Edit3 className="w-4 h-4 text-text-muted" />
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
-            </div>
-        </div>
+            {/* Inline Syd Popout - Z-INDEX 60 (Highest Overlay) */}
+            <SydPopoutPanel
+                isOpen={!!activeSydField}
+                context={sydContext}
+                anchorElement={sydAnchor}
+                scrollContainer={scrollContainerRef.current}
+                onClose={handleCloseSyd}
+                onSendMessage={handleSydMessage}
+            />
+        </>
     );
 };
