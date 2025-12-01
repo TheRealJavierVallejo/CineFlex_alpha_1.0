@@ -4,7 +4,7 @@
  * NOW INCLUDES: Garbage Collection, Schema Migration, and Sanitization
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
 import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema } from './schemas';
@@ -246,6 +246,12 @@ const migrateProject = (rawProject: any): Project => {
     generationCandidates: s.generationCandidates || []
   }));
 
+  // V2 -> V3 Migration: Story Development fields
+  if (!rawProject.plotDevelopment) rawProject.plotDevelopment = undefined;
+  if (!rawProject.characterDevelopments) rawProject.characterDevelopments = [];
+  if (!rawProject.storyBeats) rawProject.storyBeats = [];
+  if (!rawProject.storyMetadata) rawProject.storyMetadata = { lastUpdated: Date.now() };
+
   return rawProject as Project;
 };
 
@@ -287,6 +293,10 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'locations'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'metadata'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'library'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'plotDevelopment'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'characterDevelopments'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'storyBeats'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'storyMetadata'));
 
   const list = getProjectsList();
   const updatedList = list.filter(p => p.id !== projectId);
@@ -455,7 +465,45 @@ export const toggleImageFavorite = async (projectId: string, imageId: string) =>
   const current = await getImageLibrary(projectId);
   const updated = current.map(img => img.id === imageId ? { ...img, isFavorite: !img.isFavorite } : img);
   await saveImageLibrary(projectId, updated);
+}
+
+// --- STORY DEVELOPMENT ---
+
+export const getPlotDevelopment = async (projectId: string): Promise<PlotDevelopment | undefined> => {
+  const data = await dbGet<PlotDevelopment>(STORE_NAME, getStorageKey(projectId, 'plotDevelopment'));
+  return data || undefined;
 };
+
+export const savePlotDevelopment = async (projectId: string, plot: PlotDevelopment) => {
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'plotDevelopment'), plot);
+};
+
+export const getCharacterDevelopments = async (projectId: string): Promise<CharacterDevelopment[]> => {
+  const data = await dbGet<CharacterDevelopment[]>(STORE_NAME, getStorageKey(projectId, 'characterDevelopments'));
+  return data || [];
+};
+
+export const saveCharacterDevelopments = async (projectId: string, chars: CharacterDevelopment[]) => {
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'characterDevelopments'), chars);
+};
+
+export const getStoryBeats = async (projectId: string): Promise<StoryBeat[]> => {
+  const data = await dbGet<StoryBeat[]>(STORE_NAME, getStorageKey(projectId, 'storyBeats'));
+  return data || [];
+};
+
+export const saveStoryBeats = async (projectId: string, beats: StoryBeat[]) => {
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'storyBeats'), beats);
+};
+
+export const getStoryMetadata = async (projectId: string): Promise<StoryMetadata> => {
+  const data = await dbGet<StoryMetadata>(STORE_NAME, getStorageKey(projectId, 'storyMetadata'));
+  return data || { lastUpdated: Date.now() };
+};
+
+export const saveStoryMetadata = async (projectId: string, metadata: StoryMetadata) => {
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'storyMetadata'), metadata);
+};;
 
 // --- GARBAGE COLLECTION ---
 

@@ -8,6 +8,7 @@
 export enum ViewState {
   DASHBOARD = 'DASHBOARD', // The Grid View of images
   TIMELINE = 'TIMELINE',   // The Script View
+  STORY = 'STORY',         // The Story Development View (Syd Micro-Agents)
   ASSETS = 'ASSETS',       // The Cast & Wardrobe View
   EDITOR = 'EDITOR',       // The Image Generator Popup
   SETTINGS = 'SETTINGS'    // The Project Configuration View
@@ -145,6 +146,81 @@ export interface Shot {
   referenceStrength?: number;
 }
 
+// 📖 STORY DEVELOPMENT: Fields for plot, character arcs, and story structure
+export interface PlotDevelopment {
+  // Foundation (unlock first)
+  genre?: string;
+  theme?: string;
+  tone?: string;
+
+  // Generated with Syd after foundation
+  title?: string;
+  logline?: string;
+
+  // Advanced (unlock after logline)
+  storyTypes?: string[];
+  audienceTarget?: string;
+  setting?: string;
+  bStory?: string;
+  notes?: string;
+
+  // Summaries
+  foundationSummary?: string;
+  coreSummary?: string;
+}
+
+export interface StoryProgress {
+  foundationComplete: boolean;
+  coreComplete: boolean;
+  charactersComplete: boolean;
+  actOneComplete: boolean;
+  actTwoComplete: boolean;
+  actThreeComplete: boolean;
+}
+
+export interface CharacterDevelopment {
+  id: string;
+
+  // Basic (links to existing Character asset)
+  characterId?: string; // Reference to Character in assets
+  name: string;
+  role: 'protagonist' | 'antagonist' | 'supporting';
+
+  // Arc fields (progressive unlock)
+  physicalDescription?: string;
+  personality?: string;
+  archetypes?: string[];
+  want?: string;        // External goal
+  need?: string;        // Internal growth
+  lie?: string;         // False belief
+  ghost?: string;       // Past trauma
+  characterArc?: string; // Overall arc summary
+  notes?: string;
+}
+
+export interface StoryBeat {
+  id: string;
+  beatName: string;     // e.g., "Opening Image", "Catalyst"
+  sequence: number;     // 1-15 for Save the Cat structure
+  content?: string;     // User or Syd-generated content
+  summary?: string;     // Auto-compressed version (max 100 words)
+  isComplete: boolean;
+}
+
+// Auto-summary metadata for token compression
+export interface StoryMetadata {
+  // Auto-generated summaries for context management
+  actOneSummary?: string;    // Auto after beats 1-5
+  actTwoASummary?: string;   // Auto after beats 6-10
+  actTwoBSummary?: string;   // Auto after beats 11-12
+  actThreeSummary?: string;  // Auto after beats 13-15
+
+  // Character profile summaries (compressed)
+  characterProfiles?: Record<string, string>; // characterId -> compressed profile (75 words max)
+
+  lastUpdated: number;
+}
+
 // 📂 PROJECT METADATA: Basic info shown on the "Welcome Screen" cards
 export interface ProjectMetadata {
   id: string;
@@ -172,6 +248,12 @@ export interface Project {
     format: 'fountain' | 'fdx' | 'pdf' | 'txt'
   };
   scriptElements?: ScriptElement[]; // The full list of script lines
+
+  // Story Development (Syd Micro-Agent System)
+  plotDevelopment?: PlotDevelopment;
+  characterDevelopments?: CharacterDevelopment[];
+  storyBeats?: StoryBeat[];
+  storyMetadata?: StoryMetadata;
 }
 
 // 📤 EXPORT: The format used when you save a file to your computer

@@ -13,7 +13,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
 import { syncScriptToScenes } from '../services/scriptUtils';
 import { StorageWarning } from '../components/ui/StorageWarning';
-import { useSubscription } from '../context/SubscriptionContext'; // IMPORTED
+import { useSubscription } from '../context/SubscriptionContext';
 
 // Context type for child routes
 export interface WorkspaceContextType {
@@ -35,7 +35,7 @@ export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
-    const { tier } = useSubscription(); // GET TIER
+    const { tier } = useSubscription();
 
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -285,8 +285,8 @@ export const WorkspaceLayout: React.FC = () => {
             <ToastContainer toasts={toasts} onClose={closeToast} />
             <StorageWarning />
 
-            {/* 1. HEADER (Command Center) */}
-            <header className="h-12 bg-background border-b border-border flex items-center justify-between px-4 select-none shrink-0 z-30 relative">
+            {/* 1. HEADER - Z-INDEX 40 (Below Sidebar, Above StoryPanel) */}
+            <header className="h-12 bg-background border-b border-border flex items-center justify-between px-4 select-none shrink-0 z-40 relative">
 
                 {/* LEFT: Branding, Dashboard, Project */}
                 <div className="flex items-center h-full gap-4">

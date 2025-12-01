@@ -18,6 +18,8 @@ interface LocalLlmContextType {
   initModel: () => Promise<void>;
   generateResponse: (prompt: string, history?: { role: string; content: string }[]) => Promise<string>;
   streamResponse: (prompt: string, history: { role: string; content: string }[], onUpdate: (chunk: string) => void) => Promise<void>;
+  // NEW: Focused micro-agent generation
+  generateMicroAgent: (systemPrompt: string, context: Record<string, any>, maxTokens: number) => Promise<string>;
 }
 
 const LocalLlmContext = createContext<LocalLlmContextType | undefined>(undefined);
@@ -176,11 +178,35 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  // NEW: Micro-agent focused generation (for story development)
+  const generateMicroAgent = useCallback(async (
+    systemPrompt: string,
+    context: Record<string, any>,
+    maxTokens: number
+  ): Promise<string> => {
+    if (!engine.current) throw new Error("AI Engine not initialized");
+
+    const contextString = JSON.stringify(context, null, 2);
+
+    const messages = [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: contextString }
+    ];
+
+    const reply = await engine.current.chat.completions.create({
+      messages,
+      temperature: 0.8,  // Higher for creativity in story development
+      max_tokens: maxTokens,
+    });
+
+    return reply.choices[0]?.message?.content || "";
+  }, []);
+
   return (
     <LocalLlmContext.Provider value={{
       isReady, isDownloading, isSupported, isModelCached, isCheckingCache,
       downloadProgress, downloadText, error,
-      initModel, generateResponse, streamResponse
+      initModel, generateResponse, streamResponse, generateMicroAgent
     }}>
       {children}
     </LocalLlmContext.Provider>

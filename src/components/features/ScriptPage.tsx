@@ -7,10 +7,26 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
 import { ScriptElement } from '../../types';
-import { Sparkles, Wand2 } from 'lucide-react';
+import {
+    Loader2,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    Undo2,
+    Redo2,
+    Moon,
+    Sun,
+    Download,
+    Save,
+    Search,
+    Wand2,
+    Sparkles,
+    BookOpen
+} from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { SmartTypeManager } from './script-editor/SmartTypeManager';
 import { ScriptPageToolbar } from './script-editor/ScriptPageToolbar';
+import { StoryPanel } from './StoryPanel';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
@@ -19,6 +35,7 @@ import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { calculatePagination } from '../../services/pagination';
 import { learnFromScript } from '../../services/smartType';
+import { StoryAssistantModal } from './StoryAssistantModal';
 
 export const ScriptPage: React.FC = () => {
     const { project, updateScriptElements, importScript, showToast } = useWorkspace();
@@ -37,6 +54,7 @@ export const ScriptPage: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
+    const [isStoryModalOpen, setIsStoryModalOpen] = useState(false); // Story modal state
 
     // Pagination State
     const [pageMap, setPageMap] = useState<Record<string, number>>({});
@@ -69,11 +87,11 @@ export const ScriptPage: React.FC = () => {
         () => debounce((newElements: ScriptElement[]) => {
             setSaveStatus('saving');
             setIsSyncing(true);
-            
+
             // 1. Enrich/Sequence
             const sequenced = newElements.map((el, idx) => ({ ...el, sequence: idx + 1 }));
             const enriched = enrichScriptElements(sequenced);
-            
+
             // 2. Update Context
             updateScriptElements(enriched);
 
@@ -186,7 +204,7 @@ export const ScriptPage: React.FC = () => {
             e.shiftKey ? (canRedo && redo()) : (canUndo && undo());
             return;
         }
-        
+
         // Split Block (Enter)
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -228,12 +246,12 @@ export const ScriptPage: React.FC = () => {
                 const index = prevElements.findIndex(el => el.id === id);
                 if (index <= 0) return prevElements;
                 e.preventDefault();
-                
+
                 const prevIndex = index - 1;
                 const prevEl = prevElements[prevIndex];
                 const currentEl = prevElements[index];
                 const newCursorPos = prevEl.content.length;
-                
+
                 const updated = [...prevElements];
                 updated[prevIndex] = { ...prevEl, content: prevEl.content + currentEl.content };
                 updated.splice(index, 1);
@@ -242,7 +260,7 @@ export const ScriptPage: React.FC = () => {
                     setActiveElementId(prevEl.id);
                     cursorTargetRef.current = { id: prevEl.id, position: newCursorPos };
                 });
-                
+
                 debouncedSync(updated);
                 return updated;
             });
@@ -254,14 +272,14 @@ export const ScriptPage: React.FC = () => {
             setElements(prevElements => {
                 const index = prevElements.findIndex(el => el.id === id);
                 if (index === -1) return prevElements;
-                
+
                 const types: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition'];
                 const currentIdx = types.indexOf(type);
                 const nextType = types[(currentIdx + 1) % types.length];
-                
+
                 const updated = [...prevElements];
                 updated[index] = { ...updated[index], type: nextType };
-                
+
                 debouncedSync(updated);
                 return updated;
             });
@@ -297,6 +315,22 @@ export const ScriptPage: React.FC = () => {
             content: <ScriptChat isOpen={true} onClose={() => { }} />
         },
         {
+            id: 'story',
+            label: 'Story',
+            icon: <BookOpen className="w-5 h-5" />,
+            content: (
+                <div className="flex items-center justify-center h-full p-6">
+                    <button
+                        onClick={() => setIsStoryModalOpen(true)}
+                        className="px-6 py-3 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 flex items-center gap-2 shadow-lg"
+                    >
+                        <BookOpen className="w-5 h-5" />
+                        Open Story Assistant
+                    </button>
+                </div>
+            )
+        },
+        {
             id: 'smarttype',
             label: 'SmartType',
             icon: <Wand2 className="w-5 h-5" />,
@@ -305,87 +339,95 @@ export const ScriptPage: React.FC = () => {
     ];
 
     return (
-        <PageWithToolRail tools={tools} defaultTool={null}>
-            <div className="relative h-full flex flex-col overflow-hidden font-sans bg-app transition-colors duration-300">
+        <>
+            <PageWithToolRail tools={tools} defaultTool={null}>
+                <div className="relative h-full flex flex-col overflow-hidden font-sans bg-app transition-colors duration-300">
 
-                <ScriptPageToolbar
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    onUndo={undo}
-                    onRedo={redo}
-                    isPaperWhite={isPaperWhite}
-                    onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
-                    onExport={() => exportToPDF(project)}
-                    saveStatus={saveStatus}
-                    currentPage={currentPageNum}
-                    totalPages={totalPages}
-                />
+                    <ScriptPageToolbar
+                        canUndo={canUndo}
+                        canRedo={canRedo}
+                        onUndo={undo}
+                        onRedo={redo}
+                        isPaperWhite={isPaperWhite}
+                        onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
+                        onExport={() => exportToPDF(project)}
+                        saveStatus={saveStatus}
+                        currentPage={currentPageNum}
+                        totalPages={totalPages}
+                    />
 
-                <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-[50vh]">
-                    {elements.length === 0 ? (
-                        <div className="mt-20">
-                            <EmptyProjectState
-                                title="Start Writing"
-                                description="Create your first scene or import an existing screenplay."
-                                onCreate={() => {
-                                    const id = crypto.randomUUID();
-                                    setElements([{ id, type: 'scene_heading', content: 'INT. START - DAY', sequence: 1 }]);
-                                    setActiveElementId(id);
-                                }}
-                                onImport={handleImportScript}
-                                isImporting={isImporting}
-                            />
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center py-8 gap-8">
-                            {Object.entries(pages).map(([pageNumStr, pageElements]) => {
-                                const pageNum = parseInt(pageNumStr);
-                                return (
-                                    <div
-                                        key={pageNum}
-                                        id={`page-${pageNum}`}
-                                        className={`
-                                            w-[8.5in] min-h-[11in] relative transition-colors duration-300
-                                            pt-[1.0in] pb-[1.0in] pl-[1.5in] pr-[1.0in]
-                                            ${pageStyle}
-                                        `}
-                                        style={{
-                                            // OPTIMIZATION: Native browser virtualization
-                                            contentVisibility: 'auto', 
-                                            containIntrinsicSize: '11in 11in'
-                                        }}
-                                    >
-                                        {/* Page Number */}
-                                        <div className={`absolute top-[0.5in] right-[1.0in] text-[12pt] font-screenplay select-none ${isPaperWhite ? 'text-black opacity-50' : 'text-zinc-500'}`}>
-                                            {pageNum}.
+                    <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-[50vh]">
+                        {elements.length === 0 ? (
+                            <div className="mt-20">
+                                <EmptyProjectState
+                                    title="Start Writing"
+                                    description="Create your first scene or import an existing screenplay."
+                                    onCreate={() => {
+                                        const id = crypto.randomUUID();
+                                        setElements([{ id, type: 'scene_heading', content: 'INT. START - DAY', sequence: 1 }]);
+                                        setActiveElementId(id);
+                                    }}
+                                    onImport={handleImportScript}
+                                    isImporting={isImporting}
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center py-8 gap-8">
+                                {Object.entries(pages).map(([pageNumStr, pageElements]) => {
+                                    const pageNum = parseInt(pageNumStr);
+                                    return (
+                                        <div
+                                            key={pageNum}
+                                            id={`page-${pageNum}`}
+                                            className={`
+                                                w-[8.5in] min-h-[11in] relative transition-colors duration-300
+                                                pt-[1.0in] pb-[1.0in] pl-[1.5in] pr-[1.0in]
+                                                ${pageStyle}
+                                            `}
+                                            style={{
+                                                // OPTIMIZATION: Native browser virtualization
+                                                contentVisibility: 'auto',
+                                                containIntrinsicSize: '11in 11in'
+                                            }}
+                                        >
+                                            {/* Page Number */}
+                                            <div className={`absolute top-[0.5in] right-[1.0in] text-[12pt] font-screenplay select-none ${isPaperWhite ? 'text-black opacity-50' : 'text-zinc-500'}`}>
+                                                {pageNum}.
+                                            </div>
+
+                                            <div className="flex flex-col">
+                                                {pageElements.map((element, index) => (
+                                                    <ScriptBlock
+                                                        key={element.id}
+                                                        element={element}
+                                                        isActive={activeElementId === element.id}
+                                                        isFirstOnPage={index === 0}
+                                                        isLightMode={isPaperWhite}
+                                                        onChange={handleContentChange}
+                                                        onKeyDown={(e, id, type, start, end) => {
+                                                            handleNavigation(e, id, start, element.content.length);
+                                                            handleKeyDown(e, id, type, start, end);
+                                                        }}
+                                                        onFocus={setActiveElementId}
+                                                        cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
+                                                        projectId={project.id}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
-
-                                        <div className="flex flex-col">
-                                            {pageElements.map((element, index) => (
-                                                <ScriptBlock
-                                                    key={element.id}
-                                                    element={element}
-                                                    isActive={activeElementId === element.id}
-                                                    isFirstOnPage={index === 0}
-                                                    isLightMode={isPaperWhite}
-                                                    onChange={handleContentChange}
-                                                    onKeyDown={(e, id, type, start, end) => {
-                                                        handleNavigation(e, id, start, element.content.length);
-                                                        handleKeyDown(e, id, type, start, end);
-                                                    }}
-                                                    onFocus={setActiveElementId}
-                                                    cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                                                    projectId={project.id}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
-        </PageWithToolRail>
+            </PageWithToolRail>
+
+            {/* Story Assistant Panel */}
+            <StoryPanel
+                isOpen={isStoryModalOpen}
+                onClose={() => setIsStoryModalOpen(false)}
+            />
+        </>
     );
 };
