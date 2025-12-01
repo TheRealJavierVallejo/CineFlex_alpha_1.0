@@ -33,7 +33,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
     );
 
     return (
-        <div className="bg-surface border border-border rounded-lg p-5 space-y-5 relative group transition-colors hover:border-border/80">
+        <div className="bg-surface border border-border rounded-lg p-5 space-y-5 relative transition-colors hover:border-border/80">
             {/* Header / Basic Info */}
             <div className="space-y-5">
                 {/* Top Bar: Icon + Role + Delete */}
@@ -49,7 +49,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                     
                     <button
                         onClick={onDelete}
-                        className="text-text-secondary hover:text-red-500 transition-opacity opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-surface-secondary"
+                        className="text-text-secondary hover:text-red-500 transition-colors p-1.5 rounded-md hover:bg-surface-secondary opacity-50 hover:opacity-100"
                         title="Delete Character"
                     >
                         <Trash2 className="w-4 h-4" />
