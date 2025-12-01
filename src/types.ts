@@ -153,6 +153,8 @@ export interface PlotDevelopment {
   theme?: string;
   tone?: string;
   storyTypes?: string[];
+  setting?: string; // NEW
+  budget?: string;  // NEW
   
   // NEW: Target Audience
   targetAudienceRating?: string;      // Dropdown (PG, R, etc.)
@@ -163,9 +165,8 @@ export interface PlotDevelopment {
   logline?: string;
 
   // Advanced (unlock after logline)
-  storyTypes?: string[];
   audienceTarget?: string;
-  setting?: string;
+  // setting field is now at root, keeping here for backward compat if needed or just use root
   bStory?: string;
   notes?: string;
 

@@ -315,6 +315,17 @@ export const StoryPanel: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* SETTING FIELD */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Setting / World</label>
+                                <input
+                                    value={plot.setting || ''}
+                                    onChange={(e) => handlePlotChange({ setting: e.target.value })}
+                                    className="w-full px-3 py-2.5 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors"
+                                    placeholder="When and where? (e.g., Modern-day NYC, 1920s Chicago, Dystopian 2050)"
+                                />
+                            </div>
+
                             {/* STORY TYPES FIELD */}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
@@ -492,6 +503,18 @@ export const StoryPanel: React.FC = () => {
                                 onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
                                 isActiveSyd={activeSydField === 'logline'}
                                 placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
+                            />
+
+                            <FieldWithSyd
+                                id="budget"
+                                label="Budget Constraints"
+                                value={plot.budget || ''}
+                                onChange={(val) => handlePlotChange({ budget: val })}
+                                multiline={true}
+                                minHeight="60px"
+                                onRequestSyd={(el) => handleRequestSyd('budget' as any, 'budget', el)}
+                                isActiveSyd={activeSydField === 'budget'}
+                                placeholder="Production budget level (e.g., Micro-budget, Low-budget, Studio) and any specific limitations..."
                             />
                         </div>
                     </CollapsibleSection>
