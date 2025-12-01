@@ -254,7 +254,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 1. FOUNDATION */}
                     <CollapsibleSection
                         title="Plot Foundation"
-                        defaultExpanded={true}
+                        defaultExpanded={false}
                         rightElement={progress.foundationComplete ? <Check className="w-5 h-5 text-green-500" /> : null}
                     >
                         <div className="space-y-8 pt-4">
@@ -315,7 +315,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 2. CHARACTERS */}
                     <CollapsibleSection
                         title="Cast & Character Arcs"
-                        defaultExpanded={true}
+                        defaultExpanded={false}
                         rightElement={
                             <div className="flex gap-2">
                                 <button
@@ -359,7 +359,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 3. STORY STRUCTURE */}
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
-                        defaultExpanded={true}
+                        defaultExpanded={false}
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
@@ -375,7 +375,7 @@ export const StoryPanel: React.FC = () => {
                     </CollapsibleSection>
                     
                     {/* 4. BRAINSTORMING (Free form) */}
-                    <CollapsibleSection title="Brainstorming Notes" className="border-none">
+                    <CollapsibleSection title="Brainstorming Notes" className="border-none" defaultExpanded={false}>
                          <div className="pt-4">
                              <textarea 
                                 className="w-full bg-surface-secondary/50 border border-border rounded-lg p-4 min-h-[200px] text-sm text-text-primary focus:border-primary focus:outline-none transition-colors leading-relaxed placeholder:text-text-muted/30"
