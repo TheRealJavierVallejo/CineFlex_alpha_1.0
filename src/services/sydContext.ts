@@ -278,10 +278,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe what ${charName} consciously wants in this story — a visible, concrete goal they can actively pursue on screen.
-Make it specific and difficult, and be sure it creates conflict with other characters or the world.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+State ${charName}'s clear, visible external goal in this story, in plain language that fits in a "Want (External Goal)" field.
+Make it specific, hard to achieve, and clearly capable of creating conflict with other characters or the world.`;
                 break;
 
             case 'need':
@@ -292,10 +297,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
-Make sure this Need is different from their Want and creates inner conflict, especially around the story's theme.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+Describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
+Make sure this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
                 break;
 
             case 'lie':
@@ -307,10 +317,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe the core false belief ${charName} holds about themself, other people, or the world that blocks their growth.
-Make this Lie emotionally understandable (because of their past) but clearly wrong in a way that will drive bad decisions and conflict throughout the story.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+Describe the core false belief ${charName} holds about themself, other people, or the world that blocks their growth.
+Make this Lie emotionally understandable but clearly wrong in a way that will drive bad decisions and conflict throughout the story.`;
                 break;
 
             case 'ghost':
@@ -321,10 +336,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe one clear past event or situation that explains why ${charName} believes their current Lie.
-Make it simple but specific (who, what, where) and show how it still echoes into the present story, especially in how they chase their Want and avoid their Need.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+Describe one clear past event or situation that explains why ${charName} believes their current Lie.
+Make it simple but specific (who, what, where) and show how it echoes into the present story.`;
                 break;
 
             case 'strengths':
@@ -335,10 +355,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Strengths = ${charStrengths || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe 2–4 key strengths, skills, or resources that help ${charName} pursue their Want and navigate the plot.
-Choose strengths that can also create complications, rivalries, or moral dilemmas — not just neutral "good" traits.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+Describe 2–4 key strengths, skills, or resources that help ${charName} pursue their Want and navigate the plot.
+Choose strengths that can also create complications, rivalries, or moral dilemmas — not just neutral "good" traits.`;
                 break;
 
             case 'weaknesses':
@@ -350,10 +375,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Weaknesses = ${charWeaknesses || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe 2–4 key weaknesses, flaws, or vulnerabilities that repeatedly get ${charName} into trouble.
-Tie these flaws to their Lie and Ghost so they feel psychologically consistent, and make sure they interfere with their Want and relationships.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+Describe 2–4 key weaknesses, flaws, or vulnerabilities that repeatedly get ${charName} into trouble.
+Tie these flaws to their Lie and Ghost so they feel psychologically consistent, and make sure they interfere with their Want and relationships.`;
                 break;
 
             case 'arc':
@@ -365,10 +395,15 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}, Strengths = ${charStrengths || 'not defined yet'}, Weaknesses = ${charWeaknesses || 'not defined yet'}, Arc Summary = ${charArcSummary || 'not defined yet'}
 
+HARD RULES:
+- Your entire reply must be ONE short paragraph (no line breaks).
+- Maximum 2–3 sentences.
+- Maximum about 45–60 words.
+- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+
 TASK:
-In 3–4 sentences, describe how ${charName} changes from the beginning to the end of the story.
-Show how their Want, Need, Lie, Ghost, strengths, and weaknesses collide to create at least one major crisis or low point, and how they end up different by the finale.
-Write in third person present tense, keep it under about 150 words, and do NOT use bullet points.`;
+Describe how ${charName} changes from the beginning to the end of the story.
+Show how their Want, Need, Lie, and Ghost collide to create change, and briefly state how they end up different by the finale.`;
                 break;
 
             default:
@@ -378,7 +413,7 @@ Write in third person present tense, keep it under about 150 words, and do NOT u
         if (field === 'identity') {
             maxOutputTokens = 80; // very short replies for name/age/description
         } else if (['want', 'need', 'lie', 'ghost', 'strengths', 'weaknesses', 'arc'].includes(field)) {
-            maxOutputTokens = 250;
+            maxOutputTokens = 120; // concise 2–3 sentence replies
         } else {
             maxOutputTokens = 200;
         }
