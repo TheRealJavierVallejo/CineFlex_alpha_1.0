@@ -47,7 +47,8 @@ export const FieldWithSyd: React.FC<FieldWithSydProps> = ({
     return (
         <div className="space-y-2 group" ref={containerRef}>
             <div className="flex items-center justify-between">
-                <label htmlFor={id} className="text-xs font-bold text-text-secondary uppercase tracking-wider group-focus-within:text-primary transition-colors">
+                {/* FIXED: Removed group-focus-within:text-primary to keep label gray */}
+                <label htmlFor={id} className="text-xs font-bold text-text-secondary uppercase tracking-wider transition-colors">
                     {label}
                 </label>
                 {isActiveSyd && (

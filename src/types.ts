@@ -198,6 +198,7 @@ export interface CharacterDevelopment {
   physicalDescription?: string; // Legacy
   personality?: string; // Legacy
   archetypes?: string[];
+  archetype?: string;   // New: Dropdown selection (or custom)
   
   want?: string;        // External goal
   need?: string;        // Internal growth

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, X, Check, BrainCircuit, Sparkles, Plus, ChevronDown } from 'lucide-react';
+import { BookOpen, X, Check, BrainCircuit, Sparkles, Plus, ChevronDown, UserPlus } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -155,10 +155,10 @@ export const StoryPanel: React.FC = () => {
         await saveCharacterDevelopments(project.id, newChars);
     };
 
-    const handleAddCharacter = async (role: 'protagonist' | 'antagonist' | 'supporting') => {
+    const handleAddCharacter = async (role: 'protagonist' | 'antagonist' | 'supporting' = 'supporting') => {
         const newChar: CharacterDevelopment = {
             id: crypto.randomUUID(),
-            name: `New ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+            name: `New Character`,
             role,
         };
         const newChars = [...characters, newChar];
@@ -527,16 +527,10 @@ export const StoryPanel: React.FC = () => {
                         rightElement={
                             <div className="flex gap-2">
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter('protagonist'); }}
-                                    className="text-[10px] px-3 py-1.5 bg-surface-secondary border border-border rounded-full hover:bg-surface hover:text-primary transition-colors font-bold uppercase tracking-wide"
+                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter(); }}
+                                    className="text-[10px] px-3 py-1.5 bg-surface-secondary border border-border rounded-full hover:bg-surface hover:text-primary transition-colors font-bold uppercase tracking-wide flex items-center gap-1.5"
                                 >
-                                    + Protag
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleAddCharacter('antagonist'); }}
-                                    className="text-[10px] px-3 py-1.5 bg-surface-secondary border border-border rounded-full hover:bg-surface hover:text-primary transition-colors font-bold uppercase tracking-wide"
-                                >
-                                    + Antag
+                                    <UserPlus className="w-3 h-3" /> Add Character
                                 </button>
                             </div>
                         }
@@ -548,7 +542,7 @@ export const StoryPanel: React.FC = () => {
                                         <BrainCircuit className="w-8 h-8 opacity-20" />
                                     </div>
                                     <p className="text-sm font-medium">No characters defined</p>
-                                    <p className="text-xs text-text-muted mt-1">Add a Protagonist to begin building the emotional core.</p>
+                                    <p className="text-xs text-text-muted mt-1">Add a character to begin building the emotional core.</p>
                                 </div>
                             )}
                             {characters.map(char => (
