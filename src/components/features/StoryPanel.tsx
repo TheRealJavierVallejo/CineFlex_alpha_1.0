@@ -331,7 +331,7 @@ export const StoryPanel: React.FC = () => {
                                     )}
                                 </div>
                                 
-                                <div className="min-h-[42px] px-3 py-2 bg-surface-secondary border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all flex flex-wrap gap-2 relative">
+                                <div className="relative min-h-[42px] px-3 py-2 bg-surface-secondary border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all flex flex-wrap gap-2">
                                     {(plot.storyTypes || []).map(type => (
                                         <span key={type} className="inline-flex items-center gap-1 bg-surface border border-border px-2 py-1 rounded text-xs text-text-primary">
                                             {type}
@@ -386,21 +386,20 @@ export const StoryPanel: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {/* Syd Button for Story Types */}
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-                                        <button 
-                                            onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement?.parentElement as HTMLElement)}
-                                            className={`
-                                                p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm
-                                                ${activeSydField === 'story_types'
-                                                    ? 'bg-primary text-white border border-primary'
-                                                    : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
-                                            `}
-                                            title="Ask Syd for story type suggestions"
-                                        >
-                                            <Sparkles className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
+                                    {/* Syd Button - Standard Positioning */}
+                                    <button 
+                                        onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement as HTMLElement)}
+                                        className={`
+                                            absolute top-2 right-2 p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm z-10
+                                            opacity-0 group-hover:opacity-100 focus-within:opacity-100
+                                            ${activeSydField === 'story_types'
+                                                ? 'bg-primary text-white border border-primary opacity-100'
+                                                : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
+                                        `}
+                                        title="Ask Syd for story type suggestions"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </div>
 
@@ -419,71 +418,68 @@ export const StoryPanel: React.FC = () => {
 
                                 <div className="space-y-3 relative">
                                     {/* Dropdown Row */}
-                                    <div className="flex gap-2 relative">
-                                        <div className="relative flex-1 group/input">
-                                            {isCustomRating ? (
-                                                <div className="flex gap-1">
-                                                    <input
-                                                        value={customRatingInput}
-                                                        onChange={(e) => {
-                                                            setCustomRatingInput(e.target.value);
-                                                            handlePlotChange({ targetAudienceRating: e.target.value });
-                                                        }}
-                                                        className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none"
-                                                        placeholder="Custom rating (e.g. TV-MA)..."
-                                                        autoFocus
-                                                    />
-                                                    <button 
-                                                        onClick={() => {
-                                                            setIsCustomRating(false);
-                                                            handlePlotChange({ targetAudienceRating: TARGET_AUDIENCE_RATINGS[0] });
-                                                        }}
-                                                        className="px-2 text-xs text-text-muted hover:text-text-primary border border-border rounded hover:bg-surface-secondary"
-                                                    >
-                                                        Reset
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div className="relative">
-                                                    <select
-                                                        value={plot.targetAudienceRating || ''}
-                                                        onChange={(e) => {
-                                                            if (e.target.value === 'custom') {
-                                                                setIsCustomRating(true);
-                                                                setCustomRatingInput('');
-                                                                handlePlotChange({ targetAudienceRating: '' });
-                                                            } else {
-                                                                handlePlotChange({ targetAudienceRating: e.target.value });
-                                                            }
-                                                        }}
-                                                        className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer"
-                                                    >
-                                                        <option value="" disabled>Select Rating...</option>
-                                                        {TARGET_AUDIENCE_RATINGS.map(r => (
-                                                            <option key={r} value={r}>{r}</option>
-                                                        ))}
-                                                        <option value="custom">Custom...</option>
-                                                    </select>
-                                                    <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" />
-                                                </div>
-                                            )}
-
-                                            {/* Syd Button - INSIDE the input container */}
-                                            <div className="absolute top-2 right-2 opacity-0 group-hover/input:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+                                    <div className="relative">
+                                        {isCustomRating ? (
+                                            <div className="flex gap-1 relative">
+                                                <input
+                                                    value={customRatingInput}
+                                                    onChange={(e) => {
+                                                        setCustomRatingInput(e.target.value);
+                                                        handlePlotChange({ targetAudienceRating: e.target.value });
+                                                    }}
+                                                    className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none pr-10"
+                                                    placeholder="Custom rating (e.g. TV-MA)..."
+                                                    autoFocus
+                                                />
                                                 <button 
-                                                    onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement?.parentElement as HTMLElement)}
-                                                    className={`
-                                                        p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm
-                                                        ${activeSydField === 'target_audience'
-                                                            ? 'bg-primary text-white border border-primary'
-                                                            : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
-                                                    `}
-                                                    title="Ask Syd to profile the audience"
+                                                    onClick={() => {
+                                                        setIsCustomRating(false);
+                                                        handlePlotChange({ targetAudienceRating: TARGET_AUDIENCE_RATINGS[0] });
+                                                    }}
+                                                    className="px-2 text-xs text-text-muted hover:text-text-primary border border-border rounded hover:bg-surface-secondary"
                                                 >
-                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                    Reset
                                                 </button>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="relative">
+                                                <select
+                                                    value={plot.targetAudienceRating || ''}
+                                                    onChange={(e) => {
+                                                        if (e.target.value === 'custom') {
+                                                            setIsCustomRating(true);
+                                                            setCustomRatingInput('');
+                                                            handlePlotChange({ targetAudienceRating: '' });
+                                                        } else {
+                                                            handlePlotChange({ targetAudienceRating: e.target.value });
+                                                        }
+                                                    }}
+                                                    className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer pr-10"
+                                                >
+                                                    <option value="" disabled>Select Rating...</option>
+                                                    {TARGET_AUDIENCE_RATINGS.map(r => (
+                                                        <option key={r} value={r}>{r}</option>
+                                                    ))}
+                                                    <option value="custom">Custom...</option>
+                                                </select>
+                                                <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" />
+                                            </div>
+                                        )}
+
+                                        {/* Syd Button - Top Right of Dropdown */}
+                                        <button 
+                                            onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement as HTMLElement)}
+                                            className={`
+                                                absolute top-1.5 right-10 p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm z-20
+                                                opacity-0 group-hover:opacity-100 focus-within:opacity-100
+                                                ${activeSydField === 'target_audience'
+                                                    ? 'bg-primary text-white border border-primary opacity-100'
+                                                    : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
+                                            `}
+                                            title="Ask Syd to profile the audience"
+                                        >
+                                            <Sparkles className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
 
                                     {/* Description Textarea */}
@@ -523,7 +519,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 2. CHARACTERS */}
                     <CollapsibleSection
                         title="Cast & Character Arcs"
-                        defaultExpanded={false}
+                        defaultExpanded={true}
                         rightElement={
                             <div className="flex gap-2">
                                 <button
@@ -567,7 +563,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 3. STORY STRUCTURE */}
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
-                        defaultExpanded={false}
+                        defaultExpanded={true}
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
