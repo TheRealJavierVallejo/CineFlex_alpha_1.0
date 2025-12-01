@@ -186,25 +186,11 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   ): Promise<string> => {
     if (!engine.current) throw new Error("AI Engine not initialized");
 
-    // Extract user message from context
-    const userMessage = context.userMessage || "";
-    // Clone context to avoid mutating original if reused elsewhere
-    const contextCopy = { ...context };
-    delete contextCopy.userMessage; 
+    const contextString = JSON.stringify(context, null, 2);
 
-    // Build context string (everything EXCEPT userMessage)
-    const contextString = Object.entries(contextCopy)
-      .filter(([key, value]) => value) // Filter out empty values
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n');
-
-    // Build the system prompt with context embedded
-    const fullSystemPrompt = `${systemPrompt}\n\nCurrent Story Context:\n${contextString}`;
-
-    // Now send user's actual message as the user role
     const messages = [
-      { role: "system" as const, content: fullSystemPrompt },
-      { role: "user" as const, content: userMessage }
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: contextString }
     ];
 
     const reply = await engine.current.chat.completions.create({
