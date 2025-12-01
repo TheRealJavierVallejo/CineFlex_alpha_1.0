@@ -3,7 +3,7 @@ import type { MLCEngine, InitProgressReport } from "@mlc-ai/web-llm";
 import { logEvent } from '../services/telemetry'; // IMPORTED
 
 // Constants
-const SELECTED_MODEL = "Llama-3-8B-Instruct-q4f32_1-MLC";
+const SELECTED_MODEL = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 const DOWNLOAD_TIMEOUT_MS = 600000; // 10 minutes
 
 interface LocalLlmContextType {
