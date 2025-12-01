@@ -1,8 +1,3 @@
-/*
- * 🎬 PAGE: SCRIPT EDITOR (True Page View)
- * OPTIMIZED: Implements CSS Content-Visibility for performance on long scripts.
- */
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { ScriptBlock } from './ScriptBlock';
@@ -89,18 +84,20 @@ export const ScriptPage: React.FC = () => {
         [updateScriptElements, projectId]
     );
 
-    // Initial Load
+    // Sync elements with project.scriptElements and learn from script
     useEffect(() => {
-        if (elements.length === 0) {
-            if (project.scriptElements && project.scriptElements.length > 0) {
-                setElements(project.scriptElements);
-                learnFromScript(project.id, project.scriptElements);
-            } else if (project.scenes.length > 0) {
-                const generated = generateScriptFromScenes(project.scenes);
-                setElements(generated);
-            }
+        // If project.scriptElements has changed externally (e.g., loaded from storage, imported script)
+        // and it's different from the current history state's present, update the history state.
+        // We use JSON.stringify for a deep comparison to avoid unnecessary updates if content is the same.
+        if (JSON.stringify(project.scriptElements) !== JSON.stringify(elements)) {
+            setElements(project.scriptElements || []);
         }
-    }, [project.scriptElements, project.scenes, project.id, elements.length, setElements]);
+
+        // Always learn from the latest project.scriptElements when it changes
+        if (project.scriptElements && project.scriptElements.length > 0) {
+            learnFromScript(project.id, project.scriptElements);
+        }
+    }, [project.scriptElements, project.id, setElements, elements]);
 
     // Recalculate Pagination
     const calculatedPageMap = useMemo(() => {
