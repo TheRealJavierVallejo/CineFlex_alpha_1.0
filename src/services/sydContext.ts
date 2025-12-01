@@ -99,7 +99,7 @@ export function selectContextForAgent(
     const storyTypesStr = plot?.storyTypes?.join(', ') || "";
     
     // --------------------------------------------------------
-    // 1. FOUNDATION AGENTS
+    // 1. FOUNDATION AGENTS (Short & Snappy)
     // --------------------------------------------------------
 
     if (agentType === 'story_types') {
@@ -108,28 +108,21 @@ export function selectContextForAgent(
         contextFields.tone = tone;
         contextFields.setting = setting;
         
-        systemPrompt = `You are a story consultant helping a screenwriter choose the right story TYPE from their dropdown menu. The user is writing a ${genre} story with the theme '${theme}', ${tone} tone, set in ${setting}.
+        systemPrompt = `You are a story structure consultant. The user is writing a ${genre} story with the theme "${theme}", ${tone} tone, set in ${setting}.
 
-Their dropdown menu has these story type options:
-- Coming of Age
-- Fish Out of Water
-- Revenge Story
-- Love Story
-- Underdog Story
-- Redemption Arc
-- Hero's Journey
-- Rags to Riches
-- Quest/Mission
-- Mystery/Whodunit
-- Survival Story
-- Transformation
-- Rise and Fall
+Based on this, pick the 1-2 BEST options from their dropdown menu:
+• Coming of Age
+• Fish Out of Water
+• Revenge Story
+• Love Story
+• Underdog Story
+• Redemption Arc
 
-Based on their story details, recommend 1-2 options from this list that would work best. Explain WHY each fits their genre, theme, and tone in 2-3 sentences per option.
+Give a SHORT response (2-3 sentences max). Just tell them which option(s) fit best and why in ONE sentence per option. Then ask: "Want me to explain more about any of these?"
 
-Be specific, concise, and reference their actual story details.`;
+Be brief and decisive.`;
         
-        maxOutputTokens = 400;
+        maxOutputTokens = 150;
     } 
     
     else if (agentType === 'target_audience') {
@@ -138,16 +131,17 @@ Be specific, concise, and reference their actual story details.`;
         contextFields.tone = tone;
         contextFields.setting = setting;
         
-        systemPrompt = `You are an audience profiling expert. The user is writing a ${genre} story with the theme '${theme}', ${tone} tone, set in ${setting}.
+        systemPrompt = `You are an audience expert. The user is writing a ${genre} story with "${theme}" theme, ${tone} tone, set in ${setting}.
 
-Help them pick from the Target Audience dropdown by suggesting:
-1. The best age rating (G, PG, PG-13, R, NC-17)
-2. Who would love this story (age range, interests)
-3. 2-3 similar films/shows this audience enjoys
+Give a SHORT answer (2-3 sentences):
+1. What rating (G/PG/PG-13/R) fits best
+2. Who's the core audience (age + demographics)
 
-Be specific and practical. Keep it under 6 sentences.`;
+Then ask: "Want me to suggest similar films they'd enjoy?"
+
+Be brief and specific.`;
         
-        maxOutputTokens = 350;
+        maxOutputTokens = 120;
     }
 
     else if (agentType === 'title') {
@@ -156,22 +150,19 @@ Be specific and practical. Keep it under 6 sentences.`;
         contextFields.tone = tone;
         contextFields.setting = setting;
         if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
-        if (targetAudience) contextFields.targetAudience = targetAudience;
 
-        systemPrompt = `You are a title brainstorming expert. The user is writing a ${genre} story with the theme '${theme}', ${tone} tone, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}${targetAudience ? ` Target audience: ${targetAudience}.` : ''}
+        systemPrompt = `You are a title expert. The user is writing a ${genre} story with "${theme}" theme, ${tone} tone, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}
 
-Suggest 3-5 potential working titles. For each:
-- Give the title in bold: **Title Here**
-- One sentence explaining why it works
+Suggest 3 title options in this format:
+• **Title One**
+• **Title Two**
+• **Title Three**
 
-Titles should be:
-- Memorable and marketable
-- Hint at genre/theme
-- Feel appropriate for the tone
+Then ask: "Want me to explain why these work?"
 
-Be creative but grounded.`;
+Keep it BRIEF - just the titles.`;
 
-        maxOutputTokens = 400;
+        maxOutputTokens = 100;
     }
 
     else if (agentType === 'logline') {
@@ -179,46 +170,41 @@ Be creative but grounded.`;
         contextFields.theme = theme;
         contextFields.tone = tone;
         contextFields.setting = setting;
-        if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
-        if (targetAudience) contextFields.targetAudience = targetAudience;
         if (title !== "Untitled Project") contextFields.title = title;
+        if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
         
-        systemPrompt = `You are a logline specialist. The user is writing a ${genre} story${title !== "Untitled Project" ? ` titled '${title}'` : ''} with the theme '${theme}', ${tone} tone, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}${targetAudience ? ` Target audience: ${targetAudience}.` : ''}
+        systemPrompt = `You are a logline specialist. The user is writing a ${genre} story${title !== "Untitled Project" ? ` titled "${title}"` : ''} with "${theme}" theme, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}
 
-A logline is a ONE-SENTENCE pitch following this formula:
-'When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES].'
+A logline is ONE sentence: "When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]."
 
-If the user asks for help:
-1. Ask what questions you need answered (protagonist? main conflict? stakes?)
-2. Once they provide details, craft 1-2 logline options
-3. Explain why each works
+If the user hasn't told you their protagonist or main conflict yet, ask 2-3 SHORT questions:
+• Who's your protagonist?
+• What kicks off the story?
+• What are the stakes?
 
-Be conversational. Keep it focused on creating that one perfect sentence.`;
+If they give you details, write 1 logline option.
 
-        maxOutputTokens = 450;
+Keep responses SHORT (2-3 sentences max).`;
+
+        maxOutputTokens = 150;
     }
 
     else if (agentType === 'budget') {
         contextFields.genre = genre;
         contextFields.theme = theme;
-        contextFields.tone = tone;
         contextFields.setting = setting;
-        if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
         if (logline && logline !== "No logline defined yet") contextFields.logline = logline;
 
-        systemPrompt = `You are a practical low-budget filmmaking advisor. The user is writing a ${genre} story set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}${logline && logline !== "No logline defined yet" ? ` Logline: ${logline}` : ''}
+        systemPrompt = `You are a low-budget filmmaking expert. The user is writing a ${genre} story set in ${setting}.${logline && logline !== "No logline defined yet" ? ` Logline: ${logline}` : ''}
 
-Based on their budget constraints, give specific advice:
+Give 2-3 SHORT, specific tips for their budget level:
+• One creative cost-saving trick
+• One similar low-budget film to study
+• One thing to prioritize spending on
 
-1. **Creative Solutions**: How to achieve expensive elements cheaply (2-3 specific ideas)
-2. **Reference Films**: 1-2 similar films that succeeded on low budgets
-3. **Priorities**: What to spend money on vs. what to simplify
+Keep it BRIEF (3-4 sentences total). Then ask: "Want more budget tips?"`;
 
-Be encouraging and specific. Focus on practical, actionable advice they can use immediately.
-
-Keep response under 8 sentences.`;
-
-        maxOutputTokens = 450;
+        maxOutputTokens = 150;
     }
 
     // --------------------------------------------------------
