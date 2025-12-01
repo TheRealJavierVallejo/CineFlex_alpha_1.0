@@ -186,16 +186,28 @@ export const LocalLlmProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   ): Promise<string> => {
     if (!engine.current) throw new Error("AI Engine not initialized");
 
-    const contextString = JSON.stringify(context, null, 2);
+    // Extract the user's actual message
+    const userMessage = context.userMessage || "";
+    
+    // Build context string from everything EXCEPT userMessage
+    const contextEntries = Object.entries(context)
+      .filter(([key, value]) => key !== 'userMessage' && value !== undefined && value !== '')
+      .map(([key, value]) => `${key}: ${value}`);
+    
+    const contextString = contextEntries.length > 0 ? contextEntries.join('\n') : 'No context available yet.';
 
+    // Embed context into system prompt
+    const fullSystemPrompt = `${systemPrompt}\n\n=== STORY CONTEXT ===\n${contextString}\n\nRespond to the user's question based on this context.`;
+
+    // Send proper message structure
     const messages = [
-      { role: "system" as const, content: systemPrompt },
-      { role: "user" as const, content: contextString }
+      { role: "system" as const, content: fullSystemPrompt },
+      { role: "user" as const, content: userMessage }
     ];
 
     const reply = await engine.current.chat.completions.create({
       messages,
-      temperature: 0.8,  // Higher for creativity in story development
+      temperature: 0.8,
       max_tokens: maxTokens,
     });
 
