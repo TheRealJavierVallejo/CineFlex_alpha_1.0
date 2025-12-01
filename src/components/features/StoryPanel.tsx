@@ -293,7 +293,6 @@ export const StoryPanel: React.FC = () => {
                                 label="Working Title"
                                 value={plot.title || ''}
                                 onChange={(val) => handlePlotChange({ title: val })}
-                                disabled={!progress.foundationComplete}
                                 onRequestSyd={(el) => handleRequestSyd('title', 'title', el)}
                                 isActiveSyd={activeSydField === 'title'}
                                 placeholder="Enter title or ask Syd to brainstorm..."
@@ -304,9 +303,8 @@ export const StoryPanel: React.FC = () => {
                                 label="Logline (The Hook)"
                                 value={plot.logline || ''}
                                 onChange={(val) => handlePlotChange({ logline: val })}
-                                disabled={!progress.foundationComplete}
                                 multiline={true}
-                                minHeight="120px"
+                                minHeight="60px"
                                 onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
                                 isActiveSyd={activeSydField === 'logline'}
                                 placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
@@ -317,6 +315,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 2. CHARACTERS */}
                     <CollapsibleSection
                         title="Cast & Character Arcs"
+                        defaultExpanded={true}
                         rightElement={
                             <div className="flex gap-2">
                                 <button
@@ -333,7 +332,6 @@ export const StoryPanel: React.FC = () => {
                                 </button>
                             </div>
                         }
-                        isLocked={!progress.coreComplete}
                     >
                         <div className="space-y-4 pt-4">
                             {characters.length === 0 && (
@@ -361,7 +359,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 3. STORY STRUCTURE */}
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
-                        isLocked={!progress.charactersComplete}
+                        defaultExpanded={true}
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
