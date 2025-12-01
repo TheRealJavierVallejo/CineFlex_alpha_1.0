@@ -283,7 +283,6 @@ export const StoryPanel: React.FC = () => {
                     <CollapsibleSection
                         title="Plot Foundation"
                         defaultExpanded={false}
-                        rightElement={progress.foundationComplete ? <Check className="w-5 h-5 text-green-500" /> : null}
                     >
                         <div className="space-y-8 pt-4">
                             <div className="grid grid-cols-3 gap-4">
