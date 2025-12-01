@@ -42,9 +42,15 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                         <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center border border-border">
                             <User className="w-4 h-4 text-text-secondary" />
                         </div>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted bg-surface-secondary px-2 py-1 rounded border border-border/50">
-                            {character.role}
-                        </span>
+                        <select
+                            value={character.role}
+                            onChange={(e) => onChange({ role: e.target.value as 'protagonist' | 'antagonist' | 'supporting' })}
+                            className="text-[9px] font-bold uppercase tracking-wider text-text-muted bg-surface-secondary px-2.5 py-1 rounded border border-border/50 cursor-pointer hover:bg-surface hover:text-text-primary transition-colors appearance-none outline-none text-center"
+                        >
+                            <option value="protagonist">PROTAGONIST</option>
+                            <option value="antagonist">ANTAGONIST</option>
+                            <option value="supporting">SUPPORTING</option>
+                        </select>
                     </div>
                     
                     <button
