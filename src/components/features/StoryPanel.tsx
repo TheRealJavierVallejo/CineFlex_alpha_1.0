@@ -281,7 +281,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 1. FOUNDATION */}
                     <CollapsibleSection
                         title="Plot Foundation"
-                        defaultExpanded={true}
+                        defaultExpanded={false}
                         rightElement={progress.foundationComplete ? <Check className="w-5 h-5 text-green-500" /> : null}
                     >
                         <div className="space-y-8 pt-4">
@@ -499,7 +499,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 2. CHARACTERS */}
                     <CollapsibleSection
                         title="Cast & Character Arcs"
-                        defaultExpanded={true}
+                        defaultExpanded={false}
                         rightElement={
                             <div className="flex gap-2">
                                 <button
@@ -543,7 +543,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 3. STORY STRUCTURE */}
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
-                        defaultExpanded={true}
+                        defaultExpanded={false}
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
