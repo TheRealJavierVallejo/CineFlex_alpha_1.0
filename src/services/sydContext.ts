@@ -108,27 +108,46 @@ export function selectContextForAgent(
         contextFields.tone = tone;
         contextFields.setting = setting;
         
-        systemPrompt = `You are a narrative structure expert helping a screenwriter choose the right story structure. The user is writing a ${genre} story with the theme "${theme}" and a ${tone} tone, set in ${setting}.
+        systemPrompt = `You are a story consultant helping a screenwriter choose the right story TYPE from their dropdown menu. The user is writing a ${genre} story with the theme '${theme}', ${tone} tone, set in ${setting}.
 
-Suggest 2-3 narrative structures that would work well (e.g., Hero's Journey, Save the Cat, Three-Act Structure, etc.). For each structure, briefly explain WHY it fits this type of story.
+Their dropdown menu has these story type options:
+- Coming of Age
+- Fish Out of Water
+- Revenge Story
+- Love Story
+- Underdog Story
+- Redemption Arc
+- Hero's Journey
+- Rags to Riches
+- Quest/Mission
+- Mystery/Whodunit
+- Survival Story
+- Transformation
+- Rise and Fall
 
-Keep your response concise (3-4 sentences per structure). Be encouraging and practical.`;
+Based on their story details, recommend 1-2 options from this list that would work best. Explain WHY each fits their genre, theme, and tone in 2-3 sentences per option.
+
+Be specific, concise, and reference their actual story details.`;
         
-        maxOutputTokens = 250;
+        maxOutputTokens = 400;
     } 
     
     else if (agentType === 'target_audience') {
         contextFields.genre = genre;
         contextFields.theme = theme;
         contextFields.tone = tone;
+        contextFields.setting = setting;
         
-        systemPrompt = `You are an audience profiling expert helping a screenwriter identify their target audience. The user is writing a ${genre} story with the theme "${theme}" and a ${tone} tone.
+        systemPrompt = `You are an audience profiling expert. The user is writing a ${genre} story with the theme '${theme}', ${tone} tone, set in ${setting}.
 
-Suggest the ideal target audience (age range, demographics, interests). Reference similar films or shows this audience enjoys. Suggest an appropriate MPAA rating (G, PG, PG-13, R, etc.).
+Help them pick from the Target Audience dropdown by suggesting:
+1. The best age rating (G, PG, PG-13, R, NC-17)
+2. Who would love this story (age range, interests)
+3. 2-3 similar films/shows this audience enjoys
 
-Keep your response concise (4-5 sentences). Be specific and practical.`;
+Be specific and practical. Keep it under 6 sentences.`;
         
-        maxOutputTokens = 200;
+        maxOutputTokens = 350;
     }
 
     else if (agentType === 'title') {
@@ -137,14 +156,22 @@ Keep your response concise (4-5 sentences). Be specific and practical.`;
         contextFields.tone = tone;
         contextFields.setting = setting;
         if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
+        if (targetAudience) contextFields.targetAudience = targetAudience;
 
-        systemPrompt = `You are a title brainstorming expert helping a screenwriter create a compelling working title. The user is writing a ${genre} story with the theme "${theme}", a ${tone} tone, set in ${setting}.${storyTypesStr ? ` They're using the ${storyTypesStr} structure.` : ''}
+        systemPrompt = `You are a title brainstorming expert. The user is writing a ${genre} story with the theme '${theme}', ${tone} tone, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}${targetAudience ? ` Target audience: ${targetAudience}.` : ''}
 
-Suggest 3-5 potential titles that capture the story's essence. For each title, explain in one sentence why it works. Titles should be memorable, marketable, and hint at the genre/theme.
+Suggest 3-5 potential working titles. For each:
+- Give the title in bold: **Title Here**
+- One sentence explaining why it works
 
-Keep your response concise. Be creative but practical.`;
+Titles should be:
+- Memorable and marketable
+- Hint at genre/theme
+- Feel appropriate for the tone
 
-        maxOutputTokens = 200;
+Be creative but grounded.`;
+
+        maxOutputTokens = 400;
     }
 
     else if (agentType === 'logline') {
@@ -152,38 +179,46 @@ Keep your response concise. Be creative but practical.`;
         contextFields.theme = theme;
         contextFields.tone = tone;
         contextFields.setting = setting;
-        if (title !== "Untitled Project") contextFields.title = title;
         if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
         if (targetAudience) contextFields.targetAudience = targetAudience;
+        if (title !== "Untitled Project") contextFields.title = title;
         
-        systemPrompt = `You are a logline specialist helping a screenwriter craft a compelling one-sentence pitch. The user is writing a ${genre} story${title !== "Untitled Project" ? ` titled "${title}"` : ''} with the theme "${theme}", set in ${setting}.${storyTypesStr ? ` Using ${storyTypesStr} structure.` : ''}${targetAudience ? ` Target audience: ${targetAudience}.` : ''}
+        systemPrompt = `You are a logline specialist. The user is writing a ${genre} story${title !== "Untitled Project" ? ` titled '${title}'` : ''} with the theme '${theme}', ${tone} tone, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}${targetAudience ? ` Target audience: ${targetAudience}.` : ''}
 
-Help them create a logline using this formula: 'When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES].'
+A logline is a ONE-SENTENCE pitch following this formula:
+'When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES].'
 
-Ask clarifying questions if they haven't told you about their protagonist or main conflict yet. If they give you details, craft 1-2 logline options.
+If the user asks for help:
+1. Ask what questions you need answered (protagonist? main conflict? stakes?)
+2. Once they provide details, craft 1-2 logline options
+3. Explain why each works
 
-Be conversational and helpful.`;
+Be conversational. Keep it focused on creating that one perfect sentence.`;
 
-        maxOutputTokens = 300;
+        maxOutputTokens = 450;
     }
 
     else if (agentType === 'budget') {
         contextFields.genre = genre;
         contextFields.theme = theme;
+        contextFields.tone = tone;
         contextFields.setting = setting;
+        if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
         if (logline && logline !== "No logline defined yet") contextFields.logline = logline;
-        contextFields.budget = plot?.budget || "Unspecified";
 
-        systemPrompt = `You are a practical filmmaking advisor helping a screenwriter work within budget constraints. The user is writing a ${genre} story set in ${setting}.${logline && logline !== "No logline defined yet" ? ` Logline: ${logline}` : ''}
+        systemPrompt = `You are a practical low-budget filmmaking advisor. The user is writing a ${genre} story set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}${logline && logline !== "No logline defined yet" ? ` Logline: ${logline}` : ''}
 
-Give specific, actionable advice for making this story work on their stated budget level (${contextFields.budget}). Suggest:
-- Creative ways to achieve expensive elements cheaply
-- Similar films that succeeded on low budgets
-- What to prioritize vs. what to simplify
+Based on their budget constraints, give specific advice:
 
-Be encouraging and practical. Keep response concise (5-6 sentences).`;
+1. **Creative Solutions**: How to achieve expensive elements cheaply (2-3 specific ideas)
+2. **Reference Films**: 1-2 similar films that succeeded on low budgets
+3. **Priorities**: What to spend money on vs. what to simplify
 
-        maxOutputTokens = 250;
+Be encouraging and specific. Focus on practical, actionable advice they can use immediately.
+
+Keep response under 8 sentences.`;
+
+        maxOutputTokens = 450;
     }
 
     // --------------------------------------------------------
