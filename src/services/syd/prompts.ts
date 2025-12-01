@@ -6,6 +6,8 @@ Format: Just the list of titles, no intro text.`,
 Formula: [Protagonist] + [Inciting Incident] + [Action] + [Antagonist/Stakes].
 Keep each under 50 words. Focus on irony and stakes.`,
 
+    STORY_TYPES: `You are Syd. Based on this [Genre] story with theme [Theme] and [Tone] tone, suggest 2-3 story structure types that would work well. Explain in one sentence why each type fits. Keep your response under 100 words.`,
+
     CHARACTER_ATTRIBUTE: `Suggest 3 options for the character's [TargetField] (e.g., "Ghost", "Lie", "Want").
 Ensure they conflict with the character's [OpposingField] to create dramatic tension.
 Keep suggestions brief (1-2 sentences).`,

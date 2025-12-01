@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, X, Loader2, Check, BrainCircuit } from 'lucide-react';
+import { BookOpen, X, Loader2, Check, BrainCircuit, Sparkles, Plus } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -23,6 +23,7 @@ import { SydPopoutPanel } from './SydPopoutPanel';
 import { useStoryProgress } from '../../hooks/useStoryProgress';
 import { summarizer } from '../../services/syd/summarizer';
 import { ModelDownloadModal } from '../ui/ModelDownloadModal';
+import { STORY_STRUCTURE_TYPES } from '../../constants';
 
 // Save the Cat beat names
 const STORY_BEAT_NAMES = [
@@ -57,6 +58,10 @@ export const StoryPanel: React.FC = () => {
     const [sydAnchor, setSydAnchor] = useState<HTMLElement | null>(null);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [pendingSydRequest, setPendingSydRequest] = useState<{ agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string } | null>(null);
+
+    // Story Type UI State
+    const [storyTypeInput, setStoryTypeInput] = useState('');
+    const [showStoryTypeDropdown, setShowStoryTypeDropdown] = useState(false);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -164,6 +169,21 @@ export const StoryPanel: React.FC = () => {
         const newBeats = beats.map(b => b.id === beatId ? { ...b, ...updates } : b);
         setBeats(newBeats);
         await saveStoryBeats(project.id, newBeats);
+    };
+
+    // Story Type Handlers
+    const addStoryType = (type: string) => {
+        const current = plot.storyTypes || [];
+        if (!current.includes(type)) {
+            handlePlotChange({ storyTypes: [...current, type] });
+        }
+        setStoryTypeInput('');
+        setShowStoryTypeDropdown(false);
+    };
+
+    const removeStoryType = (type: string) => {
+        const current = plot.storyTypes || [];
+        handlePlotChange({ storyTypes: current.filter(t => t !== type) });
     };
 
     // Syd Interaction (The Gatekeeper)
@@ -285,6 +305,90 @@ export const StoryPanel: React.FC = () => {
                                         className="w-full px-3 py-2.5 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors"
                                         placeholder="Dark & Gritty"
                                     />
+                                </div>
+                            </div>
+
+                            {/* STORY TYPES FIELD */}
+                            <div className="space-y-2 group">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider group-focus-within:text-primary transition-colors">
+                                        Story Types
+                                    </label>
+                                    {activeSydField === 'story_types' && (
+                                        <span className="text-[10px] text-primary flex items-center gap-1 animate-pulse">
+                                            <Sparkles className="w-3 h-3" /> Syd Active
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                <div className="min-h-[42px] px-3 py-2 bg-surface-secondary border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all flex flex-wrap gap-2 relative">
+                                    {(plot.storyTypes || []).map(type => (
+                                        <span key={type} className="inline-flex items-center gap-1 bg-surface border border-border px-2 py-1 rounded text-xs text-text-primary">
+                                            {type}
+                                            <button onClick={() => removeStoryType(type)} className="text-text-muted hover:text-red-500">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </span>
+                                    ))}
+                                    
+                                    <div className="relative flex-1 min-w-[120px]">
+                                        <input
+                                            value={storyTypeInput}
+                                            onChange={(e) => {
+                                                setStoryTypeInput(e.target.value);
+                                                setShowStoryTypeDropdown(true);
+                                            }}
+                                            onFocus={() => setShowStoryTypeDropdown(true)}
+                                            onBlur={() => setTimeout(() => setShowStoryTypeDropdown(false), 200)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && storyTypeInput.trim()) {
+                                                    addStoryType(storyTypeInput.trim());
+                                                }
+                                            }}
+                                            className="w-full bg-transparent outline-none text-sm text-text-primary placeholder:text-text-muted/50 h-6"
+                                            placeholder={(plot.storyTypes || []).length === 0 ? "Select types (e.g. Hero's Journey)..." : ""}
+                                        />
+                                        
+                                        {/* Dropdown */}
+                                        {showStoryTypeDropdown && (
+                                            <div className="absolute top-full left-0 mt-2 w-64 bg-surface border border-border shadow-xl rounded-md z-20 max-h-48 overflow-y-auto">
+                                                {STORY_STRUCTURE_TYPES
+                                                    .filter(t => t.toLowerCase().includes(storyTypeInput.toLowerCase()) && !(plot.storyTypes || []).includes(t))
+                                                    .map(type => (
+                                                        <button
+                                                            key={type}
+                                                            onClick={() => addStoryType(type)}
+                                                            className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
+                                                        >
+                                                            {type}
+                                                        </button>
+                                                    ))
+                                                }
+                                                {storyTypeInput && !STORY_STRUCTURE_TYPES.includes(storyTypeInput) && (
+                                                    <button
+                                                        onClick={() => addStoryType(storyTypeInput)}
+                                                        className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-surface-secondary transition-colors flex items-center gap-1"
+                                                    >
+                                                        <Plus className="w-3 h-3" /> Add "{storyTypeInput}"
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Syd Button */}
+                                    <button 
+                                        onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement as HTMLElement)}
+                                        className={`
+                                            absolute right-2 top-2 p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm
+                                            ${activeSydField === 'story_types'
+                                                ? 'bg-primary text-white border border-primary'
+                                                : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50 opacity-0 group-hover:opacity-100 focus-within:opacity-100'}
+                                        `}
+                                        title="Ask Syd for suggestions"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </div>
 

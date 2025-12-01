@@ -49,6 +49,22 @@ export const SHOT_TYPES = [
   "Birds Eye View"
 ];
 
+export const STORY_STRUCTURE_TYPES = [
+  "Coming of Age",
+  "Fish Out of Water",
+  "Revenge Story",
+  "Love Story",
+  "Underdog Story",
+  "Redemption Arc",
+  "Hero's Journey",
+  "Rags to Riches",
+  "Quest/Mission",
+  "Mystery/Whodunit",
+  "Survival Story",
+  "Transformation",
+  "Rise and Fall"
+];
+
 export const MODEL_OPTIONS = [
   { label: "Gemini (Fast)", value: "gemini-2.5-flash-image" },
   { label: "Gemini (Pro)", value: "gemini-3-pro-image-preview" },

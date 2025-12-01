@@ -11,6 +11,7 @@ import { PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata } from 
 export type SydAgentType =
     | 'title'
     | 'logline'
+    | 'story_types' // Added
     | 'character_identity'
     | 'character_want'
     | 'character_need'
@@ -71,7 +72,7 @@ export function selectContextForAgent(
     let configType = agentType as string;
     if (agentType.startsWith('beat_')) configType = 'beat';
     if (agentType.startsWith('character_')) configType = 'character';
-    if (agentType === 'title' || agentType === 'logline') configType = agentType;
+    if (agentType === 'title' || agentType === 'logline' || agentType === 'story_types') configType = agentType;
 
     // 1. Build Context Fields based on Agent Type
     switch (configType) {
@@ -93,6 +94,21 @@ export function selectContextForAgent(
             }
             systemPrompt = constructSystemPrompt('logline');
             maxOutputTokens = SYD_AGENTS.logline.maxTokens;
+            break;
+
+        case 'story_types':
+            if (plot) {
+                // Syd needs these to make a recommendation
+                contextFields.genre = plot.genre || 'Unknown Genre';
+                contextFields.theme = plot.theme || 'Unknown Theme';
+                contextFields.tone = plot.tone || 'Unknown Tone';
+            }
+            systemPrompt = constructSystemPrompt('story_types', {
+                Genre: contextFields.genre,
+                Theme: contextFields.theme,
+                Tone: contextFields.tone
+            });
+            maxOutputTokens = SYD_AGENTS.story_types.maxTokens;
             break;
 
         case 'character':
