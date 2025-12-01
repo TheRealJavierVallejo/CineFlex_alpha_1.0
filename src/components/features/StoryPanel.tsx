@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, X, Loader2, Check, BrainCircuit, Sparkles, Plus, ChevronDown } from 'lucide-react';
+import { BookOpen, X, Check, BrainCircuit, Sparkles, Plus, ChevronDown } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -50,8 +50,7 @@ export const StoryPanel: React.FC = () => {
     const [characters, setCharacters] = useState<CharacterDevelopment[]>([]);
     const [beats, setBeats] = useState<StoryBeat[]>([]);
     const [metadata, setMetadata] = useState<StoryMetadata>({ lastUpdated: Date.now() });
-    const [isLoading, setIsLoading] = useState(false);
-
+    
     // Syd State
     const [activeSydField, setActiveSydField] = useState<string | null>(null);
     const [sydContext, setSydContext] = useState<SydContext | null>(null);
@@ -103,7 +102,6 @@ export const StoryPanel: React.FC = () => {
     useEffect(() => {
         if (!project) return;
 
-        setIsLoading(true);
         Promise.all([
             getPlotDevelopment(project.id),
             getCharacterDevelopments(project.id),
@@ -133,7 +131,6 @@ export const StoryPanel: React.FC = () => {
             }
 
             setMetadata(metaData);
-            setIsLoading(false);
         });
     }, [project]);
 
@@ -319,9 +316,9 @@ export const StoryPanel: React.FC = () => {
                             </div>
 
                             {/* STORY TYPES FIELD */}
-                            <div className="space-y-2 group">
+                            <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider group-focus-within:text-primary transition-colors">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
                                         Story Types
                                     </label>
                                     {activeSydField === 'story_types' && (
@@ -331,62 +328,63 @@ export const StoryPanel: React.FC = () => {
                                     )}
                                 </div>
                                 
-                                <div className="relative min-h-[42px] px-3 py-2 bg-surface-secondary border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all flex flex-wrap gap-2">
-                                    {(plot.storyTypes || []).map(type => (
-                                        <span key={type} className="inline-flex items-center gap-1 bg-surface border border-border px-2 py-1 rounded text-xs text-text-primary">
-                                            {type}
-                                            <button onClick={() => removeStoryType(type)} className="text-text-muted hover:text-red-500">
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </span>
-                                    ))}
-                                    
-                                    <div className="relative flex-1 min-w-[120px]">
-                                        <input
-                                            value={storyTypeInput}
-                                            onChange={(e) => {
-                                                setStoryTypeInput(e.target.value);
-                                                setShowStoryTypeDropdown(true);
-                                            }}
-                                            onFocus={() => setShowStoryTypeDropdown(true)}
-                                            onBlur={() => setTimeout(() => setShowStoryTypeDropdown(false), 200)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && storyTypeInput.trim()) {
-                                                    addStoryType(storyTypeInput.trim());
-                                                }
-                                            }}
-                                            className="w-full bg-transparent outline-none text-sm text-text-primary placeholder:text-text-muted/50 h-6"
-                                            placeholder={(plot.storyTypes || []).length === 0 ? "Select types (e.g. Hero's Journey)..." : ""}
-                                        />
+                                <div className="relative group min-h-[42px] px-3 py-2 bg-surface-secondary border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                                    <div className="flex flex-wrap gap-2 pr-8">
+                                        {(plot.storyTypes || []).map(type => (
+                                            <span key={type} className="inline-flex items-center gap-1 bg-surface border border-border px-2 py-1 rounded text-xs text-text-primary">
+                                                {type}
+                                                <button onClick={() => removeStoryType(type)} className="text-text-muted hover:text-red-500">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </span>
+                                        ))}
                                         
-                                        {/* Dropdown */}
-                                        {showStoryTypeDropdown && (
-                                            <div className="absolute top-full left-0 mt-2 w-64 bg-surface border border-border shadow-xl rounded-md z-20 max-h-48 overflow-y-auto">
-                                                {STORY_STRUCTURE_TYPES
-                                                    .filter(t => t.toLowerCase().includes(storyTypeInput.toLowerCase()) && !(plot.storyTypes || []).includes(t))
-                                                    .map(type => (
+                                        <div className="relative flex-1 min-w-[120px]">
+                                            <input
+                                                value={storyTypeInput}
+                                                onChange={(e) => {
+                                                    setStoryTypeInput(e.target.value);
+                                                    setShowStoryTypeDropdown(true);
+                                                }}
+                                                onFocus={() => setShowStoryTypeDropdown(true)}
+                                                onBlur={() => setTimeout(() => setShowStoryTypeDropdown(false), 200)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && storyTypeInput.trim()) {
+                                                        addStoryType(storyTypeInput.trim());
+                                                    }
+                                                }}
+                                                className="w-full bg-transparent outline-none text-sm text-text-primary placeholder:text-text-muted/50 h-6"
+                                                placeholder={(plot.storyTypes || []).length === 0 ? "Select types (e.g. Hero's Journey)..." : ""}
+                                            />
+                                            
+                                            {showStoryTypeDropdown && (
+                                                <div className="absolute top-full left-0 mt-2 w-64 bg-surface border border-border shadow-xl rounded-md z-20 max-h-48 overflow-y-auto">
+                                                    {STORY_STRUCTURE_TYPES
+                                                        .filter(t => t.toLowerCase().includes(storyTypeInput.toLowerCase()) && !(plot.storyTypes || []).includes(t))
+                                                        .map(type => (
+                                                            <button
+                                                                key={type}
+                                                                onClick={() => addStoryType(type)}
+                                                                className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
+                                                            >
+                                                                {type}
+                                                            </button>
+                                                        ))
+                                                    }
+                                                    {storyTypeInput && !STORY_STRUCTURE_TYPES.includes(storyTypeInput) && (
                                                         <button
-                                                            key={type}
-                                                            onClick={() => addStoryType(type)}
-                                                            className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
+                                                            onClick={() => addStoryType(storyTypeInput)}
+                                                            className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-surface-secondary transition-colors flex items-center gap-1"
                                                         >
-                                                            {type}
+                                                            <Plus className="w-3 h-3" /> Add "{storyTypeInput}"
                                                         </button>
-                                                    ))
-                                                }
-                                                {storyTypeInput && !STORY_STRUCTURE_TYPES.includes(storyTypeInput) && (
-                                                    <button
-                                                        onClick={() => addStoryType(storyTypeInput)}
-                                                        className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-surface-secondary transition-colors flex items-center gap-1"
-                                                    >
-                                                        <Plus className="w-3 h-3" /> Add "{storyTypeInput}"
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Syd Button - Standard Positioning */}
+                                    {/* Syd Button - Direct Child of Group Container */}
                                     <button 
                                         onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement as HTMLElement)}
                                         className={`
@@ -404,9 +402,9 @@ export const StoryPanel: React.FC = () => {
                             </div>
 
                             {/* TARGET AUDIENCE FIELD */}
-                            <div className="space-y-2 group">
+                            <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider group-focus-within:text-primary transition-colors">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
                                         Target Audience
                                     </label>
                                     {activeSydField === 'target_audience' && (
@@ -416,9 +414,9 @@ export const StoryPanel: React.FC = () => {
                                     )}
                                 </div>
 
-                                <div className="space-y-3 relative">
-                                    {/* Dropdown Row */}
-                                    <div className="relative">
+                                <div className="space-y-3">
+                                    {/* Dropdown Container - WITH GROUP */}
+                                    <div className="relative group">
                                         {isCustomRating ? (
                                             <div className="flex gap-1 relative">
                                                 <input
@@ -466,11 +464,11 @@ export const StoryPanel: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {/* Syd Button - Top Right of Dropdown */}
+                                        {/* Syd Button - Direct Child of Group Container */}
                                         <button 
                                             onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement as HTMLElement)}
                                             className={`
-                                                absolute top-1.5 right-10 p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm z-20
+                                                absolute top-1.5 right-8 p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm z-20
                                                 opacity-0 group-hover:opacity-100 focus-within:opacity-100
                                                 ${activeSydField === 'target_audience'
                                                     ? 'bg-primary text-white border border-primary opacity-100'
@@ -482,7 +480,7 @@ export const StoryPanel: React.FC = () => {
                                         </button>
                                     </div>
 
-                                    {/* Description Textarea */}
+                                    {/* Description Textarea - OUTSIDE GROUP */}
                                     <textarea 
                                         className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors min-h-[80px] resize-none leading-relaxed placeholder:text-text-muted/50"
                                         placeholder="Who is this story for? Age, interests, similar movies they enjoy..."
