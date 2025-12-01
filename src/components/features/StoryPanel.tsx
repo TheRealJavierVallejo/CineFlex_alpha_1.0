@@ -387,7 +387,7 @@ export const StoryPanel: React.FC = () => {
                                     </div>
 
                                     {/* Syd Button for Story Types */}
-                                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
                                         <button 
                                             onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement?.parentElement as HTMLElement)}
                                             className={`
@@ -419,8 +419,8 @@ export const StoryPanel: React.FC = () => {
 
                                 <div className="space-y-3 relative">
                                     {/* Dropdown Row */}
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
+                                    <div className="flex gap-2 relative">
+                                        <div className="relative flex-1 group/input">
                                             {isCustomRating ? (
                                                 <div className="flex gap-1">
                                                     <input
@@ -467,21 +467,23 @@ export const StoryPanel: React.FC = () => {
                                                     <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" />
                                                 </div>
                                             )}
+
+                                            {/* Syd Button - INSIDE the input container */}
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover/input:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+                                                <button 
+                                                    onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement?.parentElement as HTMLElement)}
+                                                    className={`
+                                                        p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm
+                                                        ${activeSydField === 'target_audience'
+                                                            ? 'bg-primary text-white border border-primary'
+                                                            : 'bg-surface/80 border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
+                                                    `}
+                                                    title="Ask Syd to profile the audience"
+                                                >
+                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
                                         </div>
-                                        
-                                        {/* Syd Button */}
-                                        <button 
-                                            onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement?.parentElement as HTMLElement)}
-                                            className={`
-                                                p-2 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm
-                                                ${activeSydField === 'target_audience'
-                                                    ? 'bg-primary text-white border border-primary'
-                                                    : 'bg-surface border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
-                                            `}
-                                            title="Ask Syd to profile the audience"
-                                        >
-                                            <Sparkles className="w-4 h-4" />
-                                        </button>
                                     </div>
 
                                     {/* Description Textarea */}
