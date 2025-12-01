@@ -464,11 +464,11 @@ export const StoryPanel: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {/* Syd Button - Direct Child of Group Container */}
+                                        {/* Syd Button - Positioned top-2 right-8 (left of chevron) */}
                                         <button 
                                             onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement as HTMLElement)}
                                             className={`
-                                                absolute top-1.5 right-8 p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm z-20
+                                                absolute top-2 right-8 p-1.5 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm backdrop-blur-sm z-20
                                                 opacity-0 group-hover:opacity-100 focus-within:opacity-100
                                                 ${activeSydField === 'target_audience'
                                                     ? 'bg-primary text-white border border-primary opacity-100'
