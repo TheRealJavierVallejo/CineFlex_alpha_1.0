@@ -40,6 +40,21 @@ const BEAT_AGENT_TYPES: SydAgentType[] = [
     'beat_break_into_three', 'beat_finale', 'beat_final_image'
 ];
 
+// Helper to clean up random token artifacts at the end of generated text
+const sanitizeSydResponse = (text: string): string => {
+    if (!text) return '';
+
+    let cleaned = text.trim();
+
+    // Remove any long trailing run of digits (e.g., "0003232327" at the very end)
+    cleaned = cleaned.replace(/\d{6,}\s*$/u, '');
+
+    // Remove a final "word" that contains 3+ digits (e.g., a broken token like "outskir0003232327")
+    cleaned = cleaned.replace(/\b\w*\d{3,}\w*\s*$/u, '');
+
+    return cleaned.trim();
+};
+
 export const StoryPanel: React.FC = () => {
     const { project, showToast } = useWorkspace();
     const { isReady, generateMicroAgent, initModel, isModelCached, isSupported } = useLocalLlm();
@@ -244,12 +259,14 @@ export const StoryPanel: React.FC = () => {
     const handleSydMessage = async (message: string, messageHistory?: Array<{role: string, content: string}>): Promise<string> => {
         if (!sydContext) return '';
 
-        return await generateMicroAgent(
+        const raw = await generateMicroAgent(
             sydContext.systemPrompt,
             { ...sydContext.contextFields, userMessage: message },
             sydContext.maxOutputTokens,
             messageHistory
         );
+
+        return sanitizeSydResponse(raw);
     };
 
     if (!project) {
