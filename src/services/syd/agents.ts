@@ -1,6 +1,6 @@
 import { SYD_PROMPTS } from './prompts';
 
-export type SydAgentType = 'title' | 'logline' | 'story_types' | 'character' | 'beat' | 'summary';
+export type SydAgentType = 'title' | 'logline' | 'story_types' | 'target_audience' | 'character' | 'beat' | 'summary';
 
 export interface SydAgentConfig {
     type: SydAgentType;
@@ -27,6 +27,12 @@ export const SYD_AGENTS: Record<SydAgentType, SydAgentConfig> = {
         systemPrompt: SYD_PROMPTS.STORY_TYPES,
         requiredContext: ['genre', 'theme', 'tone'],
         maxTokens: 250
+    },
+    target_audience: {
+        type: 'target_audience',
+        systemPrompt: SYD_PROMPTS.TARGET_AUDIENCE,
+        requiredContext: ['genre', 'theme', 'tone', 'storyTypes'],
+        maxTokens: 200
     },
     character: {
         type: 'character',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, X, Loader2, Check, BrainCircuit, Sparkles, Plus } from 'lucide-react';
+import { BookOpen, X, Loader2, Check, BrainCircuit, Sparkles, Plus, ChevronDown } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -23,7 +23,7 @@ import { SydPopoutPanel } from './SydPopoutPanel';
 import { useStoryProgress } from '../../hooks/useStoryProgress';
 import { summarizer } from '../../services/syd/summarizer';
 import { ModelDownloadModal } from '../ui/ModelDownloadModal';
-import { STORY_STRUCTURE_TYPES } from '../../constants';
+import { STORY_STRUCTURE_TYPES, TARGET_AUDIENCE_RATINGS } from '../../constants';
 
 // Save the Cat beat names
 const STORY_BEAT_NAMES = [
@@ -62,6 +62,10 @@ export const StoryPanel: React.FC = () => {
     // Story Type UI State
     const [storyTypeInput, setStoryTypeInput] = useState('');
     const [showStoryTypeDropdown, setShowStoryTypeDropdown] = useState(false);
+
+    // Target Audience UI State
+    const [customRatingInput, setCustomRatingInput] = useState('');
+    const [isCustomRating, setIsCustomRating] = useState(false);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -108,6 +112,12 @@ export const StoryPanel: React.FC = () => {
         ]).then(([plotData, charData, beatData, metaData]) => {
             setPlot(plotData || {});
             setCharacters(charData);
+
+            // Handle existing custom ratings
+            if (plotData?.targetAudienceRating && !TARGET_AUDIENCE_RATINGS.includes(plotData.targetAudienceRating)) {
+                setIsCustomRating(true);
+                setCustomRatingInput(plotData.targetAudienceRating);
+            }
 
             if (beatData.length === 0) {
                 const initialBeats: StoryBeat[] = STORY_BEAT_NAMES.map((name, i) => ({
@@ -274,7 +284,7 @@ export const StoryPanel: React.FC = () => {
                     {/* 1. FOUNDATION */}
                     <CollapsibleSection
                         title="Plot Foundation"
-                        defaultExpanded={false}
+                        defaultExpanded={true}
                         rightElement={progress.foundationComplete ? <Check className="w-5 h-5 text-green-500" /> : null}
                     >
                         <div className="space-y-8 pt-4">
@@ -389,6 +399,96 @@ export const StoryPanel: React.FC = () => {
                                     >
                                         <Sparkles className="w-3.5 h-3.5" />
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* TARGET AUDIENCE FIELD */}
+                            <div className="space-y-2 group">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-wider group-focus-within:text-primary transition-colors">
+                                        Target Audience
+                                    </label>
+                                    {activeSydField === 'target_audience' && (
+                                        <span className="text-[10px] text-primary flex items-center gap-1 animate-pulse">
+                                            <Sparkles className="w-3 h-3" /> Syd Active
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3 relative">
+                                    {/* Dropdown Row */}
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            {isCustomRating ? (
+                                                <div className="flex gap-1">
+                                                    <input
+                                                        value={customRatingInput}
+                                                        onChange={(e) => {
+                                                            setCustomRatingInput(e.target.value);
+                                                            handlePlotChange({ targetAudienceRating: e.target.value });
+                                                        }}
+                                                        className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none"
+                                                        placeholder="Custom rating (e.g. TV-MA)..."
+                                                        autoFocus
+                                                    />
+                                                    <button 
+                                                        onClick={() => {
+                                                            setIsCustomRating(false);
+                                                            handlePlotChange({ targetAudienceRating: TARGET_AUDIENCE_RATINGS[0] });
+                                                        }}
+                                                        className="px-2 text-xs text-text-muted hover:text-text-primary border border-border rounded hover:bg-surface-secondary"
+                                                    >
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="relative">
+                                                    <select
+                                                        value={plot.targetAudienceRating || ''}
+                                                        onChange={(e) => {
+                                                            if (e.target.value === 'custom') {
+                                                                setIsCustomRating(true);
+                                                                setCustomRatingInput('');
+                                                                handlePlotChange({ targetAudienceRating: '' });
+                                                            } else {
+                                                                handlePlotChange({ targetAudienceRating: e.target.value });
+                                                            }
+                                                        }}
+                                                        className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer"
+                                                    >
+                                                        <option value="" disabled>Select Rating...</option>
+                                                        {TARGET_AUDIENCE_RATINGS.map(r => (
+                                                            <option key={r} value={r}>{r}</option>
+                                                        ))}
+                                                        <option value="custom">Custom...</option>
+                                                    </select>
+                                                    <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Syd Button */}
+                                        <button 
+                                            onClick={(e) => handleRequestSyd('target_audience', 'target_audience', e.currentTarget.parentElement?.parentElement as HTMLElement)}
+                                            className={`
+                                                p-2 rounded-md text-xs font-medium flex items-center justify-center transition-all shadow-sm
+                                                ${activeSydField === 'target_audience'
+                                                    ? 'bg-primary text-white border border-primary'
+                                                    : 'bg-surface border border-border text-text-secondary hover:text-primary hover:border-primary/50'}
+                                            `}
+                                            title="Ask Syd to profile the audience"
+                                        >
+                                            <Sparkles className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    {/* Description Textarea */}
+                                    <textarea 
+                                        className="w-full px-3 py-2 bg-surface-secondary border border-border rounded-md text-text-primary text-sm focus:border-primary focus:outline-none transition-colors min-h-[80px] resize-none leading-relaxed placeholder:text-text-muted/50"
+                                        placeholder="Who is this story for? Age, interests, similar movies they enjoy..."
+                                        value={plot.targetAudienceDescription || ''}
+                                        onChange={(e) => handlePlotChange({ targetAudienceDescription: e.target.value })}
+                                    />
                                 </div>
                             </div>
 

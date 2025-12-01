@@ -12,6 +12,7 @@ export type SydAgentType =
     | 'title'
     | 'logline'
     | 'story_types' // Added
+    | 'target_audience' // Added
     | 'character_identity'
     | 'character_want'
     | 'character_need'
@@ -72,7 +73,7 @@ export function selectContextForAgent(
     let configType = agentType as string;
     if (agentType.startsWith('beat_')) configType = 'beat';
     if (agentType.startsWith('character_')) configType = 'character';
-    if (agentType === 'title' || agentType === 'logline' || agentType === 'story_types') configType = agentType;
+    if (['title', 'logline', 'story_types', 'target_audience'].includes(agentType)) configType = agentType;
 
     // 1. Build Context Fields based on Agent Type
     switch (configType) {
@@ -109,6 +110,22 @@ export function selectContextForAgent(
                 Tone: contextFields.tone
             });
             maxOutputTokens = SYD_AGENTS.story_types.maxTokens;
+            break;
+
+        case 'target_audience':
+            if (plot) {
+                contextFields.genre = plot.genre || 'Unknown Genre';
+                contextFields.theme = plot.theme || 'Unknown Theme';
+                contextFields.tone = plot.tone || 'Unknown Tone';
+                contextFields.storyTypes = plot.storyTypes ? plot.storyTypes.join(', ') : 'None specified';
+            }
+            systemPrompt = constructSystemPrompt('target_audience', {
+                Genre: contextFields.genre,
+                Theme: contextFields.theme,
+                Tone: contextFields.tone,
+                StoryTypes: contextFields.storyTypes
+            });
+            maxOutputTokens = SYD_AGENTS.target_audience.maxTokens;
             break;
 
         case 'character':

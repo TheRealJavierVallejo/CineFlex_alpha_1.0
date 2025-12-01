@@ -152,6 +152,11 @@ export interface PlotDevelopment {
   genre?: string;
   theme?: string;
   tone?: string;
+  storyTypes?: string[];
+  
+  // NEW: Target Audience
+  targetAudienceRating?: string;      // Dropdown (PG, R, etc.)
+  targetAudienceDescription?: string; // Textarea (Who is this for?)
 
   // Generated with Syd after foundation
   title?: string;

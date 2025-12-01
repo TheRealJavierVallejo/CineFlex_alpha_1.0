@@ -65,6 +65,14 @@ export const STORY_STRUCTURE_TYPES = [
   "Rise and Fall"
 ];
 
+export const TARGET_AUDIENCE_RATINGS = [
+  "General Audiences (G)",
+  "Parental Guidance (PG)", 
+  "Teen & Up (PG-13)",
+  "Mature (R)",
+  "Adult Only (NC-17)"
+];
+
 export const MODEL_OPTIONS = [
   { label: "Gemini (Fast)", value: "gemini-2.5-flash-image" },
   { label: "Gemini (Pro)", value: "gemini-3-pro-image-preview" },
