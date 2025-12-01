@@ -304,7 +304,7 @@ export const StoryDevelopment: React.FC = () => {
                                 value={plot.logline || ''}
                                 onChange={(val) => handlePlotChange({ logline: val })}
                                 multiline={true}
-                                minHeight="80px" {/* Adjusted minHeight */}
+                                minHeight="50px" {/* Adjusted minHeight */}
                                 onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
                                 isActiveSyd={activeSydField === 'logline'}
                                 placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
@@ -332,6 +332,7 @@ export const StoryDevelopment: React.FC = () => {
                                 </button>
                             </div>
                         }
+                        // isLocked={!progress.coreComplete} // REMOVED LOCKING
                     >
                         <div className="space-y-4 pt-4">
                             {characters.length === 0 && (
@@ -360,6 +361,7 @@ export const StoryDevelopment: React.FC = () => {
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
                         defaultExpanded={true} {/* Set to true */}
+                        // isLocked={!progress.charactersComplete} // REMOVED LOCKING
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
