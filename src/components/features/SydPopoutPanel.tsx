@@ -46,19 +46,47 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
-    // 1. Initialize / Reset Chat based on Context ID
-    // We use context.agentType as a key to reset, rather than the object reference
+    // 1. Initialize / Reset Chat based on Context ID & Readiness
+    // Replaced system pill logic with delayed assistant greeting
     useEffect(() => {
+        if (!context) return;
+
+        // If parent provided initial messages, just use those.
         if (initialMessages && initialMessages.length > 0) {
             setMessages(initialMessages);
-        } else if (context) {
-            setMessages([{
-                id: `system-init-${Date.now()}`,
-                role: 'system',
-                content: `🟢 Connected to ${context.agentType}. I have context on your story. Ask me anything!`
-            }]);
+            return;
         }
-    }, [context?.agentType, initialMessages]); // Only trigger when agent TYPE changes
+
+        // While the local model is still warming up, show an empty chat.
+        // (Only applicable for Free tier which relies on local readiness)
+        if (tier === 'free' && !isReady) {
+            setMessages([]);
+            return;
+        }
+
+        // When ready (or if Pro tier), inject a friendly assistant greeting if empty.
+        setMessages(prev => {
+            // Don't overwrite if user has already started chatting in this context
+            if (prev.length > 0) return prev;
+
+            let greeting = 'How can I help with this?';
+            if (context.agentType.startsWith('beat_')) {
+                greeting = 'How can I help with this beat?';
+            } else if (context.agentType.startsWith('character_')) {
+                greeting = 'How can I help with this character?';
+            } else if (context.agentType === 'title') {
+                greeting = 'Need help brainstorming titles?';
+            } else if (context.agentType === 'logline') {
+                greeting = 'Shall we work on the logline?';
+            }
+
+            return [{
+                id: `assistant-init-${Date.now()}`,
+                role: 'assistant',
+                content: greeting,
+            }];
+        });
+    }, [context?.agentType, initialMessages, isReady, tier]);
 
     // 2. Auto-scroll on new messages or status changes
     useEffect(() => {
