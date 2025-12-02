@@ -598,18 +598,6 @@ export const StoryPanel: React.FC = () => {
                             ))}
                         </div>
                     </CollapsibleSection>
-                    
-                    {/* 4. BRAINSTORMING (Free form) */}
-                    <CollapsibleSection title="Brainstorming Notes" className="border-none" defaultExpanded={false}>
-                         <div className="pt-4">
-                             <textarea 
-                                className="w-full bg-surface-secondary/50 border border-border rounded-lg p-4 min-h-[200px] text-sm text-text-primary focus:border-primary focus:outline-none transition-colors leading-relaxed placeholder:text-text-muted/30"
-                                placeholder="Free space for random ideas, dialogue snippets, or notes..."
-                                onChange={(e) => handlePlotChange({ notes: e.target.value })}
-                                value={plot.notes || ''}
-                             />
-                         </div>
-                    </CollapsibleSection>
                 </div>
             </div>
 
