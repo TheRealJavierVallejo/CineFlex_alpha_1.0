@@ -339,7 +339,7 @@ HARD RULES:
 
 TASK:
 Describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
-Make this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
+Make sure this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
                 break;
 
             case 'lie':
@@ -429,7 +429,7 @@ Tie these flaws to their Lie and Ghost so they feel psychologically consistent, 
                 systemPrompt = `You are a professional screenwriter summarizing a character arc for a beat sheet.
 
 CONTEXT:
-- Story genre: ${genre}
+- Story genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
 - Story theme: "${theme}"
 - Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
@@ -507,7 +507,36 @@ Show how their Want, Need, Lie, and Ghost collide to create change, and briefly 
         }
         // --- CONTEXT POPULATION END ---
 
-        systemPrompt = `You are a screenplay structure expert specializing in the Save the Cat 15-beat story template.
+        // Specialized Prompt for Opening Image
+        if (displayBeatName === "Opening Image") {
+            systemPrompt = `You are a screenplay structure expert focusing on the "Opening Image" beat in the Save the Cat structure.
+
+BEAT:
+"Opening Image"
+
+DEFINITION:
+${definition}
+
+CONTEXT:
+- Genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
+- Theme: "${theme}"
+- Setting: ${setting}
+- Title: ${title !== 'Untitled Project' ? `"${title}"` : 'Untitled Project'}
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
+
+HARD RULES:
+- Give exactly 2 visual Opening Image ideas, numbered 1) and 2).
+- Each idea MUST be a single, self-contained sentence (no line breaks).
+- Maximum about 25–35 words per idea.
+- Focus ONLY on what we can SEE and HEAR on screen (no long internal monologue or backstory).
+- Show the hero's status quo "before" the story truly begins.
+
+TASK:
+Suggest 2 strong Opening Images that visually capture the protagonist's everyday world and flaw in this story, in a way that hints at the coming conflict and theme.`;
+            maxOutputTokens = 140;
+        } else {
+            // Generic Prompt for other beats
+            systemPrompt = `You are a screenplay structure expert specializing in the Save the Cat 15-beat story template.
 
 BEAT:
 "${displayBeatName}"
@@ -532,8 +561,8 @@ HARD RULES:
 
 TASK:
 Using the beat definition and the story context, suggest 2–3 strong ways this "${displayBeatName}" beat could play out that move the plot forward and support the protagonist's arc.`;
-        
-        maxOutputTokens = 180;
+            maxOutputTokens = 180;
+        }
     }
 
     // Default Fallback
