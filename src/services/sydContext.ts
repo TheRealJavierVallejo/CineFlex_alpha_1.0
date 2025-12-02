@@ -325,7 +325,8 @@ Make it specific, hard to achieve, and clearly capable of creating conflict with
 
 CONTEXT:
 - Story theme: "${theme}"
-- Genre: ${genre}
+- Genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
+- Setting: ${setting}
 - Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}
@@ -338,7 +339,7 @@ HARD RULES:
 
 TASK:
 Describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
-Make sure this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
+Make this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
                 break;
 
             case 'lie':
@@ -347,6 +348,7 @@ Make sure this Need is different from their Want and creates inner conflict, esp
 CONTEXT:
 - Story genre: ${genre}
 - Story theme: "${theme}"
+- Setting: ${setting}
 - Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
@@ -470,9 +472,30 @@ Show how their Want, Need, Lie, and Ghost collide to create change, and briefly 
         const displayBeatName = beatName === "B Story" ? "B Story" : beatName;
         const definition = BEAT_DEFINITIONS[displayBeatName] || "A key story moment.";
 
+        // --- CONTEXT POPULATION START ---
         contextFields.genre = genre;
+        contextFields.theme = theme;
+        contextFields.tone = tone;
+        contextFields.setting = setting;
         contextFields.logline = logline;
-        contextFields.protagonist = character?.name || "the protagonist"; // Fallback
+        contextFields.protagonist = character?.name || "the protagonist";
+
+        if (title !== "Untitled Project") {
+            contextFields.title = title;
+        }
+        if (storyTypesStr) {
+            contextFields.storyTypes = storyTypesStr;
+        }
+        // Summaries
+        if (plot?.foundationSummary) {
+            contextFields.foundationSummary = plot.foundationSummary;
+        }
+        if (plot?.coreSummary) {
+            contextFields.coreSummary = plot.coreSummary;
+        }
+        if (metadata?.actOneSummary) {
+            contextFields.actOneSummary = metadata.actOneSummary;
+        }
         
         // Find previous beat context
         if (beats) {
@@ -482,20 +505,35 @@ Show how their Want, Need, Lie, and Ghost collide to create change, and briefly 
                 contextFields.previousBeat = `${prevBeat.beatName}: ${prevBeat.content || 'Pending'}`;
             }
         }
+        // --- CONTEXT POPULATION END ---
 
-        systemPrompt = `You are a screenplay structure expert specializing in Save the Cat.
-The user needs help writing the "${displayBeatName}" beat.
+        systemPrompt = `You are a screenplay structure expert specializing in the Save the Cat 15-beat story template.
 
-DEFINITION: ${definition}
+BEAT:
+"${displayBeatName}"
+
+DEFINITION:
+${definition}
 
 CONTEXT:
-- Genre: ${genre}
-- Logline: ${logline}
+- Genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
+- Theme: "${theme}"
+- Setting: ${setting}
+- Title: ${title !== 'Untitled Project' ? `"${title}"` : 'Untitled Project'}
+- Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
+- Story types: ${storyTypesStr || 'Not selected yet'}
+- Previous beat: ${contextFields.previousBeat || 'None yet'}
+
+HARD RULES:
+- Give 2–3 distinct ideas for this beat, numbered 1), 2), 3).
+- Each idea must be 1–2 sentences.
+- Total response must stay under about 120–150 words.
+- Do NOT write full scenes or long, flowery description. Keep it beat-level: clear actions or moments.
 
 TASK:
-Brainstorm 3 ideas for this beat that fit the story. Ensure they advance the plot and character arc.`;
+Using the beat definition and the story context, suggest 2–3 strong ways this "${displayBeatName}" beat could play out that move the plot forward and support the protagonist's arc.`;
         
-        maxOutputTokens = 500;
+        maxOutputTokens = 180;
     }
 
     // Default Fallback
