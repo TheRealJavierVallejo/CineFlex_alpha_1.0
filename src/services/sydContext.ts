@@ -339,7 +339,7 @@ HARD RULES:
 
 TASK:
 Describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
-Make sure this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
+Make this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
                 break;
 
             case 'lie':
@@ -429,7 +429,7 @@ Tie these flaws to their Lie and Ghost so they feel psychologically consistent, 
                 systemPrompt = `You are a professional screenwriter summarizing a character arc for a beat sheet.
 
 CONTEXT:
-- Story genre: ${genre} ${tone !== 'Unknown Tone' ? `(${tone} tone)` : ''}
+- Story genre: ${genre}
 - Story theme: "${theme}"
 - Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
@@ -554,13 +554,13 @@ CONTEXT:
 - Previous beat: ${contextFields.previousBeat || 'None yet'}
 
 HARD RULES:
-- Give 2–3 distinct ideas for this beat, numbered 1), 2), 3).
+- Give exactly 2 distinct ideas for this beat, numbered 1) and 2).
 - Each idea must be 1–2 sentences.
 - Total response must stay under about 120–150 words.
 - Do NOT write full scenes or long, flowery description. Keep it beat-level: clear actions or moments.
 
 TASK:
-Using the beat definition and the story context, suggest 2–3 strong ways this "${displayBeatName}" beat could play out that move the plot forward and support the protagonist's arc.`;
+Using the beat definition and the story context, suggest 2 strong ways this "${displayBeatName}" beat could play out that move the plot forward and support the protagonist's arc.`;
             maxOutputTokens = 180;
         }
     }
