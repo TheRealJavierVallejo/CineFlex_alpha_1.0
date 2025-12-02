@@ -578,6 +578,13 @@ export const StoryPanel: React.FC = () => {
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
                         defaultExpanded={false}
+                        rightElement={
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                                    {beats.filter(b => b.isComplete).length} / {beats.length}
+                                </span>
+                            </div>
+                        }
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
