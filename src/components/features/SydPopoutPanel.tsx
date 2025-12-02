@@ -36,6 +36,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [activeAgentType, setActiveAgentType] = useState<string | null>(null);
     
     // Track current position to avoid redundant state updates
     const currentPos = useRef({ top: 0, left: 0, visible: false });
@@ -51,6 +52,14 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     useEffect(() => {
         if (!context) return;
 
+        const agentType = context.agentType;
+
+        // If this is a different agent than before, reset messages
+        if (agentType !== activeAgentType) {
+            setActiveAgentType(agentType);
+            setMessages([]); // clear out old conversation when switching agents
+        }
+
         // If parent provided initial messages, just use those.
         if (initialMessages && initialMessages.length > 0) {
             setMessages(initialMessages);
@@ -60,23 +69,21 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
         // While the local model is still warming up, show an empty chat.
         // (Only applicable for Free tier which relies on local readiness)
         if (tier === 'free' && !isReady) {
-            setMessages([]);
             return;
         }
 
         // When ready (or if Pro tier), inject a friendly assistant greeting if empty.
         setMessages(prev => {
-            // Don't overwrite if user has already started chatting in this context
             if (prev.length > 0) return prev;
 
             let greeting = 'How can I help with this?';
-            if (context.agentType.startsWith('beat_')) {
+            if (agentType.startsWith('beat_')) {
                 greeting = 'How can I help with this beat?';
-            } else if (context.agentType.startsWith('character_')) {
+            } else if (agentType.startsWith('character_')) {
                 greeting = 'How can I help with this character?';
-            } else if (context.agentType === 'title') {
+            } else if (agentType === 'title') {
                 greeting = 'Need help brainstorming titles?';
-            } else if (context.agentType === 'logline') {
+            } else if (agentType === 'logline') {
                 greeting = 'Shall we work on the logline?';
             }
 
@@ -86,7 +93,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 content: greeting,
             }];
         });
-    }, [context?.agentType, initialMessages, isReady, tier]);
+    }, [context, activeAgentType, initialMessages, isReady, tier]);
 
     // 2. Auto-scroll on new messages or status changes
     useEffect(() => {
