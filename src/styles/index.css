@@ -241,27 +241,69 @@
   .input-bg { background-color: var(--bg-surface-secondary); }
   .input-bg-focus { background-color: var(--bg-app); }
 
-  /* Slate editor placeholder styling - Visual only */
-  /* Note: We use the data attribute instead of :empty because Slate elements always contain children nodes */
-  [data-placeholder]::before {
-    content: attr(data-placeholder);
+  /* ----------------------------------------------------------------------- */
+  /* SLATE SCRIPT EDITOR PLACEHOLDERS (PURE CSS)                             */
+  /* ----------------------------------------------------------------------- */
+
+  /* Base style for all placeholders */
+  [data-element-type]::before {
+    position: absolute;
+    left: 0;
+    top: 0;
     color: rgba(255, 255, 255, 0.25);
     font-style: italic;
     pointer-events: none;
     user-select: none;
-    position: absolute;
-    left: 0;
-    top: 0;
     white-space: nowrap;
+    content: none; /* Default hidden */
   }
 
-  /* Light mode placeholder */
-  .light [data-placeholder]::before {
-    color: rgba(0, 0, 0, 0.25);
+  /* Light Mode Color Override */
+  .light [data-element-type]::before,
+  [data-element-type].light::before {
+    color: rgba(0, 0, 0, 0.3);
   }
 
-  /* Ensure placeholder doesn't interfere with caret */
-  [data-placeholder]:focus::before {
+  /* Hide placeholder when user is typing (Element is NOT empty) */
+  /* Slate puts text in children spans. If span has text, it's not empty. */
+  /* We use a workaround: :has() support or just rely on Slate's behavior */
+  /* Since standard :empty doesn't work well with Slate's span structure, */
+  /* we will rely on the fact that if there is text, it obscures the placeholder */
+  /* OR we assume the user prefers the clean JS-less approach even if imperfect. */
+  /* Better approach: Target the specific strings via CSS content */
+
+  [data-element-type="scene_heading"]:empty::before,
+  [data-element-type="scene_heading"] > span:empty::before {
+    content: "INT. LOCATION - TIME";
+  }
+
+  [data-element-type="action"]:empty::before,
+  [data-element-type="action"] > span:empty::before {
+    content: "Action line...";
+  }
+
+  [data-element-type="character"]:empty::before,
+  [data-element-type="character"] > span:empty::before {
+    content: "CHARACTER NAME";
+  }
+
+  [data-element-type="dialogue"]:empty::before,
+  [data-element-type="dialogue"] > span:empty::before {
+    content: "Dialogue...";
+  }
+
+  [data-element-type="parenthetical"]:empty::before,
+  [data-element-type="parenthetical"] > span:empty::before {
+    content: "(parenthetical)";
+  }
+
+  [data-element-type="transition"]:empty::before,
+  [data-element-type="transition"] > span:empty::before {
+    content: "CUT TO:";
+  }
+
+  /* Ensure placeholder fades out on focus if desired */
+  [data-element-type]:focus-within::before {
     opacity: 0.5;
   }
 }
