@@ -95,13 +95,8 @@ export const useSlateSmartType = ({
             return;
         }
 
-        // Reset if user edited after a closed state
-        if (content !== lastContentRef.current) {
-            if (state.status === 'closed_exact_match' || state.status === 'closed_selection') {
-                dispatch({ type: 'RESET_ON_EDIT' });
-            }
-            lastContentRef.current = content;
-        }
+        // Update content ref
+        lastContentRef.current = content;
 
         // Skip if menu is closed due to exact match/selection
         if (state.status === 'closed_exact_match' && state.lastContent === content) {
@@ -179,9 +174,17 @@ export const useSlateSmartType = ({
                 // Stage 2: Location
                 if (parsed.stage === 2) {
                     const locationInput = parsed.location.trim();
+                    
+                    // Don't reopen menu if we just selected this exact location
+                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+                        return;
+                    }
+                    
                     if (locationInput.length > 0) {
                         const suggestions = getSuggestions(projectId, 'location', locationInput, 10);
-                        if (suggestions.length > 0) {
+                        
+                        // Don't show if exact match (prevents reopening after selection)
+                        if (suggestions.length > 0 && !isExactMatch(suggestions, locationInput)) {
                             const pos = calculateMenuPosition();
                             if (pos) {
                                 setMenuPosition(pos);
@@ -201,6 +204,19 @@ export const useSlateSmartType = ({
                 // Stage 3: Time
                 if (parsed.stage === 3) {
                     const timeInput = parsed.time.trim();
+                    
+                    // Don't show menu on empty time (user just typed " - ")
+                    if (timeInput.length === 0) {
+                        dispatch({ type: 'HIDE_MENU' });
+                        setMenuPosition(null);
+                        return;
+                    }
+                    
+                    // Don't reopen if we just selected this time
+                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+                        return;
+                    }
+                    
                     const suggestions = getSuggestions(projectId, 'time_of_day', timeInput, 10);
                     
                     if (suggestions.length > 0 && !isExactMatch(suggestions, timeInput)) {
@@ -222,6 +238,18 @@ export const useSlateSmartType = ({
 
             // TRANSITION
             if (type === 'transition') {
+                // Don't show on empty
+                if (content.length === 0) {
+                    dispatch({ type: 'HIDE_MENU' });
+                    setMenuPosition(null);
+                    return;
+                }
+                
+                // Don't reopen if we just selected
+                if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+                    return;
+                }
+                
                 const suggestions = getSuggestions(projectId, 'transition', content, 10);
                 if (suggestions.length > 0 && !isExactMatch(suggestions, content)) {
                     const pos = calculateMenuPosition();
