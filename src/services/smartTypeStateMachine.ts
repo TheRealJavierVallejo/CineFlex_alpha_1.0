@@ -3,19 +3,14 @@ import { SCENE_PREFIXES } from './smartType';
 // All possible states
 export type SmartTypeState =
   | { status: 'idle' }
-  | { status: 'showing', mode: 'prefix' | 'location' | 'time' | 'character' | 'transition', suggestions: string[], selectedIndex: number }
-  | { status: 'closed_exact_match', lastContent: string }
-  | { status: 'closed_selection', lastPath: string, closedMode: 'prefix' | 'location' | 'time' | 'character' | 'transition' };
+  | { status: 'showing', mode: 'prefix' | 'location' | 'time' | 'character' | 'transition', suggestions: string[], selectedIndex: number };
 
 // All possible actions
 export type SmartTypeAction =
   | { type: 'SHOW_SUGGESTIONS', mode: 'prefix' | 'location' | 'time' | 'character' | 'transition', suggestions: string[] }
   | { type: 'HIDE_MENU' }
   | { type: 'SELECT_NEXT' }
-  | { type: 'SELECT_PREVIOUS' }
-  | { type: 'CLOSE_EXACT_MATCH', content: string }
-  | { type: 'CLOSE_AFTER_SELECTION', path: string, mode: 'prefix' | 'location' | 'time' | 'character' | 'transition' }
-  | { type: 'RESET_ON_EDIT' };
+  | { type: 'SELECT_PREVIOUS' };
 
 // Initial state
 export const initialSmartTypeState: SmartTypeState = { status: 'idle' };
@@ -50,26 +45,6 @@ export function smartTypeReducer(state: SmartTypeState, action: SmartTypeAction)
                     ? state.suggestions.length - 1 
                     : state.selectedIndex - 1
             };
-
-        case 'CLOSE_EXACT_MATCH':
-            return {
-                status: 'closed_exact_match',
-                lastContent: action.content
-            };
-
-        case 'CLOSE_AFTER_SELECTION':
-            return {
-                status: 'closed_selection',
-                lastPath: action.path,
-                closedMode: action.mode
-            };
-
-        case 'RESET_ON_EDIT':
-            // If user edits after selection/exact match, go back to idle
-            if (state.status === 'closed_exact_match' || state.status === 'closed_selection') {
-                return { status: 'idle' };
-            }
-            return state;
 
         case 'HIDE_MENU':
             return { status: 'idle' };
