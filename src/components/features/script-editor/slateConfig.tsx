@@ -1,4 +1,4 @@
-import { BaseEditor, Descendant } from 'slate';
+import { BaseEditor, Descendant, Node } from 'slate';
 import { ReactEditor } from 'slate-react';
 import { HistoryEditor } from 'slate-history';
 import { ScriptElement } from '../../../types';
@@ -40,7 +40,7 @@ export function getElementStyles(
     const spacing = getElementSpacing(type, isFirstOnPage);
 
     // Base classes (matching ScriptBlock.tsx)
-    const baseClasses = 'font-screenplay text-[12pt] leading-screenplay outline-none';
+    const baseClasses = 'font-screenplay text-[12pt] leading-screenplay outline-none relative';
 
     // Color classes based on theme
     const colorClasses = isLightMode ? {
@@ -115,8 +115,25 @@ export function renderScriptElement(
     const { attributes, children, element } = props;
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
 
+    const isEmpty = Node.string(element) === '';
+    const placeholderText = isEmpty ? {
+        'scene_heading': 'INT. LOCATION - TIME',
+        'action': 'Action line...',
+        'character': 'CHARACTER NAME',
+        'dialogue': 'Dialogue...',
+        'parenthetical': '(parenthetical)',
+        'transition': 'CUT TO:'
+    }[element.type as string] : null;
+
+    const finalClassName = `${className} ${isEmpty ? 'empty-element' : ''}`;
+
     return (
-        <div {...attributes} className={className} style={style}>
+        <div
+            {...attributes}
+            className={finalClassName}
+            style={style}
+            data-placeholder={placeholderText || undefined}
+        >
             {children}
         </div>
     );
