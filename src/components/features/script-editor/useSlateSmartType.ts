@@ -47,6 +47,8 @@ export const useSlateSmartType = ({
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
+    const prevStateRef = useRef({ showMenu: false, suggestions: [] as string[], selectedIndex: 0, menuPosition: null as { top: number; left: number } | null });
+
     // Track previous selection to detect changes
     const prevSelectionRef = useRef<Range | null>(null);
 
@@ -171,16 +173,34 @@ export const useSlateSmartType = ({
                 shouldShow = false;
             }
 
-            if (SMARTTYPE_DEBUG) {
-                console.log('[SmartType] Setting State -> Show:', shouldShow, 'Suggestions:', newSuggestions.length);
-            }
+            // Only update state if values actually changed (prevents flickering)
+            const newState = {
+                showMenu: shouldShow,
+                suggestions: newSuggestions,
+                selectedIndex: 0,
+                menuPosition: shouldShow ? menuPosition : null
+            };
 
-            setSuggestions(newSuggestions);
-            setShowMenu(shouldShow);
-            setSelectedIndex(0);
+            const hasChanged = 
+                prevStateRef.current.showMenu !== newState.showMenu ||
+                prevStateRef.current.suggestions.length !== newState.suggestions.length ||
+                JSON.stringify(prevStateRef.current.suggestions) !== JSON.stringify(newState.suggestions);
 
-            if (shouldShow) {
-                updateMenuPosition();
+            if (hasChanged) {
+                if (SMARTTYPE_DEBUG) {
+                    console.log('[SmartType] State changed, updating:', newState);
+                }
+                setSuggestions(newSuggestions);
+                setShowMenu(shouldShow);
+                setSelectedIndex(0);
+                
+                if (shouldShow) {
+                    updateMenuPosition();
+                } else {
+                    setMenuPosition(null);
+                }
+                
+                prevStateRef.current = newState;
             }
         }, debounceTime);
 
