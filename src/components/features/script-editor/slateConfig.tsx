@@ -123,17 +123,22 @@ export function renderScriptElement(
             style={style}
             data-element-type={element.type}
         >
-            {/* Visual Page Break - Uses BLOCK spacing instead of absolute positioning */}
+            {/* Visual Page Break - Final Draft Style */}
             {isFirstOnPage && pageNumber > 1 && (
                 <div 
                     contentEditable={false} 
-                    className="w-full py-8 flex flex-col items-center justify-center select-none pointer-events-none"
+                    className="relative w-full my-4 pointer-events-none select-none"
                     style={{ marginLeft: `-${style.marginLeft || '0px'}` }} // Counteract element margin so break spans full width
                 >
-                    <div className={`text-xs font-mono font-bold uppercase mb-2 ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        — PAGE {pageNumber} —
+                    {/* Thin horizontal line */}
+                    <div className={`w-full border-t ${isLightMode ? 'border-zinc-300' : 'border-zinc-800'}`} />
+                    
+                    {/* Page number badge */}
+                    <div 
+                        className={`absolute -top-2 right-8 px-2 text-[10px] font-mono ${isLightMode ? 'bg-white text-zinc-400' : 'bg-[#1E1E1E] text-zinc-600'}`}
+                    >
+                        {pageNumber}.
                     </div>
-                    <div className={`w-full border-t border-dashed ${isLightMode ? 'border-zinc-300' : 'border-zinc-700'}`} />
                 </div>
             )}
             
