@@ -115,24 +115,26 @@ export function renderScriptElement(
     const { attributes, children, element } = props;
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
 
-    const isEmpty = Node.string(element) === '';
-    const placeholderText = isEmpty ? {
+    // Check if element is truly empty (no text content at all)
+    const isEmpty = !element.children || element.children.every((child: any) => !child.text || child.text.trim() === '');
+
+    const placeholderText = {
         'scene_heading': 'INT. LOCATION - TIME',
         'action': 'Action line...',
         'character': 'CHARACTER NAME',
         'dialogue': 'Dialogue...',
         'parenthetical': '(parenthetical)',
         'transition': 'CUT TO:'
-    }[element.type as string] : null;
+    }[element.type as string];
 
-    const finalClassName = `${className} ${isEmpty ? 'empty-element' : ''}`;
+    const finalClassName = className.trim();
 
     return (
         <div
             {...attributes}
             className={finalClassName}
             style={style}
-            data-placeholder={placeholderText || undefined}
+            data-placeholder={isEmpty ? placeholderText : undefined}
         >
             {children}
         </div>
