@@ -40,25 +40,25 @@ export const useSlateSmartType = ({
     const lastPathRef = useRef<string>('');
     const lastContentRef = useRef<string>('');
 
-    // Calculate menu position
-    const calculateMenuPosition = useCallback((): { top: number; left: number } | null => {
-        const { selection } = editor;
-        if (!selection || !Range.isCollapsed(selection)) return null;
-        
-        try {
-            const domRange = ReactEditor.toDOMRange(editor, selection);
-            const rect = domRange.getBoundingClientRect();
-            return {
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.right + window.scrollX
-            };
-        } catch (e) {
-            return null;
-        }
-    }, [editor]);
-
     // Monitor content changes and update state machine
     useEffect(() => {
+        // Calculate menu position (moved inside to avoid dependency issues)
+        const calculateMenuPosition = (): { top: number; left: number } | null => {
+            const { selection } = editor;
+            if (!selection || !Range.isCollapsed(selection)) return null;
+            
+            try {
+                const domRange = ReactEditor.toDOMRange(editor, selection);
+                const rect = domRange.getBoundingClientRect();
+                return {
+                    top: rect.bottom + window.scrollY + 4,
+                    left: rect.right + window.scrollX
+                };
+            } catch (e) {
+                return null;
+            }
+        };
+
         if (!isActive || !projectId) {
             dispatch({ type: 'HIDE_MENU' });
             setMenuPosition(null);
@@ -97,18 +97,14 @@ export const useSlateSmartType = ({
 
         // Reset if user edited after a closed state
         if (content !== lastContentRef.current) {
-            if (state.status === 'closed_exact_match' || state.status === 'closed_selection') {
-                dispatch({ type: 'RESET_ON_EDIT' });
-            }
+            // We need to access state here, but we can't add it to dependency array or we loop.
+            // However, this logic is purely based on content change vs refs.
+            // We rely on the reducer to handle state transitions safely.
+            // If the state IS closed, we want to reset.
+            // Since we can't read 'state' without depending on it, we'll fire RESET_ON_EDIT blindly
+            // if content changed. The reducer checks current state anyway.
+            dispatch({ type: 'RESET_ON_EDIT' });
             lastContentRef.current = content;
-        }
-
-        // Skip if menu is closed due to exact match/selection
-        if (state.status === 'closed_exact_match' && state.lastContent === content) {
-            return;
-        }
-        if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
-            return;
         }
 
         // Don't show menu for these types
@@ -234,7 +230,7 @@ export const useSlateSmartType = ({
         }, debounceTime);
 
         return () => clearTimeout(timeoutId);
-    }, [editor.children, editor.selection, isActive, projectId, state, calculateMenuPosition]);
+    }, [editor.children, editor.selection, isActive, projectId]);
 
     // Handle selection
     const handleSelection = useCallback((suggestion: string) => {
