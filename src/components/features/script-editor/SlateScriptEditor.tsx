@@ -8,7 +8,7 @@ import { CustomEditor, CustomElement, renderScriptElement } from './slateConfig'
 import { scriptElementsToSlate, slateToScriptElements } from './slateConversion';
 import { handleEnterKey, handleTabKey, handleBackspaceAtStart, handleCmdShortcut } from './slateKeyboardHandlers';
 import { debounce } from '../../../utils/debounce';
-import { useSlateSmartType } from './useSlateSmartTypeDownshift';
+import { useSlateSmartType } from './useSlateSmartTypeStateMachine'; // Updated Import
 import { AutocompleteMenu } from './AutocompleteMenu';
 import { decorateWithPlaceholders } from './slatePlaceholders';
 
@@ -101,14 +101,13 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor.operations, onUndoRedoChange, editor]);
 
+    // SmartType State Machine
     const {
-        showMenu,
-        suggestions,
-        selectedIndex,
+        state,
         menuPosition,
+        handleKeyDown: handleSmartTypeKeyDown,
         getMenuProps,
-        getItemProps,
-        handleKeyDown: handleSmartTypeKeyDown
+        getItemProps
     } = useSlateSmartType({
         editor,
         projectId,
@@ -155,6 +154,11 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
 
         if (event.key === 'Enter' && !event.shiftKey) {
+            // Prevent splitting if menu is open (double safety)
+            if (state.status === 'showing') {
+                return;
+            }
+            
             event.preventDefault();
             handleEnterKey(editor);
             return;
@@ -173,7 +177,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             }
             return;
         }
-    }, [editor, handleSmartTypeKeyDown]);
+    }, [editor, handleSmartTypeKeyDown, state.status]);
 
     const renderElement = useCallback((props: RenderElementProps) => {
         const isFirstOnPage = props.element === value[0];
@@ -240,10 +244,10 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     }}
                 />
             </Slate>
-            {showMenu && menuPosition && createPortal(
+            {state.status === 'showing' && menuPosition && createPortal(
                 <AutocompleteMenu
-                    suggestions={suggestions}
-                    selectedIndex={selectedIndex}
+                    suggestions={state.suggestions}
+                    selectedIndex={state.selectedIndex}
                     position={menuPosition}
                     getMenuProps={getMenuProps}
                     getItemProps={getItemProps}

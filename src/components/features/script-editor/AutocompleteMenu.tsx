@@ -1,11 +1,11 @@
-import React, { forwardRef } from 'react';
+import React from 'react';
 
 interface AutocompleteMenuProps {
     suggestions: string[];
     selectedIndex: number;
     position: { top: number; left: number };
     getMenuProps: () => any;
-    getItemProps: (options: { item: string; index: number }) => any;
+    getItemProps: (index: number) => any;
 }
 
 export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
@@ -15,12 +15,9 @@ export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
     getMenuProps,
     getItemProps
 }) => {
-    // We attach the ref from getMenuProps to the container
-    const menuProps = getMenuProps();
-
     return (
         <div
-            {...menuProps}
+            {...getMenuProps()}
             className="z-50 w-64 bg-surface/95 backdrop-blur-md border border-border/50 shadow-xl rounded-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 origin-top-left ring-1 ring-black/5"
             style={{
                 position: 'absolute',
@@ -34,7 +31,7 @@ export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
                 {suggestions.map((suggestion, index) => (
                     <div
                         key={`${suggestion}-${index}`}
-                        {...getItemProps({ item: suggestion, index })}
+                        {...getItemProps(index)}
                         className={`px-3 py-2 text-sm font-mono cursor-pointer transition-all rounded-md truncate flex items-center gap-2 ${
                             index === selectedIndex
                                 ? 'bg-primary text-primary-foreground shadow-sm'
