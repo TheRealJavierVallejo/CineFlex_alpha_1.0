@@ -111,6 +111,7 @@ export function renderScriptElement(
     props: any,
     isLightMode: boolean,
     isFirstOnPage: boolean,
+    isLastOnPage: boolean,
     pageNumber: number = 1
 ) {
     const { attributes, children, element } = props;
@@ -118,17 +119,51 @@ export function renderScriptElement(
 
     return (
         <>
-            {/* Visual Page Break - Final Draft Style (Centered, No Margin Hacks) */}
+            {/* Visual Page Break - Gap style */}
             {isFirstOnPage && pageNumber > 1 && (
                 <div 
-                    contentEditable={false} 
-                    className="w-full py-6 flex items-center justify-center pointer-events-none select-none"
+                    contentEditable={false}
+                    className="pointer-events-none select-none"
+                    style={{
+                        marginLeft: '-1.5in', // Pull to left edge of paper
+                        marginRight: '-1in',  // Pull to right edge of paper
+                        width: '8.5in',       // Explicit width to match paper
+                        marginTop: '0',
+                        marginBottom: '0',
+                        height: '2in',
+                        position: 'relative',
+                        display: 'block'
+                    }}
                 >
-                    <div className={`flex items-center gap-3 text-xs font-mono ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        <div className="w-16 border-t border-current opacity-50" />
-                        <span>PAGE {pageNumber}</span>
-                        <div className="w-16 border-t border-current opacity-50" />
+                    {/* Page End Shadow (previous page bottom) */}
+                    <div
+                        className={isLightMode ? 'bg-gradient-to-b from-transparent to-gray-300/20' : 'bg-gradient-to-b from-transparent to-black/30'}
+                        style={{ height: '0.25in', width: '100%' }}
+                    />
+                    
+                    {/* Gap between pages (shows background) */}
+                    <div
+                        className={isLightMode ? 'bg-zinc-100' : 'bg-[#1a1a1a]'}
+                        style={{
+                            height: '1.5in',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderTop: isLightMode ? '1px solid #e5e7eb' : '1px solid #27272a',
+                            borderBottom: isLightMode ? '1px solid #e5e7eb' : '1px solid #27272a'
+                        }}
+                    >
+                        <div className={`text-xs font-mono ${isLightMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Page {pageNumber}
+                        </div>
                     </div>
+                    
+                    {/* New Page Shadow */}
+                    <div
+                        className={isLightMode ? 'bg-gradient-to-b from-gray-300/20 to-transparent' : 'bg-gradient-to-b from-black/30 to-transparent'}
+                        style={{ height: '0.25in', width: '100%' }}
+                    />
                 </div>
             )}
             

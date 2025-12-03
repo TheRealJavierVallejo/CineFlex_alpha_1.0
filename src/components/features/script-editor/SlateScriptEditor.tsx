@@ -226,6 +226,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         const pageNum = pageMap[currentId] || 1;
         
         let isFirstOnPage = false;
+        let isLastOnPage = false;
         
         try {
             const path = ReactEditor.findPath(editor, element);
@@ -242,14 +243,29 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     isFirstOnPage = true;
                 }
             }
+            
+            // Check if last element on page
+            if (path[0] === editor.children.length - 1) {
+                isLastOnPage = true;
+            } else {
+                const nextPath = Path.next(path);
+                const nextNode = Node.get(editor, nextPath) as CustomElement;
+                const nextPage = pageMap[nextNode.id] || 1;
+                
+                if (nextPage > pageNum) {
+                    isLastOnPage = true;
+                }
+            }
         } catch (e) {
             isFirstOnPage = false;
+            isLastOnPage = false;
         }
         
         return renderScriptElement(
             props, 
             isLightMode, 
             isFirstOnPage, 
+            isLastOnPage,
             pageNum
         );
     }, [isLightMode, editor, pageMap]);
@@ -302,23 +318,29 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
                 <div 
                     className={`
-                        flex flex-col items-center 
-                        ${isLightMode ? 'bg-gray-100' : 'bg-zinc-900'}
-                        py-8
+                        flex-1 overflow-auto 
+                        ${isLightMode ? 'bg-zinc-100' : 'bg-[#1a1a1a]'}
+                        flex flex-col items-center
+                        py-12
                     `}
                 >
                     <div
                         className={`
-                            w-[8.5in] min-h-[11in]
+                            relative
                             ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}
                             shadow-2xl
-                            border ${isLightMode ? 'border-gray-200' : 'border-gray-800'}
+                            ${isLightMode ? 'border border-gray-200' : 'border border-zinc-800'}
                         `}
                         style={{
+                            width: '8.5in',
+                            minHeight: '11in',
                             paddingTop: '1in',
                             paddingBottom: '1in',
                             paddingLeft: '1.5in',
-                            paddingRight: '1in'
+                            paddingRight: '1in',
+                            fontFamily: 'Courier, monospace',
+                            fontSize: '12pt',
+                            lineHeight: '1.5'
                         }}
                     >
                         <Editable
@@ -328,13 +350,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             onKeyDown={handleKeyDown}
                             placeholder="Start writing your screenplay..."
                             spellCheck={false}
-                            className="outline-none"
-                            style={{
-                                minHeight: '9in',
-                                fontFamily: 'Courier, monospace',
-                                fontSize: '12pt',
-                                lineHeight: '1.5'
-                            }}
+                            className="outline-none min-h-[9in]"
                         />
                     </div>
                 </div>
