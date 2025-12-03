@@ -29,17 +29,21 @@ export const SCENE_PREFIXES = [
     'I/E'
 ];
 
-// Default screenplay transitions
-const DEFAULT_TRANSITIONS = [
+export const DEFAULT_TRANSITIONS = [
     'CUT TO:',
+    'FADE IN:',
+    'FADE OUT:',
     'FADE TO:',
     'DISSOLVE TO:',
-    'FADE OUT.',
-    'FADE IN:',
     'SMASH CUT TO:',
     'MATCH CUT TO:',
     'JUMP CUT TO:',
-    'CROSSFADE TO:',
+    'FADE TO BLACK.',
+    'FADE TO WHITE.',
+    'IRIS IN:',
+    'IRIS OUT:',
+    'WIPE TO:',
+    'CONTINUED:'
 ];
 
 // Default times of day for scene headings
@@ -327,6 +331,22 @@ export const getSuggestions = (
     limit: number = 10
 ): string[] => {
     const data = getSmartTypeData(projectId);
+
+    // For transitions, mix defaults with learned entries
+    if (type === 'transition') {
+        const entries = data.transitions;
+        const learnedSuggestions = entries
+            .sort((a, b) => b.frequency - a.frequency)
+            .map(e => e.value)
+            .filter(v => v.toUpperCase().startsWith(partial.toUpperCase()));
+        
+        const defaultSuggestions = DEFAULT_TRANSITIONS
+            .filter(t => t.toUpperCase().startsWith(partial.toUpperCase()));
+        
+        // Merge: learned first, then defaults
+        const combined = Array.from(new Set([...learnedSuggestions, ...defaultSuggestions]));
+        return combined.slice(0, limit);
+    }
 
     // Extract locations from saved full scene headers
     if (type === 'location') {
