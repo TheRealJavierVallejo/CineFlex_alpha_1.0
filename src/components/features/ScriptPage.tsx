@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
-import { ScriptBlock } from './ScriptBlock';
+import { SlateScriptEditor } from './script-editor/SlateScriptEditor';
 import { ScriptElement } from '../../types';
 import {
     Sparkles,
@@ -358,25 +358,19 @@ export const ScriptPage: React.FC = () => {
                                             {pageNum}.
                                         </div>
 
-                                        <div className="flex flex-col">
-                                            {pageElements.map((element, index) => (
-                                                <ScriptBlock
-                                                    key={element.id}
-                                                    element={element}
-                                                    isActive={activeElementId === element.id}
-                                                    isFirstOnPage={index === 0}
-                                                    isLightMode={isPaperWhite}
-                                                    onChange={handleContentChange}
-                                                    onKeyDown={(e, id, type, start, end) => {
-                                                        handleNavigation(e, id, start, element.content.length);
-                                                        handleKeyDown(e, id, type, start, end);
-                                                    }}
-                                                    onFocus={setActiveElementId}
-                                                    cursorRequest={cursorTargetRef.current?.id === element.id ? cursorTargetRef.current.position : null}
-                                                    projectId={project.id}
-                                                />
-                                            ))}
-                                        </div>
+                                        <SlateScriptEditor
+                                            initialElements={pageElements}
+                                            onChange={(updatedPageElements) => {
+                                                setElements(prevElements => {
+                                                    const allOtherPages = prevElements.filter(el => pageMap[el.id] !== pageNum);
+                                                    const merged = [...allOtherPages, ...updatedPageElements].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+                                                    debouncedSync(merged);
+                                                    return merged;
+                                                });
+                                            }}
+                                            isLightMode={isPaperWhite}
+                                            projectId={project.id}
+                                        />
                                     </div>
                                 );
                             })}
