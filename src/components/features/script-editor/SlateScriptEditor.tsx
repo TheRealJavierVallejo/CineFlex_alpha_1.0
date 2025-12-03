@@ -128,16 +128,8 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             const elements = slateToScriptElements(nodes);
             const result = calculatePagination(elements, projectId);
             
-            // DEBUG: Log pagination results
-            console.log('Pagination calculated:', {
-                totalElements: elements.length,
-                pageBreakMap: result,
-                maxPage: Object.keys(result).length > 0 ? Math.max(...Object.values(result)) : 1
-            });
-
             setPageMap(result);
             
-            // Calculate total pages safely
             if (Object.keys(result).length === 0) {
                 setTotalPages(1);
             } else {
@@ -148,7 +140,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         [projectId]
     );
 
-    // Trigger pagination on value change
     useEffect(() => {
         debouncedPagination(value);
     }, [value, debouncedPagination]);
@@ -171,7 +162,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor.selection, pageMap, currentPage]);
 
-    // Notify Parent of Page Changes
     useEffect(() => {
         onPageChange?.(currentPage, totalPages);
     }, [currentPage, totalPages, onPageChange]);
@@ -197,15 +187,10 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     }, [editor, debouncedOnChange]);
 
     const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-        // Let SmartType handle first (MUST BE FIRST)
         const smartTypeHandled = handleSmartTypeKeyDown(event);
-        if (smartTypeHandled) {
-            return;
-        }
+        if (smartTypeHandled) return;
 
-        if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
-            return;
-        }
+        if ((event.metaKey || event.ctrlKey) && event.key === 'z') return;
 
         if ((event.metaKey || event.ctrlKey) && !event.shiftKey) {
             if (['1', '2', '3', '4', '5', '6'].includes(event.key)) {
@@ -216,11 +201,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
 
         if (event.key === 'Enter' && !event.shiftKey) {
-            // Prevent splitting if menu is open (double safety)
-            if (state.status === 'showing') {
-                return;
-            }
-            
+            if (state.status === 'showing') return;
             event.preventDefault();
             handleEnterKey(editor);
             return;
@@ -234,9 +215,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
 
         if (event.key === 'Backspace') {
             const handled = handleBackspaceAtStart(editor);
-            if (handled) {
-                event.preventDefault();
-            }
+            if (handled) event.preventDefault();
             return;
         }
     }, [editor, handleSmartTypeKeyDown, state.status]);
@@ -247,7 +226,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         const pageNum = pageMap[currentId] || 1;
         
         let isFirstOnPage = false;
-        let isLastOnPage = false;
         
         try {
             const path = ReactEditor.findPath(editor, element);
@@ -264,29 +242,14 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     isFirstOnPage = true;
                 }
             }
-            
-            // Check if last element on page
-            if (path[0] === editor.children.length - 1) {
-                isLastOnPage = true;
-            } else {
-                const nextPath = Path.next(path);
-                const nextNode = Node.get(editor, nextPath) as CustomElement;
-                const nextPage = pageMap[nextNode.id] || 1;
-                
-                if (nextPage > pageNum) {
-                    isLastOnPage = true;
-                }
-            }
         } catch (e) {
             isFirstOnPage = false;
-            isLastOnPage = false;
         }
         
         return renderScriptElement(
             props, 
             isLightMode, 
             isFirstOnPage, 
-            isLastOnPage,
             pageNum
         );
     }, [isLightMode, editor, pageMap]);
