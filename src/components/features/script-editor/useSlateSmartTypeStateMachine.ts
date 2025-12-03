@@ -97,14 +97,18 @@ export const useSlateSmartType = ({
 
         // Reset if user edited after a closed state
         if (content !== lastContentRef.current) {
-            // We need to access state here, but we can't add it to dependency array or we loop.
-            // However, this logic is purely based on content change vs refs.
-            // We rely on the reducer to handle state transitions safely.
-            // If the state IS closed, we want to reset.
-            // Since we can't read 'state' without depending on it, we'll fire RESET_ON_EDIT blindly
-            // if content changed. The reducer checks current state anyway.
-            dispatch({ type: 'RESET_ON_EDIT' });
+            if (state.status === 'closed_exact_match' || state.status === 'closed_selection') {
+                dispatch({ type: 'RESET_ON_EDIT' });
+            }
             lastContentRef.current = content;
+        }
+
+        // Skip if menu is closed due to exact match/selection
+        if (state.status === 'closed_exact_match' && state.lastContent === content) {
+            return;
+        }
+        if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+            return;
         }
 
         // Don't show menu for these types
@@ -149,6 +153,13 @@ export const useSlateSmartType = ({
                 
                 // Stage 1: Prefix
                 if (parsed.stage === 1) {
+                    // Don't show menu on empty content
+                    if (content.length === 0) {
+                        dispatch({ type: 'HIDE_MENU' });
+                        setMenuPosition(null);
+                        return;
+                    }
+
                     const suggestions = SCENE_PREFIXES.filter(p => p.startsWith(content));
                     const isComplete = SCENE_PREFIXES.some(p => p.toUpperCase() === content);
                     
@@ -256,14 +267,22 @@ export const useSlateSmartType = ({
             else if (state.mode === 'time') newContent = `${parsed.prefix.trim()} ${parsed.location.trim()} - ${suggestion}`;
         }
 
-        // Apply change
-        Transforms.select(editor, path);
-        Transforms.delete(editor, {
-            at: {
-                anchor: Editor.start(editor, path),
-                focus: Editor.end(editor, path)
-            }
+        // Apply change - replace text WITHOUT deleting element
+        const start = Editor.start(editor, path);
+        const end = Editor.end(editor, path);
+        
+        // Select all text in the element
+        Transforms.select(editor, {
+            anchor: start,
+            focus: end
         });
+        
+        // Delete only the text content (not the element)
+        if (Node.string(element).length > 0) {
+            Transforms.delete(editor);
+        }
+        
+        // Insert new text (element type is preserved)
         Transforms.insertText(editor, newContent);
 
         // Learn entry
