@@ -138,19 +138,19 @@ export const useSlateSmartType = ({
 
             if (type === 'character') {
                 newSuggestions = getSuggestions(projectId, 'character', content, 10);
-                shouldShow = content.length > 0 && newSuggestions.length > 0;
+                shouldShow = newSuggestions.length > 0;
                 if (SMARTTYPE_DEBUG) console.log('[SmartType] Character Suggestions:', newSuggestions);
             }
 
             if (type === 'scene_heading') {
                 const parsed = parseSceneHeading(content);
-                if (parsed.stage === 1 && content.trim().length > 0) {
+                if (parsed.stage === 1) {
                     newSuggestions = getSuggestions(projectId, 'location', content, 10);
                     shouldShow = newSuggestions.length > 0;
-                } else if (parsed.stage === 2 && parsed.location.trim().length > 0) {
+                } else if (parsed.stage === 2) {
                     newSuggestions = getSuggestions(projectId, 'location', parsed.location.trim(), 10);
                     shouldShow = newSuggestions.length > 0;
-                } else if (parsed.stage === 3 && parsed.time.trim().length > 0) {
+                } else if (parsed.stage === 3) {
                     newSuggestions = getSuggestions(projectId, 'time_of_day', parsed.time.trim(), 10);
                     shouldShow = newSuggestions.length > 0;
                 }
@@ -159,7 +159,7 @@ export const useSlateSmartType = ({
 
             if (type === 'transition') {
                 newSuggestions = getSuggestions(projectId, 'transition', content, 10);
-                shouldShow = content.length > 0 && newSuggestions.length > 0;
+                shouldShow = newSuggestions.length > 0;
                 if (SMARTTYPE_DEBUG) console.log('[SmartType] Transition Suggestions:', newSuggestions);
             }
 
