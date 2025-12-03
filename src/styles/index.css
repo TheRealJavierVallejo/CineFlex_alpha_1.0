@@ -240,4 +240,20 @@
   .bg-surface-hover-adaptive { background-color: var(--bg-surface-hover); }
   .input-bg { background-color: var(--bg-surface-secondary); }
   .input-bg-focus { background-color: var(--bg-app); }
+
+  /* Slate editor placeholder styling */
+  .empty-element[data-placeholder]::before {
+    content: attr(data-placeholder);
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+  }
+
+  .light .empty-element[data-placeholder]::before {
+    color: rgba(0, 0, 0, 0.3);
+  }
 }
