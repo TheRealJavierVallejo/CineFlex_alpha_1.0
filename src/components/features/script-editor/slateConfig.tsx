@@ -123,18 +123,17 @@ export function renderScriptElement(
             style={style}
             data-element-type={element.type}
         >
-            {/* Visual Page Break */}
+            {/* Visual Page Break - Uses BLOCK spacing instead of absolute positioning */}
             {isFirstOnPage && pageNumber > 1 && (
                 <div 
                     contentEditable={false} 
-                    className="absolute -top-12 left-0 right-0 h-8 flex items-center justify-center select-none pointer-events-none w-[8.5in]"
-                    style={{ marginLeft: `-${style.marginLeft || '0px'}` }} // Counteract element margin
+                    className="w-full py-8 flex flex-col items-center justify-center select-none pointer-events-none"
+                    style={{ marginLeft: `-${style.marginLeft || '0px'}` }} // Counteract element margin so break spans full width
                 >
-                    <div className={`w-full border-b border-dashed ${isLightMode ? 'border-zinc-300' : 'border-zinc-700'} relative flex justify-center`}>
-                        <span className={`px-4 text-[10px] font-mono font-bold uppercase ${isLightMode ? 'bg-white text-zinc-400' : 'bg-[#1E1E1E] text-zinc-600'}`}>
-                            Page {pageNumber}
-                        </span>
+                    <div className={`text-xs font-mono font-bold uppercase mb-2 ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        — PAGE {pageNumber} —
                     </div>
+                    <div className={`w-full border-t border-dashed ${isLightMode ? 'border-zinc-300' : 'border-zinc-700'}`} />
                 </div>
             )}
             

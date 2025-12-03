@@ -128,10 +128,18 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             const elements = slateToScriptElements(nodes);
             const map = calculatePagination(elements);
             
-            // Calculate max page
+            // Calculate max page with safety checks
+            const pages = Object.values(map).filter(p => typeof p === 'number' && p > 0);
             let maxPage = 1;
-            Object.values(map).forEach(p => {
-                if (p > maxPage) maxPage = p;
+            if (pages.length > 0) {
+                maxPage = Math.max(...pages);
+            }
+
+            // DEBUG: Pagination Log
+            console.log('[Pagination Debug]', {
+                elementCount: elements.length,
+                pageMap: map,
+                detectedMaxPage: maxPage
             });
 
             setPageMap(map);
