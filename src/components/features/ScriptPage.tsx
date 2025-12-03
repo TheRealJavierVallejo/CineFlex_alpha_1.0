@@ -26,16 +26,18 @@ export const ScriptPage: React.FC = () => {
     const {
         state: elements,
         set: setElements,
-        // useHistory's undo/redo are bypassed in favor of Slate's internal history
     } = useHistory<ScriptElement[]>(project.scriptElements || []);
 
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
     
-    // Undo/Redo State from Slate
+    // Editor State
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    
     const editorRef = useRef<SlateScriptEditorRef>(null);
 
     // Theme Detection
@@ -82,21 +84,14 @@ export const ScriptPage: React.FC = () => {
 
     // Sync elements with project.scriptElements and learn from script
     useEffect(() => {
-        // If project.scriptElements has changed externally (e.g., loaded from storage, imported script)
-        // and it's different from the current history state's present, update the history state.
-        // We use JSON.stringify for a deep comparison to avoid unnecessary updates if content is the same.
         if (JSON.stringify(project.scriptElements) !== JSON.stringify(elements)) {
             setElements(project.scriptElements || []);
         }
 
-        // Always learn from the latest project.scriptElements when it changes
         if (project.scriptElements && project.scriptElements.length > 0) {
             learnFromScript(project.id, project.scriptElements);
         }
     }, [project.scriptElements, project.id, setElements, elements]);
-
-    const currentPageNum = 1; 
-    const totalPages = 1;
 
     const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -125,15 +120,15 @@ export const ScriptPage: React.FC = () => {
             label: 'SYD',
             icon: <Sparkles className="w-5 h-5" />,
             content: <ScriptChat isOpen={true} onClose={() => { }} />,
-            noScroll: true // ScriptChat handles its own scrolling
+            noScroll: true
         },
         {
             id: 'story',
             label: 'Story',
             icon: <BookOpen className="w-5 h-5" />,
             content: <StoryPanel />,
-            width: '600px', // Wider panel for comfortable writing
-            noScroll: true // StoryPanel handles its own scrolling
+            width: '600px',
+            noScroll: true
         },
         {
             id: 'smarttype',
@@ -157,7 +152,7 @@ export const ScriptPage: React.FC = () => {
                     onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
                     onExport={() => exportToPDF(project)}
                     saveStatus={saveStatus}
-                    currentPage={currentPageNum}
+                    currentPage={currentPage}
                     totalPages={totalPages}
                 />
 
@@ -194,6 +189,10 @@ export const ScriptPage: React.FC = () => {
                                     onUndoRedoChange={(undo, redo) => {
                                         setCanUndo(undo);
                                         setCanRedo(redo);
+                                    }}
+                                    onPageChange={(curr, total) => {
+                                        setCurrentPage(curr);
+                                        setTotalPages(total);
                                     }}
                                     isLightMode={isPaperWhite}
                                     projectId={project.id}

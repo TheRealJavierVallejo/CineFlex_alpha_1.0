@@ -105,12 +105,13 @@ export function getElementStyles(
 }
 
 /**
- * Renders a script element with appropriate styling
+ * Renders a script element with appropriate styling and visual page breaks
  */
 export function renderScriptElement(
     props: any,
     isLightMode: boolean,
-    isFirstOnPage: boolean
+    isFirstOnPage: boolean,
+    pageNumber: number = 1
 ) {
     const { attributes, children, element } = props;
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
@@ -122,6 +123,21 @@ export function renderScriptElement(
             style={style}
             data-element-type={element.type}
         >
+            {/* Visual Page Break */}
+            {isFirstOnPage && pageNumber > 1 && (
+                <div 
+                    contentEditable={false} 
+                    className="absolute -top-12 left-0 right-0 h-8 flex items-center justify-center select-none pointer-events-none w-[8.5in]"
+                    style={{ marginLeft: `-${style.marginLeft || '0px'}` }} // Counteract element margin
+                >
+                    <div className={`w-full border-b border-dashed ${isLightMode ? 'border-zinc-300' : 'border-zinc-700'} relative flex justify-center`}>
+                        <span className={`px-4 text-[10px] font-mono font-bold uppercase ${isLightMode ? 'bg-white text-zinc-400' : 'bg-[#1E1E1E] text-zinc-600'}`}>
+                            Page {pageNumber}
+                        </span>
+                    </div>
+                </div>
+            )}
+            
             {children}
         </div>
     );

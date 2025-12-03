@@ -1,16 +1,17 @@
-import React, { useMemo, useCallback, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { createEditor, Descendant, Editor, Element as SlateElement, Transforms, Node, Path } from 'slate';
-import { Slate, Editable, withReact, RenderElementProps, RenderLeafProps } from 'slate-react';
+import { Slate, Editable, withReact, ReactEditor, RenderElementProps, RenderLeafProps } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { ScriptElement } from '../../../types';
 import { CustomEditor, CustomElement, renderScriptElement } from './slateConfig';
 import { scriptElementsToSlate, slateToScriptElements } from './slateConversion';
 import { handleEnterKey, handleTabKey, handleBackspaceAtStart, handleCmdShortcut } from './slateKeyboardHandlers';
 import { debounce } from '../../../utils/debounce';
-import { useSlateSmartType } from './useSlateSmartTypeStateMachine'; // Updated Import
+import { useSlateSmartType } from './useSlateSmartTypeStateMachine';
 import { AutocompleteMenu } from './AutocompleteMenu';
 import { decorateWithPlaceholders } from './slatePlaceholders';
+import { calculatePagination } from '../../../services/pagination';
 
 export interface SlateScriptEditorProps {
     initialElements: ScriptElement[];
@@ -18,6 +19,7 @@ export interface SlateScriptEditorProps {
     isLightMode: boolean;
     projectId: string;
     onUndoRedoChange?: (canUndo: boolean, canRedo: boolean) => void;
+    onPageChange?: (currentPage: number, totalPages: number) => void;
 }
 
 export interface SlateScriptEditorRef {
@@ -76,7 +78,8 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     onChange,
     isLightMode,
     projectId,
-    onUndoRedoChange
+    onUndoRedoChange,
+    onPageChange
 }, ref) => {
     const editor = useMemo(
         () => withScriptEditor(withHistory(withReact(createEditor() as CustomEditor))),
@@ -86,6 +89,11 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const [value, setValue] = useState<Descendant[]>(() =>
         scriptElementsToSlate(initialElements)
     );
+
+    // Pagination State
+    const [pageMap, setPageMap] = useState<Record<string, number>>({});
+    const [totalPages, setTotalPages] = useState(1);
+    const [currentPage, setCurrentPage] = useState(1);
 
     useImperativeHandle(ref, () => ({
         undo: () => editor.undo(),
@@ -113,6 +121,52 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         projectId,
         isActive: true
     });
+
+    // Pagination Calculation
+    const debouncedPagination = useMemo(
+        () => debounce((nodes: Descendant[]) => {
+            const elements = slateToScriptElements(nodes);
+            const map = calculatePagination(elements);
+            
+            // Calculate max page
+            let maxPage = 1;
+            Object.values(map).forEach(p => {
+                if (p > maxPage) maxPage = p;
+            });
+
+            setPageMap(map);
+            setTotalPages(maxPage);
+        }, 500),
+        []
+    );
+
+    // Trigger pagination on value change
+    useEffect(() => {
+        debouncedPagination(value);
+    }, [value, debouncedPagination]);
+
+    // Track Current Page based on Selection
+    useEffect(() => {
+        if (!editor.selection) return;
+        
+        try {
+            const [node] = Editor.parent(editor, editor.selection);
+            if (SlateElement.isElement(node)) {
+                const id = (node as CustomElement).id;
+                const page = pageMap[id];
+                if (page && page !== currentPage) {
+                    setCurrentPage(page);
+                }
+            }
+        } catch (e) {
+            // Selection might be invalid transiently
+        }
+    }, [editor.selection, pageMap, currentPage]);
+
+    // Notify Parent of Page Changes
+    useEffect(() => {
+        onPageChange?.(currentPage, totalPages);
+    }, [currentPage, totalPages, onPageChange]);
 
     const debouncedOnChange = useMemo(
         () => debounce((nodes: Descendant[]) => {
@@ -180,9 +234,36 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     }, [editor, handleSmartTypeKeyDown, state.status]);
 
     const renderElement = useCallback((props: RenderElementProps) => {
-        const isFirstOnPage = props.element === value[0];
-        return renderScriptElement(props, isLightMode, isFirstOnPage);
-    }, [isLightMode, value]);
+        const { element } = props;
+        const currentId = element.id;
+        const pageNum = pageMap[currentId] || 1;
+        
+        let isFirstOnPage = false;
+        
+        try {
+            const path = ReactEditor.findPath(editor, element);
+            
+            // First element of the document is always top of Page 1
+            if (path[0] === 0) {
+                isFirstOnPage = true;
+            } else {
+                // Check previous element
+                const prevPath = Path.previous(path);
+                const prevNode = Node.get(editor, prevPath) as CustomElement;
+                const prevPage = pageMap[prevNode.id] || 1;
+                
+                // If page number jumped, we are first on new page
+                if (pageNum > prevPage) {
+                    isFirstOnPage = true;
+                }
+            }
+        } catch (e) {
+            // Safe fallback during concurrent edits
+            isFirstOnPage = false;
+        }
+
+        return renderScriptElement(props, isLightMode, isFirstOnPage, pageNum);
+    }, [isLightMode, editor, pageMap]);
 
     const renderLeaf = useCallback((props: RenderLeafProps) => {
         const { attributes, children, leaf } = props;
