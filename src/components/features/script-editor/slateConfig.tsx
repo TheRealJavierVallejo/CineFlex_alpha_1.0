@@ -127,7 +127,7 @@ export function renderScriptElement(
         'transition': 'CUT TO:'
     }[element.type as string];
 
-    const finalClassName = className.trim();
+    const finalClassName = `${className}`.trim();
 
     return (
         <div

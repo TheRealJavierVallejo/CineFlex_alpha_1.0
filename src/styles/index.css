@@ -241,8 +241,8 @@
   .input-bg { background-color: var(--bg-surface-secondary); }
   .input-bg-focus { background-color: var(--bg-app); }
 
-  /* Slate editor placeholder styling */
-  /* Using attribute selector without :empty for better Slate compatibility */
+  /* Slate editor placeholder styling - Visual only */
+  /* Note: We use the data attribute instead of :empty because Slate elements always contain children nodes */
   [data-placeholder]::before {
     content: attr(data-placeholder);
     color: rgba(255, 255, 255, 0.25);
@@ -256,9 +256,8 @@
   }
 
   /* Light mode placeholder */
-  .light [data-placeholder]::before,
-  [data-placeholder].light::before {
-    color: rgba(0, 0, 0, 0.3);
+  .light [data-placeholder]::before {
+    color: rgba(0, 0, 0, 0.25);
   }
 
   /* Ensure placeholder doesn't interfere with caret */
