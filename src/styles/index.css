@@ -242,7 +242,8 @@
   .input-bg-focus { background-color: var(--bg-app); }
 
   /* Slate editor placeholder styling */
-  [data-placeholder]:empty::before {
+  /* Using attribute selector without :empty for better Slate compatibility */
+  [data-placeholder]::before {
     content: attr(data-placeholder);
     color: rgba(255, 255, 255, 0.25);
     font-style: italic;
@@ -255,9 +256,9 @@
   }
 
   /* Light mode placeholder */
-  .light [data-placeholder]:empty::before,
-  [data-placeholder].light:empty::before {
-    color: rgba(0, 0, 0, 0.25);
+  .light [data-placeholder]::before,
+  [data-placeholder].light::before {
+    color: rgba(0, 0, 0, 0.3);
   }
 
   /* Ensure placeholder doesn't interfere with caret */
