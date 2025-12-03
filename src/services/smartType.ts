@@ -328,33 +328,21 @@ export const getSuggestions = (
 ): string[] => {
     const data = getSmartTypeData(projectId);
 
-    // Special handling for Scene Headings (3-Stage Autocomplete)
-    if (type === 'location') { // We use 'location' type for scene heading logic
-        const partialUpper = partial.toUpperCase();
-
-        // Stage 1: Prefixes
-        // If partial is empty or matches start of a prefix
-        if (partialUpper.length < 4 && !partialUpper.includes(' ')) {
-            const prefixMatches = SCENE_PREFIXES.filter(p => p.startsWith(partialUpper));
-            if (prefixMatches.length > 0) return prefixMatches;
-        }
-
-        // Stage 2: Locations (derived from full headers)
-        // Extract locations from saved headers
+    // Extract locations from saved full scene headers
+    if (type === 'location') {
         const locations = new Set<string>();
         data.sceneHeaders.forEach(header => {
-            const match = header.value.match(/^(?:INT\.|EXT\.|INT\/EXT|I\/E|I\/E\.|INT\/EXT\.)\s+(.*?)(?:\s+-\s+|$)/i);
+            // Parse: "INT. BEDROOM - DAY" → extract "BEDROOM"
+            const match = header.value.match(/^(?:INT\.|EXT\.|I\/E)\s+(.*?)(?:\s+-\s+|$)/i);
             if (match && match[1]) {
                 locations.add(match[1].trim());
             }
         });
 
         const locationList = Array.from(locations);
-        // Filter by partial (assuming partial is the location part)
-        // This requires the caller to pass ONLY the location part as 'partial'
-        // But the caller might pass the whole line.
-        // Let's assume the caller handles the parsing and passes the relevant part.
-
+        const partialUpper = partial.toUpperCase();
+        
+        // Simple filter by partial match
         return locationList
             .filter(l => l.toUpperCase().startsWith(partialUpper))
             .sort()
