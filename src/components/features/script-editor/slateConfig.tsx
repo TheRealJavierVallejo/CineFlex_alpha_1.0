@@ -117,32 +117,30 @@ export function renderScriptElement(
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
 
     return (
-        <div
-            {...attributes}
-            className={className}
-            style={style}
-            data-element-type={element.type}
-        >
-            {/* Visual Page Break - Final Draft Style */}
+        <>
+            {/* Visual Page Break - Final Draft Style (Centered, No Margin Hacks) */}
             {isFirstOnPage && pageNumber > 1 && (
                 <div 
                     contentEditable={false} 
-                    className="relative w-full my-4 pointer-events-none select-none"
-                    style={{ marginLeft: `-${style.marginLeft || '0px'}` }} // Counteract element margin so break spans full width
+                    className="w-full py-6 flex items-center justify-center pointer-events-none select-none"
                 >
-                    {/* Thin horizontal line */}
-                    <div className={`w-full border-t ${isLightMode ? 'border-zinc-300' : 'border-zinc-800'}`} />
-                    
-                    {/* Page number badge */}
-                    <div 
-                        className={`absolute -top-2 right-8 px-2 text-[10px] font-mono ${isLightMode ? 'bg-white text-zinc-400' : 'bg-[#1E1E1E] text-zinc-600'}`}
-                    >
-                        {pageNumber}.
+                    <div className={`flex items-center gap-3 text-xs font-mono ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        <div className="w-16 border-t border-current opacity-50" />
+                        <span>PAGE {pageNumber}</span>
+                        <div className="w-16 border-t border-current opacity-50" />
                     </div>
                 </div>
             )}
             
-            {children}
-        </div>
+            {/* Element Content */}
+            <div
+                {...attributes}
+                className={className}
+                style={style}
+                data-element-type={element.type}
+            >
+                {children}
+            </div>
+        </>
     );
 }
