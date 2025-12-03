@@ -140,7 +140,8 @@ export const useSlateSmartType = ({
 
             if (type === 'character') {
                 newSuggestions = getSuggestions(projectId, 'character', content, 10);
-                shouldShow = newSuggestions.length > 0;
+                // Only show if user has typed something AND suggestions exist
+                shouldShow = content.length > 0 && newSuggestions.length > 0;
                 if (SMARTTYPE_DEBUG) console.log('[SmartType] Character Suggestions:', newSuggestions);
             }
 
@@ -161,14 +162,13 @@ export const useSlateSmartType = ({
 
             if (type === 'transition') {
                 newSuggestions = getSuggestions(projectId, 'transition', content, 10);
+                // Show if: empty (show all defaults) OR typing and suggestions exist
                 shouldShow = newSuggestions.length > 0;
                 if (SMARTTYPE_DEBUG) console.log('[SmartType] Transition Suggestions:', newSuggestions);
             }
 
-            // Auto-hide if exact match
-            // FIX: Ensure we don't call methods on potentially undefined items, though length check helps.
-            // Also ensure we compare apples to apples (content is already upper).
-            if (newSuggestions.length === 1 && newSuggestions[0] === content) {
+            // Auto-hide only if there's exactly 1 suggestion and user typed it exactly (case-insensitive)
+            if (newSuggestions.length === 1 && newSuggestions[0].toUpperCase() === content.toUpperCase()) {
                 if (SMARTTYPE_DEBUG) console.log('[SmartType] Exact match found, hiding menu.');
                 shouldShow = false;
             }
