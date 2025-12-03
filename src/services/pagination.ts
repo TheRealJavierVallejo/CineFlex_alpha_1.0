@@ -108,20 +108,40 @@ const calculateElementHeight = (el: ScriptElement, isFirstOnPage: boolean): numb
  * Main pagination calculation function
  * Returns a map of element IDs to page numbers
  */
-export const calculatePagination = (elements: ScriptElement[]): PageBreakMap => {
+export const calculatePagination = (elements: ScriptElement[], projectId?: string): PageBreakMap => {
     const map: PageBreakMap = {};
     let currentLine = 1;
     let currentPage = 1;
 
-    // Clear previous pagination metadata
+    // Filter out empty/invalid elements that shouldn't be paginated
+    // This prevents phantom empty lines from creating unnecessary pages
+    const validElements = elements.filter(el => {
+        // Must have valid type
+        if (!el.type) return false;
+        // Must have ID
+        if (!el.id) return false;
+        
+        // Empty scene headings/transitions/characters can stay (they imply structure)
+        // But empty action/dialogue should be filtered as they are usually just newlines
+        if (el.type === 'action' || el.type === 'dialogue') {
+            if (!el.content || el.content.trim().length === 0) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    const elementsToProcess = validElements;
+
+    // Clear previous pagination metadata (on the original objects, though note this mutates refs)
     elements.forEach(el => {
         delete el.isContinued;
         delete el.continuesNext;
         delete el.keptTogether;
     });
 
-    for (let i = 0; i < elements.length; i++) {
-        const el = elements[i];
+    for (let i = 0; i < elementsToProcess.length; i++) {
+        const el = elementsToProcess[i];
         const isFirstOnPage = currentLine === 1;
         const totalElementHeight = calculateElementHeight(el, isFirstOnPage);
 
@@ -133,14 +153,14 @@ export const calculatePagination = (elements: ScriptElement[]): PageBreakMap => 
         // ═══════════════════════════════════════════════════════════
 
         // Rule 1: CHARACTER + minimum 2 lines of DIALOGUE must stay together
-        if (el.type === 'character' && i + 1 < elements.length) {
+        if (el.type === 'character' && i + 1 < elementsToProcess.length) {
             const dialogueBlock: ScriptElement[] = [];
             let j = i + 1;
 
             // Gather the full dialogue block (parenthetical + dialogue)
-            while (j < elements.length &&
-                (elements[j].type === 'parenthetical' || elements[j].type === 'dialogue')) {
-                dialogueBlock.push(elements[j]);
+            while (j < elementsToProcess.length &&
+                (elementsToProcess[j].type === 'parenthetical' || elementsToProcess[j].type === 'dialogue')) {
+                dialogueBlock.push(elementsToProcess[j]);
                 j++;
             }
 
@@ -167,8 +187,8 @@ export const calculatePagination = (elements: ScriptElement[]): PageBreakMap => 
         }
 
         // Rule 2: SCENE HEADING + minimum 2 lines of following content
-        if (el.type === 'scene_heading' && i + 1 < elements.length) {
-            const nextEl = elements[i + 1];
+        if (el.type === 'scene_heading' && i + 1 < elementsToProcess.length) {
+            const nextEl = elementsToProcess[i + 1];
 
             // Exception: Establishing shots (scene heading followed by another scene heading)
             const isEstablishing = nextEl.type === 'scene_heading';
