@@ -4,14 +4,16 @@ interface AutocompleteMenuProps {
     suggestions: string[];
     selectedIndex: number;
     onSelect: (value: string) => void;
-    leftOffset?: string; // To align with text indentation (e.g. Character center)
+    leftOffset?: string; // Legacy support
+    position?: { top: number; left: number }; // New absolute positioning
 }
 
 export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
     suggestions,
     selectedIndex,
     onSelect,
-    leftOffset = '0px'
+    leftOffset = '0px',
+    position
 }) => {
     const listRef = useRef<HTMLDivElement>(null);
     const selectedRef = useRef<HTMLDivElement>(null);
@@ -34,8 +36,13 @@ export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
 
     return (
         <div
-            className="absolute z-50 top-full mt-2 w-64 bg-surface/95 backdrop-blur-md border border-border/50 shadow-xl rounded-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 origin-top-left ring-1 ring-black/5"
-            style={{ left: leftOffset }}
+            className={`z-50 w-64 bg-surface/95 backdrop-blur-md border border-border/50 shadow-xl rounded-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 origin-top-left ring-1 ring-black/5 ${position ? 'fixed' : 'absolute top-full mt-2'}`}
+            style={position ? {
+                top: `${position.top}px`,
+                left: `${position.left}px`
+            } : {
+                left: leftOffset
+            }}
         >
             <div ref={listRef} className="max-h-60 overflow-y-auto p-1">
                 {suggestions.map((suggestion, index) => (
@@ -43,8 +50,8 @@ export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
                         key={index}
                         ref={index === selectedIndex ? selectedRef : null}
                         className={`px-3 py-2 text-sm font-mono cursor-pointer transition-all rounded-md truncate flex items-center gap-2 ${index === selectedIndex
-                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
                             }`}
                         onMouseDown={(e) => {
                             e.preventDefault(); // Prevent focus loss from textarea

@@ -19,6 +19,7 @@ import {
     ProjectLibrary,
     LazyWrapper
 } from './components/features/LazyComponents';
+import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
@@ -164,6 +165,7 @@ const App: React.FC = () => {
                 <BrowserRouter>
                     <Routes>
                         <Route path="/" element={<ProjectLibrary />} />
+                        <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
                         <Route path="/project/:projectId" element={<WorkspaceLayout />}>
                             <Route index element={<DashboardPage />} />
                             <Route path="timeline" element={<TimelinePage />} />
