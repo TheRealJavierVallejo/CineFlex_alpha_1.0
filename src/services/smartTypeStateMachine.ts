@@ -3,13 +3,9 @@ import { SCENE_PREFIXES } from './smartType';
 // All possible states
 export type SmartTypeState =
   | { status: 'idle' }
-  | { status: 'showing', mode: 'prefix', suggestions: string[], selectedIndex: number }
-  | { status: 'showing', mode: 'location', suggestions: string[], selectedIndex: number }
-  | { status: 'showing', mode: 'time', suggestions: string[], selectedIndex: number }
-  | { status: 'showing', mode: 'character', suggestions: string[], selectedIndex: number }
-  | { status: 'showing', mode: 'transition', suggestions: string[], selectedIndex: number }
+  | { status: 'showing', mode: 'prefix' | 'location' | 'time' | 'character' | 'transition', suggestions: string[], selectedIndex: number }
   | { status: 'closed_exact_match', lastContent: string }
-  | { status: 'closed_selection', lastPath: string };
+  | { status: 'closed_selection', lastPath: string, closedMode: 'prefix' | 'location' | 'time' | 'character' | 'transition' };
 
 // All possible actions
 export type SmartTypeAction =
@@ -18,7 +14,7 @@ export type SmartTypeAction =
   | { type: 'SELECT_NEXT' }
   | { type: 'SELECT_PREVIOUS' }
   | { type: 'CLOSE_EXACT_MATCH', content: string }
-  | { type: 'CLOSE_AFTER_SELECTION', path: string }
+  | { type: 'CLOSE_AFTER_SELECTION', path: string, mode: 'prefix' | 'location' | 'time' | 'character' | 'transition' }
   | { type: 'RESET_ON_EDIT' };
 
 // Initial state
@@ -64,7 +60,8 @@ export function smartTypeReducer(state: SmartTypeState, action: SmartTypeAction)
         case 'CLOSE_AFTER_SELECTION':
             return {
                 status: 'closed_selection',
-                lastPath: action.path
+                lastPath: action.path,
+                closedMode: action.mode
             };
 
         case 'RESET_ON_EDIT':

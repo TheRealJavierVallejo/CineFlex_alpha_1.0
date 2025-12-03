@@ -98,11 +98,8 @@ export const useSlateSmartType = ({
         // Update content ref
         lastContentRef.current = content;
 
-        // Skip if menu is closed due to exact match/selection
+        // Skip if menu is closed due to exact match
         if (state.status === 'closed_exact_match' && state.lastContent === content) {
-            return;
-        }
-        if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
             return;
         }
 
@@ -125,6 +122,11 @@ export const useSlateSmartType = ({
         const timeoutId = setTimeout(() => {
             // CHARACTER
             if (type === 'character') {
+                // Don't reopen menu if we just selected this character
+                if (state.status === 'closed_selection' && state.lastPath === currentPathStr && state.closedMode === 'character') {
+                    return;
+                }
+
                 const suggestions = getSuggestions(projectId, 'character', content, 10);
                 if (content.length > 0 && suggestions.length > 0 && !isExactMatch(suggestions, content)) {
                     const pos = calculateMenuPosition();
@@ -155,6 +157,11 @@ export const useSlateSmartType = ({
                         return;
                     }
 
+                    // Don't reopen menu if we just selected a prefix
+                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr && state.closedMode === 'prefix') {
+                        return;
+                    }
+
                     const suggestions = SCENE_PREFIXES.filter(p => p.startsWith(content));
                     const isComplete = SCENE_PREFIXES.some(p => p.toUpperCase() === content);
                     
@@ -176,7 +183,7 @@ export const useSlateSmartType = ({
                     const locationInput = parsed.location.trim();
                     
                     // Don't reopen menu if we just selected this exact location
-                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr && state.closedMode === 'location') {
                         return;
                     }
                     
@@ -213,7 +220,7 @@ export const useSlateSmartType = ({
                     }
                     
                     // Don't reopen if we just selected this time
-                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+                    if (state.status === 'closed_selection' && state.lastPath === currentPathStr && state.closedMode === 'time') {
                         return;
                     }
                     
@@ -246,7 +253,7 @@ export const useSlateSmartType = ({
                 }
                 
                 // Don't reopen if we just selected
-                if (state.status === 'closed_selection' && state.lastPath === currentPathStr) {
+                if (state.status === 'closed_selection' && state.lastPath === currentPathStr && state.closedMode === 'transition') {
                     return;
                 }
                 
@@ -324,9 +331,11 @@ export const useSlateSmartType = ({
             addSmartTypeEntry(projectId, entryType, suggestion, false);
         }
 
-        // Close menu after selection
+        // Close menu after selection with the mode that was just used
         const pathStr = JSON.stringify(path);
-        dispatch({ type: 'CLOSE_AFTER_SELECTION', path: pathStr });
+        if (state.status === 'showing') {
+            dispatch({ type: 'CLOSE_AFTER_SELECTION', path: pathStr, mode: state.mode });
+        }
         setMenuPosition(null);
     }, [editor, projectId, state]);
 
