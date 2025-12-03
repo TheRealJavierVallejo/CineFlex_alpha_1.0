@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { Editor, Transforms, Range, Element as SlateElement, Node } from 'slate';
 import { ReactEditor } from 'slate-react';
 import { CustomEditor, CustomElement } from './slateConfig';
-import { getSuggestions, addSmartTypeEntry, SmartTypeEntry } from '../../../services/smartType';
+import { getSuggestions, addSmartTypeEntry, SmartTypeEntry, SCENE_PREFIXES } from '../../../services/smartType';
+import { smartTypeReducer } from './useSlateSmartTypeReducer';
 
-const SMARTTYPE_DEBUG = true;
+const SMARTTYPE_DEBUG = false;
 
 interface UseSlateSmartTypeReturn {
     showMenu: boolean;
@@ -15,20 +16,31 @@ interface UseSlateSmartTypeReturn {
     selectSuggestion: (suggestion: string) => void;
 }
 
-// Scene Heading Parsing Logic (Same as ScriptBlock.tsx)
+// Optimized parsing for strict stage detection
 const parseSceneHeading = (content: string) => {
-    const prefixMatch = content.match(/^(INT\.?\/?\s?EXT\.?|EXT\.?\/?\s?INT\.?|INT\.?|EXT\.?|I\/?E\.?)\s*/i);
-    if (!prefixMatch) return { stage: 1, prefix: '', location: content, time: '' };
+    // Stage 1: User is typing the prefix (INT., EXT., I/E)
+    // We require a SPACE after the prefix to consider it "complete"
+    const prefixMatch = content.match(/^(INT\.|EXT\.|I\/E)\s+/i);
 
-    const prefix = prefixMatch[0];
-    const rest = content.substring(prefix.length);
-    const parts = rest.split(/\s+-\s*/);
+    if (!prefixMatch) {
+        // Still in stage 1 (typing prefix)
+        return { stage: 1, prefix: '', location: content, time: '' };
+    }
+
+    const prefix = prefixMatch[0]; // e.g., "INT. "
+    const rest = content.substring(prefix.length); // Everything after prefix
+
+    // Stage 3: Check if location is followed by " - " (time separator)
+    // We look for the standard separator " - "
+    const parts = rest.split(/\s+-\s+/);
 
     if (parts.length > 1) {
-        const time = parts[parts.length - 1];
+        // Stage 3: User is typing time (after " - ")
         const location = parts.slice(0, parts.length - 1).join(' - ');
+        const time = parts[parts.length - 1];
         return { stage: 3, prefix, location, time };
     } else {
+        // Stage 2: User is typing location (after prefix, before " - ")
         return { stage: 2, prefix, location: rest, time: '' };
     }
 };
@@ -42,22 +54,22 @@ export const useSlateSmartType = ({
     projectId: string;
     isActive: boolean;
 }): UseSlateSmartTypeReturn => {
-    const [showMenu, setShowMenu] = useState(false);
-    const [suggestions, setSuggestions] = useState<string[]>([]);
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
-
-    const prevStateRef = useRef({ showMenu: false, suggestions: [] as string[], selectedIndex: 0, menuPosition: null as { top: number; left: number } | null });
+    // Replace all useState with single useReducer
+    const [state, dispatch] = useReducer(smartTypeReducer, { status: 'idle' });
 
     // Track previous selection to detect changes
     const prevSelectionRef = useRef<Range | null>(null);
 
-    // Update menu position based on cursor
-    const updateMenuPosition = useCallback(() => {
+    // Track if user has interacted with current element (typed anything)
+    // This implements Final Draft behavior: no menu on first cursor placement
+    const hasInteractedRef = useRef(false);
+    const lastElementPathRef = useRef<string>('');
+
+    // Calculate menu position based on cursor
+    const calculateMenuPosition = useCallback((): { top: number; left: number } | null => {
         const { selection } = editor;
         if (!selection || !Range.isCollapsed(selection)) {
-            setMenuPosition(null);
-            return;
+            return null;
         }
 
         try {
@@ -69,18 +81,18 @@ export const useSlateSmartType = ({
                 top: rect.bottom + window.scrollY + 4,
                 left: rect.right + window.scrollX
             };
-            
+
             if (SMARTTYPE_DEBUG) {
                 console.log('[SmartType] Position calculated:', pos);
             }
 
-            setMenuPosition(pos);
+            return pos;
         } catch (e) {
             if (SMARTTYPE_DEBUG) {
                 console.warn('[SmartType] Failed to calculate position (DOM not ready?)', e);
             }
             // Can fail if selection is not in DOM yet
-            setMenuPosition(null);
+            return null;
         }
     }, [editor]);
 
@@ -91,13 +103,13 @@ export const useSlateSmartType = ({
         }
 
         if (!isActive || !projectId) {
-            setShowMenu(false);
+            dispatch({ type: 'HIDE_MENU' });
             return;
         }
 
         const { selection } = editor;
         if (!selection || !Range.isCollapsed(selection)) {
-            setShowMenu(false);
+            dispatch({ type: 'HIDE_MENU' });
             return;
         }
 
@@ -107,7 +119,7 @@ export const useSlateSmartType = ({
         });
 
         if (!elementEntry) {
-            setShowMenu(false);
+            dispatch({ type: 'HIDE_MENU' });
             return;
         }
 
@@ -115,13 +127,27 @@ export const useSlateSmartType = ({
         const content = Node.string(element).toUpperCase();
         const type = (element as CustomElement).type;
 
+        // Track element path as string for comparison
+        const currentPathStr = JSON.stringify(path);
+
+        // If we moved to a different element, reset interaction flag
+        if (currentPathStr !== lastElementPathRef.current) {
+            hasInteractedRef.current = false;
+            lastElementPathRef.current = currentPathStr;
+        }
+
+        // If user has typed anything (content length > 0), mark as interacted
+        if (content.length > 0) {
+            hasInteractedRef.current = true;
+        }
+
         if (SMARTTYPE_DEBUG) {
-            console.log('[SmartType] Current Block:', { type, content });
+            console.log('[SmartType] Current Block:', { type, content, hasInteracted: hasInteractedRef.current });
         }
 
         // Fast exit for types that don't need autocomplete
         if (type === 'action' || type === 'parenthetical' || type === 'dialogue') {
-            setShowMenu(false);
+            dispatch({ type: 'HIDE_MENU' });
             return;
         }
 
@@ -148,22 +174,33 @@ export const useSlateSmartType = ({
             if (type === 'scene_heading') {
                 const parsed = parseSceneHeading(content);
                 if (parsed.stage === 1) {
-                    newSuggestions = getSuggestions(projectId, 'location', content, 10);
-                    shouldShow = newSuggestions.length > 0;
+                    // Stage 1: Show PREFIXES (INT., EXT., I/E)
+                    const contentUpper = content.toUpperCase();
+                    newSuggestions = SCENE_PREFIXES.filter(prefix => 
+                        prefix.startsWith(contentUpper)
+                    );
+                    
+                    // Only show if user has interacted OR typed something
+                    shouldShow = (hasInteractedRef.current || content.length > 0) && newSuggestions.length > 0;
+                    
                 } else if (parsed.stage === 2) {
+                    // Stage 2: Show LOCATIONS from learned script data
                     newSuggestions = getSuggestions(projectId, 'location', parsed.location.trim(), 10);
                     shouldShow = newSuggestions.length > 0;
+                    
                 } else if (parsed.stage === 3) {
+                    // Stage 3: Show TIMES OF DAY
                     newSuggestions = getSuggestions(projectId, 'time_of_day', parsed.time.trim(), 10);
                     shouldShow = newSuggestions.length > 0;
                 }
-                if (SMARTTYPE_DEBUG) console.log('[SmartType] Heading Suggestions:', newSuggestions);
+
+                if (SMARTTYPE_DEBUG) console.log('[SmartType] Scene Heading Stage', parsed.stage, 'Suggestions:', newSuggestions);
             }
 
             if (type === 'transition') {
                 newSuggestions = getSuggestions(projectId, 'transition', content, 10);
-                // Show if: empty (show all defaults) OR typing and suggestions exist
-                shouldShow = newSuggestions.length > 0;
+                // Only show if user has interacted OR typed something
+                shouldShow = (hasInteractedRef.current || content.length > 0) && newSuggestions.length > 0;
                 if (SMARTTYPE_DEBUG) console.log('[SmartType] Transition Suggestions:', newSuggestions);
             }
 
@@ -173,39 +210,28 @@ export const useSlateSmartType = ({
                 shouldShow = false;
             }
 
-            // Only update state if values actually changed (prevents flickering)
-            const newState = {
-                showMenu: shouldShow,
-                suggestions: newSuggestions,
-                selectedIndex: 0,
-                menuPosition: shouldShow ? menuPosition : null
-            };
-
-            const hasChanged = 
-                prevStateRef.current.showMenu !== newState.showMenu ||
-                prevStateRef.current.suggestions.length !== newState.suggestions.length ||
-                JSON.stringify(prevStateRef.current.suggestions) !== JSON.stringify(newState.suggestions);
-
-            if (hasChanged) {
-                if (SMARTTYPE_DEBUG) {
-                    console.log('[SmartType] State changed, updating:', newState);
-                }
-                setSuggestions(newSuggestions);
-                setShowMenu(shouldShow);
-                setSelectedIndex(0);
-                
-                if (shouldShow) {
-                    updateMenuPosition();
+            // Dispatch state update
+            if (shouldShow) {
+                const position = calculateMenuPosition();
+                if (position) {
+                    if (SMARTTYPE_DEBUG) {
+                        console.log('[SmartType] Showing suggestions:', newSuggestions);
+                    }
+                    dispatch({
+                        type: 'SHOW_SUGGESTIONS',
+                        suggestions: newSuggestions,
+                        position
+                    });
                 } else {
-                    setMenuPosition(null);
+                    dispatch({ type: 'HIDE_MENU' });
                 }
-                
-                prevStateRef.current = newState;
+            } else {
+                dispatch({ type: 'HIDE_MENU' });
             }
         }, debounceTime);
 
         return () => clearTimeout(timeoutId);
-    }, [editor.children, editor.selection, isActive, projectId, updateMenuPosition]); // Re-run on content/selection change
+    }, [editor.children, editor.selection, isActive, projectId, calculateMenuPosition]); // Re-run on content/selection change
 
     // Handle suggestion selection
     const selectSuggestion = useCallback((suggestion: string) => {
@@ -249,55 +275,60 @@ export const useSlateSmartType = ({
             'transition': 'transition'
         };
 
-        if (type in typeMap) {
-            if (SMARTTYPE_DEBUG) console.log('[SmartType] Learning new entry:', suggestion, 'Type:', typeMap[type]);
-            addSmartTypeEntry(projectId, typeMap[type], suggestion, false);
+        const entryType = typeMap[type];
+        if (entryType) {
+            if (SMARTTYPE_DEBUG) console.log('[SmartType] Learning new entry:', suggestion, 'Type:', entryType);
+            addSmartTypeEntry(projectId, entryType, suggestion, false);
         }
 
-        setShowMenu(false);
+        // CRITICAL: Hide menu after selection
+        dispatch({ type: 'HIDE_MENU' });
         // Focus back to editor is handled by Slate
     }, [editor, projectId]);
 
     // Keyboard handler
     const handleKeyDown = useCallback((event: React.KeyboardEvent): boolean => {
-        if (!showMenu || suggestions.length === 0) return false;
+        if (state.status !== 'showing') return false;
 
         if (event.key === 'ArrowDown') {
             event.preventDefault();
-            setSelectedIndex(prev => (prev + 1) % suggestions.length);
+            dispatch({ type: 'SELECT_NEXT' });
             return true;
         }
 
         if (event.key === 'ArrowUp') {
             event.preventDefault();
-            setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+            dispatch({ type: 'SELECT_PREVIOUS' });
             return true;
         }
 
         if (event.key === 'Enter') {
             event.preventDefault();
-            selectSuggestion(suggestions[selectedIndex]);
+            selectSuggestion(state.suggestions[state.selectedIndex]);
             return true;
         }
 
         if (event.key === 'Escape') {
             event.preventDefault();
-            setShowMenu(false);
+            dispatch({ type: 'HIDE_MENU' });
             return true;
         }
 
         return false;
-    }, [showMenu, suggestions, selectedIndex, selectSuggestion]);
+    }, [state, selectSuggestion]);
 
     if (SMARTTYPE_DEBUG) {
-        console.log('[SmartType] HOOK RETURNING:', { showMenu, suggestions: suggestions.length, menuPosition });
+        console.log('[SmartType] HOOK RETURNING:', {
+            status: state.status,
+            suggestions: state.status === 'showing' ? state.suggestions.length : 0
+        });
     }
 
     return {
-        showMenu,
-        suggestions,
-        selectedIndex,
-        menuPosition,
+        showMenu: state.status === 'showing',
+        suggestions: state.status === 'showing' ? state.suggestions : [],
+        selectedIndex: state.status === 'showing' ? state.selectedIndex : 0,
+        menuPosition: state.status === 'showing' ? state.menuPosition : null,
         handleKeyDown,
         selectSuggestion
     };

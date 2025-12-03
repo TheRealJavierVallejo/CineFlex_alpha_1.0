@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { createEditor, Descendant, Editor, Element as SlateElement, Transforms, Node, Path } from 'slate';
-import { Slate, Editable, withReact, RenderElementProps } from 'slate-react';
+import { Slate, Editable, withReact, RenderElementProps, RenderLeafProps } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { ScriptElement } from '../../../types';
 import { CustomEditor, CustomElement, renderScriptElement } from './slateConfig';
@@ -10,6 +10,7 @@ import { handleEnterKey, handleTabKey, handleBackspaceAtStart, handleCmdShortcut
 import { debounce } from '../../../utils/debounce';
 import { useSlateSmartType } from './useSlateSmartType';
 import { AutocompleteMenu } from './AutocompleteMenu';
+import { decorateWithPlaceholders } from './slatePlaceholders';
 
 export interface SlateScriptEditorProps {
     initialElements: ScriptElement[];
@@ -156,7 +157,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
 
     // Handle keyboard events
     const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-        // Let SmartType handle first (ArrowUp/Down/Enter/Escape)
+        // Let SmartType handle first (ArrowUp/Down/Enter/Escape) (MUST BE FIRST)
         const smartTypeHandled = handleSmartTypeKeyDown(event);
         if (smartTypeHandled) {
             return;
@@ -210,11 +211,61 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         return renderScriptElement(props, isLightMode, isFirstOnPage);
     }, [isLightMode, value]);
 
+    // Render leaf nodes with placeholder support
+    const renderLeaf = useCallback((props: RenderLeafProps) => {
+        const { attributes, children, leaf } = props;
+        const leafWithPlaceholder = leaf as any;
+
+        // If this leaf has a placeholder decoration AND the text is truly empty
+        if (leafWithPlaceholder.placeholder && leaf.text === '') {
+            // Determine if parent element is a transition (needs right-alignment)
+            const { selection } = editor;
+            let isTransition = false;
+
+            if (selection) {
+                const elementEntry = Editor.above(editor, {
+                    match: n => SlateElement.isElement(n)
+                });
+
+                if (elementEntry) {
+                    const [element] = elementEntry;
+                    isTransition = (element as CustomElement).type === 'transition';
+                }
+            }
+
+            return (
+                <span {...attributes}>
+                    <span
+                        contentEditable={false}
+                        className={isTransition ? 'text-right' : ''}
+                        style={{
+                            position: 'absolute',
+                            pointerEvents: 'none',
+                            opacity: 0.25,
+                            fontStyle: 'italic',
+                            color: isLightMode ? '#000000' : '#FFFFFF',
+                            // For transitions, we need to position the placeholder to align right
+                            ...(isTransition ? { right: 0, left: 'auto', width: '100%', textAlign: 'right' } : {})
+                        }}
+                    >
+                        {leafWithPlaceholder.placeholder}
+                    </span>
+                    {children}
+                </span>
+            );
+        }
+
+        // Normal leaf rendering (no placeholder)
+        return <span {...attributes}>{children}</span>;
+    }, [isLightMode, editor]);
+
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
                 <Editable
                     renderElement={renderElement}
+                    renderLeaf={renderLeaf}
+                    decorate={decorateWithPlaceholders(editor)}
                     onKeyDown={handleKeyDown}
                     placeholder="Start writing your screenplay..."
                     spellCheck={false}
