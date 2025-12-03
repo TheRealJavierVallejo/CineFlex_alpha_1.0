@@ -31,6 +31,7 @@ export const ScriptPage: React.FC = () => {
 
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
     
     // Undo/Redo State from Slate
     const [canUndo, setCanUndo] = useState(false);
@@ -200,6 +201,36 @@ export const ScriptPage: React.FC = () => {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Keyboard Shortcut Helper */}
+                <div className="absolute bottom-6 right-6 z-50 flex flex-col items-end">
+                    {showShortcuts && (
+                        <div className="bg-surface border border-border rounded-lg shadow-xl p-4 mb-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in duration-200">
+                            <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
+                                <h3 className="font-bold text-xs text-text-primary uppercase tracking-wider">Shortcuts</h3>
+                                <button onClick={() => setShowShortcuts(false)} className="text-text-muted hover:text-text-primary text-lg leading-none">×</button>
+                            </div>
+                            <div className="text-[10px] space-y-1.5 font-mono text-text-secondary">
+                                <div className="flex justify-between"><span>Scene Heading</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘1</span></div>
+                                <div className="flex justify-between"><span>Action</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘2</span></div>
+                                <div className="flex justify-between"><span>Character</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘3</span></div>
+                                <div className="flex justify-between"><span>Dialogue</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘4</span></div>
+                                <div className="flex justify-between"><span>Parenthetical</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘5</span></div>
+                                <div className="flex justify-between"><span>Transition</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘6</span></div>
+                                <div className="border-t border-border my-1"></div>
+                                <div className="flex justify-between"><span>Cycle Type</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">Tab</span></div>
+                                <div className="flex justify-between"><span>New Element</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">Enter</span></div>
+                            </div>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setShowShortcuts(!showShortcuts)}
+                        className={`w-8 h-8 rounded-full shadow-lg flex items-center justify-center transition-all ${showShortcuts ? 'bg-primary text-white' : 'bg-surface border border-border text-text-muted hover:text-text-primary hover:border-primary'}`}
+                        title="Keyboard Shortcuts"
+                    >
+                        <span className="font-mono text-sm font-bold">?</span>
+                    </button>
                 </div>
             </div>
         </PageWithToolRail>
