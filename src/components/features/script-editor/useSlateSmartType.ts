@@ -269,6 +269,10 @@ export const useSlateSmartType = ({
         return false;
     }, [showMenu, suggestions, selectedIndex, selectSuggestion]);
 
+    if (SMARTTYPE_DEBUG) {
+        console.log('[SmartType] HOOK RETURNING:', { showMenu, suggestions: suggestions.length, menuPosition });
+    }
+
     return {
         showMenu,
         suggestions,
