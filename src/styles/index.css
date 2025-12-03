@@ -242,18 +242,26 @@
   .input-bg-focus { background-color: var(--bg-app); }
 
   /* Slate editor placeholder styling */
-  .empty-element[data-placeholder]::before {
+  [data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.25);
     font-style: italic;
     pointer-events: none;
+    user-select: none;
     position: absolute;
     left: 0;
     top: 0;
     white-space: nowrap;
   }
 
-  .light .empty-element[data-placeholder]::before {
-    color: rgba(0, 0, 0, 0.3);
+  /* Light mode placeholder */
+  .light [data-placeholder]:empty::before,
+  [data-placeholder].light:empty::before {
+    color: rgba(0, 0, 0, 0.25);
+  }
+
+  /* Ensure placeholder doesn't interfere with caret */
+  [data-placeholder]:focus::before {
+    opacity: 0.5;
   }
 }
