@@ -126,26 +126,26 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const debouncedPagination = useMemo(
         () => debounce((nodes: Descendant[]) => {
             const elements = slateToScriptElements(nodes);
-            const map = calculatePagination(elements);
+            const result = calculatePagination(elements, projectId);
             
-            // Calculate max page with safety checks
-            const pages = Object.values(map).filter(p => typeof p === 'number' && p > 0);
-            let maxPage = 1;
-            if (pages.length > 0) {
-                maxPage = Math.max(...pages);
-            }
-
-            // DEBUG: Pagination Log
-            console.log('[Pagination Debug]', {
-                elementCount: elements.length,
-                pageMap: map,
-                detectedMaxPage: maxPage
+            // DEBUG: Log pagination results
+            console.log('Pagination calculated:', {
+                totalElements: elements.length,
+                pageBreakMap: result,
+                maxPage: Object.keys(result).length > 0 ? Math.max(...Object.values(result)) : 1
             });
 
-            setPageMap(map);
-            setTotalPages(maxPage);
+            setPageMap(result);
+            
+            // Calculate total pages safely
+            if (Object.keys(result).length === 0) {
+                setTotalPages(1);
+            } else {
+                const pages = Object.values(result).filter(p => typeof p === 'number' && p > 0);
+                setTotalPages(pages.length > 0 ? Math.max(...pages) : 1);
+            }
         }, 500),
-        []
+        [projectId]
     );
 
     // Trigger pagination on value change
@@ -247,30 +247,48 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         const pageNum = pageMap[currentId] || 1;
         
         let isFirstOnPage = false;
+        let isLastOnPage = false;
         
         try {
             const path = ReactEditor.findPath(editor, element);
             
-            // First element of the document is always top of Page 1
+            // Check if first element on page
             if (path[0] === 0) {
                 isFirstOnPage = true;
             } else {
-                // Check previous element
                 const prevPath = Path.previous(path);
                 const prevNode = Node.get(editor, prevPath) as CustomElement;
                 const prevPage = pageMap[prevNode.id] || 1;
                 
-                // If page number jumped, we are first on new page
                 if (pageNum > prevPage) {
                     isFirstOnPage = true;
                 }
             }
+            
+            // Check if last element on page
+            if (path[0] === editor.children.length - 1) {
+                isLastOnPage = true;
+            } else {
+                const nextPath = Path.next(path);
+                const nextNode = Node.get(editor, nextPath) as CustomElement;
+                const nextPage = pageMap[nextNode.id] || 1;
+                
+                if (nextPage > pageNum) {
+                    isLastOnPage = true;
+                }
+            }
         } catch (e) {
-            // Safe fallback during concurrent edits
             isFirstOnPage = false;
+            isLastOnPage = false;
         }
-
-        return renderScriptElement(props, isLightMode, isFirstOnPage, pageNum);
+        
+        return renderScriptElement(
+            props, 
+            isLightMode, 
+            isFirstOnPage, 
+            isLastOnPage,
+            pageNum
+        );
     }, [isLightMode, editor, pageMap]);
 
     const renderLeaf = useCallback((props: RenderLeafProps) => {
@@ -319,19 +337,44 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
-                <Editable
-                    renderElement={renderElement}
-                    renderLeaf={renderLeaf}
-                    decorate={decorateWithPlaceholders(editor)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Start writing your screenplay..."
-                    spellCheck={false}
-                    className="outline-none"
-                    style={{
-                        minHeight: '11in',
-                        width: '100%'
-                    }}
-                />
+                <div 
+                    className={`
+                        flex flex-col items-center 
+                        ${isLightMode ? 'bg-gray-100' : 'bg-zinc-900'}
+                        py-8
+                    `}
+                >
+                    <div
+                        className={`
+                            w-[8.5in] min-h-[11in]
+                            ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}
+                            shadow-2xl
+                            border ${isLightMode ? 'border-gray-200' : 'border-gray-800'}
+                        `}
+                        style={{
+                            paddingTop: '1in',
+                            paddingBottom: '1in',
+                            paddingLeft: '1.5in',
+                            paddingRight: '1in'
+                        }}
+                    >
+                        <Editable
+                            renderElement={renderElement}
+                            renderLeaf={renderLeaf}
+                            decorate={decorateWithPlaceholders(editor)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Start writing your screenplay..."
+                            spellCheck={false}
+                            className="outline-none"
+                            style={{
+                                minHeight: '9in',
+                                fontFamily: 'Courier, monospace',
+                                fontSize: '12pt',
+                                lineHeight: '1.5'
+                            }}
+                        />
+                    </div>
+                </div>
             </Slate>
             {state.status === 'showing' && menuPosition && createPortal(
                 <AutocompleteMenu
