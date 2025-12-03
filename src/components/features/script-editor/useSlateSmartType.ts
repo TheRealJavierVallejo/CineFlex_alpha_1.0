@@ -65,9 +65,6 @@ export const useSlateSmartType = ({
     const lastElementPathRef = useRef<string>('');
     const lastContentRef = useRef('');
 
-    // Track if we just made a selection (prevents menu reopening)
-    const justSelectedRef = useRef(false);
-
     // Calculate menu position based on cursor
     const calculateMenuPosition = useCallback((): { top: number; left: number } | null => {
         const { selection } = editor;
@@ -134,9 +131,6 @@ export const useSlateSmartType = ({
 
         // Reset selection flag if content changed manually (user typed/deleted)
         if (content !== lastContentRef.current) {
-            // Note: If change was due to selection, justSelectedRef is already true.
-            // We preserve it. If change was due to typing, we could reset it, 
-            // but relying on the timeout consumption is safer.
             lastContentRef.current = content;
         }
 
@@ -156,61 +150,63 @@ export const useSlateSmartType = ({
         }
 
         const timeoutId = setTimeout(() => {
-            // If we just made a selection, don't show menu until user types again
-            if (justSelectedRef.current) {
-                dispatch({ type: 'HIDE_MENU' });
-                justSelectedRef.current = false; // Consume flag
-                return;
-            }
-
             let newSuggestions: string[] = [];
             let shouldShow = false;
 
             if (type === 'character') {
                 newSuggestions = getSuggestions(projectId, 'character', content, 10);
-                shouldShow = content.length > 0 && newSuggestions.length > 0;
+                // Show only if typing AND has suggestions AND not exact match
+                const isExactMatch = newSuggestions.length === 1 && 
+                    newSuggestions[0].toUpperCase() === content.toUpperCase();
+                shouldShow = content.length > 0 && newSuggestions.length > 0 && !isExactMatch;
             }
 
             if (type === 'scene_heading') {
                 const parsed = parseSceneHeading(content);
+                
                 if (parsed.stage === 1) {
+                    // Stage 1: Show prefixes
                     const contentUpper = content.toUpperCase();
                     newSuggestions = SCENE_PREFIXES.filter(prefix => 
                         prefix.startsWith(contentUpper)
                     );
-                    shouldShow = (hasInteractedRef.current || content.length > 0) && newSuggestions.length > 0;
+                    
+                    // Only show if NOT an exact match to a complete prefix
+                    const isCompletePrefix = SCENE_PREFIXES.some(p => 
+                        contentUpper === p.toUpperCase()
+                    );
+                    shouldShow = newSuggestions.length > 0 && !isCompletePrefix;
                     
                 } else if (parsed.stage === 2) {
-                    newSuggestions = getSuggestions(projectId, 'location', parsed.location.trim(), 10);
-                    shouldShow = newSuggestions.length > 0;
+                    // Stage 2: Show locations
+                    const locationInput = parsed.location.trim();
+                    newSuggestions = getSuggestions(projectId, 'location', locationInput, 10);
+                    
+                    // Show if: has input AND (has suggestions OR just finished prefix)
+                    // Don't show if location is empty (just typed "INT. ")
+                    shouldShow = locationInput.length > 0 && newSuggestions.length > 0;
                     
                 } else if (parsed.stage === 3) {
-                    newSuggestions = getSuggestions(projectId, 'time_of_day', parsed.time.trim(), 10);
-                    shouldShow = newSuggestions.length > 0;
+                    // Stage 3: Show times
+                    const timeInput = parsed.time.trim();
+                    newSuggestions = getSuggestions(projectId, 'time_of_day', timeInput, 10);
+                    
+                    // Only show if NOT exact match
+                    const isExactMatch = newSuggestions.length === 1 && 
+                        newSuggestions[0].toUpperCase() === timeInput.toUpperCase();
+                    shouldShow = newSuggestions.length > 0 && !isExactMatch;
                 }
             }
 
             if (type === 'transition') {
                 newSuggestions = getSuggestions(projectId, 'transition', content, 10);
-                shouldShow = (hasInteractedRef.current || content.length > 0) && newSuggestions.length > 0;
+                // Show only if has suggestions AND not exact match
+                const isExactMatch = newSuggestions.length === 1 && 
+                    newSuggestions[0].toUpperCase() === content.toUpperCase();
+                shouldShow = newSuggestions.length > 0 && !isExactMatch;
             }
 
-            // Auto-hide if user typed exact match for their current stage
-            if (type === 'scene_heading' && newSuggestions.length === 1) {
-                const parsed = parseSceneHeading(content);
-                let partialMatch = '';
-                if (parsed.stage === 1) partialMatch = content;
-                else if (parsed.stage === 2) partialMatch = parsed.location.trim();
-                else if (parsed.stage === 3) partialMatch = parsed.time.trim();
-                
-                if (newSuggestions[0].toUpperCase() === partialMatch.toUpperCase()) {
-                    shouldShow = false;
-                }
-            } else if (newSuggestions.length === 1 && newSuggestions[0].toUpperCase() === content.toUpperCase()) {
-                shouldShow = false;
-            }
-
-            // Dispatch state update
+            // Show/hide menu based on logic above
             if (shouldShow) {
                 const position = calculateMenuPosition();
                 if (position) {
@@ -276,9 +272,6 @@ export const useSlateSmartType = ({
         if (entryType) {
             addSmartTypeEntry(projectId, entryType, suggestion, false);
         }
-
-        // Mark that we just made a selection
-        justSelectedRef.current = true;
 
         // CRITICAL: Hide menu after selection
         dispatch({ type: 'HIDE_MENU' });
