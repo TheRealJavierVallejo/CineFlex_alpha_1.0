@@ -30,6 +30,7 @@ interface UseSlateSmartTypeReturn {
     menuPosition: { top: number; left: number } | null;
     getMenuProps: () => any;
     getItemProps: (options: { item: string; index: number }) => any;
+    handleKeyDown: (event: React.KeyboardEvent) => boolean;
 }
 
 export const useSlateSmartType = ({
@@ -62,17 +63,20 @@ export const useSlateSmartType = ({
         }
     }, [editor]);
 
-    // Downshift hook
+    // Downshift hook with manual control
     const {
         isOpen,
         getMenuProps,
         getItemProps,
+        getInputProps, // Needed to forward key events
         highlightedIndex,
         selectItem,
-        closeMenu
+        closeMenu,
+        setHighlightedIndex
     } = useCombobox({
         items: suggestions,
         itemToString: (item) => item || '',
+        isOpen: suggestions.length > 0, // MANUAL CONTROL: open when we have suggestions
         onSelectedItemChange: ({ selectedItem }) => {
             if (!selectedItem) return;
             
@@ -121,7 +125,6 @@ export const useSlateSmartType = ({
 
             // Clear suggestions to close menu
             setSuggestions([]);
-            closeMenu();
         }
     });
 
@@ -169,7 +172,6 @@ export const useSlateSmartType = ({
 
             if (type === 'character') {
                 newSuggestions = getSuggestions(projectId, 'character', content, 10);
-                // Show only if typing AND has suggestions AND not exact match
                 const isExactMatch = newSuggestions.length === 1 && 
                     newSuggestions[0].toUpperCase() === content.toUpperCase();
                 shouldShow = content.length > 0 && newSuggestions.length > 0 && !isExactMatch;
@@ -226,11 +228,86 @@ export const useSlateSmartType = ({
     }, [editor.children, editor.selection, isActive, projectId, calculateMenuPosition]);
 
     return {
-        showMenu: isOpen && suggestions.length > 0,
+        showMenu: suggestions.length > 0,
         suggestions,
         selectedIndex: highlightedIndex,
         menuPosition,
         getMenuProps,
-        getItemProps
+        getItemProps,
+        handleKeyDown: useCallback((event: React.KeyboardEvent) => {
+            if (suggestions.length === 0) return false;
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                // Bridge to Downshift to move index
+                getInputProps().onKeyDown(event);
+                return true;
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                // Bridge to Downshift to move index
+                getInputProps().onKeyDown(event);
+                return true;
+            }
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (highlightedIndex !== null && highlightedIndex >= 0) {
+                    const selected = suggestions[highlightedIndex];
+                    
+                    const { selection } = editor;
+                    if (!selection) return true;
+
+                    const elementEntry = Editor.above(editor, {
+                        match: n => SlateElement.isElement(n),
+                    });
+                    if (!elementEntry) return true;
+
+                    const [element, path] = elementEntry;
+                    const type = (element as CustomElement).type;
+                    const currentContent = Node.string(element).toUpperCase();
+
+                    let newContent = selected;
+
+                    if (type === 'scene_heading') {
+                        const parsed = parseSceneHeading(currentContent);
+                        if (parsed.stage === 1) newContent = `${selected} `;
+                        else if (parsed.stage === 2) newContent = `${parsed.prefix.trim()} ${selected}`;
+                        else if (parsed.stage === 3) newContent = `${parsed.prefix.trim()} ${parsed.location.trim()} - ${selected}`;
+                    }
+
+                    Transforms.select(editor, path);
+                    Transforms.delete(editor, {
+                        at: {
+                            anchor: Editor.start(editor, path),
+                            focus: Editor.end(editor, path)
+                        }
+                    });
+                    Transforms.insertText(editor, newContent);
+
+                    const typeMap: Record<string, SmartTypeEntry['type']> = {
+                        'character': 'character',
+                        'scene_heading': 'location',
+                        'transition': 'transition'
+                    };
+                    const entryType = typeMap[type];
+                    if (entryType) {
+                        addSmartTypeEntry(projectId, entryType, selected, false);
+                    }
+
+                    setSuggestions([]);
+                }
+                return true;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setSuggestions([]);
+                return true;
+            }
+
+            return false;
+        }, [suggestions, highlightedIndex, editor, projectId, getInputProps])
     };
 };
