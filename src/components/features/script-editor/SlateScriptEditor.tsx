@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { createEditor, Descendant, Editor, Element as SlateElement, Transforms, Node, Path } from 'slate';
 import { Slate, Editable, withReact, RenderElementProps } from 'slate-react';
 import { withHistory } from 'slate-history';
@@ -190,26 +191,29 @@ export const SlateScriptEditor: React.FC<SlateScriptEditorProps> = ({
     }, [isLightMode, value]);
 
     return (
-        <Slate editor={editor} initialValue={value} onChange={handleChange}>
-            <Editable
-                renderElement={renderElement}
-                onKeyDown={handleKeyDown}
-                placeholder="Start writing your screenplay..."
-                spellCheck={false}
-                className="outline-none"
-                style={{
-                    minHeight: '11in',
-                    width: '100%'
-                }}
-            />
-            {showMenu && menuPosition && (
+        <>
+            <Slate editor={editor} initialValue={value} onChange={handleChange}>
+                <Editable
+                    renderElement={renderElement}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Start writing your screenplay..."
+                    spellCheck={false}
+                    className="outline-none"
+                    style={{
+                        minHeight: '11in',
+                        width: '100%'
+                    }}
+                />
+            </Slate>
+            {showMenu && menuPosition && createPortal(
                 <AutocompleteMenu
                     suggestions={suggestions}
                     selectedIndex={selectedIndex}
                     onSelect={selectSuggestion}
                     position={menuPosition}
-                />
+                />,
+                document.body
             )}
-        </Slate>
+        </>
     );
 };
