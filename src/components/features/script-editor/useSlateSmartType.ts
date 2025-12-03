@@ -64,10 +64,10 @@ export const useSlateSmartType = ({
             const domRange = ReactEditor.toDOMRange(editor, selection);
             const rect = domRange.getBoundingClientRect();
 
-            // Position below cursor
+            // Position at the END of the selection (where cursor actually is)
             const pos = {
-                top: rect.bottom + window.scrollY,
-                left: rect.left + window.scrollX
+                top: rect.bottom + window.scrollY + 4,
+                left: rect.right + window.scrollX
             };
             
             if (SMARTTYPE_DEBUG) {
