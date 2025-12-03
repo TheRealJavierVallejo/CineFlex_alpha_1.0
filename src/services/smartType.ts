@@ -22,7 +22,7 @@ export interface SmartTypeData {
     timesOfDay: SmartTypeEntry[];
 }
 
-// Scene Heading Prefixes (Cleaned up: Removed INT./EXT.)
+// Scene Heading Prefixes
 export const SCENE_PREFIXES = [
     'INT.',
     'EXT.',
