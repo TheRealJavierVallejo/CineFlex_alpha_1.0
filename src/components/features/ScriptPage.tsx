@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { SlateScriptEditor } from './script-editor/SlateScriptEditor';
 import { ScriptElement } from '../../types';
@@ -13,7 +13,7 @@ import { ScriptPageToolbar } from './script-editor/ScriptPageToolbar';
 import { StoryPanel } from './StoryPanel';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
-import { enrichScriptElements, generateScriptFromScenes } from '../../services/scriptUtils';
+import { enrichScriptElements } from '../../services/scriptUtils';
 import { exportToPDF } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
@@ -27,13 +27,9 @@ export const ScriptPage: React.FC = () => {
     const {
         state: elements,
         set: setElements,
-        undo,
-        redo,
-        canUndo,
-        canRedo
+        // undo, redo, canUndo, canRedo - Temporarily unused with Slate integration
     } = useHistory<ScriptElement[]>(project.scriptElements || []);
 
-    const [activeElementId, setActiveElementId] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
 
@@ -44,8 +40,6 @@ export const ScriptPage: React.FC = () => {
     const [isGlobalLight, setIsGlobalLight] = useState(document.documentElement.classList.contains('light'));
     const [localPaperWhite, setLocalPaperWhite] = useState(false);
     const isPaperWhite = isGlobalLight || localPaperWhite;
-
-    const cursorTargetRef = useRef<{ id: string, position: number } | null>(null);
 
     // Observer for Theme Changes
     useEffect(() => {
@@ -121,142 +115,9 @@ export const ScriptPage: React.FC = () => {
         return grouped;
     }, [elements, pageMap]);
 
-    const currentPageNum = useMemo(() => {
-        if (!activeElementId) return 1;
-        return pageMap[activeElementId] || 1;
-    }, [activeElementId, pageMap]);
+    const currentPageNum = 1; // TODO: Slate selection-based page tracking
 
     const totalPages = Object.keys(pages).length || 1;
-
-    // --- HANDLERS ---
-
-    const handleContentChange = useCallback((id: string, newContent: string) => {
-        setElements(prevElements => {
-            const currentIndex = prevElements.findIndex(el => el.id === id);
-            if (currentIndex === -1) return prevElements;
-
-            const currentEl = prevElements[currentIndex];
-            let newType = currentEl.type;
-            const upper = newContent.toUpperCase();
-
-            // Auto-detect Types
-            if (currentEl.type !== 'scene_heading' && /^(INT\.|EXT\.|INT\/EXT|I\/E)(\s|$)/.test(upper)) {
-                newType = 'scene_heading';
-            }
-            if (currentEl.type !== 'transition' && (upper.endsWith(' TO:') || upper === 'FADE OUT.')) {
-                newType = 'transition';
-            }
-
-            if (currentEl.content === newContent && currentEl.type === newType) return prevElements;
-
-            const updated = [...prevElements];
-            updated[currentIndex] = { ...currentEl, content: newContent, type: newType };
-
-            debouncedSync(updated);
-            return updated;
-        });
-    }, [setElements, debouncedSync]);
-
-    const handleNavigation = useCallback((e: React.KeyboardEvent, id: string, cursorPosition: number, contentLength: number) => {
-        setElements(currentEls => {
-            const index = currentEls.findIndex(el => el.id === id);
-            if (index === -1) return currentEls;
-
-            if (e.key === 'ArrowUp' && cursorPosition === 0 && index > 0) {
-                e.preventDefault();
-                setActiveElementId(currentEls[index - 1].id);
-            }
-            if (e.key === 'ArrowDown' && cursorPosition === contentLength && index < currentEls.length - 1) {
-                e.preventDefault();
-                setActiveElementId(currentEls[index + 1].id);
-            }
-            return currentEls;
-        });
-    }, [setElements]);
-
-    const handleKeyDown = useCallback((e: React.KeyboardEvent, id: string, type: ScriptElement['type'], cursorPosition: number, selectionEnd: number) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-            e.preventDefault();
-            e.shiftKey ? (canRedo && redo()) : (canUndo && undo());
-            return;
-        }
-
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            const newId = crypto.randomUUID();
-
-            setElements(prevElements => {
-                const index = prevElements.findIndex(el => el.id === id);
-                if (index === -1) return prevElements;
-
-                const currentEl = prevElements[index];
-                const contentBefore = currentEl.content.slice(0, cursorPosition);
-                const contentAfter = currentEl.content.slice(cursorPosition);
-
-                let nextType: ScriptElement['type'] = 'action';
-                if (type === 'scene_heading') nextType = 'action';
-                else if (type === 'character') nextType = 'dialogue';
-                else if (type === 'dialogue') nextType = 'character';
-                else if (type === 'parenthetical') nextType = 'dialogue';
-                else if (type === 'transition') nextType = 'scene_heading';
-
-                const newElement: ScriptElement = { id: newId, type: nextType, content: contentAfter, sequence: index + 2 };
-
-                const updated = [...prevElements];
-                updated[index] = { ...currentEl, content: contentBefore };
-                updated.splice(index + 1, 0, newElement);
-
-                debouncedSync(updated);
-                return updated;
-            });
-
-            setActiveElementId(newId);
-            cursorTargetRef.current = { id: newId, position: 0 };
-        }
-
-        if (e.key === 'Backspace' && cursorPosition === 0 && selectionEnd === 0) {
-            setElements(prevElements => {
-                const index = prevElements.findIndex(el => el.id === id);
-                if (index <= 0) return prevElements;
-                e.preventDefault();
-
-                const prevIndex = index - 1;
-                const prevEl = prevElements[prevIndex];
-                const currentEl = prevElements[index];
-                const newCursorPos = prevEl.content.length;
-
-                const updated = [...prevElements];
-                updated[prevIndex] = { ...prevEl, content: prevEl.content + currentEl.content };
-                updated.splice(index, 1);
-
-                requestAnimationFrame(() => {
-                    setActiveElementId(prevEl.id);
-                    cursorTargetRef.current = { id: prevEl.id, position: newCursorPos };
-                });
-
-                debouncedSync(updated);
-                return updated;
-            });
-        }
-
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            setElements(prevElements => {
-                const index = prevElements.findIndex(el => el.id === id);
-                if (index === -1) return prevElements;
-
-                const types: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition'];
-                const currentIdx = types.indexOf(type);
-                const nextType = types[(currentIdx + 1) % types.length];
-
-                const updated = [...prevElements];
-                updated[index] = { ...updated[index], type: nextType };
-
-                debouncedSync(updated);
-                return updated;
-            });
-        }
-    }, [canUndo, canRedo, undo, redo, setElements, debouncedSync]);
 
     const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -309,10 +170,10 @@ export const ScriptPage: React.FC = () => {
             <div className="relative h-full flex flex-col overflow-hidden font-sans bg-app transition-colors duration-300">
 
                 <ScriptPageToolbar
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    onUndo={undo}
-                    onRedo={redo}
+                    canUndo={false}
+                    canRedo={false}
+                    onUndo={() => {}}
+                    onRedo={() => {}}
                     isPaperWhite={isPaperWhite}
                     onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
                     onExport={() => exportToPDF(project)}
@@ -330,7 +191,6 @@ export const ScriptPage: React.FC = () => {
                                 onCreate={() => {
                                     const id = crypto.randomUUID();
                                     setElements([{ id, type: 'scene_heading', content: 'INT. START - DAY', sequence: 1 }]);
-                                    setActiveElementId(id);
                                 }}
                                 onImport={handleImportScript}
                                 isImporting={isImporting}
