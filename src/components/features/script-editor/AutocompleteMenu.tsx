@@ -36,18 +36,15 @@ export const AutocompleteMenu: React.FC<AutocompleteMenuProps> = ({
 
     return (
         <div
-            className={`z-50 w-64 bg-red-500 border-8 border-yellow-400 shadow-xl rounded-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 origin-top-left ring-1 ring-black/5 ${position ? 'fixed' : 'absolute top-full mt-2'}`}
-            style={{
-                ...(position ? {
+            className={`z-50 w-64 bg-surface/95 backdrop-blur-md border border-border/50 shadow-xl rounded-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 origin-top-left ring-1 ring-black/5 ${position ? 'fixed' : 'absolute top-full mt-2'}`}
+            style={
+                position ? {
                     top: `${position.top}px`,
                     left: `${position.left}px`
                 } : {
                     left: leftOffset
-                }),
-                zIndex: 99999,
-                backgroundColor: 'red',
-                border: '10px solid yellow'
-            }}
+                }
+            }
         >
             <div ref={listRef} className="max-h-60 overflow-y-auto p-1">
                 {suggestions.map((suggestion, index) => (
