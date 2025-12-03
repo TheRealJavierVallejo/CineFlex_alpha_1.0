@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { createEditor, Descendant, Editor, Element as SlateElement, Transforms, Node, Path } from 'slate';
 import { Slate, Editable, withReact, RenderElementProps } from 'slate-react';
@@ -16,6 +16,12 @@ export interface SlateScriptEditorProps {
     onChange: (elements: ScriptElement[]) => void;
     isLightMode: boolean;
     projectId: string;
+    onUndoRedoChange?: (canUndo: boolean, canRedo: boolean) => void;
+}
+
+export interface SlateScriptEditorRef {
+    undo: () => void;
+    redo: () => void;
 }
 
 /**
@@ -77,12 +83,13 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
  * Production-ready Slate.js screenplay editor
  * Replaces individual textarea elements with single unified editor
  */
-export const SlateScriptEditor: React.FC<SlateScriptEditorProps> = ({
+export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>(({
     initialElements,
     onChange,
     isLightMode,
-    projectId
-}) => {
+    projectId,
+    onUndoRedoChange
+}, ref) => {
     // Create Slate editor instance with plugins
     const editor = useMemo(
         () => withScriptEditor(withHistory(withReact(createEditor() as CustomEditor))),
@@ -93,6 +100,22 @@ export const SlateScriptEditor: React.FC<SlateScriptEditorProps> = ({
     const [value, setValue] = useState<Descendant[]>(() =>
         scriptElementsToSlate(initialElements)
     );
+
+    // Expose Undo/Redo to parent via Ref
+    useImperativeHandle(ref, () => ({
+        undo: () => editor.undo(),
+        redo: () => editor.redo()
+    }));
+
+    // Monitor History State Changes
+    useEffect(() => {
+        if (onUndoRedoChange) {
+            const { history } = editor;
+            const canUndo = history.undos.length > 0;
+            const canRedo = history.redos.length > 0;
+            onUndoRedoChange(canUndo, canRedo);
+        }
+    }, [editor.operations, onUndoRedoChange, editor]);
 
     // SmartType Integration
     const {
@@ -180,11 +203,8 @@ export const SlateScriptEditor: React.FC<SlateScriptEditorProps> = ({
 
     // Render individual elements
     const renderElement = useCallback((props: RenderElementProps) => {
-        const element = props.element as CustomElement;
-
         // Determine if this is the first element on the page
-        // For now, we'll consider the first element in the document as first on page
-        // In future, this can be enhanced with pagination logic
+        // For now, we consider the very first element of the document as first on page
         const isFirstOnPage = props.element === value[0];
 
         return renderScriptElement(props, isLightMode, isFirstOnPage);
@@ -216,4 +236,6 @@ export const SlateScriptEditor: React.FC<SlateScriptEditorProps> = ({
             )}
         </>
     );
-};
+});
+
+SlateScriptEditor.displayName = 'SlateScriptEditor';
