@@ -27,55 +27,38 @@ export function cycleElementType(
     previousType: ScriptElement['type'] | null = null
 ): ScriptElement['type'] {
     
-    // DIALOGUE BLOCK DETECTION: If currently in dialogue-related elements
-    const dialogueBlock = ['character', 'dialogue', 'parenthetical'];
-    const inDialogueBlock = dialogueBlock.includes(currentType);
-    const prevInDialogueBlock = previousType ? dialogueBlock.includes(previousType) : false;
+    // Dialogue block elements
+    const dialogueElements: ScriptElement['type'][] = ['character', 'dialogue', 'parenthetical'];
     
-    // If in dialogue block, stay in dialogue block
-    if (inDialogueBlock || prevInDialogueBlock) {
-        // Define explicit cycle order for dialogue block
-        const dialogueCycle: ScriptElement['type'][] = ['character', 'parenthetical', 'dialogue'];
+    // Check if current or previous element is in dialogue block
+    const inDialogue = dialogueElements.includes(currentType);
+    const prevInDialogue = previousType ? dialogueElements.includes(previousType) : false;
+    
+    // If in dialogue block, cycle within dialogue only
+    if (inDialogue || prevInDialogue) {
+        const cycle: ScriptElement['type'][] = ['character', 'dialogue', 'parenthetical'];
+        let index = cycle.indexOf(currentType);
         
-        // Find current position or default to character
-        let currentIndex = dialogueCycle.indexOf(currentType);
-        
-        // If current type isn't in the cycle (e.g. action -> character), start at appropriate point
-        if (currentIndex === -1) {
-            // If coming from outside into dialogue block via tab, default to Character
-            return 'character';
-        }
+        // If somehow not in cycle (shouldn't happen), default to character
+        if (index === -1) index = 0;
         
         if (shiftKey) {
-            const prevIndex = (currentIndex - 1 + dialogueCycle.length) % dialogueCycle.length;
-            return dialogueCycle[prevIndex];
+            return cycle[(index - 1 + cycle.length) % cycle.length];
         } else {
-            const nextIndex = (currentIndex + 1) % dialogueCycle.length;
-            return dialogueCycle[nextIndex];
+            return cycle[(index + 1) % cycle.length];
         }
     }
     
-    // Standard cycling for non-dialogue elements
-    const standardCycle: ScriptElement['type'][] = [
-        'scene_heading',
-        'action',
-        'character',
-        'transition'
-    ];
+    // Outside dialogue block: standard cycling
+    const standardCycle: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'transition'];
+    let index = standardCycle.indexOf(currentType);
     
-    const currentIndex = standardCycle.indexOf(currentType);
-    
-    if (currentIndex === -1) {
-        // Default entry point
-        return 'scene_heading';
-    }
+    if (index === -1) index = 0; // Default to scene_heading
     
     if (shiftKey) {
-        const prevIndex = (currentIndex - 1 + standardCycle.length) % standardCycle.length;
-        return standardCycle[prevIndex];
+        return standardCycle[(index - 1 + standardCycle.length) % standardCycle.length];
     } else {
-        const nextIndex = (currentIndex + 1) % standardCycle.length;
-        return standardCycle[nextIndex];
+        return standardCycle[(index + 1) % standardCycle.length];
     }
 }
 
