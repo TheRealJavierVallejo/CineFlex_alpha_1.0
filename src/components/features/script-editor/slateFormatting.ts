@@ -21,11 +21,32 @@ export function getNextElementType(currentType: ScriptElement['type']): ScriptEl
  * Returns the next element type when Tab is pressed
  * Smart tab cycling - only cycles through top 3 most logical options for each type
  */
-export function cycleElementType(currentType: ScriptElement['type'], shiftKey: boolean = false): ScriptElement['type'] {
+export function cycleElementType(
+    currentType: ScriptElement['type'], 
+    shiftKey: boolean = false,
+    previousType: ScriptElement['type'] | null = null
+): ScriptElement['type'] {
+    
+    // CONTEXT-AWARE LOGIC: If in dialogue block, stay in dialogue block
+    if (previousType === 'character' && currentType === 'dialogue') {
+        // After dialogue that follows character, Tab goes back to character
+        return shiftKey ? 'parenthetical' : 'character';
+    }
+    
+    if (previousType === 'dialogue' && currentType === 'character') {
+        // After character that follows dialogue, Tab goes to dialogue
+        return shiftKey ? 'action' : 'dialogue';
+    }
+    
+    if (previousType === 'parenthetical' && currentType === 'dialogue') {
+        // After dialogue that follows parenthetical, go to character
+        return shiftKey ? 'parenthetical' : 'character';
+    }
+
     // Define top 3 most logical next elements for each type
     const smartTabOrder: Record<ScriptElement['type'], ScriptElement['type'][]> = {
         'scene_heading': ['action', 'character', 'transition'],
-        'action': ['character', 'action', 'scene_heading'],
+        'action': ['character', 'scene_heading', 'transition'], // Updated order based on usage frequency
         'character': ['dialogue', 'parenthetical', 'action'],
         'dialogue': ['character', 'action', 'parenthetical'],
         'parenthetical': ['dialogue', 'character', 'action'],

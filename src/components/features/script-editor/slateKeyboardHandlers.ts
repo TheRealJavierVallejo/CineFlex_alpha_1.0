@@ -66,7 +66,28 @@ export function handleTabKey(editor: CustomEditor, shiftKey: boolean = false): b
     }
 
     const [currentElement, currentPath] = elementEntry;
-    const nextType = cycleElementType((currentElement as CustomElement).type, shiftKey);
+    
+    // Look at previous element for context
+    let previousType: CustomElement['type'] | null = null;
+    
+    // Check if not first element
+    if (currentPath[0] > 0) {
+        try {
+            const prevPath = Path.previous(currentPath.slice(0, 1));
+            const prevNode = Node.get(editor, prevPath);
+            if (SlateElement.isElement(prevNode)) {
+                previousType = (prevNode as CustomElement).type;
+            }
+        } catch (e) {
+            // No previous element or error accessing it
+        }
+    }
+
+    const nextType = cycleElementType(
+        (currentElement as CustomElement).type, 
+        shiftKey, 
+        previousType
+    );
     const text = Node.string(currentElement);
 
     // If next type should be uppercase, transform the content
