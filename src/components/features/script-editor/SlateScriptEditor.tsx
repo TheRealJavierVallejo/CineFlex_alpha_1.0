@@ -127,9 +127,9 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         () => debounce((nodes: Descendant[]) => {
             const elements = slateToScriptElements(nodes);
             const result = calculatePagination(elements, projectId);
-            
+
             setPageMap(result);
-            
+
             if (Object.keys(result).length === 0) {
                 setTotalPages(1);
             } else {
@@ -147,7 +147,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     // Track Current Page based on Selection
     useEffect(() => {
         if (!editor.selection) return;
-        
+
         try {
             const [node] = Editor.parent(editor, editor.selection);
             if (SlateElement.isElement(node)) {
@@ -209,7 +209,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
 
         if (event.key === 'Tab') {
             event.preventDefault();
-            handleTabKey(editor);
+            handleTabKey(editor, event.shiftKey);
             return;
         }
 
@@ -224,49 +224,29 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         const { element } = props;
         const currentId = element.id;
         const pageNum = pageMap[currentId] || 1;
-        
+
+        // Determine if first on page (for spacing only, no visual breaks)
         let isFirstOnPage = false;
-        let isLastOnPage = false;
-        
         try {
             const path = ReactEditor.findPath(editor, element);
-            
-            // Check if first element on page
             if (path[0] === 0) {
                 isFirstOnPage = true;
             } else {
                 const prevPath = Path.previous(path);
                 const prevNode = Node.get(editor, prevPath) as CustomElement;
                 const prevPage = pageMap[prevNode.id] || 1;
-                
                 if (pageNum > prevPage) {
                     isFirstOnPage = true;
                 }
             }
-            
-            // Check if last element on page
-            if (path[0] === editor.children.length - 1) {
-                isLastOnPage = true;
-            } else {
-                const nextPath = Path.next(path);
-                const nextNode = Node.get(editor, nextPath) as CustomElement;
-                const nextPage = pageMap[nextNode.id] || 1;
-                
-                if (nextPage > pageNum) {
-                    isLastOnPage = true;
-                }
-            }
         } catch (e) {
             isFirstOnPage = false;
-            isLastOnPage = false;
         }
-        
+
         return renderScriptElement(
-            props, 
-            isLightMode, 
-            isFirstOnPage, 
-            isLastOnPage,
-            pageNum
+            props,
+            isLightMode,
+            isFirstOnPage
         );
     }, [isLightMode, editor, pageMap]);
 
@@ -316,26 +296,20 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
-                <div 
+                {/* Final Draft style: Single continuous background, no visual separation */}
+                <div
                     className={`
-                        flex-1 overflow-auto 
-                        ${isLightMode ? 'bg-zinc-100' : 'bg-[#1a1a1a]'}
-                        flex flex-col items-center
-                        py-12
+                        flex-1
+                        ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}
+                        flex justify-center
                     `}
                 >
+                    {/* Page container: Just width constraint, same background */}
                     <div
-                        className={`
-                            relative
-                            ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}
-                            shadow-2xl
-                            ${isLightMode ? 'border border-gray-200' : 'border border-zinc-800'}
-                        `}
                         style={{
                             width: '8.5in',
-                            minHeight: '11in',
                             paddingTop: '1in',
-                            paddingBottom: '1in',
+                            paddingBottom: '2in',
                             paddingLeft: '1.5in',
                             paddingRight: '1in',
                             fontFamily: 'Courier, monospace',
@@ -350,7 +324,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             onKeyDown={handleKeyDown}
                             placeholder="Start writing your screenplay..."
                             spellCheck={false}
-                            className="outline-none min-h-[9in]"
+                            className="outline-none"
                         />
                     </div>
                 </div>

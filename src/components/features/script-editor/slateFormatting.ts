@@ -19,21 +19,36 @@ export function getNextElementType(currentType: ScriptElement['type']): ScriptEl
 
 /**
  * Returns the next element type when Tab is pressed
- * Cycles through all 6 types in order
+ * Smart tab cycling - only cycles through top 3 most logical options for each type
  */
-export function cycleElementType(currentType: ScriptElement['type']): ScriptElement['type'] {
-    const types: ScriptElement['type'][] = [
-        'scene_heading',
-        'action',
-        'character',
-        'dialogue',
-        'parenthetical',
-        'transition'
-    ];
-
-    const currentIndex = types.indexOf(currentType);
-    const nextIndex = (currentIndex + 1) % types.length;
-    return types[nextIndex];
+export function cycleElementType(currentType: ScriptElement['type'], shiftKey: boolean = false): ScriptElement['type'] {
+    // Define top 3 most logical next elements for each type
+    const smartTabOrder: Record<ScriptElement['type'], ScriptElement['type'][]> = {
+        'scene_heading': ['action', 'character', 'transition'],
+        'action': ['character', 'action', 'scene_heading'],
+        'character': ['dialogue', 'parenthetical', 'action'],
+        'dialogue': ['character', 'action', 'parenthetical'],
+        'parenthetical': ['dialogue', 'character', 'action'],
+        'transition': ['scene_heading', 'action', 'character']
+    };
+    
+    const nextOptions = smartTabOrder[currentType] || ['action', 'character', 'scene_heading'];
+    
+    // Track current position in the cycle (use modulo to loop through top 3)
+    const currentCycleIndex = nextOptions.indexOf(currentType);
+    let nextIndex: number;
+    
+    if (currentCycleIndex === -1) {
+        // Current type not in next options, start at first option
+        nextIndex = shiftKey ? nextOptions.length - 1 : 0;
+    } else {
+        // Cycle through the 3 options
+        nextIndex = shiftKey
+            ? (currentCycleIndex - 1 + nextOptions.length) % nextOptions.length
+            : (currentCycleIndex + 1) % nextOptions.length;
+    }
+    
+    return nextOptions[nextIndex];
 }
 
 /**

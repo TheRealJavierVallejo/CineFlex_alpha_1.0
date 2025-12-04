@@ -113,6 +113,8 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
     let currentLine = 1;
     let currentPage = 1;
 
+    // console.log(`[Pagination] Starting calculation for ${elements.length} elements`);
+
     // Filter out empty/invalid elements that shouldn't be paginated
     // This prevents phantom empty lines from creating unnecessary pages
     const validElements = elements.filter(el => {
@@ -244,6 +246,8 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
         if (forceBreak) {
             currentPage++;
             currentLine = 1;
+            
+            // console.log(`[Pagination] Page Break at Element ${i} (${el.type}). Reason: ${keepTogetherReason || 'Overflow'}. Page: ${currentPage}`);
 
             // Mark elements as kept together for visual feedback
             if (keepTogetherReason) {
@@ -260,5 +264,6 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
         currentLine += actualHeight;
     }
 
+    // console.log(`[Pagination] Finished. Total Pages: ${currentPage}`);
     return map;
 };

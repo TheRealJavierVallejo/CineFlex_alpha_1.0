@@ -119,51 +119,26 @@ export function renderScriptElement(
 
     return (
         <>
-            {/* Visual Page Break - Gap style */}
+            {/* Visual Page Break - Clean/Minimal Style */}
             {isFirstOnPage && pageNumber > 1 && (
                 <div 
                     contentEditable={false}
-                    className="pointer-events-none select-none"
+                    className="pointer-events-none select-none flex flex-col items-center justify-center"
                     style={{
-                        marginLeft: '-1.5in', // Pull to left edge of paper
-                        marginRight: '-1in',  // Pull to right edge of paper
+                        marginLeft: '-1.5in', // Pull to left edge of paper container
+                        marginRight: '-1in',  // Pull to right edge of paper container
                         width: '8.5in',       // Explicit width to match paper
+                        height: '1in',        // Reduced height for cleaner look
                         marginTop: '0',
                         marginBottom: '0',
-                        height: '2in',
-                        position: 'relative',
-                        display: 'block'
+                        position: 'relative'
                     }}
                 >
-                    {/* Page End Shadow (previous page bottom) */}
-                    <div
-                        className={isLightMode ? 'bg-gradient-to-b from-transparent to-gray-300/20' : 'bg-gradient-to-b from-transparent to-black/30'}
-                        style={{ height: '0.25in', width: '100%' }}
-                    />
-                    
-                    {/* Gap between pages (shows background) */}
-                    <div
-                        className={isLightMode ? 'bg-zinc-100' : 'bg-[#1a1a1a]'}
-                        style={{
-                            height: '1.5in',
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderTop: isLightMode ? '1px solid #e5e7eb' : '1px solid #27272a',
-                            borderBottom: isLightMode ? '1px solid #e5e7eb' : '1px solid #27272a'
-                        }}
-                    >
-                        <div className={`text-xs font-mono ${isLightMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            Page {pageNumber}
-                        </div>
+                    <div className={`flex items-center gap-4 text-[10px] font-mono tracking-widest uppercase ${isLightMode ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                        <div className={`w-8 border-t ${isLightMode ? 'border-zinc-200' : 'border-zinc-800'}`} />
+                        <span>Page {pageNumber}</span>
+                        <div className={`w-8 border-t ${isLightMode ? 'border-zinc-200' : 'border-zinc-800'}`} />
                     </div>
-                    
-                    {/* New Page Shadow */}
-                    <div
-                        className={isLightMode ? 'bg-gradient-to-b from-gray-300/20 to-transparent' : 'bg-gradient-to-b from-black/30 to-transparent'}
-                        style={{ height: '0.25in', width: '100%' }}
-                    />
                 </div>
             )}
             

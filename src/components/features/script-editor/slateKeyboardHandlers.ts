@@ -46,10 +46,10 @@ export function handleEnterKey(editor: CustomEditor): boolean {
 }
 
 /**
- * Handles Tab key: cycles through element types
+ * Handles Tab key: cycles through element types using smart tab order
  * Matches behavior from ScriptPage.tsx lines 242-258
  */
-export function handleTabKey(editor: CustomEditor): boolean {
+export function handleTabKey(editor: CustomEditor, shiftKey: boolean = false): boolean {
     const { selection } = editor;
 
     if (!selection) {
@@ -66,7 +66,7 @@ export function handleTabKey(editor: CustomEditor): boolean {
     }
 
     const [currentElement, currentPath] = elementEntry;
-    const nextType = cycleElementType((currentElement as CustomElement).type);
+    const nextType = cycleElementType((currentElement as CustomElement).type, shiftKey);
     const text = Node.string(currentElement);
 
     // If next type should be uppercase, transform the content

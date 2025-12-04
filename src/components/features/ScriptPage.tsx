@@ -31,13 +31,13 @@ export const ScriptPage: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
-    
+
     // Editor State
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    
+
     const editorRef = useRef<SlateScriptEditorRef>(null);
 
     // Theme Detection
@@ -106,12 +106,7 @@ export const ScriptPage: React.FC = () => {
         }
     };
 
-    const pageStyle = useMemo(() => {
-        if (isPaperWhite) {
-            return "bg-white border-border shadow-xl text-black";
-        }
-        return "bg-[#1E1E1E] border border-[#333] shadow-2xl text-[#E0E0E0]";
-    }, [isPaperWhite]);
+
 
     // DEFINING TOOLS
     const tools: Tool[] = [
@@ -171,34 +166,24 @@ export const ScriptPage: React.FC = () => {
                             />
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center py-8">
-                            <div
-                                className={`
-                                    w-[8.5in] min-h-[11in] relative transition-colors duration-300
-                                    pt-[1.0in] pb-[1.0in] pl-[1.5in] pr-[1.0in]
-                                    ${pageStyle}
-                                `}
-                            >
-                                <SlateScriptEditor
-                                    ref={editorRef}
-                                    initialElements={elements}
-                                    onChange={(updatedElements) => {
-                                        setElements(updatedElements);
-                                        debouncedSync(updatedElements);
-                                    }}
-                                    onUndoRedoChange={(undo, redo) => {
-                                        setCanUndo(undo);
-                                        setCanRedo(redo);
-                                    }}
-                                    onPageChange={(curr, total) => {
-                                        setCurrentPage(curr);
-                                        setTotalPages(total);
-                                    }}
-                                    isLightMode={isPaperWhite}
-                                    projectId={project.id}
-                                />
-                            </div>
-                        </div>
+                        <SlateScriptEditor
+                            ref={editorRef}
+                            initialElements={elements}
+                            onChange={(updatedElements) => {
+                                setElements(updatedElements);
+                                debouncedSync(updatedElements);
+                            }}
+                            onUndoRedoChange={(undo, redo) => {
+                                setCanUndo(undo);
+                                setCanRedo(redo);
+                            }}
+                            onPageChange={(curr, total) => {
+                                setCurrentPage(curr);
+                                setTotalPages(total);
+                            }}
+                            isLightMode={isPaperWhite}
+                            projectId={project.id}
+                        />
                     )}
                 </div>
 
