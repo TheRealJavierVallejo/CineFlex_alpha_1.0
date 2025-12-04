@@ -19,47 +19,26 @@ export function getNextElementType(currentType: ScriptElement['type']): ScriptEl
 
 /**
  * Returns the next element type when Tab is pressed
- * Smart tab cycling - only cycles through top 3 most logical options for each type
+ * Simplified: Tab behaves like a single prediction (Action -> Character -> Dialogue -> Character)
  */
 export function cycleElementType(
     currentType: ScriptElement['type'], 
     shiftKey: boolean = false,
     previousType: ScriptElement['type'] | null = null
 ): ScriptElement['type'] {
+    // Tab now works like Enter - just predicts the next logical type
+    // No more cycling through options
     
-    // Dialogue block elements
-    const dialogueElements: ScriptElement['type'][] = ['character', 'dialogue', 'parenthetical'];
+    const typeMap: Record<ScriptElement['type'], ScriptElement['type']> = {
+        'scene_heading': 'action',
+        'action': 'character',          // Tab from action → character (start dialogue)
+        'character': 'dialogue',
+        'dialogue': 'character',        // Tab from dialogue → new character
+        'parenthetical': 'dialogue',
+        'transition': 'scene_heading'
+    };
     
-    // Check if current or previous element is in dialogue block
-    const inDialogue = dialogueElements.includes(currentType);
-    const prevInDialogue = previousType ? dialogueElements.includes(previousType) : false;
-    
-    // If in dialogue block, cycle within dialogue only
-    if (inDialogue || prevInDialogue) {
-        const cycle: ScriptElement['type'][] = ['character', 'dialogue', 'parenthetical'];
-        let index = cycle.indexOf(currentType);
-        
-        // If somehow not in cycle (shouldn't happen), default to character
-        if (index === -1) index = 0;
-        
-        if (shiftKey) {
-            return cycle[(index - 1 + cycle.length) % cycle.length];
-        } else {
-            return cycle[(index + 1) % cycle.length];
-        }
-    }
-    
-    // Outside dialogue block: standard cycling
-    const standardCycle: ScriptElement['type'][] = ['scene_heading', 'action', 'character', 'transition'];
-    let index = standardCycle.indexOf(currentType);
-    
-    if (index === -1) index = 0; // Default to scene_heading
-    
-    if (shiftKey) {
-        return standardCycle[(index - 1 + standardCycle.length) % standardCycle.length];
-    } else {
-        return standardCycle[(index + 1) % standardCycle.length];
-    }
+    return typeMap[currentType] || 'action';
 }
 
 /**
