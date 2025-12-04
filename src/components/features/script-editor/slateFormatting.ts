@@ -1,3 +1,4 @@
+Action -> Character -> Dialogue -> Parenthetical -> Transition -> Scene Heading) to eliminate loops.">
 import { ScriptElement } from '../../../types';
 
 /**
@@ -26,15 +27,15 @@ export function cycleElementType(
     shiftKey: boolean = false,
     previousType: ScriptElement['type'] | null = null
 ): ScriptElement['type'] {
-    // Tab now works like Enter - just predicts the next logical type
-    // No more cycling through options
+    // Linear chain: Scene Heading -> Action -> Character -> Dialogue -> Parenthetical -> Transition -> Scene Heading
+    // Ensures every element type is reachable and no infinite loops exist
     
     const typeMap: Record<ScriptElement['type'], ScriptElement['type']> = {
         'scene_heading': 'action',
-        'action': 'character',          // Tab from action → character (start dialogue)
+        'action': 'character',
         'character': 'dialogue',
-        'dialogue': 'action',           // Tab from dialogue → action (BREAKS dialogue block)
-        'parenthetical': 'dialogue',
+        'dialogue': 'parenthetical',
+        'parenthetical': 'transition',
         'transition': 'scene_heading'
     };
     
