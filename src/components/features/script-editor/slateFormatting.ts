@@ -27,49 +27,56 @@ export function cycleElementType(
     previousType: ScriptElement['type'] | null = null
 ): ScriptElement['type'] {
     
-    // CONTEXT-AWARE LOGIC: If in dialogue block, stay in dialogue block
-    if (previousType === 'character' && currentType === 'dialogue') {
-        // After dialogue that follows character, Tab goes back to character
-        return shiftKey ? 'parenthetical' : 'character';
+    // DIALOGUE BLOCK DETECTION: If currently in dialogue-related elements
+    const dialogueBlock = ['character', 'dialogue', 'parenthetical'];
+    const inDialogueBlock = dialogueBlock.includes(currentType);
+    const prevInDialogueBlock = previousType ? dialogueBlock.includes(previousType) : false;
+    
+    // If in dialogue block, stay in dialogue block
+    if (inDialogueBlock || prevInDialogueBlock) {
+        // Define explicit cycle order for dialogue block
+        const dialogueCycle: ScriptElement['type'][] = ['character', 'parenthetical', 'dialogue'];
+        
+        // Find current position or default to character
+        let currentIndex = dialogueCycle.indexOf(currentType);
+        
+        // If current type isn't in the cycle (e.g. action -> character), start at appropriate point
+        if (currentIndex === -1) {
+            // If coming from outside into dialogue block via tab, default to Character
+            return 'character';
+        }
+        
+        if (shiftKey) {
+            const prevIndex = (currentIndex - 1 + dialogueCycle.length) % dialogueCycle.length;
+            return dialogueCycle[prevIndex];
+        } else {
+            const nextIndex = (currentIndex + 1) % dialogueCycle.length;
+            return dialogueCycle[nextIndex];
+        }
     }
     
-    if (previousType === 'dialogue' && currentType === 'character') {
-        // After character that follows dialogue, Tab goes to dialogue
-        return shiftKey ? 'action' : 'dialogue';
+    // Standard cycling for non-dialogue elements
+    const standardCycle: ScriptElement['type'][] = [
+        'scene_heading',
+        'action',
+        'character',
+        'transition'
+    ];
+    
+    const currentIndex = standardCycle.indexOf(currentType);
+    
+    if (currentIndex === -1) {
+        // Default entry point
+        return 'scene_heading';
     }
     
-    if (previousType === 'parenthetical' && currentType === 'dialogue') {
-        // After dialogue that follows parenthetical, go to character
-        return shiftKey ? 'parenthetical' : 'character';
-    }
-
-    // Define top 3 most logical next elements for each type
-    const smartTabOrder: Record<ScriptElement['type'], ScriptElement['type'][]> = {
-        'scene_heading': ['action', 'character', 'transition'],
-        'action': ['character', 'scene_heading', 'transition'], // Updated order based on usage frequency
-        'character': ['dialogue', 'parenthetical', 'action'],
-        'dialogue': ['character', 'action', 'parenthetical'],
-        'parenthetical': ['dialogue', 'character', 'action'],
-        'transition': ['scene_heading', 'action', 'character']
-    };
-    
-    const nextOptions = smartTabOrder[currentType] || ['action', 'character', 'scene_heading'];
-    
-    // Track current position in the cycle (use modulo to loop through top 3)
-    const currentCycleIndex = nextOptions.indexOf(currentType);
-    let nextIndex: number;
-    
-    if (currentCycleIndex === -1) {
-        // Current type not in next options, start at first option
-        nextIndex = shiftKey ? nextOptions.length - 1 : 0;
+    if (shiftKey) {
+        const prevIndex = (currentIndex - 1 + standardCycle.length) % standardCycle.length;
+        return standardCycle[prevIndex];
     } else {
-        // Cycle through the 3 options
-        nextIndex = shiftKey
-            ? (currentCycleIndex - 1 + nextOptions.length) % nextOptions.length
-            : (currentCycleIndex + 1) % nextOptions.length;
+        const nextIndex = (currentIndex + 1) % standardCycle.length;
+        return standardCycle[nextIndex];
     }
-    
-    return nextOptions[nextIndex];
 }
 
 /**
