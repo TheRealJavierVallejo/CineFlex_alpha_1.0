@@ -128,7 +128,9 @@ export function getElementMargins(type: ScriptElement['type']): { marginLeft: st
 export function getElementSpacing(type: ScriptElement['type'], isFirstOnPage: boolean): string {
     if (isFirstOnPage) return 'pt-0';
 
-    if (type === 'scene_heading') return 'pt-8'; // 32px
-    if (type === 'dialogue' || type === 'parenthetical') return 'pt-0';
-    return 'pt-4'; // 16px
+    // Industry standard: Scene Heading gets 2 blank lines, others get 1 blank line
+    // With 12pt font and line-height 1.0, blank lines are exactly 12pt
+    if (type === 'scene_heading') return 'pt-[24pt]'; // 2 blank lines
+    if (type === 'dialogue' || type === 'parenthetical') return 'pt-0'; // No spacing (continues dialogue block)
+    return 'pt-[12pt]'; // 1 blank line (action, character, transition)
 }
