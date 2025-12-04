@@ -1,4 +1,3 @@
-'action', fixing the infinite tab loop between character and dialogue.">
 import { ScriptElement } from '../../../types';
 
 /**
@@ -20,7 +19,7 @@ export function getNextElementType(currentType: ScriptElement['type']): ScriptEl
 
 /**
  * Returns the next element type when Tab is pressed
- * Simplified: Tab behaves like a single prediction (Action -> Character -> Dialogue -> Action)
+ * Simplified: Tab behaves like Enter (single prediction)
  */
 export function cycleElementType(
     currentType: ScriptElement['type'], 
