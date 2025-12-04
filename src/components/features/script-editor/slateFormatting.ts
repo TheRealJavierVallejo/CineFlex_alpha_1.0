@@ -1,4 +1,3 @@
-Action -> Character -> Dialogue -> Parenthetical -> Transition -> Scene Heading) to eliminate loops.">
 import { ScriptElement } from '../../../types';
 
 /**
