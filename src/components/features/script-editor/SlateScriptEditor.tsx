@@ -316,33 +316,20 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
-                <div 
-                    className={`
-                        flex-1 overflow-auto 
-                        ${isLightMode ? 'bg-zinc-100' : 'bg-[#1a1a1a]'}
-                        flex flex-col items-center
-                        py-12
-                    `}
+                {/* Single continuous page - no scroll container here */}
+                <div
+                    className={`w-full ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}`}
+                    style={{
+                        paddingTop: '1in',
+                        paddingBottom: '2in',
+                        paddingLeft: '1.5in',
+                        paddingRight: '1in',
+                        fontFamily: 'Courier, monospace',
+                        fontSize: '12pt',
+                        lineHeight: '1.0'
+                    }}
                 >
-                    <div
-                        className={`
-                            relative
-                            ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}
-                            shadow-2xl
-                            ${isLightMode ? 'border border-gray-200' : 'border border-zinc-800'}
-                        `}
-                        style={{
-                            width: '8.5in',
-                            minHeight: '11in',
-                            paddingTop: '1in',
-                            paddingBottom: '1in',
-                            paddingLeft: '1.5in',
-                            paddingRight: '1in',
-                            fontFamily: 'Courier, monospace',
-                            fontSize: '12pt',
-                            lineHeight: '1.0'
-                        }}
-                    >
+                    <div style={{ maxWidth: '6.0in', margin: '0 auto' }}>
                         <Editable
                             renderElement={renderElement}
                             renderLeaf={renderLeaf}
@@ -350,7 +337,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             onKeyDown={handleKeyDown}
                             placeholder="Start writing your screenplay..."
                             spellCheck={false}
-                            className="outline-none min-h-[9in]"
+                            className="outline-none"
                         />
                     </div>
                 </div>
