@@ -78,15 +78,17 @@ export function formatSceneHeading(content: string): string {
 
 /**
  * Returns margin-left and width for each element type
+ * Final Draft Industry Standards
+ * Note: Page container has 1.5in padding-left, so these margins are relative to that.
  */
 export function getElementMargins(type: ScriptElement['type']): { marginLeft: string; width: string } {
     const margins: Record<ScriptElement['type'], { marginLeft: string; width: string }> = {
-        'scene_heading': { marginLeft: '0in', width: '100%' },
-        'action': { marginLeft: '0in', width: '100%' },
-        'character': { marginLeft: '2.0in', width: '3.7in' },
-        'dialogue': { marginLeft: '1.0in', width: '3.5in' },
-        'parenthetical': { marginLeft: '1.6in', width: '2.3in' },
-        'transition': { marginLeft: '4.0in', width: '2.0in' }
+        'scene_heading': { marginLeft: '0in', width: '6.0in' },      // Flush left within page margins
+        'action': { marginLeft: '0in', width: '6.0in' },             // Flush left within page margins
+        'character': { marginLeft: '2.2in', width: '3.3in' },        // 3.7" from page edge (1.5" + 2.2")
+        'dialogue': { marginLeft: '1.0in', width: '3.5in' },         // 2.5" from page edge (1.5" + 1.0")
+        'parenthetical': { marginLeft: '1.6in', width: '2.3in' },    // 3.1" from page edge (1.5" + 1.6")
+        'transition': { marginLeft: '4.5in', width: '1.5in' }        // 6.0" from page edge (1.5" + 4.5")
     };
 
     return margins[type];
