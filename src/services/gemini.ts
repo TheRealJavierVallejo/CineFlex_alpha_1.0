@@ -30,24 +30,152 @@ const getClientAsync = async (): Promise<GoogleGenAI> => {
   return new GoogleGenAI({ apiKey });
 };
 
-// --- RETRY LOGIC ---
-const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error: any) {
-    if (retries === 0) throw error;
+// --- ERROR CLASSIFICATION SYSTEM ---
+export enum GeminiErrorType {
+  RATE_LIMIT = 'rate_limit',
+  NETWORK = 'network',
+  INVALID_KEY = 'invalid_key',
+  TIMEOUT = 'timeout',
+  QUOTA_EXCEEDED = 'quota_exceeded',
+  CONTENT_FILTERED = 'content_filtered',
+  UNKNOWN = 'unknown'
+}
 
-    // Check if error is retryable (503 Service Unavailable, 429 Too Many Requests)
-    const isRetryable = error.status === 503 || error.status === 429 || error.message?.includes('fetch failed');
+export interface GeminiError {
+  type: GeminiErrorType;
+  message: string;
+  userMessage: string; // User-friendly message
+  retryable: boolean;
+  retryAfterSeconds?: number;
+}
 
-    if (isRetryable) {
-      console.warn(`API call failed. Retrying in ${delay}ms... (${retries} attempts left)`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 2); // Exponential backoff
-    }
-
-    throw error;
+// Helper to classify errors into user-friendly messages
+export function classifyGeminiError(error: any): GeminiError {
+  // Rate limit (429)
+  if (error.status === 429) {
+    return {
+      type: GeminiErrorType.RATE_LIMIT,
+      message: error.message || 'Rate limit exceeded',
+      userMessage: 'Too many requests. Please wait 30 seconds and try again.',
+      retryable: true,
+      retryAfterSeconds: 30
+    };
   }
+
+  // Invalid API key (401, 403)
+  if (error.status === 401 || error.status === 403) {
+    return {
+      type: GeminiErrorType.INVALID_KEY,
+      message: error.message || 'Authentication failed',
+      userMessage: 'API key invalid or expired. Check Project Settings → API Key.',
+      retryable: false
+    };
+  }
+
+  // Quota exceeded
+  if (error.message?.toLowerCase().includes('quota')) {
+    return {
+      type: GeminiErrorType.QUOTA_EXCEEDED,
+      message: error.message,
+      userMessage: 'Monthly API quota exceeded. Please upgrade your Google AI plan.',
+      retryable: false
+    };
+  }
+
+  // Network errors
+  if (error.message?.includes('fetch failed') ||
+    error.message?.includes('ECONNRESET') ||
+    error.message?.includes('ETIMEDOUT') ||
+    error.message?.includes('NetworkError')) {
+    return {
+      type: GeminiErrorType.NETWORK,
+      message: error.message,
+      userMessage: 'Network error. Check your internet connection and try again.',
+      retryable: true,
+      retryAfterSeconds: 5
+    };
+  }
+
+  // Content filtering
+  if (error.message?.toLowerCase().includes('safety') ||
+    error.message?.toLowerCase().includes('blocked') ||
+    error.message?.toLowerCase().includes('filtered')) {
+    return {
+      type: GeminiErrorType.CONTENT_FILTERED,
+      message: error.message,
+      userMessage: 'Content filtered by safety settings. Try rephrasing your request.',
+      retryable: false
+    };
+  }
+
+  // Timeout
+  if (error.name === 'TimeoutError' ||
+    error.message?.includes('timeout') ||
+    error.message?.includes('timed out')) {
+    return {
+      type: GeminiErrorType.TIMEOUT,
+      message: error.message,
+      userMessage: 'Request timed out. Please try again.',
+      retryable: true,
+      retryAfterSeconds: 3
+    };
+  }
+
+  // Unknown error
+  return {
+    type: GeminiErrorType.UNKNOWN,
+    message: error.message || 'Unknown error',
+    userMessage: 'Something went wrong. Please try again.',
+    retryable: true,
+    retryAfterSeconds: 3
+  };
+}
+
+// --- RETRY LOGIC WITH TIMEOUT AND JITTER ---
+const withRetry = async <T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  initialDelay = 1000
+): Promise<T> => {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Add request timeout (30 seconds)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000);
+      });
+
+      const result = await Promise.race([fn(), timeoutPromise]);
+      return result as T;
+
+    } catch (error: any) {
+      lastError = error;
+
+      // Classify error
+      const classified = classifyGeminiError(error);
+
+      // Don't retry non-retryable errors
+      if (!classified.retryable || attempt === retries) {
+        throw error;
+      }
+
+      // Calculate backoff with jitter (prevents thundering herd)
+      const backoff = initialDelay * Math.pow(2, attempt);
+      const jitter = Math.random() * 1000; // 0-1000ms random
+      const delay = Math.min(backoff + jitter, 16000); // Cap at 16 seconds
+
+      console.warn(
+        `Attempt ${attempt + 1}/${retries + 1} failed. ` +
+        `Retrying in ${Math.round(delay / 1000)}s... ` +
+        `Error: ${classified.userMessage}`
+      );
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
 };
 
 // --- GENERATE SINGLE IMAGE ---
@@ -278,5 +406,87 @@ export const chatWithScript = async (
     return "Sorry, I encountered an error connecting to the AI. Check your API Key.";
   }
 };
+
+// --- SCRIPT ASSISTANT (STREAMING CHAT) ---
+// Streams responses word-by-word for perceived faster responses
+export const chatWithScriptStreaming = async (
+  message: string,
+  history: { role: 'user' | 'model'; content: string }[],
+  systemPrompt: string,
+  onChunk: (chunk: string) => void
+): Promise<string> => {
+  const ai = await getClientAsync();
+
+  try {
+    // Prepare history for API
+    const contents = [
+      { role: 'user', parts: [{ text: systemPrompt }] }, // System instruction as first user msg
+      ...history.map(h => ({
+        role: h.role,
+        parts: [{ text: h.content }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    // Use streaming API
+    const response = await ai.models.generateContentStream({
+      model: 'gemini-2.5-flash',
+      contents: contents as any
+    });
+
+    let fullResponse = '';
+
+    // Stream chunks to callback
+    for await (const chunk of response) {
+      const text = chunk.text || '';
+      if (text) {
+        fullResponse += text;
+        onChunk(text);
+      }
+    }
+
+    return fullResponse || "I couldn't generate a response.";
+  } catch (error: any) {
+    console.error("Script Chat Streaming Error", error);
+
+    // Classify and re-throw with user message
+    const classified = classifyGeminiError(error);
+    throw new Error(classified.userMessage);
+  }
+};
+
+// --- TOKEN ESTIMATION UTILITIES ---
+// Improved token estimation (approximate but better than simple char/4)
+export function estimateTokenCount(text: string): number {
+  if (!text) return 0;
+
+  // Average: 1 token ≈ 0.75 words in English
+  // Also count ~4 chars per token as fallback
+  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+  const charCount = text.length;
+
+  // Use word count if available, otherwise character count
+  const wordBasedEstimate = Math.ceil(wordCount / 0.75);
+  const charBasedEstimate = Math.ceil(charCount / 4);
+
+  // Average both approaches for better accuracy
+  return Math.ceil((wordBasedEstimate + charBasedEstimate) / 2);
+}
+
+export function estimateConversationTokens(
+  messages: { role: string; content: string }[],
+  systemPrompt: string = ''
+): number {
+  const systemTokens = estimateTokenCount(systemPrompt);
+  const messageTokens = messages.reduce(
+    (sum, msg) => sum + estimateTokenCount(msg.content),
+    0
+  );
+
+  // Add overhead for message formatting (role names, delimiters, etc.)
+  const overhead = messages.length * 4;
+
+  return systemTokens + messageTokens + overhead;
+}
 
 export { constructPrompt };

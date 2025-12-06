@@ -45,6 +45,68 @@ export interface SydContext {
     contextFields: Record<string, any>;
     estimatedTokens: number;
     maxOutputTokens: number;
+    // Phase 6: Agent-specific configuration
+    temperature: number;
+    outputFormat: 'short' | 'medium' | 'detailed';
+    enforceLength: boolean;
+}
+
+// Agent-specific configuration for temperature and output tuning
+export interface AgentConfig {
+    temperature: number;        // 0.0 = deterministic, 1.0 = creative
+    maxOutputTokens: number;    // Token limit for response
+    outputFormat: 'short' | 'medium' | 'detailed';
+    enforceLength: boolean;     // Whether to strictly enforce token limits
+}
+
+// Default config for unlisted agents
+const DEFAULT_AGENT_CONFIG: AgentConfig = {
+    temperature: 0.7,
+    maxOutputTokens: 200,
+    outputFormat: 'medium',
+    enforceLength: false
+};
+
+// Agent-specific configurations for optimal output
+export const AGENT_CONFIGS: Partial<Record<SydAgentType, AgentConfig>> = {
+    // Foundation agents - higher creativity for brainstorming
+    title: { temperature: 0.9, maxOutputTokens: 100, outputFormat: 'short', enforceLength: true },
+    logline: { temperature: 0.7, maxOutputTokens: 150, outputFormat: 'short', enforceLength: true },
+    story_types: { temperature: 0.6, maxOutputTokens: 150, outputFormat: 'short', enforceLength: true },
+    target_audience: { temperature: 0.6, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    budget: { temperature: 0.7, maxOutputTokens: 150, outputFormat: 'medium', enforceLength: false },
+
+    // Character agents - balanced creativity
+    character_identity: { temperature: 0.8, maxOutputTokens: 80, outputFormat: 'short', enforceLength: true },
+    character_want: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    character_need: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    character_lie: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    character_ghost: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    character_strengths: { temperature: 0.6, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    character_weaknesses: { temperature: 0.6, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    character_arc: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+
+    // Beat agents - structured creativity for narrative
+    beat_opening_image: { temperature: 0.8, maxOutputTokens: 140, outputFormat: 'medium', enforceLength: false },
+    beat_theme_stated: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_setup: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_catalyst: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_debate: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_break_into_two: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_b_story: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_fun_and_games: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_midpoint: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_bad_guys_close_in: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_all_is_lost: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_dark_night_of_the_soul: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_break_into_three: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_finale: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
+    beat_final_image: { temperature: 0.8, maxOutputTokens: 140, outputFormat: 'medium', enforceLength: false },
+};
+
+// Get configuration for a specific agent type
+export function getAgentConfig(agentType: SydAgentType): AgentConfig {
+    return AGENT_CONFIGS[agentType] || DEFAULT_AGENT_CONFIG;
 }
 
 // Beat Definitions for specialized prompts
@@ -92,14 +154,14 @@ export function selectContextForAgent(
     const setting = plot?.setting || "Unknown Setting";
     const logline = plot?.logline || "No logline defined yet";
     const title = plot?.title || "Untitled Project";
-    
+
     // Construct audience string
     const targetRating = plot?.targetAudienceRating || "";
     const targetDesc = plot?.targetAudienceDescription || "";
     const targetAudience = [targetRating, targetDesc].filter(Boolean).join(" - ") || "";
 
     const storyTypesStr = plot?.storyTypes?.join(', ') || "";
-    
+
     // --------------------------------------------------------
     // 1. FOUNDATION AGENTS (Short & Snappy)
     // --------------------------------------------------------
@@ -109,7 +171,7 @@ export function selectContextForAgent(
         contextFields.theme = theme;
         contextFields.tone = tone;
         contextFields.setting = setting;
-        
+
         systemPrompt = `You are a story structure consultant. The user is writing a ${genre} story with the theme "${theme}", ${tone} tone, set in ${setting}.
 
 Based on this, pick the 1-2 BEST options from their dropdown menu:
@@ -123,16 +185,16 @@ Based on this, pick the 1-2 BEST options from their dropdown menu:
 Give a SHORT response (2-3 sentences max). Just tell them which option(s) fit best and why in ONE sentence per option. Then ask: "Want me to explain more about any of these?"
 
 Be brief and decisive.`;
-        
+
         maxOutputTokens = 150;
-    } 
-    
+    }
+
     else if (agentType === 'target_audience') {
         contextFields.genre = genre;
         contextFields.theme = theme;
         contextFields.tone = tone;
         contextFields.setting = setting;
-        
+
         systemPrompt = `You are an audience expert. The user is writing a ${genre} story with "${theme}" theme, ${tone} tone, set in ${setting}.
 
 Give a SHORT answer (2-3 sentences):
@@ -142,7 +204,7 @@ Give a SHORT answer (2-3 sentences):
 Then ask: "Want me to suggest similar films they'd enjoy?"
 
 Be brief and specific.`;
-        
+
         maxOutputTokens = 120;
     }
 
@@ -174,7 +236,7 @@ Keep it BRIEF - just the titles.`;
         contextFields.setting = setting;
         if (title !== "Untitled Project") contextFields.title = title;
         if (storyTypesStr) contextFields.storyTypes = storyTypesStr;
-        
+
         systemPrompt = `You are a logline specialist. The user is writing a ${genre} story${title !== "Untitled Project" ? ` titled "${title}"` : ''} with "${theme}" theme, set in ${setting}.${storyTypesStr ? ` Story type: ${storyTypesStr}.` : ''}
 
 A logline is ONE sentence: "When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]."
@@ -255,13 +317,13 @@ Keep it BRIEF (3-4 sentences total). Then ask: "Want more budget tips?"`;
         if (metadata?.actOneSummary) {
             contextFields.actOneSummary = metadata.actOneSummary;
         }
-        
+
         if (charArchetype) contextFields.archetype = charArchetype;
         if (charDescription) contextFields.description = charDescription;
         if (charStrengths) contextFields.strengths = charStrengths;
         if (charWeaknesses) contextFields.weaknesses = charWeaknesses;
         if (charArcSummary) contextFields.arcSummary = charArcSummary;
-        
+
         // Add existing arc fields for context
         if (character) {
             if (character.want) contextFields.currentWant = character.want;
@@ -449,7 +511,7 @@ Show how their Want, Need, Lie, and Ghost collide to create change, and briefly 
             default:
                 systemPrompt = `You are a character consultant. Help develop ${charName} with concise, conflict-focused suggestions (3–4 sentences max).`;
         }
-        
+
         if (field === 'identity') {
             maxOutputTokens = 80; // very short replies for name/age/description
         } else if (['want', 'need', 'lie', 'ghost', 'strengths', 'weaknesses', 'arc'].includes(field)) {
@@ -467,7 +529,7 @@ Show how their Want, Need, Lie, and Ghost collide to create change, and briefly 
         const beatKey = agentType.replace('beat_', '');
         // Convert snake_case to Title Case for lookup
         const beatName = beatKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        
+
         // Handle special casing for "B Story" or others if needed
         const displayBeatName = beatName === "B Story" ? "B Story" : beatName;
         const definition = BEAT_DEFINITIONS[displayBeatName] || "A key story moment.";
@@ -496,7 +558,7 @@ Show how their Want, Need, Lie, and Ghost collide to create change, and briefly 
         if (metadata?.actOneSummary) {
             contextFields.actOneSummary = metadata.actOneSummary;
         }
-        
+
         // Find previous beat context
         if (beats) {
             const currentBeatIndex = beats.findIndex(b => b.beatName === displayBeatName);
@@ -572,12 +634,18 @@ Using the beat definition and the story context, suggest 2 strong ways this "${d
 
     const estimatedTokens = estimateObjectTokens(contextFields) + estimateTokens(systemPrompt);
 
+    // Get agent-specific configuration
+    const config = getAgentConfig(agentType);
+
     return {
         agentType,
         systemPrompt,
         contextFields,
         estimatedTokens,
-        maxOutputTokens
+        maxOutputTokens: config.maxOutputTokens,
+        temperature: config.temperature,
+        outputFormat: config.outputFormat,
+        enforceLength: config.enforceLength
     };
 }
 
@@ -589,5 +657,5 @@ export function validateTokenBudget(context: SydContext, userInput: string): boo
     // Standard limit for local LLM context window (usually 2048 or 4096)
     // We keep a safety buffer.
     const total = context.estimatedTokens + userTokens + context.maxOutputTokens;
-    return total <= 3000; 
+    return total <= 3000;
 }

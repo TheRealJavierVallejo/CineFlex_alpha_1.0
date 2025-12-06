@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles, X, Send, Loader2, Cpu, Zap, AlertCircle, Download, BrainCircuit } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, X, Send, Loader2, Cpu, Zap, AlertCircle, Download, BrainCircuit, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { SydContext } from '../../services/sydContext';
+import { classifyGeminiError, estimateConversationTokens, chatWithScriptStreaming } from '../../services/gemini';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 
@@ -10,13 +13,36 @@ interface ChatMessage {
     content: string;
 }
 
+// Session management for conversation memory
+interface ChatSession {
+    id: string;
+    agentType: string;
+    messages: ChatMessage[];
+    contextSnapshot: SydContext | null;
+    startedAt: Date;
+}
+
+// Sliding window helper - keep last N turns (user + assistant pairs)
+const getRecentHistory = (messages: ChatMessage[], maxTurns: number = 15): ChatMessage[] => {
+    // Filter out system messages first
+    const conversationMessages = messages.filter(msg => msg.role !== 'system');
+
+    // Keep only last maxTurns * 2 messages (user + assistant pairs)
+    const maxMessages = maxTurns * 2;
+    if (conversationMessages.length <= maxMessages) {
+        return conversationMessages;
+    }
+
+    return conversationMessages.slice(-maxMessages);
+};
+
 interface SydPopoutPanelProps {
     isOpen: boolean;
     context: SydContext | null;
     anchorElement: HTMLElement | null;
     scrollContainer: HTMLElement | null;
     onClose: () => void;
-    onSendMessage: (message: string, messageHistory?: Array<{role: string, content: string}>) => Promise<string>;
+    onSendMessage: (message: string, messageHistory?: Array<{ role: string, content: string }>) => Promise<string>;
     initialMessages?: ChatMessage[];
 }
 
@@ -37,7 +63,22 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     const [inputValue, setInputValue] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [activeAgentType, setActiveAgentType] = useState<string | null>(null);
-    
+
+    // Session management for conversation memory
+    const [currentSession, setCurrentSession] = useState<ChatSession>({
+        id: crypto.randomUUID(),
+        agentType: '',
+        messages: [],
+        contextSnapshot: null,
+        startedAt: new Date()
+    });
+
+    // Token usage tracking for Pro tier display
+    const [estimatedTokens, setEstimatedTokens] = useState(0);
+
+    // Streaming response tracking
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+
     // Track current position to avoid redundant state updates
     const currentPos = useRef({ top: 0, left: 0, visible: false });
     const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({
@@ -48,31 +89,41 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     const panelRef = useRef<HTMLDivElement>(null);
 
     // 1. Initialize / Reset Chat based on Context ID & Readiness
-    // Replaced system pill logic with delayed assistant greeting
+    // Reset session when switching agents, preserve conversation within same agent
     useEffect(() => {
         if (!context) return;
 
         const agentType = context.agentType;
 
-        // If this is a different agent than before, reset messages
+        // If this is a different agent than before, reset the entire session
         if (agentType !== activeAgentType) {
             setActiveAgentType(agentType);
-            setMessages([]); // clear out old conversation when switching agents
+
+            // Create fresh session for new agent
+            const newSession: ChatSession = {
+                id: crypto.randomUUID(),
+                agentType: agentType,
+                messages: [],
+                contextSnapshot: context,
+                startedAt: new Date()
+            };
+            setCurrentSession(newSession);
+            setMessages([]);
         }
 
-        // If parent provided initial messages, just use those.
+        // If parent provided initial messages, restore them
         if (initialMessages && initialMessages.length > 0) {
             setMessages(initialMessages);
+            setCurrentSession(prev => ({ ...prev, messages: initialMessages }));
             return;
         }
 
-        // While the local model is still warming up, show an empty chat.
-        // (Only applicable for Free tier which relies on local readiness)
+        // While the local model is still warming up, show empty chat
         if (tier === 'free' && !isReady) {
             return;
         }
 
-        // When ready (or if Pro tier), inject a friendly assistant greeting if empty.
+        // When ready, inject a friendly assistant greeting if empty
         setMessages(prev => {
             if (prev.length > 0) return prev;
 
@@ -87,11 +138,20 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 greeting = 'Shall we work on the logline?';
             }
 
-            return [{
+            const greetingMsg: ChatMessage = {
                 id: `assistant-init-${Date.now()}`,
                 role: 'assistant',
                 content: greeting,
-            }];
+            };
+
+            // Update session with greeting
+            setCurrentSession(prev => ({
+                ...prev,
+                messages: [greetingMsg],
+                contextSnapshot: context
+            }));
+
+            return [greetingMsg];
         });
     }, [context, activeAgentType, initialMessages, isReady, tier]);
 
@@ -99,6 +159,25 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages.length, isReady, downloadText, isGenerating]);
+
+    // 3. Calculate token usage for Pro tier display
+    useEffect(() => {
+        if (tier !== 'pro' || messages.length === 0) {
+            setEstimatedTokens(0);
+            return;
+        }
+
+        const recentHistory = getRecentHistory(messages);
+        const historyFormatted = recentHistory.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            content: msg.content
+        }));
+
+        const systemPrompt = context?.systemPrompt || '';
+        const total = estimateConversationTokens(historyFormatted, systemPrompt);
+
+        setEstimatedTokens(total);
+    }, [messages, context, tier]);
 
     // 3. Optimized Positioning Loop
     useEffect(() => {
@@ -127,15 +206,15 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             // Calculate Target Position
             const top = Math.min(Math.max(anchorRect.top, 80), window.innerHeight - 520);
             let left = anchorRect.right + 20;
-            
+
             // Flip to left if hitting screen edge
             if (left + 340 > window.innerWidth) {
                 left = anchorRect.left - 360;
             }
 
             // Only update state if values significantly changed (Performance Optimization)
-            const hasChanged = 
-                Math.abs(currentPos.current.top - top) > 1 || 
+            const hasChanged =
+                Math.abs(currentPos.current.top - top) > 1 ||
                 Math.abs(currentPos.current.left - left) > 1 ||
                 currentPos.current.visible !== isInView;
 
@@ -161,26 +240,151 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
         if (!inputValue.trim() || isGenerating) return;
         if (tier === 'free' && !isReady) return;
 
-        const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: inputValue };
-        setMessages(prev => [...prev, userMsg]);
+        const userMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: inputValue
+        };
+
+        const updatedMessages = [...messages, userMsg];
+        setMessages(updatedMessages);
         setInputValue('');
         setIsGenerating(true);
 
         try {
-            // Filter out system messages and convert to simple history format
-            const conversationHistory = messages
-                .filter(msg => msg.role !== 'system')
-                .map(msg => ({ role: msg.role as string, content: msg.content }));
+            // Get recent history with sliding window (last 15 turns)
+            const recentHistory = getRecentHistory(updatedMessages);
 
-            // Pass history to the handler
-            const response = await onSendMessage(inputValue, conversationHistory);
-            
-            setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: response }]);
-        } catch (error) {
-            setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'system', content: 'Error generating response.' }]);
+            // Convert to format expected by API
+            // Note: Gemini uses 'model' role, not 'assistant'
+            const conversationHistory = recentHistory.map(msg => ({
+                role: (msg.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+                content: msg.content
+            }));
+
+            // For Pro tier with context, try streaming first
+            if (tier === 'pro' && context?.systemPrompt) {
+                const assistantMsgId = crypto.randomUUID();
+                const assistantMsg: ChatMessage = {
+                    id: assistantMsgId,
+                    role: 'assistant',
+                    content: ''
+                };
+
+                // Add placeholder message for streaming
+                setMessages([...updatedMessages, assistantMsg]);
+                setStreamingMessageId(assistantMsgId);
+
+                try {
+                    const fullResponse = await chatWithScriptStreaming(
+                        inputValue,
+                        conversationHistory,
+                        context.systemPrompt,
+                        (chunk: string) => {
+                            // Update the streaming message with each chunk
+                            setMessages(prev => prev.map(msg =>
+                                msg.id === assistantMsgId
+                                    ? { ...msg, content: msg.content + chunk }
+                                    : msg
+                            ));
+                        }
+                    );
+
+                    // Finalize the message
+                    setStreamingMessageId(null);
+                    setMessages(prev => prev.map(msg =>
+                        msg.id === assistantMsgId
+                            ? { ...msg, content: fullResponse }
+                            : msg
+                    ));
+
+                    // Update session
+                    const finalMessages = [...updatedMessages, { ...assistantMsg, content: fullResponse }];
+                    setCurrentSession(prev => ({
+                        ...prev,
+                        messages: finalMessages
+                    }));
+
+                } catch (streamError: any) {
+                    // Streaming failed, update placeholder with error
+                    setStreamingMessageId(null);
+                    const classified = classifyGeminiError(streamError);
+                    setMessages(prev => prev.map(msg =>
+                        msg.id === assistantMsgId
+                            ? { ...msg, role: 'system', content: classified.userMessage }
+                            : msg
+                    ));
+                }
+            } else {
+                // Free tier or no context: use non-streaming via callback
+                const response = await onSendMessage(inputValue, conversationHistory);
+
+                const assistantMsg: ChatMessage = {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: response
+                };
+
+                const finalMessages = [...updatedMessages, assistantMsg];
+                setMessages(finalMessages);
+
+                // Update session with new messages
+                setCurrentSession(prev => ({
+                    ...prev,
+                    messages: finalMessages
+                }));
+            }
+
+        } catch (error: any) {
+            // Use error classification for user-friendly messages
+            const classified = classifyGeminiError(error);
+            const errorMsg: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'system',
+                content: classified.userMessage
+            };
+            setMessages(prev => [...prev, errorMsg]);
+            setStreamingMessageId(null);
         } finally {
             setIsGenerating(false);
+            setStreamingMessageId(null);
         }
+    };
+
+    // Clear conversation and start fresh
+    const handleClearConversation = () => {
+        const newSession: ChatSession = {
+            id: crypto.randomUUID(),
+            agentType: currentSession.agentType,
+            messages: [],
+            contextSnapshot: currentSession.contextSnapshot,
+            startedAt: new Date()
+        };
+
+        setCurrentSession(newSession);
+        setMessages([]);
+
+        // Re-inject greeting based on agent type
+        let greeting = 'How can I help with this?';
+        const agentType = currentSession.agentType;
+        if (agentType.startsWith('beat_')) {
+            greeting = 'How can I help with this beat?';
+        } else if (agentType.startsWith('character_')) {
+            greeting = 'How can I help with this character?';
+        } else if (agentType === 'title') {
+            greeting = 'Need help brainstorming titles?';
+        } else if (agentType === 'logline') {
+            greeting = 'Shall we work on the logline?';
+        }
+
+        const greetingMsg: ChatMessage = {
+            id: `assistant-init-${Date.now()}`,
+            role: 'assistant',
+            content: greeting,
+        };
+
+        setMessages([greetingMsg]);
+        setCurrentSession(prev => ({ ...prev, messages: [greetingMsg] }));
     };
 
     if (!isOpen) return null;
@@ -188,39 +392,39 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     // --- STATUS HEADER LOGIC ---
     let statusElement = null;
     const baseStatusClasses = "flex items-center gap-2 text-text-primary text-xs font-bold px-2.5 py-1.5 bg-primary/10 rounded border border-primary/20 shadow-sm w-full justify-center transition-all";
-    
+
     if (tier === 'free') {
         if (error) {
-             statusElement = (
+            statusElement = (
                 <div className={baseStatusClasses}>
                     <AlertCircle className="w-3.5 h-3.5 text-text-primary" />
                     <span className="text-text-primary">Error: {error.slice(0, 15)}...</span>
                 </div>
-             );
+            );
         } else if (isDownloading) {
-             statusElement = (
+            statusElement = (
                 <div className={baseStatusClasses}>
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-text-primary" />
                     <span className="text-text-primary">Warming up: {downloadProgress}%</span>
                 </div>
-             );
+            );
         } else if (isGenerating) {
-             statusElement = (
+            statusElement = (
                 <div className={baseStatusClasses}>
                     <BrainCircuit className="w-3.5 h-3.5 animate-pulse text-text-primary" />
                     <span className="text-text-primary">Generating Response...</span>
                 </div>
-             );
+            );
         } else if (!isReady) {
-             statusElement = (
-                <button 
-                    onClick={initModel} 
+            statusElement = (
+                <button
+                    onClick={initModel}
                     className={`${baseStatusClasses} hover:bg-primary/20 cursor-pointer`}
                 >
                     <Download className="w-3.5 h-3.5 text-text-primary" />
                     <span className="text-text-primary">Load Engine</span>
                 </button>
-             );
+            );
         } else {
             statusElement = (
                 <div className={baseStatusClasses}>
@@ -262,21 +466,53 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                             {context.agentType.replace(/_/g, ' ')}
                         </span>
                     )}
-                    <button
-                        onClick={onClose}
-                        className="text-text-secondary hover:text-text-primary transition-colors p-1 hover:bg-white/5 rounded"
-                    >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        {/* Clear Conversation Button */}
+                        <button
+                            onClick={handleClearConversation}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1 hover:bg-white/5 rounded"
+                            title="Clear conversation"
+                        >
+                            <Trash2 className="w-3 h-3" />
+                        </button>
+                        {/* Close Button */}
+                        <button
+                            onClick={onClose}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1 hover:bg-white/5 rounded"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
                 </div>
-                
+
                 {/* Status Bar */}
                 {statusElement}
+
+                {/* Token Usage Bar - Pro tier only, after 2+ messages */}
+                {tier === 'pro' && messages.length > 2 && (
+                    <div className="px-2.5 py-1.5 mt-2">
+                        <div className="flex items-center justify-between text-[9px] text-text-muted">
+                            <span>Context</span>
+                            <span className={`font-mono ${estimatedTokens > 3000 ? 'text-yellow-400' : ''} ${estimatedTokens > 4000 ? 'text-red-400' : ''}`}>
+                                ~{estimatedTokens.toLocaleString()} tokens
+                            </span>
+                        </div>
+                        <div className="w-full bg-surface-secondary rounded-full h-1 mt-1 overflow-hidden">
+                            <div
+                                className={`h-full transition-all duration-300 ${estimatedTokens > 4000 ? 'bg-red-500' :
+                                    estimatedTokens > 3000 ? 'bg-yellow-500' :
+                                        'bg-primary'
+                                    }`}
+                                style={{ width: `${Math.min((estimatedTokens / 4000) * 100, 100)}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[250px] max-h-[400px] bg-background/80 custom-scrollbar">
-                
+
                 {/* EMPTY STATE / ERROR STATE UI */}
                 {tier === 'free' && !isReady && !isDownloading && !error && (
                     <div className="flex flex-col items-center justify-center py-8 text-center space-y-3 opacity-70">
@@ -294,19 +530,40 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                             <div className="text-[10px] text-text-secondary bg-surface-secondary px-3 py-1.5 rounded-full border border-border/50 max-w-[90%] text-center self-center shadow-sm mb-2">
                                 {msg.content}
                             </div>
-                        ) : (
-                            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs shadow-sm leading-relaxed whitespace-pre-wrap ${
-                                msg.role === 'user'
-                                    ? 'bg-primary text-white rounded-br-sm'
-                                    : 'bg-surface border border-border text-text-primary rounded-bl-sm'
-                                }`}>
+                        ) : msg.role === 'user' ? (
+                            /* User messages stay as plain text */
+                            <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-xs shadow-sm leading-relaxed whitespace-pre-wrap bg-primary text-white rounded-br-sm">
                                 {msg.content}
+                            </div>
+                        ) : (
+                            /* Assistant messages get markdown rendering */
+                            <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-xs shadow-sm leading-relaxed bg-surface border border-border text-text-primary rounded-bl-sm">
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                        strong: ({ children }) => <strong className="font-bold text-primary">{children}</strong>,
+                                        em: ({ children }) => <em className="italic">{children}</em>,
+                                        code: ({ children }) => <code className="bg-black/20 px-1.5 py-0.5 rounded text-[11px] font-mono">{children}</code>,
+                                        ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
+                                        ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
+                                        li: ({ children }) => <li className="ml-1">{children}</li>,
+                                        a: ({ href, children }) => <a href={href} className="text-primary underline hover:opacity-80" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                    }}
+                                >
+                                    {msg.content}
+                                </ReactMarkdown>
+                                {/* Streaming cursor indicator */}
+                                {streamingMessageId === msg.id && (
+                                    <span className="inline-block w-1.5 h-3 bg-primary ml-1 animate-pulse" />
+                                )}
                             </div>
                         )}
                     </div>
                 ))}
 
-                {isGenerating && (
+                {/* Generating indicator - only show for non-streaming (free tier) */}
+                {isGenerating && !streamingMessageId && (
                     <div className="flex items-center gap-2 text-text-secondary text-xs pl-2 py-2">
                         <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                         <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
