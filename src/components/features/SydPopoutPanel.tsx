@@ -264,8 +264,17 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 content: msg.content
             }));
 
-            // For Pro tier with context, use Claude streaming
-            if (tier === 'pro' && context?.systemPrompt) {
+            // Debug logging to verify model selection
+            console.log('[SYD AGENT] Tier:', tier, '| Will use:', tier === 'pro' ? 'Claude 3.5 Sonnet' : 'Local Phi Model');
+
+            // For Pro tier, ALWAYS use Claude streaming (regardless of context state)
+            if (tier === 'pro') {
+                // Fallbacks for missing context values
+                const systemPrompt = context?.systemPrompt || 'You are Syd, a professional screenwriting assistant helping with screenplay development.';
+                const fullProjectContext = context?.contextFields?.fullProjectContext || '';
+                const temperature = context?.temperature || 0.7;
+                const maxTokens = context?.maxOutputTokens || 800;
+
                 const assistantMsgId = crypto.randomUUID();
                 const assistantMsg: ChatMessage = {
                     id: assistantMsgId,
@@ -277,14 +286,11 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 setMessages([...updatedMessages, assistantMsg]);
                 setStreamingMessageId(assistantMsgId);
 
-                // Get full project context for Claude
-                const fullProjectContext = context.contextFields?.fullProjectContext || '';
-
                 try {
                     const fullResponse = await chatWithClaudeStreaming(
                         inputValue,
                         conversationHistory,
-                        context.systemPrompt,
+                        systemPrompt,
                         fullProjectContext,
                         (chunk: string) => {
                             // Update the streaming message with each chunk
@@ -295,8 +301,8 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                             ));
                         },
                         {
-                            temperature: context.temperature || 0.7,
-                            maxTokens: context.maxOutputTokens || 800,
+                            temperature: temperature,
+                            maxTokens: maxTokens,
                             useCache: true // Enable prompt caching for cost savings
                         }
                     );
