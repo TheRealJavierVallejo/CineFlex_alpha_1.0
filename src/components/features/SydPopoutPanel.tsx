@@ -3,7 +3,8 @@ import { Sparkles, X, Send, Loader2, Cpu, Zap, AlertCircle, Download, BrainCircu
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SydContext } from '../../services/sydContext';
-import { classifyGeminiError, estimateConversationTokens, chatWithScriptStreaming } from '../../services/gemini';
+import { classifyGeminiError, estimateConversationTokens } from '../../services/gemini';
+import { chatWithClaudeStreaming, classifyClaudeError, estimateClaudeConversationTokens } from '../../services/claude';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 
@@ -160,7 +161,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages.length, isReady, downloadText, isGenerating]);
 
-    // 3. Calculate token usage for Pro tier display
+    // 3. Calculate token usage for Pro tier display (Claude 200K context)
     useEffect(() => {
         if (tier !== 'pro' || messages.length === 0) {
             setEstimatedTokens(0);
@@ -169,12 +170,13 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
         const recentHistory = getRecentHistory(messages);
         const historyFormatted = recentHistory.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model',
+            role: msg.role === 'user' ? 'user' : 'assistant',
             content: msg.content
         }));
 
         const systemPrompt = context?.systemPrompt || '';
-        const total = estimateConversationTokens(historyFormatted, systemPrompt);
+        const fullProjectContext = context?.contextFields?.fullProjectContext || '';
+        const total = estimateClaudeConversationTokens(historyFormatted, systemPrompt, fullProjectContext);
 
         setEstimatedTokens(total);
     }, [messages, context, tier]);
@@ -256,13 +258,13 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             const recentHistory = getRecentHistory(updatedMessages);
 
             // Convert to format expected by API
-            // Note: Gemini uses 'model' role, not 'assistant'
+            // Claude uses 'assistant' role (same as ChatMessage)
             const conversationHistory = recentHistory.map(msg => ({
-                role: (msg.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+                role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
                 content: msg.content
             }));
 
-            // For Pro tier with context, try streaming first
+            // For Pro tier with context, use Claude streaming
             if (tier === 'pro' && context?.systemPrompt) {
                 const assistantMsgId = crypto.randomUUID();
                 const assistantMsg: ChatMessage = {
@@ -275,11 +277,15 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 setMessages([...updatedMessages, assistantMsg]);
                 setStreamingMessageId(assistantMsgId);
 
+                // Get full project context for Claude
+                const fullProjectContext = context.contextFields?.fullProjectContext || '';
+
                 try {
-                    const fullResponse = await chatWithScriptStreaming(
+                    const fullResponse = await chatWithClaudeStreaming(
                         inputValue,
                         conversationHistory,
                         context.systemPrompt,
+                        fullProjectContext,
                         (chunk: string) => {
                             // Update the streaming message with each chunk
                             setMessages(prev => prev.map(msg =>
@@ -287,6 +293,11 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                                     ? { ...msg, content: msg.content + chunk }
                                     : msg
                             ));
+                        },
+                        {
+                            temperature: context.temperature || 0.7,
+                            maxTokens: context.maxOutputTokens || 800,
+                            useCache: true // Enable prompt caching for cost savings
                         }
                     );
 
@@ -308,7 +319,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 } catch (streamError: any) {
                     // Streaming failed, update placeholder with error
                     setStreamingMessageId(null);
-                    const classified = classifyGeminiError(streamError);
+                    const classified = classifyClaudeError(streamError);
                     setMessages(prev => prev.map(msg =>
                         msg.id === assistantMsgId
                             ? { ...msg, role: 'system', content: classified.userMessage }
@@ -493,17 +504,17 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                     <div className="px-2.5 py-1.5 mt-2">
                         <div className="flex items-center justify-between text-[9px] text-text-muted">
                             <span>Context</span>
-                            <span className={`font-mono ${estimatedTokens > 3000 ? 'text-yellow-400' : ''} ${estimatedTokens > 4000 ? 'text-red-400' : ''}`}>
-                                ~{estimatedTokens.toLocaleString()} tokens
+                            <span className={`font-mono ${estimatedTokens > 150000 ? 'text-yellow-400' : ''} ${estimatedTokens > 180000 ? 'text-red-400' : ''}`}>
+                                ~{estimatedTokens.toLocaleString()} / 200K tokens
                             </span>
                         </div>
                         <div className="w-full bg-surface-secondary rounded-full h-1 mt-1 overflow-hidden">
                             <div
-                                className={`h-full transition-all duration-300 ${estimatedTokens > 4000 ? 'bg-red-500' :
-                                    estimatedTokens > 3000 ? 'bg-yellow-500' :
+                                className={`h-full transition-all duration-300 ${estimatedTokens > 180000 ? 'bg-red-500' :
+                                    estimatedTokens > 150000 ? 'bg-yellow-500' :
                                         'bg-primary'
                                     }`}
-                                style={{ width: `${Math.min((estimatedTokens / 4000) * 100, 100)}%` }}
+                                style={{ width: `${Math.min((estimatedTokens / 200000) * 100, 100)}%` }}
                             />
                         </div>
                     </div>

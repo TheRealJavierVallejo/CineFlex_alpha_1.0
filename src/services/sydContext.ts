@@ -67,41 +67,41 @@ const DEFAULT_AGENT_CONFIG: AgentConfig = {
     enforceLength: false
 };
 
-// Agent-specific configurations for optimal output
+// Agent-specific configurations for optimal output (optimized for Claude)
 export const AGENT_CONFIGS: Partial<Record<SydAgentType, AgentConfig>> = {
     // Foundation agents - higher creativity for brainstorming
-    title: { temperature: 0.9, maxOutputTokens: 100, outputFormat: 'short', enforceLength: true },
-    logline: { temperature: 0.7, maxOutputTokens: 150, outputFormat: 'short', enforceLength: true },
-    story_types: { temperature: 0.6, maxOutputTokens: 150, outputFormat: 'short', enforceLength: true },
-    target_audience: { temperature: 0.6, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    budget: { temperature: 0.7, maxOutputTokens: 150, outputFormat: 'medium', enforceLength: false },
+    title: { temperature: 0.9, maxOutputTokens: 300, outputFormat: 'medium', enforceLength: false },
+    logline: { temperature: 0.7, maxOutputTokens: 400, outputFormat: 'medium', enforceLength: false },
+    story_types: { temperature: 0.6, maxOutputTokens: 300, outputFormat: 'medium', enforceLength: false },
+    target_audience: { temperature: 0.6, maxOutputTokens: 300, outputFormat: 'medium', enforceLength: false },
+    budget: { temperature: 0.7, maxOutputTokens: 400, outputFormat: 'medium', enforceLength: false },
 
-    // Character agents - balanced creativity
-    character_identity: { temperature: 0.8, maxOutputTokens: 80, outputFormat: 'short', enforceLength: true },
-    character_want: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    character_need: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    character_lie: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    character_ghost: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    character_strengths: { temperature: 0.6, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    character_weaknesses: { temperature: 0.6, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
-    character_arc: { temperature: 0.7, maxOutputTokens: 120, outputFormat: 'short', enforceLength: true },
+    // Character agents - balanced creativity with detailed responses
+    character_identity: { temperature: 0.8, maxOutputTokens: 250, outputFormat: 'medium', enforceLength: false },
+    character_want: { temperature: 0.7, maxOutputTokens: 500, outputFormat: 'detailed', enforceLength: false },
+    character_need: { temperature: 0.7, maxOutputTokens: 500, outputFormat: 'detailed', enforceLength: false },
+    character_lie: { temperature: 0.7, maxOutputTokens: 500, outputFormat: 'detailed', enforceLength: false },
+    character_ghost: { temperature: 0.7, maxOutputTokens: 500, outputFormat: 'detailed', enforceLength: false },
+    character_strengths: { temperature: 0.6, maxOutputTokens: 400, outputFormat: 'medium', enforceLength: false },
+    character_weaknesses: { temperature: 0.6, maxOutputTokens: 400, outputFormat: 'medium', enforceLength: false },
+    character_arc: { temperature: 0.7, maxOutputTokens: 600, outputFormat: 'detailed', enforceLength: false },
 
-    // Beat agents - structured creativity for narrative
-    beat_opening_image: { temperature: 0.8, maxOutputTokens: 140, outputFormat: 'medium', enforceLength: false },
-    beat_theme_stated: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_setup: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_catalyst: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_debate: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_break_into_two: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_b_story: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_fun_and_games: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_midpoint: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_bad_guys_close_in: { temperature: 0.7, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_all_is_lost: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_dark_night_of_the_soul: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_break_into_three: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_finale: { temperature: 0.8, maxOutputTokens: 180, outputFormat: 'medium', enforceLength: false },
-    beat_final_image: { temperature: 0.8, maxOutputTokens: 140, outputFormat: 'medium', enforceLength: false },
+    // Beat agents - detailed narrative responses
+    beat_opening_image: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_theme_stated: { temperature: 0.7, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_setup: { temperature: 0.7, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_catalyst: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_debate: { temperature: 0.7, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_break_into_two: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_b_story: { temperature: 0.7, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_fun_and_games: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_midpoint: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_bad_guys_close_in: { temperature: 0.7, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_all_is_lost: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_dark_night_of_the_soul: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_break_into_three: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_finale: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
+    beat_final_image: { temperature: 0.8, maxOutputTokens: 800, outputFormat: 'detailed', enforceLength: false },
 };
 
 // Get configuration for a specific agent type
@@ -131,6 +131,93 @@ const BEAT_DEFINITIONS: Record<string, string> = {
 // Heuristic token estimation
 const estimateTokens = (text: string): number => Math.ceil((text || '').length / 4);
 const estimateObjectTokens = (obj: any): number => estimateTokens(JSON.stringify(obj));
+
+/**
+ * Build comprehensive project context for Claude
+ * Assembles all story data into a human-readable format
+ */
+export function buildFullProjectContext(
+    plot?: PlotDevelopment,
+    allCharacters?: CharacterDevelopment[],
+    allBeats?: StoryBeat[],
+    metadata?: StoryMetadata
+): string {
+    const sections: string[] = [];
+
+    // --- PROJECT OVERVIEW ---
+    const overviewLines: string[] = ['# PROJECT OVERVIEW'];
+    overviewLines.push(`Title: ${plot?.title || 'Untitled Project'}`);
+    overviewLines.push(`Genre: ${plot?.genre || 'Not defined'} | Tone: ${plot?.tone || 'Not defined'} | Setting: ${plot?.setting || 'Not defined'}`);
+    overviewLines.push(`Logline: ${plot?.logline || 'Not defined yet'}`);
+    overviewLines.push(`Theme: ${plot?.theme || 'Not defined'}`);
+    overviewLines.push(`Story Types: ${plot?.storyTypes?.join(', ') || 'Not selected'}`);
+
+    const targetAudience = [plot?.targetAudienceRating, plot?.targetAudienceDescription]
+        .filter(Boolean).join(' - ') || 'Not defined';
+    overviewLines.push(`Target Audience: ${targetAudience}`);
+    overviewLines.push(`Budget: ${plot?.budget || 'Not defined'}`);
+    sections.push(overviewLines.join('\n'));
+
+    // --- CHARACTERS ---
+    if (allCharacters && allCharacters.length > 0) {
+        const charLines: string[] = ['\n# CHARACTERS'];
+        for (const char of allCharacters) {
+            charLines.push(`\n## ${char.name || 'Unnamed'} - ${char.role || 'Unknown Role'}`);
+            charLines.push(`Description: ${char.description || 'Not defined'}`);
+            charLines.push(`Want: ${char.want || 'Not defined'}`);
+            charLines.push(`Need: ${char.need || 'Not defined'}`);
+            charLines.push(`Lie: ${char.lie || 'Not defined'}`);
+            charLines.push(`Ghost: ${char.ghost || 'Not defined'}`);
+            charLines.push(`Strengths: ${char.strengths || 'Not defined'}`);
+            charLines.push(`Weaknesses: ${char.weaknesses || 'Not defined'}`);
+            charLines.push(`Arc: ${char.arcSummary || char.characterArc || 'Not defined'}`);
+        }
+        sections.push(charLines.join('\n'));
+    }
+
+    // --- STORY BEATS ---
+    if (allBeats && allBeats.length > 0) {
+        const beatLines: string[] = ['\n# STORY BEATS (Save the Cat Structure)'];
+
+        // Define beat order for chronological display
+        const beatOrder = [
+            'Opening Image', 'Theme Stated', 'Setup', 'Catalyst', 'Debate',
+            'Break into Two', 'B Story', 'Fun and Games', 'Midpoint',
+            'Bad Guys Close In', 'All is Lost', 'Dark Night of the Soul',
+            'Break into Three', 'Finale', 'Final Image'
+        ];
+
+        for (const beatName of beatOrder) {
+            const beat = allBeats.find(b => b.beatName === beatName);
+            if (beat) {
+                // Trim to first 200 chars if too long
+                let content = beat.content || 'Not defined yet';
+                if (content.length > 200) {
+                    content = content.substring(0, 200) + '...';
+                }
+                beatLines.push(`\n## ${beatName}`);
+                beatLines.push(content);
+            }
+        }
+        sections.push(beatLines.join('\n'));
+    }
+
+    // --- PROJECT SUMMARIES ---
+    if (metadata) {
+        const summaryLines: string[] = ['\n# PROJECT SUMMARIES'];
+        if (plot?.foundationSummary) summaryLines.push(`Foundation Summary: ${plot.foundationSummary}`);
+        if (plot?.coreSummary) summaryLines.push(`Core Summary: ${plot.coreSummary}`);
+        if (metadata?.actOneSummary) summaryLines.push(`Act 1 Summary: ${metadata.actOneSummary}`);
+        if (metadata?.actTwoASummary) summaryLines.push(`Act 2A Summary: ${metadata.actTwoASummary}`);
+        if (metadata?.actTwoBSummary) summaryLines.push(`Act 2B Summary: ${metadata.actTwoBSummary}`);
+        if (metadata?.actThreeSummary) summaryLines.push(`Act 3 Summary: ${metadata.actThreeSummary}`);
+        if (summaryLines.length > 1) { // Check if there's more than just the header
+            sections.push(summaryLines.join('\n'));
+        }
+    }
+
+    return sections.join('\n\n');
+}
 
 /**
  * Select context fields for a specific micro-agent
@@ -343,19 +430,17 @@ CONTEXT:
 
 You will receive a userMessage in the context that tells you what they want.
 
-HARD RULES (IMPORTANT):
-- Your entire reply must be a SINGLE short paragraph (no line breaks).
-- Maximum 2 sentences.
-- Maximum about 35–40 words.
-- Do NOT write backstory, mini-scenes, or long emotional monologues.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant
+- Include specific examples where helpful
+- Ask clarifying questions if the user's request is vague
 
 TASK:
 Use the userMessage to decide what they need:
-- If they ask for NAME ideas, suggest 3 concise name options that fit the genre and role, in ONE short sentence, separated by commas.
-- If they ask about AGE (e.g. "How old should they be?"), give 1–2 concrete age or age-range suggestions plus a very brief reason, in 1–2 short sentences total.
-- If they ask for a DESCRIPTION, write 1–2 crisp sentences that could be pasted directly into a “Character Description” field (appearance, personality, and role), staying under about 35–40 words.
-
-Always obey the HARD RULES above.`;
+- If they ask for NAME ideas, suggest 3-5 name options that fit the genre and role, explaining the reasoning behind each choice.
+- If they ask about AGE, give concrete age or age-range suggestions with reasoning about how age affects their role in the story.
+- If they ask for a DESCRIPTION, provide a rich character description covering appearance, personality, mannerisms, and how they fit into the story world.`;
                 break;
 
             case 'want':
@@ -371,15 +456,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (other characters, beats, theme)
+- Include specific examples or mini-scenes where helpful
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-State ${charName}'s clear, visible external goal in this story, in plain language that fits in a "Want (External Goal)" field.
-Make it specific, hard to achieve, and clearly capable of creating conflict with other characters or the world.`;
+Define ${charName}'s clear, visible external goal. Write 2-3 paragraphs:
+1. State the Want clearly and specifically
+2. Explain how it creates conflict with other story elements or characters
+3. Suggest 1-2 specific scenes where this Want could drive action
+
+Make the Want tangible, hard to achieve, and create compelling conflict.`;
                 break;
 
             case 'need':
@@ -393,15 +482,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (theme, other characters)
+- Include specific examples or mini-scenes where helpful
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Describe what ${charName} secretly needs to learn, accept, or become in order to be whole.
-Make this Need is different from their Want and creates inner conflict, especially around the story's theme.`;
+Define what ${charName} secretly needs to learn, accept, or become. Write 2-3 paragraphs:
+1. State the Need clearly and how it differs from their Want
+2. Explain the inner conflict this creates, especially regarding the theme
+3. Suggest moments in the story where this Need could become visible
+
+Make the Need feel psychologically true and dramatically compelling.`;
                 break;
 
             case 'lie':
@@ -415,15 +508,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (Ghost, Need, theme)
+- Include specific examples of how this Lie manifests in behavior
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Describe the core false belief ${charName} holds about themself, other people, or the world that blocks their growth.
-Make this Lie emotionally understandable but clearly wrong in a way that will drive bad decisions and conflict throughout the story.`;
+Define the core false belief ${charName} holds. Write 2-3 paragraphs:
+1. State the Lie clearly (about themselves, others, or the world)
+2. Explain why this belief is emotionally understandable given their Ghost
+3. Show how this Lie will drive bad decisions and conflict throughout the story
+
+Make the Lie feel psychologically real but clearly wrong from the audience's perspective.`;
                 break;
 
             case 'ghost':
@@ -436,15 +533,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (Lie, Want, Need)
+- Include vivid details that bring the past wound to life
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Describe one clear past event or situation that explains why ${charName} believes their current Lie.
-Make it simple but specific (who, what, where) and show how it still echoes into the present story, especially in how they chase their Want and avoid their Need.`;
+Define ${charName}'s Ghost (the past wound). Write 2-3 paragraphs:
+1. Describe the specific event or situation (who, what, when, where)
+2. Explain how this created their Lie and defensive patterns
+3. Show how echoes of this wound appear in the present story
+
+Make the Ghost feel like a real formative experience that still haunts them.`;
                 break;
 
             case 'strengths':
@@ -456,15 +557,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Strengths = ${charStrengths || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (Want, other characters)
+- Include examples of how strengths manifest in specific situations
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Describe 2–4 key strengths, skills, or resources that help ${charName} pursue their Want and navigate the plot.
-Choose strengths that can also create complications, rivalries, or moral dilemmas — not just neutral "good" traits.`;
+Define ${charName}'s key strengths. Write 2-3 paragraphs:
+1. List 3-5 strengths, skills, or resources with brief explanations
+2. Show how each strength helps them pursue their Want
+3. Explain how these strengths could also create complications, rivalries, or moral dilemmas
+
+Choose strengths that are dramatically useful but also have a shadow side.`;
                 break;
 
             case 'weaknesses':
@@ -476,15 +581,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Existing notes: Weaknesses = ${charWeaknesses || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (Lie, Ghost, relationships)
+- Include examples of how weaknesses manifest in behavior
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Describe 2–4 key weaknesses, flaws, or vulnerabilities that repeatedly get ${charName} into trouble.
-Tie these flaws to their Lie and Ghost so they feel psychologically consistent, and make sure they interfere with their Want and relationships.`;
+Define ${charName}'s key weaknesses. Write 2-3 paragraphs:
+1. List 3-5 weaknesses, flaws, or vulnerabilities with explanations
+2. Connect each flaw to their Lie and Ghost for psychological consistency
+3. Show how these weaknesses interfere with their Want and relationships
+
+Make the flaws feel like natural consequences of their backstory.`;
                 break;
 
             case 'arc':
@@ -497,15 +606,19 @@ CONTEXT:
 - Character: ${charName}, the ${charRole}${charArchetype ? ` (${charArchetype} archetype)` : ''}
 - Notes: Want = ${contextFields.currentWant || 'not defined yet'}, Need = ${contextFields.currentNeed || 'not defined yet'}, Lie = ${contextFields.currentLie || 'not defined yet'}, Ghost = ${contextFields.currentGhost || 'not defined yet'}, Strengths = ${charStrengths || 'not defined yet'}, Weaknesses = ${charWeaknesses || 'not defined yet'}, Arc Summary = ${charArcSummary || 'not defined yet'}
 
-HARD RULES:
-- Your entire reply must be ONE short paragraph (no line breaks).
-- Maximum 2–3 sentences.
-- Maximum about 45–60 words.
-- Do NOT write an opening scene, worldbuilding prose, or a long backstory.
+RESPONSE GUIDELINES:
+- Write 2-4 paragraphs naturally (conversational but thorough)
+- Reference other parts of the project when relevant (all character elements, beats)
+- Include specific moments that could mark key transformation points
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Describe how ${charName} changes from the beginning to the end of the story.
-Show how their Want, Need, Lie, and Ghost collide to create change, and briefly state how they end up different by the finale.`;
+Define ${charName}'s transformation arc. Write 2-3 paragraphs:
+1. Describe who they are at the beginning (Want, Lie, defensive patterns)
+2. Explain the collision between Want, Need, Lie, and Ghost that forces change
+3. Show who they become by the finale and what they've learned
+
+Make the arc feel earned through story events, not just stated.`;
                 break;
 
             default:
@@ -586,16 +699,17 @@ CONTEXT:
 - Title: ${title !== 'Untitled Project' ? `"${title}"` : 'Untitled Project'}
 - Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 
-HARD RULES:
-- Give exactly 2 visual Opening Image ideas, numbered 1) and 2).
-- Each idea MUST be a single, self-contained sentence (no line breaks).
-- Maximum about 25–35 words per idea.
-- Focus ONLY on what we can SEE and HEAR on screen (no long internal monologue or backstory).
-- Show the hero's status quo "before" the story truly begins.
+RESPONSE GUIDELINES:
+- Suggest 2-3 strong approaches for this beat
+- For each approach, write 2-3 paragraphs explaining:
+  • The core visual moment (what we SEE and HEAR)
+  • How it establishes the protagonist's "before" state
+  • A mini-scene example showing it in action
+- Focus on visual storytelling that hints at the coming conflict and theme
 
 TASK:
-Suggest 2 strong Opening Images that visually capture the protagonist's everyday world and flaw in this story, in a way that hints at the coming conflict and theme.`;
-            maxOutputTokens = 140;
+Suggest Opening Images that visually capture the protagonist's everyday world and flaw, setting up the transformation to come.`;
+            maxOutputTokens = 800;
         } else {
             // Generic Prompt for other beats
             systemPrompt = `You are a screenplay structure expert specializing in the Save the Cat 15-beat story template.
@@ -615,15 +729,18 @@ CONTEXT:
 - Story types: ${storyTypesStr || 'Not selected yet'}
 - Previous beat: ${contextFields.previousBeat || 'None yet'}
 
-HARD RULES:
-- Give exactly 2 distinct ideas for this beat, numbered 1) and 2).
-- Each idea must be 1–2 sentences.
-- Total response must stay under about 120–150 words.
-- Do NOT write full scenes or long, flowery description. Keep it beat-level: clear actions or moments.
+RESPONSE GUIDELINES:
+- Suggest 2-3 strong approaches for this beat
+- For each approach, write 2-3 paragraphs explaining:
+  • The core dramatic moment
+  • How it connects to the character arc and theme
+  • A mini-scene example showing it in action
+- Reference earlier beats naturally (e.g., "Building on the Catalyst...")
+- Ask clarifying questions if the user's request is vague
 
 TASK:
-Using the beat definition and the story context, suggest 2 strong ways this "${displayBeatName}" beat could play out that move the plot forward and support the protagonist's arc.`;
-            maxOutputTokens = 180;
+Using the beat definition and story context, suggest ways this "${displayBeatName}" beat could play out that move the plot forward and deepen the protagonist's arc.`;
+            maxOutputTokens = 800;
         }
     }
 
