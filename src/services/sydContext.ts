@@ -7,6 +7,7 @@
  */
 
 import { PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata } from '../types';
+import { COMMUNICATION_PROTOCOL } from './sydCommunicationProtocol';
 
 // All micro-agent types
 export type SydAgentType =
@@ -28,6 +29,7 @@ export type SydAgentType =
     | 'beat_setup'
     | 'beat_catalyst'
     | 'beat_debate'
+    | 'story_notes'
     | 'beat_break_into_two'
     | 'beat_b_story'
     | 'beat_fun_and_games'
@@ -700,6 +702,8 @@ CONTEXT:
 - Logline: ${logline !== 'No logline defined yet' ? logline : 'Not defined yet'}
 
 RESPONSE GUIDELINES:
+- If user has existing ideas, REFINE and OPTIMIZE them - don't reinvent
+- Ask clarifying questions if the user's request is vague
 - Suggest 2-3 strong approaches for this beat
 - For each approach, write 2-3 paragraphs explaining:
   • The core visual moment (what we SEE and HEAR)
@@ -708,7 +712,7 @@ RESPONSE GUIDELINES:
 - Focus on visual storytelling that hints at the coming conflict and theme
 
 TASK:
-Suggest Opening Images that visually capture the protagonist's everyday world and flaw, setting up the transformation to come.`;
+Help the user develop their Opening Image that visually captures the protagonist's everyday world and flaw, setting up the transformation to come.`;
             maxOutputTokens = 800;
         } else {
             // Generic Prompt for other beats
@@ -730,18 +734,42 @@ CONTEXT:
 - Previous beat: ${contextFields.previousBeat || 'None yet'}
 
 RESPONSE GUIDELINES:
+- If user has existing ideas, REFINE and OPTIMIZE them - don't reinvent
+- Ask clarifying questions if the user's request is vague
 - Suggest 2-3 strong approaches for this beat
 - For each approach, write 2-3 paragraphs explaining:
   • The core dramatic moment
   • How it connects to the character arc and theme
   • A mini-scene example showing it in action
 - Reference earlier beats naturally (e.g., "Building on the Catalyst...")
-- Ask clarifying questions if the user's request is vague
 
 TASK:
-Using the beat definition and story context, suggest ways this "${displayBeatName}" beat could play out that move the plot forward and deepen the protagonist's arc.`;
+Help the user develop their "${displayBeatName}" beat in ways that move the plot forward and deepen the protagonist's arc.`;
             maxOutputTokens = 800;
         }
+    }
+
+    // --------------------------------------------------------
+    // 4. STORY NOTES AGENT
+    // --------------------------------------------------------
+    else if (agentType === 'story_notes') {
+        systemPrompt = `You are SYD, a professional screenwriting assistant helping with story development notes.
+
+Your role:
+- Help organize and develop story ideas
+- Suggest connections between notes
+- Assist with research and world-building
+- Brainstorm plot points and character arcs
+- Provide feedback on story structure
+
+Context available:
+- Current note: ${contextFields.currentNoteTitle || 'Untitled'}
+- All notes: ${contextFields.allNoteTitles || 'None'}
+- Note content: ${contextFields.currentNoteContent || 'Empty'}
+
+Be concise, actionable, and focused on enhancing the story.`;
+
+        maxOutputTokens = 800;
     }
 
     // Default Fallback
@@ -749,14 +777,18 @@ Using the beat definition and story context, suggest ways this "${displayBeatNam
         systemPrompt = "You are Syd, a helpful screenwriting assistant. Analyze the context and provide concise suggestions.";
     }
 
-    const estimatedTokens = estimateObjectTokens(contextFields) + estimateTokens(systemPrompt);
+    // Prepend the communication protocol to ALL agent system prompts
+    // This ensures every agent follows the listening-first rules
+    const enhancedSystemPrompt = COMMUNICATION_PROTOCOL + systemPrompt;
+
+    const estimatedTokens = estimateObjectTokens(contextFields) + estimateTokens(enhancedSystemPrompt);
 
     // Get agent-specific configuration
     const config = getAgentConfig(agentType);
 
     return {
         agentType,
-        systemPrompt,
+        systemPrompt: enhancedSystemPrompt,
         contextFields,
         estimatedTokens,
         maxOutputTokens: config.maxOutputTokens,

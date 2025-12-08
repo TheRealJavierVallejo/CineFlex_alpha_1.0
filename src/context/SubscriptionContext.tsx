@@ -15,18 +15,23 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Default to 'pro' so you (the dev) have access, but can switch to 'free' to test
-  const [tier, setTierState] = useState<UserTier>('pro'); 
+  const [tier, setTierState] = useState<UserTier>('pro');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     // Load saved preference from local storage
     const saved = localStorage.getItem('cinesketch_tier') as UserTier;
+    console.log('[SUBSCRIPTION] Loading tier from localStorage:', saved, '| Default:', 'pro');
     if (saved) {
       setTierState(saved);
+      console.log('[SUBSCRIPTION] Tier set from localStorage:', saved);
+    } else {
+      console.log('[SUBSCRIPTION] No saved tier, using default: pro');
     }
   }, []);
 
   const setTier = (newTier: UserTier) => {
+    console.log('[SUBSCRIPTION] Tier changing from', tier, 'to', newTier);
     setTierState(newTier);
     localStorage.setItem('cinesketch_tier', newTier);
   };

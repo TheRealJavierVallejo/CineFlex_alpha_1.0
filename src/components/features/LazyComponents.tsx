@@ -14,6 +14,7 @@ export const ProjectSettings = lazy(() => import('./ProjectSettings').then(m => 
 export const ShotList = lazy(() => import('./ShotList').then(m => ({ default: m.ShotList })));
 export const ScriptPage = lazy(() => import('./ScriptPage').then(m => ({ default: m.ScriptPage })));
 export const ProductionSpreadsheet = lazy(() => import('./ProductionSpreadsheet').then(m => ({ default: m.ProductionSpreadsheet })));
+export const StoryNotesEditor = lazy(() => import('./StoryNotesEditor').then(m => ({ default: m.StoryNotesEditor })));
 
 /**
  * Loading fallback wrapper for lazy-loaded components

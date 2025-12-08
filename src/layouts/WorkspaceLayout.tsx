@@ -7,7 +7,7 @@ import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
 import SaveStatusIndicator from '../components/ui/SaveStatusIndicator';
-import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film, Sparkles, GraduationCap } from 'lucide-react';
+import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film, Sparkles, GraduationCap, BookOpen } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
@@ -326,6 +326,7 @@ export const WorkspaceLayout: React.FC = () => {
                     {/* Segmented Control Switcher */}
                     <nav className="flex items-center p-1 bg-surface border border-border rounded-sm gap-1">
                         <SegmentedTab to="script" icon={FileText} label="Script" />
+                        <SegmentedTab to="story-notes" icon={BookOpen} label="Story Notes" />
                         <SegmentedTab to="timeline" icon={Clapperboard} label="Timeline" />
                     </nav>
 

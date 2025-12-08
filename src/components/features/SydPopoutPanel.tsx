@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { SydContext } from '../../services/sydContext';
 import { classifyGeminiError, estimateConversationTokens } from '../../services/gemini';
 import { chatWithClaudeStreaming, classifyClaudeError, estimateClaudeConversationTokens } from '../../services/claude';
+import { detectFrustrationPatterns, buildEnhancedSystemPrompt } from '../../services/sydCommunicationProtocol';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 
@@ -269,11 +270,34 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
             // For Pro tier, ALWAYS use Claude streaming (regardless of context state)
             if (tier === 'pro') {
+                console.log('[SYD AGENT - PRO PATH] Using Claude streaming for Pro tier');
+                console.log('[SYD AGENT - PRO PATH] Context system prompt exists:', !!context?.systemPrompt);
+                console.log('[SYD AGENT - PRO PATH] Full context object:', context);
+
                 // Fallbacks for missing context values
-                const systemPrompt = context?.systemPrompt || 'You are Syd, a professional screenwriting assistant helping with screenplay development.';
+                const baseSystemPrompt = context?.systemPrompt || 'You are Syd, a professional screenwriting assistant helping with screenplay development.';
                 const fullProjectContext = context?.contextFields?.fullProjectContext || '';
                 const temperature = context?.temperature || 0.7;
                 const maxTokens = context?.maxOutputTokens || 800;
+
+                // Analyze conversation for frustration patterns
+                // This detects if user has been correcting the agent or seems frustrated
+                const frustrationAnalysis = detectFrustrationPatterns(
+                    updatedMessages.map(m => ({ role: m.role, content: m.content }))
+                );
+
+                // Log frustration detection for debugging
+                if (frustrationAnalysis.shouldInjectAlert) {
+                    console.log('[SYD AGENT - PRO PATH] Frustration detected:', {
+                        apologies: frustrationAnalysis.recentApologyCount,
+                        keywords: frustrationAnalysis.frustrationKeywords
+                    });
+                }
+
+                // Build enhanced system prompt (adds frustration alert if needed)
+                const systemPrompt = buildEnhancedSystemPrompt(baseSystemPrompt, frustrationAnalysis);
+
+                console.log('[SYD AGENT - PRO PATH] Using systemPrompt:', systemPrompt.substring(0, 100) + '...');
 
                 const assistantMsgId = crypto.randomUUID();
                 const assistantMsg: ChatMessage = {
@@ -333,7 +357,9 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                     ));
                 }
             } else {
-                // Free tier or no context: use non-streaming via callback
+                // Free tier ONLY: use non-streaming via callback
+                console.log('[SYD AGENT - FREE PATH] Using local model callback for Free tier');
+                console.log('[SYD AGENT - FREE PATH] Tier value was:', tier, '(expected: free)');
                 const response = await onSendMessage(inputValue, conversationHistory);
 
                 const assistantMsg: ChatMessage = {

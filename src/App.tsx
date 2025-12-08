@@ -17,7 +17,8 @@ import {
     ScriptPage,
     ProductionSpreadsheet,
     ProjectLibrary,
-    LazyWrapper
+    LazyWrapper,
+    StoryNotesEditor
 } from './components/features/LazyComponents';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 
@@ -59,6 +60,16 @@ const ScriptEditorPage = () => {
         <ErrorBoundary>
             <LazyWrapper>
                 <ScriptPage />
+            </LazyWrapper>
+        </ErrorBoundary>
+    );
+};
+
+const StoryNotesPage = () => {
+    return (
+        <ErrorBoundary>
+            <LazyWrapper>
+                <StoryNotesEditor />
             </LazyWrapper>
         </ErrorBoundary>
     );
@@ -170,6 +181,7 @@ const App: React.FC = () => {
                             <Route index element={<DashboardPage />} />
                             <Route path="timeline" element={<TimelinePage />} />
                             <Route path="script" element={<ScriptEditorPage />} />
+                            <Route path="story-notes" element={<StoryNotesPage />} />
                             <Route path="assets" element={<AssetsPage />} />
                             <Route path="settings" element={<SettingsPage />} />
                         </Route>

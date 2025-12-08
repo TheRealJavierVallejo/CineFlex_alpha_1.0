@@ -155,7 +155,7 @@ export interface PlotDevelopment {
   storyTypes?: string[];
   setting?: string; // NEW
   budget?: string;  // NEW
-  
+
   // NEW: Target Audience
   targetAudienceRating?: string;      // Dropdown (PG, R, etc.)
   targetAudienceDescription?: string; // Textarea (Who is this for?)
@@ -199,18 +199,18 @@ export interface CharacterDevelopment {
   personality?: string; // Legacy
   archetypes?: string[];
   archetype?: string;   // New: Dropdown selection (or custom)
-  
+
   want?: string;        // External goal
   need?: string;        // Internal growth
   lie?: string;         // False belief
   ghost?: string;       // Past trauma
-  
+
   strengths?: string;   // New: Skills/Talents
   weaknesses?: string;  // New: Flaws
-  
+
   characterArc?: string; // Legacy arc field
   arcSummary?: string;   // New: "How they change"
-  
+
   notes?: string;
 }
 
@@ -270,6 +270,22 @@ export interface Project {
   characterDevelopments?: CharacterDevelopment[];
   storyBeats?: StoryBeat[];
   storyMetadata?: StoryMetadata;
+  storyNotes?: StoryNotesData;
+}
+
+// 📝 STORY NOTES: Freeform notes for story development
+export interface StoryNote {
+  id: string;
+  title: string;
+  content: string; // Plain text or basic markdown
+  createdAt: number;
+  updatedAt: number;
+  order: number; // For sorting in list
+}
+
+export interface StoryNotesData {
+  notes: StoryNote[];
+  activeNoteId: string | null;
 }
 
 // 📤 EXPORT: The format used when you save a file to your computer

@@ -4,7 +4,7 @@
  * NOW INCLUDES: Garbage Collection, Schema Migration, and Sanitization
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, StoryNote, StoryNotesData } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
 import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema } from './schemas';
@@ -297,6 +297,7 @@ export const deleteProject = async (projectId: string) => {
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'characterDevelopments'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'storyBeats'));
   await dbDelete(STORE_NAME, getStorageKey(projectId, 'storyMetadata'));
+  await dbDelete(STORE_NAME, getStorageKey(projectId, 'storyNotes'));
 
   const list = getProjectsList();
   const updatedList = list.filter(p => p.id !== projectId);
@@ -503,7 +504,53 @@ export const getStoryMetadata = async (projectId: string): Promise<StoryMetadata
 
 export const saveStoryMetadata = async (projectId: string, metadata: StoryMetadata) => {
   await dbSet(STORE_NAME, getStorageKey(projectId, 'storyMetadata'), metadata);
-};;
+};
+
+// --- STORY NOTES ---
+
+export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> => {
+  const data = await dbGet<StoryNotesData>(STORE_NAME, getStorageKey(projectId, 'storyNotes'));
+  return data || { notes: [], activeNoteId: null };
+};
+
+export const saveStoryNotes = async (projectId: string, data: StoryNotesData): Promise<void> => {
+  await dbSet(STORE_NAME, getStorageKey(projectId, 'storyNotes'), data);
+};
+
+export const createStoryNote = async (projectId: string): Promise<StoryNote> => {
+  const notesData = await getStoryNotes(projectId);
+  const newNote: StoryNote = {
+    id: crypto.randomUUID(),
+    title: 'Untitled Note',
+    content: '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    order: notesData.notes.length
+  };
+  notesData.notes.push(newNote);
+  notesData.activeNoteId = newNote.id;
+  await saveStoryNotes(projectId, notesData);
+  return newNote;
+};
+
+export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>): Promise<void> => {
+  const notesData = await getStoryNotes(projectId);
+  notesData.notes = notesData.notes.map(note =>
+    note.id === noteId
+      ? { ...note, ...updates, updatedAt: Date.now() }
+      : note
+  );
+  await saveStoryNotes(projectId, notesData);
+};
+
+export const deleteStoryNote = async (projectId: string, noteId: string): Promise<void> => {
+  const notesData = await getStoryNotes(projectId);
+  notesData.notes = notesData.notes.filter(n => n.id !== noteId);
+  if (notesData.activeNoteId === noteId) {
+    notesData.activeNoteId = notesData.notes[0]?.id || null;
+  }
+  await saveStoryNotes(projectId, notesData);
+};
 
 // --- GARBAGE COLLECTION ---
 
