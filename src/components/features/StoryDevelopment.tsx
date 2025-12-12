@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronRight, Lock, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, Lock, Check, BrainCircuit } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -183,7 +183,7 @@ export const StoryDevelopment: React.FC = () => {
             if (!isReady) {
                 if (isModelCached) {
                     // Cached but cold: Start warming up and proceed to open UI (UI will show "Warming up")
-                    initModel(); 
+                    initModel();
                 } else {
                     // Not cached: Must download first. Stop and show modal.
                     setPendingSydRequest({ agentType, fieldId, anchorEl, charId });
@@ -230,7 +230,7 @@ export const StoryDevelopment: React.FC = () => {
 
     return (
         <>
-            <ModelDownloadModal 
+            <ModelDownloadModal
                 isOpen={showDownloadModal}
                 onClose={() => { setShowDownloadModal(false); setPendingSydRequest(null); }}
                 onConfirm={() => {
@@ -304,7 +304,7 @@ export const StoryDevelopment: React.FC = () => {
                                 value={plot.logline || ''}
                                 onChange={(val) => handlePlotChange({ logline: val })}
                                 multiline={true}
-                                minHeight="50px" {/* Adjusted minHeight */}
+                                minHeight="50px"
                                 onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
                                 isActiveSyd={activeSydField === 'logline'}
                                 placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
@@ -315,7 +315,7 @@ export const StoryDevelopment: React.FC = () => {
                     {/* 2. CHARACTERS */}
                     <CollapsibleSection
                         title="Cast & Character Arcs"
-                        defaultExpanded={true} {/* Set to true */}
+                        defaultExpanded={true}
                         rightElement={
                             <div className="flex gap-2">
                                 <button
@@ -332,7 +332,7 @@ export const StoryDevelopment: React.FC = () => {
                                 </button>
                             </div>
                         }
-                        // isLocked={!progress.coreComplete} // REMOVED LOCKING
+                    // isLocked={!progress.coreComplete} // REMOVED LOCKING
                     >
                         <div className="space-y-4 pt-4">
                             {characters.length === 0 && (
@@ -360,8 +360,8 @@ export const StoryDevelopment: React.FC = () => {
                     {/* 3. STORY STRUCTURE */}
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
-                        defaultExpanded={true} {/* Set to true */}
-                        // isLocked={!progress.charactersComplete} // REMOVED LOCKING
+                        defaultExpanded={true}
+                    // isLocked={!progress.charactersComplete} // REMOVED LOCKING
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
@@ -375,17 +375,17 @@ export const StoryDevelopment: React.FC = () => {
                             ))}
                         </div>
                     </CollapsibleSection>
-                    
+
                     {/* 4. BRAINSTORMING (Free form) */}
                     <CollapsibleSection title="Brainstorming Notes" className="border-none">
-                         <div className="pt-4">
-                             <textarea 
+                        <div className="pt-4">
+                            <textarea
                                 className="w-full bg-surface-secondary/50 border border-border rounded-lg p-4 min-h-[200px] text-sm text-text-primary focus:border-primary focus:outline-none transition-colors leading-relaxed placeholder:text-text-muted/30"
                                 placeholder="Free space for random ideas, dialogue snippets, or notes..."
                                 onChange={(e) => handlePlotChange({ notes: e.target.value })}
                                 value={plot.notes || ''}
-                             />
-                         </div>
+                            />
+                        </div>
                     </CollapsibleSection>
                 </div>
             </div>

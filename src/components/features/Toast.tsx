@@ -35,7 +35,8 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => onClose(), 3000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast.id]); // Only depend on toast.id, not onClose which changes every render
 
   const getStyles = () => {
     switch (toast.type) {

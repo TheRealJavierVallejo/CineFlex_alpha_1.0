@@ -14,7 +14,8 @@ export const OnboardingTour: React.FC = () => {
   useEffect(() => {
     const hasSeen = localStorage.getItem('cinesketch_tour_complete');
     if (!hasSeen) {
-      setTimeout(() => setIsOpen(true), 1000);
+      const timer = setTimeout(() => setIsOpen(true), 1000);
+      return () => clearTimeout(timer);
     }
   }, []);
 

@@ -21,6 +21,7 @@ export function useAutoSave<T>(
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
     const isMountedRef = useRef(true);
     const previousDataRef = useRef<T>(data);
+    const statusResetTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Debounced save function
     const debouncedSave = useRef(
@@ -39,10 +40,14 @@ export function useAutoSave<T>(
                     onSuccess?.();
 
                     // Reset to idle after 2 seconds
-                    setTimeout(() => {
+                    if (statusResetTimerRef.current) {
+                        clearTimeout(statusResetTimerRef.current);
+                    }
+                    statusResetTimerRef.current = setTimeout(() => {
                         if (isMountedRef.current) {
                             setSaveStatus('idle');
                         }
+                        statusResetTimerRef.current = null;
                     }, 2000);
                 }
             } catch (error) {
@@ -79,10 +84,14 @@ export function useAutoSave<T>(
                 setLastSavedAt(new Date());
                 onSuccess?.();
 
-                setTimeout(() => {
+                if (statusResetTimerRef.current) {
+                    clearTimeout(statusResetTimerRef.current);
+                }
+                statusResetTimerRef.current = setTimeout(() => {
                     if (isMountedRef.current) {
                         setSaveStatus('idle');
                     }
+                    statusResetTimerRef.current = null;
                 }, 2000);
             }
         } catch (error) {
@@ -111,10 +120,16 @@ export function useAutoSave<T>(
         };
     }, [saveNow]);
 
-    // Cleanup on unmount - Force save if pending
+    // Cleanup on unmount - Force save if pending and clear timers
     useEffect(() => {
         return () => {
             isMountedRef.current = false;
+
+            // Clear any pending status reset timer
+            if (statusResetTimerRef.current) {
+                clearTimeout(statusResetTimerRef.current);
+            }
+
             // If we have unsaved changes (status is saving or idle with pending debounce), try to save
             // Note: We can't guarantee async completion on unmount, but we can trigger the request.
             // For critical data, visibilitychange is more reliable.

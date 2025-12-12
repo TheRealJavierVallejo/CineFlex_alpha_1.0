@@ -106,13 +106,21 @@ export function getElementStyles(
 
 /**
  * Renders a script element with appropriate styling and visual page breaks
+ *
+ * @param props - Slate render element props
+ * @param isLightMode - Whether light theme is active
+ * @param isFirstOnPage - Whether this element starts a new page (affects top spacing)
+ * @param isLastOnPage - Whether this element ends a page
+ * @param pageNumber - The page number this element is on
+ * @param shouldShowPageBreak - Whether to render the "Page X" visual separator
  */
 export function renderScriptElement(
     props: any,
     isLightMode: boolean,
     isFirstOnPage: boolean,
     isLastOnPage: boolean,
-    pageNumber: number = 1
+    pageNumber: number = 1,
+    shouldShowPageBreak: boolean = false
 ) {
     const { attributes, children, element } = props;
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
@@ -120,7 +128,7 @@ export function renderScriptElement(
     return (
         <>
             {/* Visual Page Break - Clean/Minimal Style */}
-            {isFirstOnPage && pageNumber > 1 && (
+            {shouldShowPageBreak && (
                 <div 
                     contentEditable={false}
                     className="pointer-events-none select-none flex flex-col items-center justify-center"

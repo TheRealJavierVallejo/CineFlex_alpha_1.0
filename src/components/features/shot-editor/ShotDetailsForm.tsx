@@ -60,7 +60,7 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                         onClick={() => setViewMode('base')}
                         className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md transition-colors flex items-center justify-center gap-2 ${viewMode === 'base' ? 'bg-background text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
                     >
-                         {tier === 'free' && <GraduationCap className="w-3 h-3" />} Base
+                        {tier === 'free' && <GraduationCap className="w-3 h-3" />} Base
                     </button>
                     <button
                         onClick={() => setViewMode('pro')}
@@ -72,7 +72,7 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-surface relative">
-                
+
                 {/* === BASE MODE (FREE FEATURES ONLY) === */}
                 {viewMode === 'base' && (
                     <div className="p-6 space-y-6 animate-in fade-in slide-in-from-left-2 duration-200">
@@ -91,14 +91,15 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                         </div>
 
                         <div>
-                             <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Aspect Ratio</label>
-                             <select
-                                 value={selectedAspectRatio}
-                                 onChange={(e) => setSelectedAspectRatio(e.target.value)}
-                                 className="studio-input"
-                             >
-                                 {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
-                             </select>
+                            <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Aspect Ratio</label>
+                            <select
+                                aria-label="Aspect Ratio"
+                                value={selectedAspectRatio}
+                                onChange={(e) => setSelectedAspectRatio(e.target.value)}
+                                className="studio-input"
+                            >
+                                {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
                         </div>
 
                         <div>
@@ -117,7 +118,7 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                 {/* === PRO MODE (FULL STUDIO) === */}
                 {viewMode === 'pro' && (
                     <div className={`relative ${tier === 'free' ? 'opacity-30 pointer-events-none select-none filter blur-[1px] overflow-hidden h-full' : ''}`}>
-                        
+
                         {/* 1. CORE DETAILS */}
                         <CollapsibleSection title="Shot Details" icon={<FileText className="w-4 h-4 text-primary" />} defaultOpen={true}>
                             <div className="space-y-4">
@@ -135,6 +136,7 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                                     <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Location / Set</label>
                                     <div className="relative">
                                         <select
+                                            aria-label="Location"
                                             value={shot.locationId || ''}
                                             onChange={(e) => setShot(prev => ({ ...prev, locationId: e.target.value || undefined }))}
                                             className="studio-input appearance-none pr-8 cursor-pointer"
@@ -154,19 +156,21 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                         <CollapsibleSection title="Camera & Style" icon={<Camera className="w-4 h-4 text-primary" />} defaultOpen={true}>
                             <div className="space-y-4">
                                 <div>
-                                     <label className="block text-xs font-semibold text-text-secondary mb-2">Aspect Ratio</label>
-                                     <select
-                                         value={selectedAspectRatio}
-                                         onChange={(e) => setSelectedAspectRatio(e.target.value)}
-                                         className="studio-input"
-                                     >
-                                         {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
-                                     </select>
-                                 </div>
+                                    <label className="block text-xs font-semibold text-text-secondary mb-2">Aspect Ratio</label>
+                                    <select
+                                        aria-label="Aspect Ratio"
+                                        value={selectedAspectRatio}
+                                        onChange={(e) => setSelectedAspectRatio(e.target.value)}
+                                        className="studio-input"
+                                    >
+                                        {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
 
                                 <div>
                                     <label className="block text-xs font-semibold text-text-secondary mb-2">Resolution</label>
-                                    <select 
+                                    <select
+                                        aria-label="Resolution"
                                         value={selectedResolution}
                                         onChange={(e) => setSelectedResolution(e.target.value)}
                                         className="studio-input"
@@ -177,7 +181,8 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
 
                                 <div>
                                     <label className="block text-xs font-semibold text-text-secondary mb-2">Shot Type</label>
-                                    <select 
+                                    <select
+                                        aria-label="Shot Type"
                                         value={shot.shotType}
                                         onChange={(e) => setShot(prev => ({ ...prev, shotType: e.target.value }))}
                                         className="studio-input"
@@ -188,7 +193,8 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
 
                                 <div>
                                     <label className="block text-xs font-semibold text-text-secondary mb-2">Time of Day</label>
-                                    <select 
+                                    <select
+                                        aria-label="Time of Day"
                                         value={shot.timeOfDay || ''}
                                         onChange={(e) => setShot(prev => ({ ...prev, timeOfDay: e.target.value || undefined }))}
                                         className="studio-input"
@@ -202,30 +208,30 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
 
                         {/* 3. CAST */}
                         <CollapsibleSection title="Cast" icon={<Users className="w-4 h-4 text-primary" />} defaultOpen={true}>
-                             <div className="p-4 bg-surface-secondary border border-border rounded text-xs text-text-secondary space-y-2">
-                                 {characters.length === 0 ? (
-                                     <div className="text-center text-text-muted italic">No characters in project</div>
-                                 ) : (
-                                     <div className="grid grid-cols-2 gap-2">
-                                         {characters.map(char => (
-                                             <label key={char.id} className="flex items-center gap-2 p-2 bg-background border border-border rounded cursor-pointer hover:border-primary">
-                                                 <input 
-                                                     type="checkbox" 
-                                                     checked={shot.characterIds.includes(char.id)}
-                                                     onChange={(e) => {
-                                                         const newIds = e.target.checked 
+                            <div className="p-4 bg-surface-secondary border border-border rounded text-xs text-text-secondary space-y-2">
+                                {characters.length === 0 ? (
+                                    <div className="text-center text-text-muted italic">No characters in project</div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {characters.map(char => (
+                                            <label key={char.id} className="flex items-center gap-2 p-2 bg-background border border-border rounded cursor-pointer hover:border-primary">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={shot.characterIds.includes(char.id)}
+                                                    onChange={(e) => {
+                                                        const newIds = e.target.checked
                                                             ? [...shot.characterIds, char.id]
                                                             : shot.characterIds.filter(id => id !== char.id);
-                                                         setShot(prev => ({ ...prev, characterIds: newIds }));
-                                                     }}
-                                                     className="accent-primary"
-                                                 />
-                                                 <span className="truncate">{char.name}</span>
-                                             </label>
-                                         ))}
-                                     </div>
-                                 )}
-                             </div>
+                                                        setShot(prev => ({ ...prev, characterIds: newIds }));
+                                                    }}
+                                                    className="accent-primary"
+                                                />
+                                                <span className="truncate">{char.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </CollapsibleSection>
 
                         {/* 4. ADVANCED */}

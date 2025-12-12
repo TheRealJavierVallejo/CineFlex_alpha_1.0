@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Outlet, useParams, useNavigate, useLocation, useOutletContext, NavLink } from 'react-router-dom';
+import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
@@ -7,13 +7,15 @@ import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
 import SaveStatusIndicator from '../components/ui/SaveStatusIndicator';
-import { Box, Loader2, LayoutGrid, Clapperboard, FileText, Film, Sparkles, GraduationCap, BookOpen } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parseScript } from '../services/scriptParser';
 import { syncScriptToScenes } from '../services/scriptUtils';
 import { StorageWarning } from '../components/ui/StorageWarning';
-import { useSubscription } from '../context/SubscriptionContext';
+import { Sidebar } from '../components/layout/Sidebar';
+import { ScriptChat } from '../components/features/ScriptChat';
+import { ResizableDivider } from '../components/ui/ResizableDivider';
 
 // Context type for child routes
 export interface WorkspaceContextType {
@@ -34,8 +36,6 @@ export interface WorkspaceContextType {
 export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
-    const location = useLocation();
-    const { tier } = useSubscription();
 
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +43,18 @@ export const WorkspaceLayout: React.FC = () => {
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+    // Split View State
+    const [sydOpen, setSydOpen] = useState(false);
+    const [sydWidth, setSydWidth] = useState(() => {
+        const saved = localStorage.getItem('cinesketch_syd_width');
+        return saved ? parseInt(saved) : 50;
+    });
+
+    // Save width to localStorage
+    useEffect(() => {
+        localStorage.setItem('cinesketch_syd_width', sydWidth.toString());
+    }, [sydWidth]);
 
     // Auto-save with debouncing
     const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
@@ -123,7 +135,6 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleUpdateProject = useCallback((updated: Project) => {
         setProject(updated);
-        // Auto-save hook will handle the debounced save
     }, []);
 
     const handleUpdateSettings = useCallback((key: keyof WorldSettings, value: any) => {
@@ -264,123 +275,83 @@ export const WorkspaceLayout: React.FC = () => {
         );
     }
 
-    const SegmentedTab = ({ to, icon: Icon, label, exact = false }: { to: string, icon: any, label: string, exact?: boolean }) => (
-        <NavLink
-            to={to}
-            end={exact}
-            className={({ isActive }) => `
-                flex items-center gap-2 px-6 py-1.5 rounded-sm transition-all text-[11px] font-bold uppercase tracking-widest
-                ${isActive
-                    ? 'bg-surface-secondary text-text-primary shadow-sm border border-border'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}
-            `}
-        >
-            <Icon className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">{label}</span>
-        </NavLink>
-    );
-
     return (
-        <div className="h-screen w-screen bg-background text-text-primary flex flex-col overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
+        <div className="h-screen w-screen bg-background text-text-primary flex overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
             <ToastContainer toasts={toasts} onClose={closeToast} />
             <StorageWarning />
 
-            {/* 1. HEADER - Z-INDEX 40 (Below Sidebar, Above StoryPanel) */}
-            <header className="h-12 bg-background border-b border-border flex items-center justify-between px-4 select-none shrink-0 z-40 relative">
+            {/* SIDEBAR */}
+            <Sidebar
+                onSydClick={() => setSydOpen(!sydOpen)}
+                sydOpen={sydOpen}
+            />
 
-                {/* LEFT: Branding, Dashboard, Project */}
-                <div className="flex items-center h-full gap-4">
-                    {/* Library Back Link */}
-                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-                        <div className="w-8 h-8 bg-surface border border-border flex items-center justify-center relative group-hover:border-primary group-hover:bg-primary/10 transition-colors rounded-full">
-                            <Film className="w-4 h-4 text-primary transition-colors" />
+            {/* SPLIT CONTAINER */}
+            <div className="flex flex-1 overflow-hidden">
+
+                {/* LEFT: Main Editor Area */}
+                <div
+                    className="flex flex-col transition-all duration-300 overflow-hidden"
+                    style={{
+                        width: sydOpen ? `${100 - sydWidth}%` : '100%',
+                        flexShrink: 0
+                    }}
+                >
+                    {/* Status Bar (Minimal Header) */}
+                    <div className="h-10 border-b border-border flex items-center justify-between px-4 bg-background shrink-0 z-30">
+                        <div className="text-xs font-bold text-text-secondary truncate">{project.name}</div>
+                        <div className="flex items-center gap-2">
+                            <SaveStatusIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
                         </div>
-                        <span className="font-bold tracking-tight text-sm text-text-primary group-hover:text-primary transition-colors hidden md:inline">CineFlex</span>
                     </div>
 
-                    <div className="h-4 w-[1px] bg-border" />
+                    {/* Content */}
+                    <main className="flex-1 bg-background relative overflow-hidden">
+                        {/* Subtle gradient for depth */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-transparent pointer-events-none z-10" />
+                        <ErrorBoundary>
+                            <Outlet context={contextValue} />
+                        </ErrorBoundary>
+                    </main>
 
-                    {/* Dashboard Button */}
-                    <NavLink
-                        to="."
-                        end
-                        className={({ isActive }) => `
-                            h-8 px-3 flex items-center justify-center rounded-sm transition-all gap-2
-                            ${isActive ? 'bg-surface text-primary border border-border' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}
-                        `}
-                        title="Dashboard"
-                    >
-                        <LayoutGrid className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wide">Dashboard</span>
-                    </NavLink>
-
-                    <div className="h-4 w-[1px] bg-border" />
-
-                    <div className="text-xs text-text-muted font-medium truncate max-w-[200px]">
-                        {project.name}
-                    </div>
-                </div>
-
-                {/* RIGHT: Switcher & Status */}
-                <div className="flex items-center gap-6">
-                    {/* Segmented Control Switcher */}
-                    <nav className="flex items-center p-1 bg-surface border border-border rounded-sm gap-1">
-                        <SegmentedTab to="script" icon={FileText} label="Script" />
-                        <SegmentedTab to="story-notes" icon={BookOpen} label="Story Notes" />
-                        <SegmentedTab to="timeline" icon={Clapperboard} label="Timeline" />
-                    </nav>
-
-                    {/* Status Indicator */}
-                    <div className="flex items-center gap-2">
-                        <SaveStatusIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
-                    </div>
-                </div>
-            </header>
-
-            {/* 2. MAIN WORKSPACE */}
-            <div className="flex-1 flex overflow-hidden">
-                <main className="flex-1 bg-background relative overflow-hidden">
-                    {/* Subtle gradient for depth */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-transparent pointer-events-none z-10" />
-                    <ErrorBoundary>
-                        <Outlet context={contextValue} />
-                    </ErrorBoundary>
-                </main>
-            </div>
-
-            {/* 3. STATUS BAR (Minimal) */}
-            <footer className="h-6 bg-background border-t border-border flex items-center justify-between px-4 text-[9px] font-mono select-none shrink-0 text-text-secondary uppercase tracking-wider">
-                <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5">
-                        <Box className="w-3 h-3 opacity-50" /> v3.2 HYBRID
-                    </span>
-                    {tier === 'pro' ? (
-                        <span className="flex items-center gap-1.5 text-primary font-bold">
-                            <Sparkles className="w-3 h-3" /> PRO STUDIO
-                        </span>
-                    ) : (
-                        <span className="flex items-center gap-1.5 text-text-muted">
-                            <GraduationCap className="w-3 h-3" /> STUDENT TIER
-                        </span>
+                    {/* Editor Overlay for Inspector */}
+                    {isEditorOpen && project && (
+                        <LazyWrapper fullHeight={false}>
+                            <ShotEditor
+                                project={project}
+                                activeShot={editingShot}
+                                onClose={() => setIsEditorOpen(false)}
+                                onUpdateShot={handleUpdateShot}
+                                showToast={showToast}
+                            />
+                        </LazyWrapper>
                     )}
                 </div>
-                <div>
-                    RAM: OPTIMAL
-                </div>
-            </footer>
 
-            {/* FLOATING INSPECTOR */}
-            {isEditorOpen && project && (
-                <LazyWrapper fullHeight={false}>
-                    <ShotEditor
-                        project={project}
-                        activeShot={editingShot}
-                        onClose={() => setIsEditorOpen(false)}
-                        onUpdateShot={handleUpdateShot}
-                        showToast={showToast}
+                {/* RESIZER - Only show when Syd is open */}
+                {sydOpen && (
+                    <ResizableDivider
+                        onResize={(newPercent) => {
+                            const clamped = Math.min(70, Math.max(30, newPercent));
+                            setSydWidth(clamped);
+                        }}
                     />
-                </LazyWrapper>
-            )}
+                )}
+
+                {/* RIGHT: Syd Panel - Only show when open */}
+                {sydOpen && (
+                    <div
+                        className="flex flex-col border-l border-border bg-surface overflow-hidden"
+                        style={{
+                            width: `${sydWidth}%`,
+                            flexShrink: 0
+                        }}
+                    >
+                        <ScriptChat onClose={() => setSydOpen(false)} />
+                    </div>
+                )}
+
+            </div>
 
             <CommandPalette
                 isOpen={showCommandPalette}

@@ -20,7 +20,6 @@ export const StoryNotesEditor: React.FC = () => {
     const { generateMicroAgent } = useLocalLlm();
 
     const [notesData, setNotesData] = useState<StoryNotesData>({ notes: [], activeNoteId: null });
-    const [activeNote, setActiveNote] = useState<StoryNote | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     // SYD Agent State
@@ -31,39 +30,69 @@ export const StoryNotesEditor: React.FC = () => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const contentSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Derive activeNote from notesData (no separate state needed)
+    const activeNote = notesData.activeNoteId
+        ? notesData.notes.find(n => n.id === notesData.activeNoteId) || null
+        : null;
 
     // Load notes on mount
     useEffect(() => {
         loadNotes();
     }, [project.id]);
 
-    // Load active note when activeNoteId changes
+    // Auto-select first note if none active but notes exist
     useEffect(() => {
-        if (notesData.activeNoteId) {
-            const note = notesData.notes.find(n => n.id === notesData.activeNoteId);
-            setActiveNote(note || null);
-        } else if (notesData.notes.length > 0) {
-            // Auto-select first note if none active
-            setActiveNote(notesData.notes[0]);
-            setNotesData(prev => ({ ...prev, activeNoteId: notesData.notes[0].id }));
-        } else {
-            setActiveNote(null);
+        if (!notesData.activeNoteId && notesData.notes.length > 0) {
+            setNotesData(prev => ({
+                ...prev,
+                activeNoteId: prev.notes[0]?.id || null
+            }));
         }
-    }, [notesData.activeNoteId, notesData.notes]);
+    }, [notesData.activeNoteId, notesData.notes.length]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (contentSaveTimerRef.current) {
+                clearTimeout(contentSaveTimerRef.current);
+            }
+        };
+    }, []);
 
     const loadNotes = async () => {
         const data = await getStoryNotes(project.id);
-        setNotesData(data);
 
-        // If no notes exist, create first blank note
-        if (data.notes.length === 0) {
-            await handleCreateNote();
+        // DEFENSIVE: Remove any duplicate IDs (shouldn't happen but safety net)
+        const seen = new Set<string>();
+        const uniqueNotes = data.notes.filter(note => {
+            if (seen.has(note.id)) {
+                console.warn('Duplicate note ID found:', note.id);
+                return false;
+            }
+            seen.add(note.id);
+            return true;
+        });
+
+        const newData = { ...data, notes: uniqueNotes };
+        setNotesData(newData);
+
+        // If no notes exist, create first blank note (non-recursive)
+        if (uniqueNotes.length === 0) {
+            const newNote = await createStoryNote(project.id);
+            setNotesData({ notes: [newNote], activeNoteId: newNote.id });
+            showToast('New note created', 'success');
+            setTimeout(() => titleInputRef.current?.focus(), 100);
         }
     };
 
     const handleCreateNote = async () => {
         const newNote = await createStoryNote(project.id);
-        await loadNotes();
+        setNotesData(prev => ({
+            notes: [...prev.notes, newNote],
+            activeNoteId: newNote.id
+        }));
         showToast('New note created', 'success');
         // Auto-focus title field
         setTimeout(() => titleInputRef.current?.focus(), 100);
@@ -71,24 +100,41 @@ export const StoryNotesEditor: React.FC = () => {
 
     const handleSelectNote = async (noteId: string) => {
         setNotesData(prev => ({ ...prev, activeNoteId: noteId }));
-        const note = notesData.notes.find(n => n.id === noteId);
-        setActiveNote(note || null);
     };
 
     const handleUpdateTitle = async (title: string) => {
         if (!activeNote) return;
-        setActiveNote({ ...activeNote, title });
+
+        // Optimistically update local state
+        setNotesData(prev => ({
+            ...prev,
+            notes: prev.notes.map(n =>
+                n.id === activeNote.id ? { ...n, title } : n
+            )
+        }));
+
+        // Persist to storage
         await updateStoryNote(project.id, activeNote.id, { title });
     };
 
     const handleUpdateContent = async (content: string) => {
         if (!activeNote) return;
-        setActiveNote({ ...activeNote, content });
 
-        // Debounced save
-        if (window._contentSaveTimer) clearTimeout(window._contentSaveTimer);
-        window._contentSaveTimer = setTimeout(async () => {
+        // Optimistically update local state
+        setNotesData(prev => ({
+            ...prev,
+            notes: prev.notes.map(n =>
+                n.id === activeNote.id ? { ...n, content } : n
+            )
+        }));
+
+        // Debounced save with ref-based timer
+        if (contentSaveTimerRef.current) {
+            clearTimeout(contentSaveTimerRef.current);
+        }
+        contentSaveTimerRef.current = setTimeout(async () => {
             await updateStoryNote(project.id, activeNote.id, { content });
+            contentSaveTimerRef.current = null;
         }, 500);
     };
 
@@ -288,10 +334,3 @@ export const StoryNotesEditor: React.FC = () => {
         </>
     );
 };
-
-// Add to window for debounce timer
-declare global {
-    interface Window {
-        _contentSaveTimer?: NodeJS.Timeout;
-    }
-}

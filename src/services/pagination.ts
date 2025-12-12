@@ -50,7 +50,9 @@ const calculateElementLines = (el: ScriptElement): number => {
     const maxChars = LINE_WIDTHS[el.type] || LINE_WIDTHS.action;
 
     // Word-wrap aware calculation
-    const words = content.split(/\s+/);
+    const words = content.split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return 1;
+
     let lines = 1;
     let currentLineLength = 0;
 
@@ -59,17 +61,23 @@ const calculateElementLines = (el: ScriptElement): number => {
 
         // If word itself is longer than line, it will wrap mid-word
         if (wordLength > maxChars) {
-            lines += Math.ceil(wordLength / maxChars);
+            const additionalLines = Math.floor(wordLength / maxChars);
+            lines += additionalLines;
             currentLineLength = wordLength % maxChars;
+            continue;
         }
+
+        // Calculate space needed (add 1 for space before word, except first word on line)
+        const spaceNeeded = currentLineLength === 0 ? wordLength : currentLineLength + 1 + wordLength;
+
         // If adding this word would overflow, wrap to next line
-        else if (currentLineLength + wordLength + 1 > maxChars) {
+        if (spaceNeeded > maxChars) {
             lines++;
             currentLineLength = wordLength;
         }
         // Word fits on current line
         else {
-            currentLineLength += wordLength + (currentLineLength > 0 ? 1 : 0);
+            currentLineLength = spaceNeeded;
         }
     }
 
@@ -115,21 +123,13 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
 
     // console.log(`[Pagination] Starting calculation for ${elements.length} elements`);
 
-    // Filter out empty/invalid elements that shouldn't be paginated
-    // This prevents phantom empty lines from creating unnecessary pages
+    // Only filter out completely invalid elements (missing type or ID)
+    // Keep empty elements as they may represent intentional spacing
     const validElements = elements.filter(el => {
         // Must have valid type
         if (!el.type) return false;
         // Must have ID
         if (!el.id) return false;
-        
-        // Empty scene headings/transitions/characters can stay (they imply structure)
-        // But empty action/dialogue should be filtered as they are usually just newlines
-        if (el.type === 'action' || el.type === 'dialogue') {
-            if (!el.content || el.content.trim().length === 0) {
-                return false;
-            }
-        }
         return true;
     });
 
@@ -145,7 +145,6 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
     for (let i = 0; i < elementsToProcess.length; i++) {
         const el = elementsToProcess[i];
         const isFirstOnPage = currentLine === 1;
-        const totalElementHeight = calculateElementHeight(el, isFirstOnPage);
 
         let forceBreak = false;
         let keepTogetherReason = '';
@@ -167,8 +166,8 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
             }
 
             if (dialogueBlock.length > 0) {
-                // Calculate height of character + first 2 lines of dialogue
-                let blockHeight = totalElementHeight; // Character
+                // Calculate total height if starting on current page
+                let blockHeight = calculateElementHeight(el, isFirstOnPage);
                 let dialogueLines = 0;
 
                 for (const dialogueEl of dialogueBlock) {
@@ -180,7 +179,7 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
                     if (dialogueLines >= 2) break;
                 }
 
-                // If character + 2 dialogue lines won't fit, break now
+                // If character + 2 dialogue lines won't fit, break to next page
                 if (currentLine + blockHeight > PAGE_LINES) {
                     forceBreak = true;
                     keepTogetherReason = 'character-dialogue';
@@ -192,44 +191,44 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
         if (el.type === 'scene_heading' && i + 1 < elementsToProcess.length) {
             const nextEl = elementsToProcess[i + 1];
 
-            // Exception: Establishing shots (scene heading followed by another scene heading)
-            const isEstablishing = nextEl.type === 'scene_heading';
+            // Exception: Multiple scene headings in a row are okay to split
+            const isMultipleHeadings = nextEl.type === 'scene_heading';
 
-            if (!isEstablishing) {
-                // Need heading + at least 2 lines of following content
+            if (!isMultipleHeadings) {
+                // Calculate heading + minimum 2 lines of next content
+                const headingHeight = calculateElementHeight(el, isFirstOnPage);
                 const nextHeight = calculateElementHeight(nextEl, false);
                 const minFollowingLines = Math.min(nextHeight, 2);
 
-                if (currentLine + totalElementHeight + minFollowingLines > PAGE_LINES) {
+                if (currentLine + headingHeight + minFollowingLines > PAGE_LINES) {
                     forceBreak = true;
                     keepTogetherReason = 'scene-heading-content';
                 }
             }
         }
 
-        // Rule 3: Short ACTION blocks (< 4 lines) try to stay together
+        // Rule 3: Short ACTION blocks (2-3 lines) try to stay together to avoid orphans
         if (el.type === 'action') {
             const actionLines = calculateElementLines(el);
+            const actionHeight = calculateElementHeight(el, isFirstOnPage);
 
-            // If action is short and would create orphan at bottom, keep together
-            if (actionLines <= 3 && actionLines > 1) {
-                // Would this create an orphan (1 line at bottom)?
-                if (currentLine + totalElementHeight > PAGE_LINES &&
-                    currentLine + totalElementHeight <= PAGE_LINES + 1) {
+            // If action is short and would create orphan, keep it together
+            if (actionLines >= 2 && actionLines <= 3) {
+                // Would this split across pages with only 1 line at bottom?
+                const remainingLines = PAGE_LINES - currentLine + 1;
+                if (actionHeight > remainingLines && remainingLines <= 1) {
                     forceBreak = true;
                     keepTogetherReason = 'action-orphan';
                 }
             }
         }
 
-        // Rule 4: TRANSITIONS prefer bottom of page (don't orphan at top)
+        // Rule 4: TRANSITIONS - Simple overflow check (no special positioning)
         if (el.type === 'transition') {
-            // If transition would be first or second line on new page, keep it on previous
-            if (currentLine > PAGE_LINES - 2 && currentLine <= PAGE_LINES) {
-                // Let it stay at bottom of current page
-            } else if (currentLine + totalElementHeight > PAGE_LINES) {
-                // Would overflow to next page
+            const transitionHeight = calculateElementHeight(el, isFirstOnPage);
+            if (currentLine + transitionHeight > PAGE_LINES) {
                 forceBreak = true;
+                keepTogetherReason = 'transition-overflow';
             }
         }
 
@@ -237,17 +236,20 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
         // PAGE BREAK LOGIC
         // ═══════════════════════════════════════════════════════════
 
-        // Basic overflow check
-        if (!forceBreak && currentLine + totalElementHeight > PAGE_LINES) {
-            forceBreak = true;
+        // Basic overflow check for all other cases
+        if (!forceBreak) {
+            const elementHeight = calculateElementHeight(el, isFirstOnPage);
+            if (currentLine + elementHeight > PAGE_LINES) {
+                forceBreak = true;
+            }
         }
 
         // Apply page break if needed
         if (forceBreak) {
             currentPage++;
             currentLine = 1;
-            
-            // console.log(`[Pagination] Page Break at Element ${i} (${el.type}). Reason: ${keepTogetherReason || 'Overflow'}. Page: ${currentPage}`);
+
+            // console.log(`[Pagination] Page Break at Element ${i} (${el.type}). Reason: ${keepTogetherReason || 'Overflow'}. New Page: ${currentPage}`);
 
             // Mark elements as kept together for visual feedback
             if (keepTogetherReason) {
@@ -258,8 +260,7 @@ export const calculatePagination = (elements: ScriptElement[], projectId?: strin
         // Map this element to its page
         map[el.id] = currentPage;
 
-        // Advance the line counter
-        // Recalculate height since we might be first on page now
+        // Advance the line counter (calculate height with UPDATED isFirstOnPage)
         const actualHeight = calculateElementHeight(el, currentLine === 1);
         currentLine += actualHeight;
     }

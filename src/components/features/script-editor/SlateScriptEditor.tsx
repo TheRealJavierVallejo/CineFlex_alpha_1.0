@@ -95,10 +95,33 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const [totalPages, setTotalPages] = useState(1);
     const [currentPage, setCurrentPage] = useState(1);
 
+    // Track previous projectId to detect project changes
+    const prevProjectIdRef = useRef(projectId);
+
+
     useImperativeHandle(ref, () => ({
         undo: () => editor.undo(),
         redo: () => editor.redo()
     }));
+
+    // Reset editor when project changes (handles project switch, import, etc.)
+    useEffect(() => {
+        if (prevProjectIdRef.current !== projectId) {
+            const newValue = scriptElementsToSlate(initialElements);
+
+            // Reset editor state
+            editor.children = newValue;
+            setValue(newValue);
+
+            // Clear undo/redo history for new project
+            editor.history = { undos: [], redos: [] };
+
+            // Force a re-render of the editor
+            editor.onChange();
+
+            prevProjectIdRef.current = projectId;
+        }
+    }, [projectId, initialElements, editor]);
 
     useEffect(() => {
         if (onUndoRedoChange) {
@@ -127,14 +150,15 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         () => debounce((nodes: Descendant[]) => {
             const elements = slateToScriptElements(nodes);
             const result = calculatePagination(elements, projectId);
-            
+
             setPageMap(result);
-            
+
             if (Object.keys(result).length === 0) {
                 setTotalPages(1);
             } else {
                 const pages = Object.values(result).filter(p => typeof p === 'number' && p > 0);
-                setTotalPages(pages.length > 0 ? Math.max(...pages) : 1);
+                const maxPage = pages.length > 0 ? Math.max(...pages) : 1;
+                setTotalPages(maxPage);
             }
         }, 500),
         [projectId]
@@ -223,50 +247,67 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const renderElement = useCallback((props: RenderElementProps) => {
         const { element } = props;
         const currentId = element.id;
-        const pageNum = pageMap[currentId] || 1;
-        
+
+        // Get page number for this element (default to 1 if not in map yet)
+        const pageNum = (currentId && pageMap[currentId]) ? pageMap[currentId] : 1;
+
         let isFirstOnPage = false;
         let isLastOnPage = false;
-        
+        let shouldShowPageBreak = false;
+
         try {
             const path = ReactEditor.findPath(editor, element);
-            
-            // Check if first element on page
-            if (path[0] === 0) {
+            const elementIndex = path[0];
+
+            // Determine if this is the first element on its page
+            if (elementIndex === 0) {
+                // Very first element in document - always first on page 1, never show page break
                 isFirstOnPage = true;
+                shouldShowPageBreak = false;
             } else {
+                // Get previous element to compare pages
                 const prevPath = Path.previous(path);
                 const prevNode = Node.get(editor, prevPath) as CustomElement;
-                const prevPage = pageMap[prevNode.id] || 1;
-                
+                const prevPage = (prevNode && prevNode.id && pageMap[prevNode.id]) ? pageMap[prevNode.id] : 1;
+
+                // If this element's page number is greater than previous, it's first on a new page
                 if (pageNum > prevPage) {
                     isFirstOnPage = true;
+                    // Show page break label for pages 2+
+                    shouldShowPageBreak = (pageNum > 1);
                 }
             }
-            
-            // Check if last element on page
-            if (path[0] === editor.children.length - 1) {
+
+            // Determine if this is the last element on its page
+            const lastIndex = editor.children.length - 1;
+            if (elementIndex === lastIndex) {
+                // Last element in document
                 isLastOnPage = true;
             } else {
+                // Get next element to compare pages
                 const nextPath = Path.next(path);
                 const nextNode = Node.get(editor, nextPath) as CustomElement;
-                const nextPage = pageMap[nextNode.id] || 1;
-                
+                const nextPage = (nextNode && nextNode.id && pageMap[nextNode.id]) ? pageMap[nextNode.id] : pageNum;
+
+                // If next element is on a higher page, this is last on current page
                 if (nextPage > pageNum) {
                     isLastOnPage = true;
                 }
             }
         } catch (e) {
+            // If any path operations fail, use safe defaults
             isFirstOnPage = false;
             isLastOnPage = false;
+            shouldShowPageBreak = false;
         }
-        
+
         return renderScriptElement(
-            props, 
-            isLightMode, 
-            isFirstOnPage, 
+            props,
+            isLightMode,
+            isFirstOnPage,
             isLastOnPage,
-            pageNum
+            pageNum,
+            shouldShowPageBreak
         );
     }, [isLightMode, editor, pageMap]);
 

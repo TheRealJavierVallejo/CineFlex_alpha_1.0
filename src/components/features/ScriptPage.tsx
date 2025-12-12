@@ -83,15 +83,15 @@ export const ScriptPage: React.FC = () => {
     );
 
     // Sync elements with project.scriptElements and learn from script
+    // Only responds to external changes (project load, import), not internal edits
     useEffect(() => {
-        if (JSON.stringify(project.scriptElements) !== JSON.stringify(elements)) {
-            setElements(project.scriptElements || []);
-        }
+        setElements(project.scriptElements || []);
 
         if (project.scriptElements && project.scriptElements.length > 0) {
             learnFromScript(project.id, project.scriptElements);
         }
-    }, [project.scriptElements, project.id, setElements, elements]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [project.scriptElements, project.id]);
 
     const handleImportScript = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -114,7 +114,7 @@ export const ScriptPage: React.FC = () => {
             id: 'copilot',
             label: 'SYD',
             icon: <Sparkles className="w-5 h-5" />,
-            content: <ScriptChat isOpen={true} onClose={() => { }} />,
+            content: <ScriptChat onClose={() => { }} />,
             noScroll: true
         },
         {

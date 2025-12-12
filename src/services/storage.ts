@@ -4,7 +4,7 @@
  * NOW INCLUDES: Garbage Collection, Schema Migration, and Sanitization
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, StoryNote, StoryNotesData } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, StoryNote, StoryNotesData, SydThread, SydMessage } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
 import { ProjectSchema, ProjectExportSchema, CharacterSchema, OutfitSchema, ImageLibraryItemSchema, LocationSchema } from './schemas';
@@ -17,13 +17,13 @@ const KEYS = {
 };
 
 const DB_NAME = 'CineSketchDB';
-const DB_VERSION = 2; // Upgraded Schema
+const DB_VERSION = 3; // Upgraded Schema for Syd Chat
 const STORE_NAME = 'project_data';
 const IMAGE_STORE_NAME = 'image_data';
 
 // --- DATABASE HELPERS ---
 
-const openDB = (): Promise<IDBDatabase> => {
+export const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onerror = () => reject(request.error);
@@ -36,11 +36,20 @@ const openDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains(IMAGE_STORE_NAME)) {
         db.createObjectStore(IMAGE_STORE_NAME);
       }
+      if (!db.objectStoreNames.contains('syd_threads')) {
+        const store = db.createObjectStore('syd_threads', { keyPath: 'id' });
+        store.createIndex('projectId', 'projectId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('syd_messages')) {
+        const store = db.createObjectStore('syd_messages', { keyPath: 'id' });
+        store.createIndex('threadId', 'threadId', { unique: false });
+        // Optional compound index if needed, but simple index + sort is robust enough for now
+      }
     };
   });
 };
 
-const dbGet = async <T>(storeName: string, key: string): Promise<T | null> => {
+export const dbGet = async <T>(storeName: string, key: string): Promise<T | null> => {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -56,7 +65,7 @@ const dbGet = async <T>(storeName: string, key: string): Promise<T | null> => {
   }
 };
 
-const dbSet = async (storeName: string, key: string, value: any): Promise<void> => {
+export const dbSet = async (storeName: string, key: string, value: any): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeName, 'readwrite');
@@ -67,7 +76,7 @@ const dbSet = async (storeName: string, key: string, value: any): Promise<void> 
   });
 };
 
-const dbDelete = async (storeName: string, key: string): Promise<void> => {
+export const dbDelete = async (storeName: string, key: string): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeName, 'readwrite');
@@ -78,7 +87,7 @@ const dbDelete = async (storeName: string, key: string): Promise<void> => {
   });
 };
 
-const dbGetAllKeys = async (storeName: string): Promise<IDBValidKey[]> => {
+export const dbGetAllKeys = async (storeName: string): Promise<IDBValidKey[]> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeName, 'readonly');
@@ -527,6 +536,14 @@ export const createStoryNote = async (projectId: string): Promise<StoryNote> => 
     updatedAt: Date.now(),
     order: notesData.notes.length
   };
+
+  // CRITICAL: Check if a note with this ID already exists (shouldn't happen but defensive)
+  const existingNote = notesData.notes.find(n => n.id === newNote.id);
+  if (existingNote) {
+    console.error('Duplicate note ID detected, regenerating...');
+    return createStoryNote(projectId); // Recursive retry with new ID
+  }
+
   notesData.notes.push(newNote);
   notesData.activeNoteId = newNote.id;
   await saveStoryNotes(projectId, notesData);
@@ -604,6 +621,27 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
   const locations = await getLocations(projectId);
   const library = await getImageLibrary(projectId);
 
+  // Fetch Syd Chat History
+  const db = await openDB();
+  const threads = await new Promise<SydThread[]>((resolve) => {
+    const tx = db.transaction('syd_threads', 'readonly');
+    const index = tx.objectStore('syd_threads').index('projectId');
+    const request = index.getAll(projectId);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve([]);
+  });
+
+  const portableThreads = await Promise.all(threads.map(async (thread) => {
+    const messages = await new Promise<SydMessage[]>((resolve) => {
+      const tx = db.transaction('syd_messages', 'readonly');
+      const index = tx.objectStore('syd_messages').index('threadId');
+      const request = index.getAll(thread.id);
+      request.onsuccess = () => resolve(request.result.sort((a, b) => a.idx - b.idx));
+      request.onerror = () => resolve([]);
+    });
+    return { ...thread, messages };
+  }));
+
   if (!project) throw new Error("Project not found");
 
   const cleanProject = sanitizeForExport(project);
@@ -659,8 +697,11 @@ export const exportProjectToJSON = async (projectId: string): Promise<string> =>
     characters: portableCharacters,
     outfits: portableOutfits,
     locations: portableLocations,
-    library: portableLibrary
-  };
+    library: portableLibrary,
+    ai: {
+      sydThreads: portableThreads
+    }
+  } as any; // Cast to any to include new ai field without breaking legacy type strictness immediately
 
   return JSON.stringify(exportData, null, 2);
 };
@@ -692,6 +733,47 @@ export const importProjectFromJSON = async (jsonString: string): Promise<string>
     await saveOutfits(projectId, data.outfits as Outfit[] || []);
     await saveLocations(projectId, data.locations as Location[] || []);
     await saveImageLibrary(projectId, data.library as ImageLibraryItem[] || []);
+
+    // Import Syd Chat History
+    // Note: We access rawData.ai because ProjectExportSchema (Zod) strips unknown fields.
+    if ((rawData as any).ai && (rawData as any).ai.sydThreads) {
+      const threads = (rawData as any).ai.sydThreads as (SydThread & { messages: SydMessage[] })[];
+
+      const db = await openDB();
+      const tx = db.transaction(['syd_threads', 'syd_messages'], 'readwrite');
+      const threadsStore = tx.objectStore('syd_threads');
+      const msgsStore = tx.objectStore('syd_messages');
+
+      for (const t of threads) {
+        // Generate new Thread ID to avoid collision
+        const newThreadId = crypto.randomUUID();
+        const newThread: SydThread = {
+          ...t,
+          id: newThreadId,
+          projectId: projectId, // Rebind to imported project
+        };
+        // @ts-ignore
+        delete newThread.messages; // Don't save messages in thread object
+
+        threadsStore.put(newThread);
+
+        if (t.messages && Array.isArray(t.messages)) {
+          for (const m of t.messages) {
+            const newMessage: SydMessage = {
+              ...m,
+              id: crypto.randomUUID(), // New Message ID
+              threadId: newThreadId,   // Link to New Thread
+            };
+            msgsStore.put(newMessage);
+          }
+        }
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
 
     const list = getProjectsList();
     const filtered = list.filter(p => p.id !== projectId);

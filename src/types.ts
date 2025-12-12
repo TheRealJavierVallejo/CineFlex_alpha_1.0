@@ -298,3 +298,22 @@ export interface ProjectExport {
   locations: Location[]; // New export field
   library: ImageLibraryItem[];
 }
+
+// 💬 SYD CHAT: Durable Chat History
+export interface SydThread {
+  id: string;
+  projectId: string;
+  title?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SydMessage {
+  id: string;
+  threadId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: { text: string;[key: string]: any };
+  tokenCount?: number;
+  idx: number; // Monotonically increasing per thread
+  createdAt: string;
+}

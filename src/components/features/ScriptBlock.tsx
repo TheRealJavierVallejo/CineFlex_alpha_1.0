@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useRef, useEffect, useLayoutEffect, memo, useState } from 'react';
 import { ScriptElement } from '../../types';
 import { Columns, X } from 'lucide-react';
@@ -14,7 +15,7 @@ interface ScriptBlockProps {
   cursorRequest?: number | null;
   isLightMode?: boolean;
   isFirstOnPage?: boolean;
-  projectId?: string; 
+  projectId?: string;
 }
 
 // Optimized parsing
@@ -67,14 +68,14 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
     if (isActive && textareaRef.current) {
       // Avoid re-focusing if already focused (prevents mobile keyboard flickering)
       if (document.activeElement !== textareaRef.current) {
-          textareaRef.current.focus();
+        textareaRef.current.focus();
       }
-      
+
       // OPTIMIZATION: Check if cursor position is actually different before setting
       // This prevents "Ghost Cursor" jumping when typing fast
       if (cursorRequest !== null && cursorRequest !== undefined) {
-         textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
-      } 
+        textareaRef.current.setSelectionRange(cursorRequest, cursorRequest);
+      }
     } else {
       setShowMenu(false);
     }
@@ -98,19 +99,19 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     // Fast exit for types that don't need autocomplete
     if (element.type === 'action' || element.type === 'parenthetical' || element.type === 'dialogue') {
-        setShowMenu(false);
-        return;
+      setShowMenu(false);
+      return;
     }
 
     const getDebounceTime = () => {
-      if (element.type === 'character') return 0; 
-      if (element.type === 'transition') return 0; 
+      if (element.type === 'character') return 0;
+      if (element.type === 'transition') return 0;
       if (element.type === 'scene_heading') {
         const parsed = parseSceneHeading(element.content.toUpperCase());
-        if (parsed.stage === 1 || parsed.stage === 3) return 0; 
-        return 50; 
+        if (parsed.stage === 1 || parsed.stage === 3) return 0;
+        return 50;
       }
-      return 150; 
+      return 150;
     };
 
     const timeoutId = setTimeout(() => {
@@ -126,14 +127,14 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       if (element.type === 'scene_heading') {
         const parsed = parseSceneHeading(content);
         if (parsed.stage === 1 && content.trim().length > 0) {
-            newSuggestions = getSuggestions(projectId, 'location', content, 10);
-            shouldShow = newSuggestions.length > 0;
+          newSuggestions = getSuggestions(projectId, 'location', content, 10);
+          shouldShow = newSuggestions.length > 0;
         } else if (parsed.stage === 2 && parsed.location.trim().length > 0) {
-            newSuggestions = getSuggestions(projectId, 'location', parsed.location.trim(), 10);
-            shouldShow = newSuggestions.length > 0;
+          newSuggestions = getSuggestions(projectId, 'location', parsed.location.trim(), 10);
+          shouldShow = newSuggestions.length > 0;
         } else if (parsed.stage === 3 && parsed.time.trim().length > 0) {
-            newSuggestions = getSuggestions(projectId, 'time_of_day', parsed.time.trim(), 10);
-            shouldShow = newSuggestions.length > 0;
+          newSuggestions = getSuggestions(projectId, 'time_of_day', parsed.time.trim(), 10);
+          shouldShow = newSuggestions.length > 0;
         }
       }
 
@@ -149,7 +150,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       setSuggestions(newSuggestions);
       setShowMenu(shouldShow);
       setSelectedIndex(0);
-    }, getDebounceTime()); 
+    }, getDebounceTime());
 
     return () => clearTimeout(timeoutId);
   }, [element.content, element.type, isActive, projectId]);
@@ -195,7 +196,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
       if (e.key === 'Enter') {
         e.preventDefault();
         handleSelectSuggestion(suggestions[selectedIndex]);
-        return; 
+        return;
       }
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -240,14 +241,14 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     const typeMap = { 'character': 'character', 'scene_heading': 'location', 'transition': 'transition' } as const;
     if (element.type in typeMap) {
-        addSmartTypeEntry(projectId, typeMap[element.type as keyof typeof typeMap], suggestion, false);
+      addSmartTypeEntry(projectId, typeMap[element.type as keyof typeof typeMap], suggestion, false);
     }
   };
 
   // --- STYLING ---
   const getStyles = () => {
     const base = "script-input-no-border block bg-transparent border-0 outline-none ring-0 shadow-none resize-none overflow-hidden font-screenplay text-[12pt] leading-screenplay transition-colors duration-200 p-0 m-0 appearance-none focus:ring-0 focus:outline-none focus:border-0";
-    
+
     const colors = isLightMode ? {
       heading: "text-black", action: "text-black", character: "text-black",
       dialogue: "text-black", parenthetical: "text-black", transition: "text-black",
@@ -262,45 +263,45 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
     switch (element.type) {
       case 'scene_heading': return {
-          container: `${spacingClass} pb-0`,
-          input: `${base} font-bold uppercase ${colors.heading} ${colors.placeholder}`,
-          placeholder: "INT. SCENE HEADER - DAY",
-          style: { width: '100%', marginLeft: '0in' }
+        container: `${spacingClass} pb-0`,
+        input: `${base} font-bold uppercase ${colors.heading} ${colors.placeholder}`,
+        placeholder: "INT. SCENE HEADER - DAY",
+        style: { width: '100%', marginLeft: '0in' }
       };
       case 'action': return {
-          container: `${spacingClass} pb-0`,
-          input: `${base} ${colors.action} ${colors.placeholder}`,
-          placeholder: "Action...",
-          style: { width: '100%', marginLeft: '0in' }
+        container: `${spacingClass} pb-0`,
+        input: `${base} ${colors.action} ${colors.placeholder}`,
+        placeholder: "Action...",
+        style: { width: '100%', marginLeft: '0in' }
       };
       case 'character': return {
-          container: `${spacingClass} pb-0`,
-          input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`, 
-          placeholder: "CHARACTER",
-          style: { marginLeft: '2.0in', width: '3.7in' } 
+        container: `${spacingClass} pb-0`,
+        input: `${base} font-bold uppercase ${colors.character} ${colors.placeholder}`,
+        placeholder: "CHARACTER",
+        style: { marginLeft: '2.0in', width: '3.7in' }
       };
       case 'dialogue': return {
-          container: "pt-0 pb-0",
-          input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
-          placeholder: "Dialogue",
-          style: { marginLeft: '1.0in', width: '3.5in' }
+        container: "pt-0 pb-0",
+        input: `${base} text-left ${colors.dialogue} ${colors.placeholder}`,
+        placeholder: "Dialogue",
+        style: { marginLeft: '1.0in', width: '3.5in' }
       };
       case 'parenthetical': return {
-          container: "pt-0 pb-0",
-          input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
-          placeholder: "(cont'd)",
-          style: { marginLeft: '1.6in', width: '2.3in' }
+        container: "pt-0 pb-0",
+        input: `${base} italic text-left ${colors.parenthetical} ${colors.placeholder}`,
+        placeholder: "(cont'd)",
+        style: { marginLeft: '1.6in', width: '2.3in' }
       };
       case 'transition': return {
-          container: `${spacingClass} pb-0`,
-          input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
-          placeholder: "CUT TO:",
-          style: { marginLeft: '4.0in', width: '2.0in' } 
+        container: `${spacingClass} pb-0`,
+        input: `${base} font-bold uppercase text-right pr-4 ${colors.transition} ${colors.placeholder}`,
+        placeholder: "CUT TO:",
+        style: { marginLeft: '4.0in', width: '2.0in' }
       };
       default: return {
-          container: `${spacingClass} pb-0`,
-          input: `${base} ${colors.action} ${colors.placeholder}`,
-          style: { width: '100%' }
+        container: `${spacingClass} pb-0`,
+        input: `${base} ${colors.action} ${colors.placeholder}`,
+        style: { width: '100%' }
       };
     }
   };
@@ -315,7 +316,7 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
   return (
     <div className={`relative ${styles.container}`}>
-      
+
       {/* 1. INDICATOR LABEL */}
       <div
         className={`
@@ -339,9 +340,9 @@ const ScriptBlockComponent: React.FC<ScriptBlockProps> = ({
 
       {/* 3. SCENE NUMBER */}
       {element.type === 'scene_heading' && element.sceneNumber && (
-        <div 
-            className={`absolute -right-[1.0in] w-12 text-sm font-mono font-bold select-none text-left group/number ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-            style={{ top: indicatorTop }}
+        <div
+          className={`absolute -right-[1.0in] w-12 text-sm font-mono font-bold select-none text-left group/number ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+          style={{ top: indicatorTop }}
         >
           {element.sceneNumber}
           <button

@@ -52,13 +52,13 @@ export function useHistory<T>(initialPresent: T) {
   const set = useCallback((newPresentOrFn: T | ((prev: T) => T)) => {
     setState((currentState) => {
       const { past, present } = currentState;
-      
-      const newPresent = typeof newPresentOrFn === 'function' 
+
+      const newPresent = typeof newPresentOrFn === 'function'
         ? (newPresentOrFn as (prev: T) => T)(present)
         : newPresentOrFn;
 
-      // Deep compare to prevent duplicate states (optional optimization)
-      if (JSON.stringify(present) === JSON.stringify(newPresent)) {
+      // Shallow equality check - if it's the same reference, skip
+      if (present === newPresent) {
           return currentState;
       }
 
