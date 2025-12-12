@@ -261,7 +261,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
         try {
             // Get recent history with sliding window (last 15 turns)
-            const recentHistory = getRecentHistory(updatedMessages);
+            const recentHistory = getRecentHistory(updatedMessages, 15, tier === 'pro');
 
             // Convert to format expected by API
             // Claude uses 'assistant' role (same as ChatMessage)
