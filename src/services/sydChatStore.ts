@@ -8,44 +8,30 @@ import { SydThread, SydMessage } from '../types';
  */
 
 export const createNewThreadForProject = async (projectId: string): Promise<SydThread> => {
-    const db = await openDB();
-
     const newThreadId = crypto.randomUUID();
-    const now = new Date();
-    // Format: "Chat - Dec 11, 10:52 PM"
-    const timestampStr = now.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    });
-    const title = `Chat - ${timestampStr}`;
-    const nowIso = now.toISOString();
+    const now = new Date().toISOString();
+
+    const existingThreads = await listThreadsForProject(projectId);
+    const threadNumber = existingThreads.length + 1;
+    const title = `Chat ${threadNumber}`; // User preferred simpler title
 
     const newThread: SydThread = {
         id: newThreadId,
         projectId: projectId,
         title: title,
-        createdAt: nowIso,
-        updatedAt: nowIso
+        createdAt: now,
+        updatedAt: now
     };
 
-    // Use direct put() without key param for inline-key store
-    await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction('syd_threads', 'readwrite');
-        const store = tx.objectStore('syd_threads');
-        const request = store.put(newThread);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
-
+    // Use correct store name 'syd_threads'
+    await dbSet('syd_threads', newThreadId, newThread);
     return newThread;
 };
 
 export const listThreadsForProject = async (projectId: string): Promise<SydThread[]> => {
     const db = await openDB();
     return new Promise((resolve, reject) => {
+        // Use correct store name 'syd_threads'
         const tx = db.transaction('syd_threads', 'readonly');
         const store = tx.objectStore('syd_threads');
         const index = store.index('projectId');
@@ -53,11 +39,11 @@ export const listThreadsForProject = async (projectId: string): Promise<SydThrea
 
         request.onsuccess = () => {
             const threads = request.result as SydThread[];
-            // Sort by most recent first
-            if (threads) {
-                threads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            }
-            resolve(threads || []);
+            // Sort: Newest updated first
+            const sorted = threads.sort((a, b) =>
+                new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            );
+            resolve(sorted);
         };
         request.onerror = () => reject(request.error);
     });
@@ -65,29 +51,25 @@ export const listThreadsForProject = async (projectId: string): Promise<SydThrea
 
 export const deleteThread = async (threadId: string): Promise<void> => {
     const db = await openDB();
+    // Use correct store name 'syd_threads' and 'syd_messages'
+    const messages = await listMessagesForThread(threadId);
 
-    // Delete all messages first (syd_messages)
-    await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction('syd_messages', 'readwrite');
-        const store = tx.objectStore('syd_messages');
-        const index = store.index('threadId');
-        const request = index.getAllKeys(threadId);
+    // User's simple delete loop (adapted for correct store name)
+    const tx = db.transaction(['syd_messages', 'syd_threads'], 'readwrite');
+    const msgStore = tx.objectStore('syd_messages');
+    const threadStore = tx.objectStore('syd_threads');
 
-        request.onsuccess = () => {
-            const keys = request.result;
-            keys.forEach(key => store.delete(key));
-        };
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+    // Delete all messages
+    messages.forEach(msg => {
+        msgStore.delete(msg.id);
     });
 
-    // Delete the thread (syd_threads)
-    await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction('syd_threads', 'readwrite');
-        const store = tx.objectStore('syd_threads');
-        const request = store.delete(threadId);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+    // Delete thread
+    threadStore.delete(threadId);
+
+    return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
     });
 };
 
@@ -155,17 +137,10 @@ export const appendMessage = async (params: {
                 }
             };
 
-            // Resolve when transaction completes (or successfully queued)
-            // But we typically wait for tx.oncomplete for strictness, 
-            // or just resolve here if we trust the buffer. 
-            // The user requested typical pattern: putRequest.onsuccess => resolve.
-            // But I am doing multiple ops. Let's resolve with the message object.
             resolve(newMessage);
         };
 
         request.onerror = () => reject(request.error);
-
-        // Handle Transaction level errors
         tx.onerror = () => reject(tx.error);
     });
 };

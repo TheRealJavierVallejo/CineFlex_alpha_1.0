@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Undo, Redo, Moon, Sun, Download, FileText } from 'lucide-react';
+import { Undo, Redo, Moon, Sun, Download, FileText, Sparkles } from 'lucide-react';
 import Button from '../../ui/Button';
 
 interface ScriptPageToolbarProps {
@@ -13,6 +13,8 @@ interface ScriptPageToolbarProps {
     saveStatus: 'idle' | 'saving' | 'saved';
     currentPage: number;
     totalPages: number;
+    sydOpen: boolean;
+    onToggleSyd: () => void;
 }
 
 export const ScriptPageToolbar: React.FC<ScriptPageToolbarProps> = memo(({
@@ -25,7 +27,9 @@ export const ScriptPageToolbar: React.FC<ScriptPageToolbarProps> = memo(({
     onExport,
     saveStatus,
     currentPage,
-    totalPages
+    totalPages,
+    sydOpen,
+    onToggleSyd
 }) => {
     return (
         <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10">
@@ -84,6 +88,16 @@ export const ScriptPageToolbar: React.FC<ScriptPageToolbarProps> = memo(({
                     icon={isPaperWhite ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
                     title={isPaperWhite ? "Switch to Dark Mode" : "Switch to Paper Mode"}
                 />
+
+                <Button
+                    variant={sydOpen ? "primary" : "ghost"}
+                    size="sm"
+                    onClick={onToggleSyd}
+                    icon={<Sparkles className="w-3.5 h-3.5" />}
+                    title={sydOpen ? "Close Syd" : "Open Syd"}
+                >
+                    Syd
+                </Button>
 
                 <Button
                     variant="secondary"

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Cpu, Cloud, GraduationCap, AlertTriangle, Eraser, Plus, History, Trash2, MessageSquare, X } from 'lucide-react';
+import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { chatWithScriptDurable } from '../../services/gemini';
 import { getCharacters, getStoryNotes } from '../../services/storage';
@@ -14,6 +14,7 @@ interface Message {
   id: string;
   role: 'user' | 'model';
   content: string;
+  createdAt?: string;
 }
 
 interface ScriptChatProps {
@@ -33,7 +34,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const [threads, setThreads] = useState<SydThread[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  // showThreadLibrary state removed as it is now permanent
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +43,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
   const [useLocal, setUseLocal] = useState(tier === 'free');
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +62,15 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
       loadThreads(project.id);
     }
-  }, [project?.id]); // Removed isOpen dependency
+  }, [project?.id]);
+
+  // LocalStorage Persistence for Active Thread (Cache)
+  useEffect(() => {
+    if (project?.id && threadId && messages.length > 0) {
+      const key = `syd-chat-history-${project.id}-${threadId}`;
+      localStorage.setItem(key, JSON.stringify(messages));
+    }
+  }, [messages, project?.id, threadId]);
 
   const loadThreads = async (pid: string) => {
     try {
@@ -70,13 +80,13 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         const newThread = await createNewThreadForProject(pid);
         setThreads([newThread]);
         setThreadId(newThread.id);
-        setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg }]);
+        setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
       } else {
         setThreads(list);
         // Default to most recent if not set, or keep current
         if (!threadId) {
           setThreadId(list[0].id);
-          loadMessages(list[0].id);
+          loadMessages(list[0].id, pid);
         }
       }
     } catch (e) {
@@ -85,19 +95,31 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     }
   };
 
-  const loadMessages = async (tid: string) => {
+  const loadMessages = async (tid: string, pid?: string) => {
     try {
       setMessages([]); // clear current view
+
+      // Try LocalStorage Cache first for instant load
+      const cacheKey = `syd-chat-history-${pid || project?.id}-${tid}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          setMessages(JSON.parse(cached));
+        } catch (e) { /* ignore corrupt cache */ }
+      }
+
+      // Then fetch robust DB source
       const dbMessages = await listMessagesForThread(tid);
       if (dbMessages.length > 0) {
         const uiMessages: Message[] = dbMessages.map(m => ({
           id: m.id,
           role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-          content: m.content.text
+          content: m.content.text,
+          createdAt: m.createdAt
         })).filter(m => m.role === 'user' || m.role === 'model');
         setMessages(uiMessages);
-      } else {
-        setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg }]);
+      } else if (!cached) {
+        setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
       }
     } catch (e) {
       console.error("Failed to load messages", e);
@@ -111,7 +133,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
       const newThread = await createNewThreadForProject(project.id);
       setThreads(prev => [newThread, ...prev]);
       setThreadId(newThread.id);
-      setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg }]);
+      setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
     } catch (e) {
       showToast("Failed to create new chat", 'error');
     }
@@ -129,6 +151,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     try {
       await deleteThread(tid);
       setThreads(prev => prev.filter(t => t.id !== tid));
+
+      // Clear cache
+      if (project?.id) {
+        localStorage.removeItem(`syd-chat-history-${project.id}-${tid}`);
+      }
+
       if (threadId === tid) {
         setThreadId(null);
         setMessages([]);
@@ -144,6 +172,38 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     } catch (e) {
       showToast("Failed to delete thread", 'error');
     }
+  };
+
+  const handleClearHistory = async () => {
+    if (!threadId || !project?.id) return;
+    if (!window.confirm("Clear all messages in this chat?")) return;
+
+    // Ideally we'd have a 'clearMessages' API, but deleting/recreating thread is cleaner for now
+    // Or we just wipe local state and let the user start fresh, but DB stays.
+    // Let's do a hard reset of the current thread content if possible, but since we don't have deleteMessages API readily exposed,
+    // we'll assume "Delete Thread" behavior but keep the UI simpler.
+    // For now, let's just clear the UI and Cache to simulate it, realizing it might desync if we don't wipe DB.
+    // BETTER APPROACH: Just delete the thread and immediately create a new one to replace it.
+
+    try {
+      await deleteThread(threadId);
+      // Clear cache
+      localStorage.removeItem(`syd-chat-history-${project.id}-${threadId}`);
+
+      const newThread = await createNewThreadForProject(project.id);
+      setThreads(prev => prev.map(t => t.id === threadId ? newThread : t)); // Replace in list
+      setThreadId(newThread.id);
+      setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
+      showToast("Chat history cleared", 'success');
+    } catch (e) {
+      showToast("Failed to clear history", 'error');
+    }
+  };
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   useEffect(() => {
@@ -185,13 +245,13 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     }
 
     const tempId = crypto.randomUUID();
-    const userMsg: Message = { id: tempId, role: 'user', content: input };
+    const userMsg: Message = { id: tempId, role: 'user', content: input, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
     const aiMsgId = crypto.randomUUID();
-    const aiMsg: Message = { id: aiMsgId, role: 'model', content: '' };
+    const aiMsg: Message = { id: aiMsgId, role: 'model', content: '', createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, aiMsg]);
 
     try {
@@ -215,7 +275,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           setMessages(prev => prev.map(m =>
             m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
           ));
-          // setIsLoading(false); // Can flicker? Better to set false at end.
         });
 
         if (fullResponse) {
@@ -237,10 +296,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           threadId // Pass threadId
         );
 
+        // Update UI with FULL validated result from server/DB
         const uiMessages: Message[] = result.messages.map(m => ({
           id: m.id,
           role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-          content: m.content.text
+          content: m.content.text,
+          createdAt: m.createdAt
         })).filter(m => m.role === 'user' || m.role === 'model');
 
         setMessages(uiMessages);
@@ -262,10 +323,13 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         onConfirm={() => initModel()}
       />
 
-      {/* THREAD SIDEBAR (Always Visible) */}
-      <div className="w-60 shrink-0 border-r border-border bg-surface-secondary flex flex-col">
-        <div className="p-3 border-b border-border font-bold text-xs text-text-secondary uppercase tracking-wider">
-          Conversations
+      {/* THREAD SIDEBAR (Collapsible) */}
+      <div
+        className={`shrink-0 border-r border-border bg-surface-secondary flex flex-col transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-60' : 'w-0 opacity-0'}`}
+      >
+        <div className="p-3 border-b border-border font-bold text-xs text-text-secondary uppercase tracking-wider flex items-center justify-between">
+          <span>Conversations</span>
+          <span className="bg-surface px-1.5 py-0.5 rounded text-[9px] text-text-muted">{threads.length}</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {threads.map(t => (
@@ -293,10 +357,18 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
       </div>
 
       {/* MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
+      <div className="flex-1 flex flex-col min-w-0 h-full relative">
         {/* HEADER */}
-        <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-surface-secondary shrink-0">
+        <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-surface-secondary shrink-0 z-10">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-text-secondary hover:text-text-primary transition-colors p-1 rounded hover:bg-surface"
+              title={sidebarOpen ? "Hide History" : "Show History"}
+            >
+              {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+
             <button
               onClick={onClose}
               className="p-1.5 rounded text-text-tertiary hover:text-text-primary transition-colors"
@@ -304,12 +376,26 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
-              {tier === 'pro' ? 'SYD (Pro)' : 'SYD Jr. (Local)'}
+            <div className="flex flex-col">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                {tier === 'pro' ? 'SYD (Pro)' : 'SYD Jr. (Local)'}
+              </div>
             </div>
+
           </div>
 
           <div className="flex items-center gap-2">
+
+            <button
+              onClick={handleClearHistory}
+              className="p-1.5 rounded text-text-tertiary hover:text-red-400 transition-colors"
+              title="Clear History"
+            >
+              <Eraser className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-border mx-1" />
+
             <button
               onClick={handleNewChat}
               className="flex items-center gap-1 px-2 py-1 bg-primary text-white text-[10px] font-bold rounded shadow-sm hover:bg-primary-hover transition-colors"
@@ -344,18 +430,43 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         {/* MESSAGES */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
+            <div key={msg.id} className={`flex gap-3 group px-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
+
+              {/* Avatar */}
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'} `}>
                 {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
-              <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary/20 text-text-primary border border-primary/30' : 'bg-surface-secondary text-text-primary border border-border'} `}>
-                {!msg.content && msg.role === 'model' && isLoading ? (
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </span>
-                ) : msg.content}
+
+              {/* Message Content Bubble */}
+              <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap relative shadow-sm ${msg.role === 'user' ? 'bg-primary-light/10 border border-primary/20 text-text-primary' : 'bg-surface-secondary text-text-primary border border-border'} `}>
+
+                {/* Content */}
+                <div>
+                  {!msg.content && msg.role === 'model' && isLoading ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  ) : msg.content}
+                </div>
+
+                {/* Metadata & Actions */}
+                <div className={`mt-1 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.createdAt && (
+                    <span className="text-[9px] text-text-muted flex items-center gap-0.5">
+                      <Clock className="w-2.5 h-2.5" />
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleCopy(msg.content, msg.id)}
+                    className="text-text-muted hover:text-text-primary p-0.5 rounded"
+                    title="Copy text"
+                  >
+                    {copiedId === msg.id ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -371,7 +482,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder={useLocal ? "Ask SYD Jr..." : "Ask SYD..."}
               disabled={useLocal && (!isSupported || isCheckingCache)}
-              className="w-full bg-surface-secondary border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-text-primary resize-none outline-none focus:border-primary h-[80px] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-surface-secondary border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-text-primary resize-none outline-none focus:border-primary h-[80px] disabled:opacity-50 disabled:cursor-not-allowed font-sans"
             />
             <button
               onClick={handleSend}

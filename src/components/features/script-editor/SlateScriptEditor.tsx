@@ -171,7 +171,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     // Track Current Page based on Selection
     useEffect(() => {
         if (!editor.selection) return;
-        
+
         try {
             const [node] = Editor.parent(editor, editor.selection);
             if (SlateElement.isElement(node)) {
@@ -370,7 +370,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                         lineHeight: '1.0'
                     }}
                 >
-                    <div style={{ maxWidth: '6.0in', margin: '0 auto' }}>
+                    <div style={{ maxWidth: 'min(6.0in, 100%)', margin: '0 auto', padding: '0 1rem' }}>
                         <Editable
                             renderElement={renderElement}
                             renderLeaf={renderLeaf}
