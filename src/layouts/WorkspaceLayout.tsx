@@ -287,14 +287,15 @@ export const WorkspaceLayout: React.FC = () => {
             />
 
             {/* SPLIT CONTAINER */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-row flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
 
                 {/* LEFT: Main Editor Area */}
                 <div
                     className="flex flex-col transition-all duration-300 overflow-hidden"
                     style={{
                         width: sydOpen ? `${100 - sydWidth}%` : '100%',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        order: 1
                     }}
                 >
                     {/* Status Bar (Minimal Header) */}
@@ -330,12 +331,14 @@ export const WorkspaceLayout: React.FC = () => {
 
                 {/* RESIZER - Only show when Syd is open */}
                 {sydOpen && (
-                    <ResizableDivider
-                        onResize={(newPercent) => {
-                            const clamped = Math.min(70, Math.max(30, newPercent));
-                            setSydWidth(clamped);
-                        }}
-                    />
+                    <div style={{ order: 2, display: 'flex' }}>
+                        <ResizableDivider
+                            onResize={(newPercent) => {
+                                const clamped = Math.min(70, Math.max(30, newPercent));
+                                setSydWidth(clamped);
+                            }}
+                        />
+                    </div>
                 )}
 
                 {/* RIGHT: Syd Panel - Only show when open */}
@@ -344,7 +347,8 @@ export const WorkspaceLayout: React.FC = () => {
                         className="flex flex-col border-l border-border bg-surface overflow-hidden"
                         style={{
                             width: `${sydWidth}%`,
-                            flexShrink: 0
+                            flexShrink: 0,
+                            order: 3
                         }}
                     >
                         <ScriptChat onClose={() => setSydOpen(false)} />

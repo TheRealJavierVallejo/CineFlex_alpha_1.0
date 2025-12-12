@@ -255,7 +255,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="flex w-full h-full bg-surface overflow-hidden">
+    <div className="flex flex-row w-full h-full bg-surface overflow-hidden">
       <ModelDownloadModal
         isOpen={showDownloadModal}
         onClose={() => setShowDownloadModal(false)}
