@@ -48,38 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSydClick, sydOpen }) => {
                 <SidebarItem to="timeline" icon={Clapperboard} label="Scenes" />
             </div>
 
-            {/* Tools */}
-            <div className="w-full flex flex-col gap-4 items-center mb-4">
-                {/* SYD Toggle */}
-                <button
-                    onClick={onSydClick}
-                    className={`
-                w-10 h-10 rounded-xl flex items-center justify-center transition-all relative border
-                ${sydOpen
-                            ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                            : 'bg-surface text-text-secondary border-border hover:border-primary/50 hover:text-primary'}
-            `}
-                    title={sydOpen ? "Close Syd" : "Open Syd"}
-                >
-                    <MessageSquare className="w-5 h-5" />
-                    {/* Online Indicator Dot */}
-                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full" />
-                </button>
-            </div>
 
-            {/* Footer / Status */}
-            <div className="mt-auto flex flex-col items-center gap-4 text-text-muted">
-                <div className="h-px w-8 bg-border" />
-                {tier === 'pro' ? (
-                    <div title="Pro Studio">
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                    </div>
-                ) : (
-                    <div title="Student Tier">
-                        <GraduationCap className="w-4 h-4" />
-                    </div>
-                )}
-            </div>
         </div>
     );
 };

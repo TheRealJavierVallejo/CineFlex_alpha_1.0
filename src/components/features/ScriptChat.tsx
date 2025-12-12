@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus } from 'lucide-react';
+import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { chatWithScriptDurable } from '../../services/gemini';
 import { getCharacters, getStoryNotes } from '../../services/storage';
@@ -45,6 +44,9 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Enforce local for free tier
@@ -67,7 +69,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   // LocalStorage Persistence for Active Thread (Cache)
   useEffect(() => {
     if (project?.id && threadId && messages.length > 0) {
-      const key = `syd-chat-history-${project.id}-${threadId}`;
+      const key = `syd - chat - history - ${project.id} -${threadId} `;
       localStorage.setItem(key, JSON.stringify(messages));
     }
   }, [messages, project?.id, threadId]);
@@ -100,7 +102,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
       setMessages([]); // clear current view
 
       // Try LocalStorage Cache first for instant load
-      const cacheKey = `syd-chat-history-${pid || project?.id}-${tid}`;
+      const cacheKey = `syd - chat - history - ${pid || project?.id} -${tid} `;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
@@ -140,6 +142,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   };
 
   const handleSelectThread = (tid: string) => {
+    if (editingThreadId) return; // Prevent switching while editing
     setThreadId(tid);
     loadMessages(tid);
   };
@@ -150,28 +153,88 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
     try {
       await deleteThread(tid);
-      setThreads(prev => prev.filter(t => t.id !== tid));
+
+      // Update state correctly with functional update to avoid stale closure
+      setThreads(prev => {
+        const remaining = prev.filter(t => t.id !== tid);
+
+        // If we deleted the active thread, switch to another
+        if (threadId === tid) {
+          setThreadId(null);
+          setMessages([]);
+
+          if (remaining.length > 0) {
+            // Switch to the first available thread
+            // We need to trigger loadMessages, but we can't do it inside reducer easily
+            // So we'll update threadId here and let an effect or immediate call handle it
+            // Actually, we can just call setThreadId outside
+            setTimeout(() => {
+              setThreadId(remaining[0].id);
+              loadMessages(remaining[0].id);
+            }, 0);
+          } else if (project?.id) {
+            // No threads left, create new one
+            handleNewChat();
+          }
+        }
+
+        return remaining;
+      });
 
       // Clear cache
       if (project?.id) {
-        localStorage.removeItem(`syd-chat-history-${project.id}-${tid}`);
+        localStorage.removeItem(`syd - chat - history - ${project.id} -${tid} `);
       }
 
-      if (threadId === tid) {
-        setThreadId(null);
-        setMessages([]);
-        const remaining = threads.filter(t => t.id !== tid);
-        if (remaining.length > 0) {
-          setThreadId(remaining[0].id);
-          loadMessages(remaining[0].id);
-        } else if (project?.id) {
-          handleNewChat();
-        }
-      }
       showToast("Conversation deleted", 'success');
     } catch (e) {
       showToast("Failed to delete thread", 'error');
     }
+  };
+
+  const handleStartEdit = (e: React.MouseEvent, thread: SydThread) => {
+    e.stopPropagation();
+    setEditingThreadId(thread.id);
+    setEditingTitle(thread.title);
+  };
+
+  const handleSaveEdit = async (threadId: string) => {
+    if (!editingTitle.trim()) return;
+
+    try {
+      const { openDB } = await import('../../services/storage');
+      const db = await openDB();
+
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('syd_threads', 'readwrite');
+        const store = tx.objectStore('syd_threads');
+        const getRequest = store.get(threadId);
+
+        getRequest.onsuccess = () => {
+          const thread = getRequest.result as SydThread;
+          if (thread) {
+            const updatedThread = { ...thread, title: editingTitle.trim() };
+            store.put(updatedThread);
+          }
+        };
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+
+      // Update local state
+      setThreads(prev => prev.map(t =>
+        t.id === threadId ? { ...t, title: editingTitle.trim() } : t
+      ));
+      setEditingThreadId(null);
+    } catch (e) {
+      showToast("Failed to rename thread", 'error');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingThreadId(null);
+    setEditingTitle('');
   };
 
   const handleClearHistory = async () => {
@@ -182,13 +245,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     // Or we just wipe local state and let the user start fresh, but DB stays.
     // Let's do a hard reset of the current thread content if possible, but since we don't have deleteMessages API readily exposed,
     // we'll assume "Delete Thread" behavior but keep the UI simpler.
-    // For now, let's just clear the UI and Cache to simulate it, realizing it might desync if we don't wipe DB.
     // BETTER APPROACH: Just delete the thread and immediately create a new one to replace it.
 
     try {
       await deleteThread(threadId);
       // Clear cache
-      localStorage.removeItem(`syd-chat-history-${project.id}-${threadId}`);
+      localStorage.removeItem(`syd - chat - history - ${project.id} -${threadId} `);
 
       const newThread = await createNewThreadForProject(project.id);
       setThreads(prev => prev.map(t => t.id === threadId ? newThread : t)); // Replace in list
@@ -266,7 +328,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         const prompt = [
           "You are SYD Jr., an eager writing assistant running locally on the user's device. You are helpful and quick.",
           "",
-          `INSTRUCTION: ${userMsg.content}`
+          `INSTRUCTION: ${userMsg.content} `
         ].join('\n');
 
         let fullResponse = "";
@@ -325,7 +387,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
       {/* THREAD SIDEBAR (Collapsible) */}
       <div
-        className={`shrink-0 border-r border-border bg-surface-secondary flex flex-col transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-60' : 'w-0 opacity-0'}`}
+        className={`shrink - 0 border - r border - border bg - surface - secondary flex flex - col transition - all duration - 300 overflow - hidden ${sidebarOpen ? 'w-60' : 'w-0 opacity-0'} `}
       >
         <div className="p-3 border-b border-border font-bold text-xs text-text-secondary uppercase tracking-wider flex items-center justify-between">
           <span>Conversations</span>
@@ -336,11 +398,33 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
             <div
               key={t.id}
               onClick={() => handleSelectThread(t.id)}
-              className={`group flex items-center justify-between p-2 rounded cursor-pointer text-sm mb-1 ${threadId === t.id ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-background text-text-secondary'} `}
+              className={`group flex items - center justify - between p - 2 rounded cursor - pointer text - sm mb - 1 ${threadId === t.id ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-background text-text-secondary'} `}
             >
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{t.title || 'New Chat'}</div>
-                <div className="text-[10px] text-text-muted truncate">
+              <div className="flex-1 min-w-0 mr-2">
+                {editingThreadId === t.id ? (
+                  <input
+                    type="text"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onBlur={() => handleSaveEdit(t.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveEdit(t.id);
+                      if (e.key === 'Escape') handleCancelEdit();
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                    className="w-full bg-background border border-primary rounded px-2 py-0.5 text-sm font-medium text-text-primary outline-none"
+                  />
+                ) : (
+                  <div
+                    className="font-medium truncate"
+                    onDoubleClick={(e) => handleStartEdit(e, t)}
+                  >
+                    {t.title || 'New Chat'}
+                  </div>
+                )}
+
+                <div className="text-[10px] text-text-muted truncate mt-0.5">
                   {new Date(t.updatedAt).toLocaleDateString()}
                 </div>
               </div>
@@ -409,17 +493,17 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
             {tier === 'free' ? (
               /* Free Tier Indicator */
-              <div className={`flex items-center gap-2 px-2 py-1 bg-background border rounded-full text-[10px] cursor-help transition-colors ${!isSupported ? 'border-red-900/50 text-red-400' : 'border-border text-text-muted'} `} title="Free users use local AI">
+              <div className={`flex items - center gap - 2 px - 2 py - 1 bg - background border rounded - full text - [10px] cursor - help transition - colors ${!isSupported ? 'border-red-900/50 text-red-400' : 'border-border text-text-muted'} `} title="Free users use local AI">
                 {isCheckingCache ? <Loader2 className="w-3 h-3 animate-spin" /> : <Cpu className="w-3 h-3" />}
                 <span>{isCheckingCache ? 'Checking...' : isSupported ? 'Offline' : 'Unsupported'}</span>
               </div>
             ) : (
               /* Pro Tier Toggle */
               <div className="flex bg-background rounded-sm p-0.5 border border-border">
-                <button onClick={() => setUseLocal(false)} className={`px-2 py-1 rounded-sm text-[10px] font-bold flex items-center gap-1 transition-colors ${!useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
+                <button onClick={() => setUseLocal(false)} className={`px - 2 py - 1 rounded - sm text - [10px] font - bold flex items - center gap - 1 transition - colors ${!useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
                   <Cloud className="w-3 h-3" /> Gemini
                 </button>
-                <button onClick={() => setUseLocal(true)} className={`px-2 py-1 rounded-sm text-[10px] font-bold flex items-center gap-1 transition-colors ${useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
+                <button onClick={() => setUseLocal(true)} className={`px - 2 py - 1 rounded - sm text - [10px] font - bold flex items - center gap - 1 transition - colors ${useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
                   <Cpu className="w-3 h-3" /> Local
                 </button>
               </div>
@@ -430,15 +514,15 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         {/* MESSAGES */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex gap-3 group px-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
+            <div key={msg.id} className={`flex gap - 3 group px - 2 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
 
               {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'} `}>
+              <div className={`w - 8 h - 8 rounded - full flex items - center justify - center shrink - 0 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'} `}>
                 {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
               {/* Message Content Bubble */}
-              <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap relative shadow-sm ${msg.role === 'user' ? 'bg-primary-light/10 border border-primary/20 text-text-primary' : 'bg-surface-secondary text-text-primary border border-border'} `}>
+              <div className={`max - w - [85 %] rounded - lg p - 3 text - sm leading - relaxed whitespace - pre - wrap relative shadow - sm ${msg.role === 'user' ? 'bg-primary-light/10 border border-primary/20 text-text-primary' : 'bg-surface-secondary text-text-primary border border-border'} `}>
 
                 {/* Content */}
                 <div>
@@ -452,7 +536,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
                 </div>
 
                 {/* Metadata & Actions */}
-                <div className={`mt-1 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`mt - 1 flex items - center gap - 2 opacity - 0 group - hover: opacity - 100 transition - opacity ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
                   {msg.createdAt && (
                     <span className="text-[9px] text-text-muted flex items-center gap-0.5">
                       <Clock className="w-2.5 h-2.5" />

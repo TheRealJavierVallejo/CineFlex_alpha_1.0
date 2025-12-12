@@ -149,19 +149,20 @@ export const ScriptPage: React.FC = () => {
                     onToggleSyd={() => setSydOpen(!sydOpen)}
                 />
 
-                {/* MAIN SPLIT CONTENT - Add overflow-hidden here too */}
+                {/* MAIN SPLIT CONTENT - FIXED ARCHITECTURE */}
                 <div className="flex flex-row w-full flex-1 min-h-0 overflow-hidden">
-
-                    {/* LEFT: Editor Area (50% or 100%) - PROFESSIONALLY CENTERED */}
-                    <div className={`${sydOpen ? 'w-1/2' : 'w-full'} h-full flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden`}>
-                        {/* Single scroll container with centered content */}
+                    {/* LEFT: Editor Area - TRULY CENTERED */}
+                    <div
+                        className={`h-full flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${sydOpen ? 'w-1/2' : 'w-full'
+                            }`}
+                    >
                         <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-                            {/* Centering wrapper with padding */}
-                            <div className="min-h-full flex justify-center px-8 pb-[50vh]">
-                                {/* Content container with max width */}
-                                <div className="w-full max-w-[850px]">
+                            {/* PERFECT CENTER - No padding, no black bars */}
+                            <div className="min-h-full flex items-center justify-center pb-[50vh]">
+                                {/* Fixed 850px width, perfectly centered */}
+                                <div className="w-[850px]">
                                     {elements.length === 0 ? (
-                                        <div className="mt-20 flex justify-center">
+                                        <div className="mt-20">
                                             <EmptyProjectState
                                                 title="Start Writing"
                                                 description="Create your first scene or import an existing screenplay."
@@ -197,7 +198,7 @@ export const ScriptPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Keyboard Shortcut Helper (Anchored to Editor) */}
+                        {/* Keyboard Shortcut Helper (unchanged) */}
                         <div className="absolute bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
                             <div className="pointer-events-auto">
                                 {showShortcuts && (
@@ -230,9 +231,9 @@ export const ScriptPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* RIGHT: Syd Panel (50%) - Add overflow-hidden */}
+                    {/* RIGHT: Syd Panel - PROPERLY SPLIT, NOT OVERLAY */}
                     {sydOpen && (
-                        <div className="w-1/2 h-full border-l border-border overflow-hidden">
+                        <div className="w-1/2 h-full border-l border-border overflow-hidden bg-surface">
                             <ScriptChat onClose={() => setSydOpen(false)} />
                         </div>
                     )}

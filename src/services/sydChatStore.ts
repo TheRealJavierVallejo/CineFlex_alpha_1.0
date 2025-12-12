@@ -24,7 +24,15 @@ export const createNewThreadForProject = async (projectId: string): Promise<SydT
     };
 
     // Use correct store name 'syd_threads'
-    await dbSet('syd_threads', newThreadId, newThread);
+    // Use correct store name 'syd_threads'
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('syd_threads', 'readwrite');
+        const store = tx.objectStore('syd_threads');
+        const request = store.put(newThread); // No key parameter
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
     return newThread;
 };
 
