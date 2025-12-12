@@ -6,7 +6,7 @@
  * Now features specialized personas for every field type.
  */
 
-import { PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata } from '../types';
+import { PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, ScriptElement, Character, StoryNote } from '../types';
 import { COMMUNICATION_PROTOCOL } from './sydCommunicationProtocol';
 
 // All micro-agent types
@@ -230,11 +230,30 @@ export function selectContextForAgent(
     plot?: PlotDevelopment,
     character?: CharacterDevelopment,
     beats?: StoryBeat[],
-    metadata?: StoryMetadata
+    metadata?: StoryMetadata,
+    allCharacters?: CharacterDevelopment[], // ADD THIS
+    storyNotes?: string, // ADD THIS - raw markdown content from Story Notes
+    scriptContent?: string, // ADD THIS - formatted script content
+    isProMode?: boolean // ADD THIS
 ): SydContext {
     const contextFields: Record<string, any> = {};
     let systemPrompt = '';
     let maxOutputTokens = 300;
+
+    // Pro Mode: Inject FULL project context for all agents
+    if (isProMode) {
+        const fullProjectContext = buildFullProjectContext(plot, allCharacters || [], beats || [], metadata);
+
+        contextFields.fullProjectContext = fullProjectContext;
+
+        if (storyNotes && storyNotes.trim().length > 0) {
+            contextFields.storyNotes = storyNotes;
+        }
+
+        if (scriptContent && scriptContent.trim().length > 0) {
+            contextFields.scriptContent = scriptContent;
+        }
+    }
 
     // Common Context Data
     const genre = plot?.genre || "Unknown Genre";
@@ -777,11 +796,32 @@ Be concise, actionable, and focused on enhancing the story.`;
         systemPrompt = "You are Syd, a helpful screenwriting assistant. Analyze the context and provide concise suggestions.";
     }
 
+    if (isProMode && contextFields.fullProjectContext) {
+        const proContextPrefix = `
+# FULL PROJECT CONTEXT AVAILABLE
+
+You have access to the complete project context below. Reference this information when providing suggestions.
+
+${contextFields.fullProjectContext}
+
+${contextFields.storyNotes ? `\n# STORY NOTES\n${contextFields.storyNotes}\n` : ''}
+
+${contextFields.scriptContent ? `\n# SCRIPT CONTENT\n${contextFields.scriptContent}\n` : ''}
+
+---
+
+`;
+
+        systemPrompt = proContextPrefix + systemPrompt;
+    }
+
     // Prepend the communication protocol to ALL agent system prompts
     // This ensures every agent follows the listening-first rules
     const enhancedSystemPrompt = COMMUNICATION_PROTOCOL + systemPrompt;
 
-    const estimatedTokens = estimateObjectTokens(contextFields) + estimateTokens(enhancedSystemPrompt);
+    const estimatedTokens = isProMode
+        ? estimateObjectTokens(contextFields) + estimateTokens(enhancedSystemPrompt) + 5000 // Add buffer for full context
+        : estimateObjectTokens(contextFields) + estimateTokens(enhancedSystemPrompt);
 
     // Get agent-specific configuration
     const config = getAgentConfig(agentType);
@@ -791,7 +831,7 @@ Be concise, actionable, and focused on enhancing the story.`;
         systemPrompt: enhancedSystemPrompt,
         contextFields,
         estimatedTokens,
-        maxOutputTokens: config.maxOutputTokens,
+        maxOutputTokens: isProMode ? 1500 : config.maxOutputTokens, // Increase for Pro with full context
         temperature: config.temperature,
         outputFormat: config.outputFormat,
         enforceLength: config.enforceLength

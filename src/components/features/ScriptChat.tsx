@@ -387,18 +387,27 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
       {/* THREAD SIDEBAR (Collapsible) */}
       <div
-        className={`shrink - 0 border - r border - border bg - surface - secondary flex flex - col transition - all duration - 300 overflow - hidden ${sidebarOpen ? 'w-60' : 'w-0 opacity-0'} `}
+        className={`shrink-0 border-r border-border bg-surface-secondary flex flex-col transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-60' : 'w-0 opacity-0'}`}
       >
         <div className="p-3 border-b border-border font-bold text-xs text-text-secondary uppercase tracking-wider flex items-center justify-between">
           <span>Conversations</span>
-          <span className="bg-surface px-1.5 py-0.5 rounded text-[9px] text-text-muted">{threads.length}</span>
+          <div className="flex items-center gap-2">
+            <span className="bg-surface px-1.5 py-0.5 rounded text-[9px] text-text-muted">{threads.length}</span>
+            <button
+              onClick={handleNewChat}
+              className="p-1 hover:text-primary transition-colors"
+              title="New Chat"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {threads.map(t => (
             <div
               key={t.id}
               onClick={() => handleSelectThread(t.id)}
-              className={`group flex items - center justify - between p - 2 rounded cursor - pointer text - sm mb - 1 ${threadId === t.id ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-background text-text-secondary'} `}
+              className={`group flex items-center justify-between p-2 rounded cursor-pointer text-sm mb-1 ${threadId === t.id ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-background text-text-secondary'} `}
             >
               <div className="flex-1 min-w-0 mr-2">
                 {editingThreadId === t.id ? (
@@ -428,13 +437,23 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
                   {new Date(t.updatedAt).toLocaleDateString()}
                 </div>
               </div>
-              <button
-                onClick={(e) => handleDeleteThread(e, t.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity"
-                title="Delete Chat"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
+
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => handleStartEdit(e, t)}
+                  className="p-1 hover:text-primary transition-colors"
+                  title="Rename"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={(e) => handleDeleteThread(e, t.id)}
+                  className="p-1 hover:text-red-400 transition-colors"
+                  title="Delete Chat"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -480,30 +499,19 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
             <div className="h-4 w-px bg-border mx-1" />
 
-            <button
-              onClick={handleNewChat}
-              className="flex items-center gap-1 px-2 py-1 bg-primary text-white text-[10px] font-bold rounded shadow-sm hover:bg-primary-hover transition-colors"
-              title="New Chat"
-            >
-              <Plus className="w-3 h-3" />
-              <span>New</span>
-            </button>
-
-            <div className="h-4 w-px bg-border mx-1" />
-
+            {/* Free Tier Indicator - Fixed Class Names */}
             {tier === 'free' ? (
-              /* Free Tier Indicator */
-              <div className={`flex items - center gap - 2 px - 2 py - 1 bg - background border rounded - full text - [10px] cursor - help transition - colors ${!isSupported ? 'border-red-900/50 text-red-400' : 'border-border text-text-muted'} `} title="Free users use local AI">
+              <div className={`flex items-center gap-2 px-2 py-1 bg-background border rounded-full text-[10px] cursor-help transition-colors ${!isSupported ? 'border-red-900/50 text-red-400' : 'border-border text-text-muted'} `} title="Free users use local AI">
                 {isCheckingCache ? <Loader2 className="w-3 h-3 animate-spin" /> : <Cpu className="w-3 h-3" />}
                 <span>{isCheckingCache ? 'Checking...' : isSupported ? 'Offline' : 'Unsupported'}</span>
               </div>
             ) : (
-              /* Pro Tier Toggle */
+              /* Pro Tier Toggle - Fixed Class Names & Label */
               <div className="flex bg-background rounded-sm p-0.5 border border-border">
-                <button onClick={() => setUseLocal(false)} className={`px - 2 py - 1 rounded - sm text - [10px] font - bold flex items - center gap - 1 transition - colors ${!useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
-                  <Cloud className="w-3 h-3" /> Gemini
+                <button onClick={() => setUseLocal(false)} className={`px-2 py-1 rounded-sm text-[10px] font-bold flex items-center gap-1 transition-colors ${!useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
+                  <Cloud className="w-3 h-3" /> Claude
                 </button>
-                <button onClick={() => setUseLocal(true)} className={`px - 2 py - 1 rounded - sm text - [10px] font - bold flex items - center gap - 1 transition - colors ${useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
+                <button onClick={() => setUseLocal(true)} className={`px-2 py-1 rounded-sm text-[10px] font-bold flex items-center gap-1 transition-colors ${useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
                   <Cpu className="w-3 h-3" /> Local
                 </button>
               </div>
@@ -514,15 +522,15 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         {/* MESSAGES */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex gap - 3 group px - 2 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
+            <div key={msg.id} className={`flex gap-3 group px-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
 
               {/* Avatar */}
-              <div className={`w - 8 h - 8 rounded - full flex items - center justify - center shrink - 0 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'} `}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'} `}>
                 {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
               {/* Message Content Bubble */}
-              <div className={`max - w - [85 %] rounded - lg p - 3 text - sm leading - relaxed whitespace - pre - wrap relative shadow - sm ${msg.role === 'user' ? 'bg-primary-light/10 border border-primary/20 text-text-primary' : 'bg-surface-secondary text-text-primary border border-border'} `}>
+              <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap relative shadow-sm ${msg.role === 'user' ? 'bg-primary-light/10 border border-primary/20 text-text-primary' : 'bg-surface-secondary text-text-primary border border-border'} `}>
 
                 {/* Content */}
                 <div>
@@ -536,7 +544,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
                 </div>
 
                 {/* Metadata & Actions */}
-                <div className={`mt - 1 flex items - center gap - 2 opacity - 0 group - hover: opacity - 100 transition - opacity ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
+                <div className={`mt-1 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
                   {msg.createdAt && (
                     <span className="text-[9px] text-text-muted flex items-center gap-0.5">
                       <Clock className="w-2.5 h-2.5" />

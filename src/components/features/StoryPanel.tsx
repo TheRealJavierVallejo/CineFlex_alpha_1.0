@@ -8,6 +8,8 @@ import {
     savePlotDevelopment,
     getCharacterDevelopments,
     saveCharacterDevelopments,
+    // getCharacters, // REMOVED
+    getStoryNotes, // Added for Full Context
     getStoryBeats,
     saveStoryBeats,
     getStoryMetadata,
@@ -65,7 +67,7 @@ export const StoryPanel: React.FC = () => {
     const [characters, setCharacters] = useState<CharacterDevelopment[]>([]);
     const [beats, setBeats] = useState<StoryBeat[]>([]);
     const [metadata, setMetadata] = useState<StoryMetadata>({ lastUpdated: Date.now() });
-    
+
     // Syd State
     const [activeSydField, setActiveSydField] = useState<string | null>(null);
     const [sydContext, setSydContext] = useState<SydContext | null>(null);
@@ -114,6 +116,11 @@ export const StoryPanel: React.FC = () => {
     }, [progress, isReady, plot, beats, metadata, project?.id, generateMicroAgent]);
 
     // Load Data
+    // Full Context State (Pro Tier)
+    const [scriptElements, setScriptElements] = useState<any[]>([]); // Using any[] to avoid missing import if ScriptElement not imported, will fix import next
+    // const [allCharacters, setAllCharacters] = useState<any[]>([]); // REMOVED: Using 'characters' state instead
+    const [storyNotes, setStoryNotes] = useState<any[]>([]);
+
     useEffect(() => {
         if (!project) return;
 
@@ -147,7 +154,15 @@ export const StoryPanel: React.FC = () => {
 
             setMetadata(metaData);
         });
-    }, [project]);
+
+        // Load full context for Pro Tier
+        if (project.id && tier === 'pro') {
+            setScriptElements(project.scriptElements || []);
+            // Characters are already loaded by main useEffect
+            getStoryNotes(project.id).then(data => setStoryNotes(data.notes));
+        }
+
+    }, [project, tier]);
 
     // Retry pending request after download/init
     useEffect(() => {
@@ -225,7 +240,7 @@ export const StoryPanel: React.FC = () => {
             if (!isReady) {
                 if (isModelCached) {
                     // Cached but cold: Start warming up and proceed to open UI (UI will show "Warming up")
-                    initModel(); 
+                    initModel();
                 } else {
                     // Not cached: Must download first. Stop and show modal.
                     setPendingSydRequest({ agentType, fieldId, anchorEl, charId });
@@ -237,12 +252,35 @@ export const StoryPanel: React.FC = () => {
 
         const character = charId ? characters.find(c => c.id === charId) : undefined;
 
+        // Prepare full context data if Pro
+        let notesString = '';
+        let scriptString = '';
+
+        if (tier === 'pro') {
+            if (storyNotes.length > 0) {
+                notesString = storyNotes.map((n: any) => `## ${n.title}\n${n.content}`).join('\n\n---\n\n');
+            }
+            if (scriptElements.length > 0) {
+                // Use last 50 elements for context window efficiency, similar to previous logic but as string
+                scriptString = scriptElements.slice(-50).map((el: any) => {
+                    if (el.type === 'scene_heading') return `\n${el.content}`;
+                    if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
+                    if (el.type === 'dialogue') return `${el.content}`;
+                    return el.content;
+                }).join('\n');
+            }
+        }
+
         const context = selectContextForAgent(
             agentType,
             plot,
             character,
             beats,
-            metadata
+            metadata,
+            characters, // allCharacters (from existing state)
+            notesString,
+            scriptString,
+            tier === 'pro'
         );
 
         setSydContext(context);
@@ -256,7 +294,7 @@ export const StoryPanel: React.FC = () => {
         setSydAnchor(null);
     };
 
-    const handleSydMessage = async (message: string, messageHistory?: Array<{role: string, content: string}>): Promise<string> => {
+    const handleSydMessage = async (message: string, messageHistory?: Array<{ role: string, content: string }>): Promise<string> => {
         if (!sydContext) return '';
 
         const raw = await generateMicroAgent(
@@ -275,7 +313,7 @@ export const StoryPanel: React.FC = () => {
 
     return (
         <>
-            <ModelDownloadModal 
+            <ModelDownloadModal
                 isOpen={showDownloadModal}
                 onClose={() => { setShowDownloadModal(false); setPendingSydRequest(null); }}
                 onConfirm={() => {
@@ -355,7 +393,7 @@ export const StoryPanel: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                
+
                                 <div className="relative group min-h-[42px] px-3 py-2 bg-surface-secondary border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all">
                                     <div className="flex flex-wrap gap-2 pr-8">
                                         {(plot.storyTypes || []).map(type => (
@@ -366,7 +404,7 @@ export const StoryPanel: React.FC = () => {
                                                 </button>
                                             </span>
                                         ))}
-                                        
+
                                         <div className="relative flex-1 min-w-[120px]">
                                             <input
                                                 value={storyTypeInput}
@@ -384,7 +422,7 @@ export const StoryPanel: React.FC = () => {
                                                 className="w-full bg-transparent outline-none text-sm text-text-primary placeholder:text-text-muted/50 h-6"
                                                 placeholder={(plot.storyTypes || []).length === 0 ? "Select types (e.g. Hero's Journey)..." : ""}
                                             />
-                                            
+
                                             {showStoryTypeDropdown && (
                                                 <div className="absolute top-full left-0 mt-2 w-64 bg-surface border border-border shadow-xl rounded-md z-20 max-h-48 overflow-y-auto">
                                                     {STORY_STRUCTURE_TYPES
@@ -413,7 +451,7 @@ export const StoryPanel: React.FC = () => {
                                     </div>
 
                                     {/* Syd Button - Direct Child of Group Container */}
-                                    <button 
+                                    <button
                                         onClick={(e) => handleRequestSyd('story_types', 'story_types', e.currentTarget.parentElement as HTMLElement)}
                                         className={`
                                             absolute top-2 right-2 p-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm backdrop-blur-sm z-10
@@ -449,7 +487,7 @@ export const StoryPanel: React.FC = () => {
                                                     placeholder="Custom rating (e.g. TV-MA)..."
                                                     autoFocus
                                                 />
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         setIsCustomRating(false);
                                                         handlePlotChange({ targetAudienceRating: TARGET_AUDIENCE_RATINGS[0] });

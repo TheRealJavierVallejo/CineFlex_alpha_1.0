@@ -8,6 +8,8 @@ import {
     savePlotDevelopment,
     getCharacterDevelopments,
     saveCharacterDevelopments,
+    // getCharacters, // REMOVED
+    getStoryNotes, // Added for Full Context
     getStoryBeats,
     saveStoryBeats,
     getStoryMetadata,
@@ -91,6 +93,11 @@ export const StoryDevelopment: React.FC = () => {
     }, [progress, isReady, plot, beats, metadata, project?.id, generateMicroAgent]);
 
     // Load Data
+    // Full Context State (Pro Tier)
+    const [scriptElements, setScriptElements] = useState<any[]>([]);
+    // const [allCharacters, setAllCharacters] = useState<any[]>([]); // REMOVED: Using 'characters' state
+    const [storyNotes, setStoryNotes] = useState<any[]>([]);
+
     useEffect(() => {
         if (!project) return;
 
@@ -120,7 +127,14 @@ export const StoryDevelopment: React.FC = () => {
             setMetadata(metaData);
             setIsLoading(false);
         });
-    }, [project]);
+
+        // Load full context for Pro Tier
+        if (project.id && tier === 'pro') {
+            setScriptElements(project.scriptElements || []);
+            // Characters already loaded
+            getStoryNotes(project.id).then(data => setStoryNotes(data.notes));
+        }
+    }, [project, tier]);
 
     // Retry pending request after download/init
     useEffect(() => {
@@ -200,7 +214,22 @@ export const StoryDevelopment: React.FC = () => {
             plot,
             character,
             beats,
-            metadata
+            metadata,
+            characters, // allCharacters
+            // Story Notes String
+            (tier === 'pro' && storyNotes.length > 0)
+                ? storyNotes.map((n: any) => `## ${n.title}\n${n.content}`).join('\n\n---\n\n')
+                : '',
+            // Script Content String
+            (tier === 'pro' && scriptElements.length > 0)
+                ? scriptElements.slice(-50).map((el: any) => {
+                    if (el.type === 'scene_heading') return `\n${el.content}`;
+                    if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
+                    if (el.type === 'dialogue') return `${el.content}`;
+                    return el.content;
+                }).join('\n')
+                : '',
+            tier === 'pro'
         );
 
         setSydContext(context);

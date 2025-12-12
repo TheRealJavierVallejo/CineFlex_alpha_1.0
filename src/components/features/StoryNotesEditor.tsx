@@ -6,7 +6,8 @@ import {
     saveStoryNotes,
     createStoryNote,
     updateStoryNote,
-    deleteStoryNote
+    deleteStoryNote,
+    getCharacterDevelopments // Changed for Full Context Type Compatibility
 } from '../../services/storage';
 import { StoryNote, StoryNotesData } from '../../types';
 import { SydPopoutPanel } from './SydPopoutPanel';
@@ -37,10 +38,20 @@ export const StoryNotesEditor: React.FC = () => {
         ? notesData.notes.find(n => n.id === notesData.activeNoteId) || null
         : null;
 
+    // Full Context State (Pro Tier)
+    const [scriptElements, setScriptElements] = useState<any[]>([]);
+    const [allCharacters, setAllCharacters] = useState<any[]>([]);
+
     // Load notes on mount
     useEffect(() => {
         loadNotes();
-    }, [project.id]);
+
+        // Load full context for Pro Tier
+        if (project.id && tier === 'pro') {
+            setScriptElements(project.scriptElements || []);
+            getCharacterDevelopments(project.id).then(setAllCharacters);
+        }
+    }, [project.id, tier]);
 
     // Auto-select first note if none active but notes exist
     useEffect(() => {
@@ -164,7 +175,20 @@ export const StoryNotesEditor: React.FC = () => {
             {}, // Plot data (if needed)
             undefined, // Character
             [], // Beats
-            { lastUpdated: Date.now() } // Metadata
+            { lastUpdated: Date.now() }, // Metadata
+            allCharacters, // from state
+            // Story Notes String (all notes)
+            notesData.notes.map(n => `## ${n.title}\n${n.content}`).join('\n\n---\n\n'),
+            // Script Content String
+            (tier === 'pro' && scriptElements.length > 0)
+                ? scriptElements.slice(-50).map((el: any) => {
+                    if (el.type === 'scene_heading') return `\n${el.content}`;
+                    if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
+                    if (el.type === 'dialogue') return `${el.content}`;
+                    return el.content;
+                }).join('\n')
+                : '',
+            tier === 'pro'
         );
 
         // Inject current note into context
