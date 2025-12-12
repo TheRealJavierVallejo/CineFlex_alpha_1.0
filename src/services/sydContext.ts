@@ -142,7 +142,8 @@ export function buildFullProjectContext(
     plot?: PlotDevelopment,
     allCharacters?: CharacterDevelopment[],
     allBeats?: StoryBeat[],
-    metadata?: StoryMetadata
+    metadata?: StoryMetadata,
+    isProMode?: boolean // ADD THIS
 ): string {
     const sections: string[] = [];
 
@@ -194,7 +195,9 @@ export function buildFullProjectContext(
             if (beat) {
                 // Trim to first 200 chars if too long
                 let content = beat.content || 'Not defined yet';
-                if (content.length > 200) {
+
+                // Only truncate in Free mode
+                if (!isProMode && content.length > 200) {
                     content = content.substring(0, 200) + '...';
                 }
                 beatLines.push(`\n## ${beatName}`);
@@ -242,7 +245,7 @@ export function selectContextForAgent(
 
     // Pro Mode: Inject FULL project context for all agents
     if (isProMode) {
-        const fullProjectContext = buildFullProjectContext(plot, allCharacters || [], beats || [], metadata);
+        const fullProjectContext = buildFullProjectContext(plot, allCharacters || [], beats || [], metadata, isProMode);
 
         contextFields.fullProjectContext = fullProjectContext;
 
@@ -841,7 +844,12 @@ ${contextFields.scriptContent ? `\n# SCRIPT CONTENT\n${contextFields.scriptConte
 /**
  * Helper to check if we are within limits
  */
-export function validateTokenBudget(context: SydContext, userInput: string): boolean {
+export function validateTokenBudget(context: SydContext, userInput: string, isProMode: boolean = false): boolean {
+    // Pro mode: No token restrictions (Claude 200K context)
+    if (isProMode) {
+        return true;
+    }
+
     const userTokens = estimateTokens(userInput);
     // Standard limit for local LLM context window (usually 2048 or 4096)
     // We keep a safety buffer.

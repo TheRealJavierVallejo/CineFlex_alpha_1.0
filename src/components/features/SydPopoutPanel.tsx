@@ -25,8 +25,13 @@ interface ChatSession {
 }
 
 // Sliding window helper - keep last N turns (user + assistant pairs)
-const getRecentHistory = (messages: ChatMessage[], maxTurns: number = 15): ChatMessage[] => {
-    // Filter out system messages first
+const getRecentHistory = (messages: ChatMessage[], maxTurns: number = 15, isProMode: boolean = false): ChatMessage[] => {
+    // Pro mode: Return ALL conversation history (Claude 200K context)
+    if (isProMode) {
+        return messages.filter(msg => msg.role !== 'system');
+    }
+
+    // Free mode: Keep existing 15-turn sliding window for local models
     const conversationMessages = messages.filter(msg => msg.role !== 'system');
 
     // Keep only last maxTurns * 2 messages (user + assistant pairs)

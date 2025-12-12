@@ -222,7 +222,7 @@ export const StoryDevelopment: React.FC = () => {
                 : '',
             // Script Content String
             (tier === 'pro' && scriptElements.length > 0)
-                ? scriptElements.slice(-50).map((el: any) => {
+                ? (tier === 'pro' ? scriptElements : scriptElements.slice(-50)).map((el: any) => {
                     if (el.type === 'scene_heading') return `\n${el.content}`;
                     if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
                     if (el.type === 'dialogue') return `${el.content}`;

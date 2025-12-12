@@ -261,8 +261,11 @@ export const StoryPanel: React.FC = () => {
                 notesString = storyNotes.map((n: any) => `## ${n.title}\n${n.content}`).join('\n\n---\n\n');
             }
             if (scriptElements.length > 0) {
-                // Use last 50 elements for context window efficiency, similar to previous logic but as string
-                scriptString = scriptElements.slice(-50).map((el: any) => {
+                // Pro mode: Include ALL script elements (no limit)
+                // Free mode: Include last 50 elements
+                const elementsToInclude = tier === 'pro' ? scriptElements : scriptElements.slice(-50);
+
+                scriptString = elementsToInclude.map((el: any) => {
                     if (el.type === 'scene_heading') return `\n${el.content}`;
                     if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
                     if (el.type === 'dialogue') return `${el.content}`;
