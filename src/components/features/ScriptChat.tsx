@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { chatWithScriptClaude } from '../../services/scriptClaude';
-import { chatWithScriptDurable } from '../../services/gemini'; // Keeping gemini for Free tier fallback/reference if needed, but logic splits by tier
 import { getCharacters, getStoryNotes } from '../../services/storage';
 import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread } from '../../services/sydChatStore';
 import { Character, StoryNote, SydMessage, SydThread } from '../../types';
