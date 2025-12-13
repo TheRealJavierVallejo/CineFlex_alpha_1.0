@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
-import { chatWithScriptDurable } from '../../services/gemini';
+import { chatWithScriptClaude } from '../../services/scriptClaude';
+import { chatWithScriptDurable } from '../../services/gemini'; // Keeping gemini for Free tier fallback/reference if needed, but logic splits by tier
 import { getCharacters, getStoryNotes } from '../../services/storage';
 import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread } from '../../services/sydChatStore';
 import { Character, StoryNote, SydMessage, SydThread } from '../../types';
@@ -347,26 +348,51 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           });
         }
       } else {
-        // CLOUD PERSISTENCE (via gemini.ts)
+        // CLOUD PERSISTENCE (via Claude for Pro)
         const elements = project.scriptElements || [];
-        const result = await chatWithScriptDurable(
-          project.id,
-          userMsg.content,
-          elements,
-          characters,
-          storyNotes,
-          threadId // Pass threadId
-        );
 
-        // Update UI with FULL validated result from server/DB
-        const uiMessages: Message[] = result.messages.map(m => ({
-          id: m.id,
-          role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-          content: m.content.text,
-          createdAt: m.createdAt
-        })).filter(m => m.role === 'user' || m.role === 'model');
+        // Persist user message first
+        await appendMessage({
+          threadId,
+          role: 'user',
+          content: { text: userMsg.content }
+        });
 
-        setMessages(uiMessages);
+        let fullResponse = "";
+        try {
+          await chatWithScriptClaude(
+            project.id,
+            userMsg.content,
+            elements,
+            characters,
+            storyNotes,
+            threadId,
+            (chunk) => {
+              fullResponse += chunk;
+              setMessages(prev => prev.map(m =>
+                m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
+              ));
+            }
+          );
+
+          // Persist assistant response
+          if (fullResponse) {
+            await appendMessage({
+              threadId,
+              role: 'assistant',
+              content: { text: fullResponse }
+            });
+          }
+
+          // Reload full thread to ensure UI is synced
+          loadMessages(threadId);
+
+        } catch (error) {
+          console.error('Claude Chat Error:', error);
+          setMessages(prev => prev.map(m =>
+            m.id === aiMsgId ? { ...m, content: "Sorry, I encountered an error connecting to Claude. Please try again." } : m
+          ));
+        }
       }
     } catch (error: any) {
       console.error(error);
