@@ -7,9 +7,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, FileText, Loader2, Check, Film, Settings } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, FileText, Loader2, Film, Settings, LogIn, User } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
 import { AppSettings } from './AppSettings';
+import { supabase } from '../../supabaseClient';
 
 export const ProjectLibrary: React.FC = () => {
    const navigate = useNavigate();
@@ -20,22 +21,28 @@ export const ProjectLibrary: React.FC = () => {
    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
    const [showSettings, setShowSettings] = useState(false);
    const [toasts, setToasts] = useState<ToastNotification[]>([]);
+   const [user, setUser] = useState<any>(null);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
    useEffect(() => {
       loadProjects();
+      checkUser();
 
       // Apply theme on load for the landing page
       const savedColor = localStorage.getItem('cinesketch_theme_color');
       if (savedColor) {
          document.documentElement.style.setProperty('--color-primary', savedColor);
-         // Recalculate glow
          const r = parseInt(savedColor.slice(1, 3), 16);
          const g = parseInt(savedColor.slice(3, 5), 16);
          const b = parseInt(savedColor.slice(5, 7), 16);
          document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
       }
    }, []);
+
+   const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+   };
 
    const showToast: ShowToastFn = (message, type = 'info', action) => {
       const id = Date.now();
@@ -165,6 +172,24 @@ export const ProjectLibrary: React.FC = () => {
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
 
                <div className="h-8 w-[1px] bg-border mx-2" />
+
+               {user ? (
+                  <button
+                     onClick={() => setShowSettings(true)}
+                     className="h-9 px-3 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary text-xs font-bold flex items-center gap-2 transition-all"
+                     title="Account Settings"
+                  >
+                     <User className="w-3.5 h-3.5" />
+                     <span className="hidden sm:inline">{user.email?.split('@')[0]}</span>
+                  </button>
+               ) : (
+                  <button
+                     onClick={() => navigate('/auth')}
+                     className="h-9 px-4 rounded-sm bg-primary text-white hover:bg-primary-hover text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all shadow-glow"
+                  >
+                     <LogIn className="w-3.5 h-3.5" /> Sign In
+                  </button>
+               )}
 
                <button
                   onClick={() => setShowSettings(true)}

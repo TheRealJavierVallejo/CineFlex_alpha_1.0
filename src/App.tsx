@@ -9,7 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { LocalLlmProvider } from './context/LocalLlmContext';
-import { UpgradeModal } from './components/ui/UpgradeModal'; // IMPORTED
+import { UpgradeModal } from './components/ui/UpgradeModal';
 import {
     TimelineView,
     AssetManager,
@@ -22,11 +22,11 @@ import {
 } from './components/features/LazyComponents';
 import { ApiKeySettings } from './components/features/ApiKeySettings';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
+import { AuthPage } from './components/features/AuthPage';
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
-// ... (Keeping Adapter Components exactly as they were - omitted for brevity in thinking block but will write fully) ...
-// To ensure I don't break anything, I will just update the Main App Component block below.
+// --- ADAPTER COMPONENTS (Hoisted for cleaner Routes) ---
 
 const DashboardPage = () => {
     const {
@@ -177,6 +177,7 @@ const App: React.FC = () => {
                 <BrowserRouter>
                     <Routes>
                         <Route path="/" element={<ProjectLibrary />} />
+                        <Route path="/auth" element={<AuthPage />} />
                         <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
                         <Route path="/settings/api-keys" element={<ApiKeySettings />} />
                         <Route path="/project/:projectId" element={<WorkspaceLayout />}>
