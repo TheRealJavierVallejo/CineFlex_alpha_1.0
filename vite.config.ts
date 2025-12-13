@@ -17,25 +17,21 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       exclude: ['@mlc-ai/web-llm'],
     },
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
     },
     worker: {
-      format: 'es', // Changed from 'iife' to 'es' for production builds with code-splitting
+      format: 'es',
     },
     build: {
       rollupOptions: {
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-ai': ['@google/genai', '@mlc-ai/web-llm'],
-            'vendor-utils': ['jspdf', 'jspdf-autotable', 'zod'],
+            'vendor-ai': ['@google/genai', '@mlc-ai/web-llm', '@anthropic-ai/sdk'],
+            'vendor-utils': ['jspdf', 'jspdf-autotable', 'zod', '@supabase/supabase-js'],
             'vendor-ui': ['lucide-react', 'react-window', 'react-virtualized-auto-sizer']
           }
         }
