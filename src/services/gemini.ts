@@ -9,7 +9,29 @@
 import type { GoogleGenAI } from "@google/genai";
 import { Shot, Project, Character, Outfit, ScriptElement, Location, StoryNote } from '../types';
 import { constructPrompt } from './promptBuilder';
-import { getUserGeminiApiKey } from './imageGen';
+import { supabase } from '../supabaseClient';
+
+// --- KEY MANAGEMENT ---
+
+// Get user's Gemini API key from database
+export async function getUserGeminiApiKey(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('gemini_api_key')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !data?.gemini_api_key) return null;
+    return data.gemini_api_key;
+  } catch (error) {
+    console.error('Error fetching Gemini API key:', error);
+    return null;
+  }
+}
 
 // Helper to check for API Key
 export const hasApiKey = async () => {

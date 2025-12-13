@@ -4,11 +4,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, Palette, Check, X, Moon, Sun, Shield, Sparkles, Scale } from 'lucide-react';
+import { Palette, Check, X, Moon, Sun, Shield, Sparkles, Scale, ExternalLink } from 'lucide-react';
 import { UI_COLOR_PALETTE } from '../../constants';
 import Button from '../ui/Button';
 import { ShowToastFn } from '../../types';
 import { useSubscription } from '../../context/SubscriptionContext';
+import { useNavigate } from 'react-router-dom';
 
 import { getContrastColor, getGlowColor } from '../../utils/themeUtils';
 
@@ -19,34 +20,19 @@ interface AppSettingsProps {
 
 export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) => {
     const { tier, setTier } = useSubscription();
+    const navigate = useNavigate();
 
-    const [apiKey, setApiKey] = useState('');
-    const [showKey, setShowKey] = useState(false);
     const [accentColor, setAccentColor] = useState('#3b82f6');
     const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
-    const [activeTab, setActiveTab] = useState<'theme' | 'api' | 'billing'>('theme');
+    const [activeTab, setActiveTab] = useState<'theme' | 'billing'>('theme');
 
     useEffect(() => {
-        const storedKey = localStorage.getItem('cinesketch_api_key');
-        if (storedKey) setApiKey(storedKey);
-
         const savedColor = localStorage.getItem('cinesketch_theme_color');
         if (savedColor) setAccentColor(savedColor);
 
         const savedMode = localStorage.getItem('cinesketch_theme_mode');
         if (savedMode === 'light') setThemeMode('light');
     }, []);
-
-    const saveApiKey = () => {
-        if (apiKey.trim()) {
-            localStorage.setItem('cinesketch_api_key', apiKey.trim());
-            showToast("API Key saved securely", 'success');
-        } else {
-            localStorage.removeItem('cinesketch_active_project_id');
-            localStorage.removeItem('cinesketch_api_key');
-            showToast("API Key removed", 'info');
-        }
-    };
 
     const handleColorChange = (color: string) => {
         setAccentColor(color);
@@ -96,12 +82,6 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                         className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'theme' ? 'text-primary border-b-2 border-primary bg-surface-secondary' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
                     >
                         Interface
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('api')}
-                        className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'api' ? 'text-primary border-b-2 border-primary bg-surface-secondary' : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
-                    >
-                        Connections
                     </button>
                     <button
                         onClick={() => setActiveTab('billing')}
@@ -165,47 +145,6 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                         </div>
                     )}
 
-                    {activeTab === 'api' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2">
-                                    <Key className="w-3.5 h-3.5" /> Google Gemini API Key
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type={showKey ? "text" : "password"}
-                                        value={apiKey}
-                                        onChange={(e) => setApiKey(e.target.value)}
-                                        className="studio-input pr-10 font-mono"
-                                        placeholder="sk-..."
-                                    />
-                                    <button
-                                        onClick={() => setShowKey(!showKey)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
-                                    >
-                                        {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                </div>
-
-                                {tier === 'free' && (
-                                    <div className="flex items-center gap-2 text-[10px] text-primary bg-primary/10 p-2 rounded border border-primary/20">
-                                        <Sparkles className="w-3 h-3" />
-                                        <strong>Pro Feature:</strong> API Key is required for Pro generation & Copilot.
-                                    </div>
-                                )}
-
-                                <Button variant="primary" className="w-full h-10" onClick={saveApiKey}>
-                                    Save Connection
-                                </Button>
-                                <div className="p-4 bg-surface-secondary border border-border rounded-md">
-                                    <p className="text-[11px] text-text-secondary leading-relaxed">
-                                        Your API key is stored locally in your browser. Used for Pro-tier features.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {activeTab === 'billing' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
                             {/* STATUS CARD */}
@@ -226,6 +165,20 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                         : "You are using the free student tier. Image generation uses basic models and character consistency features are locked."
                                     }
                                 </div>
+                            </div>
+
+                            {/* API KEYS LINK */}
+                            <div className="border-t border-border pt-6">
+                                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 mb-3">
+                                    Connections
+                                </label>
+                                <button
+                                    onClick={() => { onClose(); navigate('/settings/api-keys'); }}
+                                    className="w-full flex items-center justify-between p-3 rounded border border-border bg-surface hover:bg-surface-secondary hover:text-primary transition-all text-sm font-medium"
+                                >
+                                    <span>Manage API Keys (Claude & Gemini)</span>
+                                    <ExternalLink className="w-4 h-4" />
+                                </button>
                             </div>
 
                             {/* DEV TOOLS */}
