@@ -8,6 +8,7 @@ import { chatWithClaudeStreaming, classifyClaudeError, estimateClaudeConversatio
 import { detectFrustrationPatterns, buildEnhancedSystemPrompt } from '../../services/sydCommunicationProtocol';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
+import { supabase } from '../../supabaseClient';
 
 interface ChatMessage {
     id: string;
@@ -86,6 +87,8 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     // Streaming response tracking
     const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
+    const [hasClaudeKey, setHasClaudeKey] = useState<boolean | null>(null);
+
     // Track current position to avoid redundant state updates
     const currentPos = useRef({ top: 0, left: 0, visible: false });
     const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({
@@ -94,6 +97,31 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        // Check if user has Claude API key
+        const checkApiKey = async () => {
+            if (tier !== 'pro') return;
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('claude_api_key')
+                    .eq('id', user.id)
+                    .single();
+
+                setHasClaudeKey(!!data?.claude_api_key);
+            } catch (error) {
+                console.error('Error checking API key:', error);
+            }
+        };
+
+        if (isOpen) {
+            checkApiKey();
+        }
+    }, [isOpen, tier]);
 
     // 1. Initialize / Reset Chat based on Context ID & Readiness
     // Reset session when switching agents, preserve conversation within same agent
@@ -270,21 +298,8 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 content: msg.content
             }));
 
-            // Debug logging to verify model selection
-            console.log('[SYD AGENT] Tier:', tier, '| Will use:', tier === 'pro' ? 'Claude 3.5 Sonnet' : 'Local Phi Model');
-
             // For Pro tier, ALWAYS use Claude streaming (regardless of context state)
             if (tier === 'pro') {
-                console.log('[SYD AGENT - PRO PATH] Using Claude streaming for Pro tier');
-                console.log('[SYD AGENT - PRO PATH] Context system prompt exists:', !!context?.systemPrompt);
-                console.log('[SYD AGENT - PRO PATH] Context system prompt exists:', !!context?.systemPrompt);
-                console.log('[SYD AGENT - PRO PATH] Full context object:', context);
-
-                // Verify API configuration
-                const apiKey = localStorage.getItem('cineflex_claude_api_key') || import.meta.env.VITE_CLAUDE_API_KEY || 'NOT_SET';
-                console.log('[SYD API CHECK] Key starts with:', apiKey.substring(0, 10));
-                console.log('[SYD API CHECK] Is Claude key (sk-ant-):', apiKey.startsWith('sk-ant-'));
-
                 // Fallbacks for missing context values
                 const baseSystemPrompt = context?.systemPrompt || 'You are Syd, a professional screenwriting assistant helping with screenplay development.';
                 const fullProjectContext = context?.contextFields?.fullProjectContext || '';
@@ -292,23 +307,12 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 const maxTokens = context?.maxOutputTokens || 800;
 
                 // Analyze conversation for frustration patterns
-                // This detects if user has been correcting the agent or seems frustrated
                 const frustrationAnalysis = detectFrustrationPatterns(
                     updatedMessages.map(m => ({ role: m.role, content: m.content }))
                 );
 
-                // Log frustration detection for debugging
-                if (frustrationAnalysis.shouldInjectAlert) {
-                    console.log('[SYD AGENT - PRO PATH] Frustration detected:', {
-                        apologies: frustrationAnalysis.recentApologyCount,
-                        keywords: frustrationAnalysis.frustrationKeywords
-                    });
-                }
-
                 // Build enhanced system prompt (adds frustration alert if needed)
                 const systemPrompt = buildEnhancedSystemPrompt(baseSystemPrompt, frustrationAnalysis);
-
-                console.log('[SYD AGENT - PRO PATH] Using systemPrompt:', systemPrompt.substring(0, 100) + '...');
 
                 const assistantMsgId = crypto.randomUUID();
                 const assistantMsg: ChatMessage = {
@@ -360,17 +364,32 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 } catch (streamError: any) {
                     // Streaming failed, update placeholder with error
                     setStreamingMessageId(null);
-                    const classified = classifyClaudeError(streamError);
+                    
+                    let errorMessage = "Sorry, I encountered an error. Please try again.";
+    
+                    // Check for missing API key errors
+                    if (streamError.message?.includes('CLAUDE_API_KEY_MISSING')) {
+                      errorMessage = "⚠️ Claude API key not found. Please add your API key in Account Settings to use Syd.";
+                    } else if (streamError.message?.includes('CLAUDE_API_KEY_INVALID')) {
+                      errorMessage = "⚠️ Invalid Claude API key format. Please check your API key in Account Settings.";
+                    } else if (streamError.message?.includes('authentication_error')) {
+                      errorMessage = "⚠️ Claude API authentication failed. Please verify your API key in Account Settings.";
+                    } else {
+                      // Use existing error classification
+                      const classified = classifyClaudeError(streamError);
+                      errorMessage = classified.userMessage;
+                    }
+                    
+                    console.error('Claude Chat Error:', streamError);
+                    
                     setMessages(prev => prev.map(msg =>
-                        msg.id === assistantMsgId
-                            ? { ...msg, role: 'system', content: classified.userMessage }
-                            : msg
+                      msg.id === assistantMsgId
+                        ? { ...msg, role: 'system', content: errorMessage }
+                        : msg
                     ));
                 }
             } else {
                 // Free tier ONLY: use non-streaming via callback
-                console.log('[SYD AGENT - FREE PATH] Using local model callback for Free tier');
-                console.log('[SYD AGENT - FREE PATH] Tier value was:', tier, '(expected: free)');
                 const response = await onSendMessage(inputValue, conversationHistory);
 
                 const assistantMsg: ChatMessage = {
@@ -390,13 +409,30 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             }
 
         } catch (error: any) {
-            // Use error classification for user-friendly messages
-            // Pro tier uses Claude - classify Claude errors
-            const classified = tier === 'pro' ? classifyClaudeError(error) : classifyGeminiError(error);
+            // This catch block might not be reached due to inner try/catch in Pro path, 
+            // but kept for safety and free tier
+            let errorMessage = "Sorry, I encountered an error. Please try again.";
+            
+            if (tier === 'pro') {
+                if (error.message?.includes('CLAUDE_API_KEY_MISSING')) {
+                  errorMessage = "⚠️ Claude API key not found. Please add your API key in Account Settings to use Syd.";
+                } else if (error.message?.includes('CLAUDE_API_KEY_INVALID')) {
+                  errorMessage = "⚠️ Invalid Claude API key format. Please check your API key in Account Settings.";
+                } else if (error.message?.includes('authentication_error')) {
+                  errorMessage = "⚠️ Claude API authentication failed. Please verify your API key in Account Settings.";
+                } else {
+                  const classified = classifyClaudeError(error);
+                  errorMessage = classified.userMessage;
+                }
+            } else {
+                const classified = classifyGeminiError(error);
+                errorMessage = classified.userMessage;
+            }
+
             const errorMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'system',
-                content: classified.userMessage
+                content: errorMessage
             };
             setMessages(prev => [...prev, errorMsg]);
             setStreamingMessageId(null);
@@ -567,6 +603,22 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[250px] max-h-[400px] bg-background/80 custom-scrollbar">
+
+                {/* KEY CHECK BANNER */}
+                {isOpen && hasClaudeKey === false && tier === 'pro' && (
+                  <div className="p-4 bg-yellow-900/20 border border-yellow-800 rounded-lg text-sm text-yellow-200">
+                    <p className="font-medium mb-2">⚠️ Claude API Key Required</p>
+                    <p className="mb-3 text-xs opacity-90">
+                      To use Syd, please add your Claude API key in Account Settings.
+                    </p>
+                    <a 
+                      href="/settings/api-keys" 
+                      className="inline-block px-3 py-1.5 bg-yellow-700 hover:bg-yellow-600 text-white rounded text-xs font-bold uppercase tracking-wide transition-colors"
+                    >
+                      Add API Key →
+                    </a>
+                  </div>
+                )}
 
                 {/* EMPTY STATE / ERROR STATE UI */}
                 {tier === 'free' && !isReady && !isDownloading && !error && (

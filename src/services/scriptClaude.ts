@@ -1,7 +1,6 @@
-
 import Anthropic from '@anthropic-ai/sdk';
 import { listMessagesForThread } from './sydChatStore';
-import { getClaudeClient, classifyClaudeError } from './claude';
+import { getClaudeClient, classifyClaudeError, getUserClaudeApiKey } from './claude';
 
 /**
  * 🧠 SERVICE: SCRIPT CLAUDE (Pro Tier Script Chat)
@@ -21,12 +20,17 @@ export async function chatWithScriptClaude(
     onChunk: (text: string) => void
 ): Promise<{ messages: any[] }> {
     // 1. Get API key & Verify Environment
-    const client = getClaudeClient(); // Throws if missing
+    const apiKey = await getUserClaudeApiKey();
 
-    // Log verification as requested
-    const apiKey = localStorage.getItem('cineflex_claude_api_key') || import.meta.env.VITE_CLAUDE_API_KEY || 'NOT_SET';
-    console.log('[SCRIPT CLAUDE CHECK] Key starts with:', apiKey.substring(0, 10));
-    console.log('[SCRIPT CLAUDE CHECK] Is Claude key (sk-ant-):', apiKey.startsWith('sk-ant-'));
+    if (!apiKey) {
+      throw new Error('CLAUDE_API_KEY_MISSING: Please add your Claude API key in Account Settings');
+    }
+
+    if (!apiKey.startsWith('sk-ant-')) {
+      throw new Error('CLAUDE_API_KEY_INVALID: Invalid Claude API key format');
+    }
+
+    const client = await getClaudeClient();
 
     // 2. Fetch existing messages from thread for context
     const dbMessages = await listMessagesForThread(threadId);
@@ -51,7 +55,7 @@ export async function chatWithScriptClaude(
 
         // 4. Stream from Claude API
         const stream = await client.messages.stream({
-            model: 'claude-sonnet-4-5-20250929',
+            model: 'claude-3-5-sonnet-20240620',
             max_tokens: 4000, // Large buffer for script writing
             temperature: 0.7,
             system: systemPrompt,
@@ -73,7 +77,6 @@ export async function chatWithScriptClaude(
 
         // 5. Return updated messages (Mocking the expected return format for compatibility if needed)
         // Since persistence is handled by the caller (ScriptChat.tsx), we just return empty or current state.
-        // The calling code doesn't seem to rely on the return value for the full list anymore based on the replacement snippet.
         return { messages: [] };
 
     } catch (error: any) {

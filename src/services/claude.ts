@@ -6,6 +6,27 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { supabase } from '../supabaseClient';
+
+// CRITICAL: Get API key from user's database profile, NOT hardcoded
+export async function getUserClaudeApiKey(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('claude_api_key')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !data?.claude_api_key) return null;
+    return data.claude_api_key;
+  } catch (error) {
+    console.error('Error fetching Claude API key:', error);
+    return null;
+  }
+}
 
 // --- ERROR TYPES ---
 export enum ClaudeErrorType {
@@ -27,25 +48,22 @@ export interface ClaudeError {
 }
 
 // --- CLIENT INITIALIZATION ---
-let claudeClient: Anthropic | null = null;
+// Note: We cannot cache the client globally anymore since it depends on the user session
+export async function getClaudeClient(): Promise<Anthropic> {
+  const apiKey = await getUserClaudeApiKey();
+  
+  if (!apiKey) {
+    throw new Error('CLAUDE_API_KEY_MISSING: Please add your Claude API key in Account Settings');
+  }
 
-export function getClaudeClient(): Anthropic {
-    if (claudeClient) return claudeClient;
+  if (!apiKey.startsWith('sk-ant-')) {
+    throw new Error('CLAUDE_API_KEY_INVALID: Invalid Claude API key format');
+  }
 
-    // Check for API key in env or localStorage
-    const apiKey = import.meta.env.VITE_CLAUDE_API_KEY ||
-        localStorage.getItem('cineflex_claude_api_key');
-
-    if (!apiKey) {
-        throw new Error('Claude API key not found. Set VITE_CLAUDE_API_KEY or enter key in Project Settings.');
-    }
-
-    claudeClient = new Anthropic({
-        apiKey,
-        dangerouslyAllowBrowser: true // Required for browser usage
-    });
-
-    return claudeClient;
+  return new Anthropic({
+    apiKey,
+    dangerouslyAllowBrowser: true // Required for browser usage
+  });
 }
 
 // --- ERROR CLASSIFICATION ---
@@ -179,7 +197,7 @@ export async function chatWithClaudeStreaming(
         useCache?: boolean;
     } = {}
 ): Promise<string> {
-    const client = getClaudeClient();
+    const client = await getClaudeClient();
 
     const {
         temperature = 0.7,
@@ -234,7 +252,7 @@ export async function chatWithClaudeStreaming(
 
         // Create streaming message
         const stream = await client.messages.stream({
-            model: 'claude-sonnet-4-5-20250929',
+            model: 'claude-3-5-sonnet-20240620', // Updated model string for 3.5 Sonnet
             max_tokens: maxTokens,
             temperature,
             system: systemContent,
@@ -282,7 +300,7 @@ export async function chatWithClaude(
         useCache?: boolean;
     } = {}
 ): Promise<string> {
-    const client = getClaudeClient();
+    const client = await getClaudeClient();
 
     const {
         temperature = 0.7,
@@ -310,7 +328,7 @@ export async function chatWithClaude(
         });
 
         const response = await client.messages.create({
-            model: 'claude-sonnet-4-5-20250929',
+            model: 'claude-3-5-sonnet-20240620',
             max_tokens: maxTokens,
             temperature,
             system: systemText,
@@ -332,8 +350,7 @@ export async function chatWithClaude(
 }
 
 // --- UTILITY: Check if Claude is available ---
-export function hasClaudeApiKey(): boolean {
-    const apiKey = import.meta.env.VITE_CLAUDE_API_KEY ||
-        localStorage.getItem('cineflex_claude_api_key');
-    return !!apiKey;
+export async function hasClaudeApiKey(): Promise<boolean> {
+    const key = await getUserClaudeApiKey();
+    return !!key;
 }

@@ -9,20 +9,24 @@
 import type { GoogleGenAI } from "@google/genai";
 import { Shot, Project, Character, Outfit, ScriptElement, Location, StoryNote } from '../types';
 import { constructPrompt } from './promptBuilder';
+import { getUserGeminiApiKey } from './imageGen';
 
 // Helper to check for API Key
-export const hasApiKey = () => {
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const localKey = localStorage.getItem('cinesketch_api_key');
-  return !!(envKey || localKey);
+export const hasApiKey = async () => {
+  const key = await getUserGeminiApiKey();
+  return !!key;
 };
 
 // Async Client Getter with Dynamic Import
 const getClientAsync = async (): Promise<GoogleGenAI> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('cinesketch_api_key');
+  const apiKey = await getUserGeminiApiKey();
 
   if (!apiKey) {
-    throw new Error("API Key not found. Please set VITE_GEMINI_API_KEY in .env or enter it in Project Settings.");
+    throw new Error('GEMINI_API_KEY_MISSING: Please add your Gemini API key in Account Settings for image generation');
+  }
+
+  if (!apiKey.startsWith('AIza')) {
+    throw new Error('GEMINI_API_KEY_INVALID: Invalid Gemini API key format');
   }
 
   // Dynamic Import
@@ -338,6 +342,8 @@ export const analyzeSketch = async (sketchBase64: string): Promise<string> => {
 };
 
 // --- SCRIPT ASSISTANT (CHAT) ---
+// DEPRECATED: Gemini should ONLY be used for image generation
+// Chat should use Claude via scriptClaude.ts
 export const chatWithScript = async (
   message: string,
   history: { role: 'user' | 'model'; content: string }[],
@@ -345,79 +351,7 @@ export const chatWithScript = async (
   characters: Character[],
   storyNotes: StoryNote[]
 ): Promise<string> => {
-  const ai = await getClientAsync();
-
-  const apiCall = async () => {
-    try {
-      // 1. Convert Script Elements to readable text format (Fountain-ish)
-      // Limit to last 50 elements to avoid token limits, but prioritize current scene
-      const scriptText = scriptContext.slice(-50).map(el => {
-        if (el.type === 'scene_heading') return `\n${el.content}`;
-        if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
-        if (el.type === 'dialogue') return `${el.content}`;
-        if (el.type === 'parenthetical') return `(${el.content})`;
-        return `${el.content}`;
-      }).join('\n');
-
-      const charText = characters.map(c => `${c.name}: ${c.description}`).join('\n');
-
-      const notesText = storyNotes.length > 0
-        ? storyNotes.map(note => `
-${note.title}
-${note.content}
-`).join('\n---\n')
-        : 'No story notes yet.';
-
-      const systemPrompt = `
-        You are **SYD**, a senior story analyst and professional screenwriter's assistant.
-        You are knowledgeable, concise, and helpful. You have access to the provided script context.
-        
-        CONTEXT:
-        The script so far (last snippet):
-        ---
-        ${scriptText}
-        ---
-
-        CHARACTERS:
-        ${charText}
-
-        STORY NOTES:
-        The writer has saved these notes for reference:
-        
-        ${notesText}
-
-        TASK:
-        Answer the user's request. Reference their story notes when relevant to help maintain consistency with their vision. You can suggest dialogue, improve formatting, brainstorm plot points, or provide feedback.
-        Keep answers concise and helpful for a writer in the flow. If suggesting dialogue, use standard screenplay format.
-        `;
-
-      // 2. Prepare history for API
-      const contents = [
-        { role: 'user', parts: [{ text: systemPrompt }] }, // System instruction as first user msg
-        ...history.map(h => ({
-          role: h.role,
-          parts: [{ text: h.content }]
-        })),
-        { role: 'user', parts: [{ text: message }] }
-      ];
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: contents as any
-      });
-
-      return response.text || "I couldn't generate a response.";
-    } catch (error) {
-      console.error("Script Chat Error", error);
-      throw error;
-    }
-  };
-
-  try {
-    return await withRetry(apiCall);
-  } catch (e) {
-    return "Sorry, I encountered an error connecting to the AI. Check your API Key.";
-  }
+    throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
 };
 
 // --- SCRIPT ASSISTANT (STREAMING CHAT) ---
@@ -428,44 +362,7 @@ export const chatWithScriptStreaming = async (
   systemPrompt: string,
   onChunk: (chunk: string) => void
 ): Promise<string> => {
-  const ai = await getClientAsync();
-
-  try {
-    // Prepare history for API
-    const contents = [
-      { role: 'user', parts: [{ text: systemPrompt }] }, // System instruction as first user msg
-      ...history.map(h => ({
-        role: h.role,
-        parts: [{ text: h.content }]
-      })),
-      { role: 'user', parts: [{ text: message }] }
-    ];
-
-    // Use streaming API
-    const response = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
-      contents: contents as any
-    });
-
-    let fullResponse = '';
-
-    // Stream chunks to callback
-    for await (const chunk of response) {
-      const text = chunk.text || '';
-      if (text) {
-        fullResponse += text;
-        onChunk(text);
-      }
-    }
-
-    return fullResponse || "I couldn't generate a response.";
-  } catch (error: any) {
-    console.error("Script Chat Streaming Error", error);
-
-    // Classify and re-throw with user message
-    const classified = classifyGeminiError(error);
-    throw new Error(classified.userMessage);
-  }
+    throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
 };
 
 // --- TOKEN ESTIMATION UTILITIES ---
@@ -518,50 +415,7 @@ export const chatWithScriptDurable = async (
   storyNotes: StoryNote[],
   threadId: string // NEW ARGUMENT
 ): Promise<{ replyText: string; messages: SydMessage[] }> => {
-
-  // 1. Get Conversation Context
-  // const thread = await getOrCreateDefaultThreadForProject(projectId); // REMOVED
-  const history = await listMessagesForThread(threadId);
-
-  // 2. Persist User Message
-  const savedUserMsg = await appendMessage({
-    threadId: threadId,
-    role: 'user',
-    content: { text: userMessage }
-  });
-
-  // 3. Prepare History for LLM
-  // Map 'assistant' (DB) -> 'model' (Gemini)
-  const apiHistory = history.map(m => ({
-    role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-    content: m.content.text
-  }));
-
-  // 4. Call LLM
-  let replyText = "";
-  try {
-    replyText = await chatWithScript(userMessage, apiHistory, scriptContext, characters, storyNotes);
-  } catch (e: any) {
-    // If LLM fails, we still have the user message saved. 
-    // We could append an error system message or just throw.
-    // For now, let's just throw so UI can show error state, but User msg is preserved.
-    throw e;
-  }
-
-  // 5. Persist Assistant Reply
-  await appendMessage({
-    threadId: threadId,
-    role: 'assistant',
-    content: { text: replyText }
-  });
-
-  // 6. Return Cached Full State (re-fetch to be perfectly consistent)
-  const finalMessages = await listMessagesForThread(threadId);
-
-  return {
-    replyText,
-    messages: finalMessages
-  };
+    throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
 };
 
 export { constructPrompt };

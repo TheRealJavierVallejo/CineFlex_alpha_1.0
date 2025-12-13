@@ -9,6 +9,7 @@ import { Character, StoryNote, SydMessage, SydThread } from '../../types';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { ModelDownloadModal } from '../ui/ModelDownloadModal';
+import { supabase } from '../../supabaseClient';
 
 interface Message {
   id: string;
@@ -48,7 +49,31 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
+  const [hasClaudeKey, setHasClaudeKey] = useState<boolean | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      if (tier !== 'pro') return;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data } = await supabase
+          .from('profiles')
+          .select('claude_api_key')
+          .eq('id', user.id)
+          .single();
+        
+        setHasClaudeKey(!!data?.claude_api_key);
+      } catch (error) {
+        console.error('Error checking API key:', error);
+      }
+    };
+    
+    checkApiKey();
+  }, [tier]);
 
   // Enforce local for free tier
   useEffect(() => {
@@ -166,9 +191,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
           if (remaining.length > 0) {
             // Switch to the first available thread
-            // We need to trigger loadMessages, but we can't do it inside reducer easily
-            // So we'll update threadId here and let an effect or immediate call handle it
-            // Actually, we can just call setThreadId outside
             setTimeout(() => {
               setThreadId(remaining[0].id);
               loadMessages(remaining[0].id);
@@ -241,12 +263,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const handleClearHistory = async () => {
     if (!threadId || !project?.id) return;
     if (!window.confirm("Clear all messages in this chat?")) return;
-
-    // Ideally we'd have a 'clearMessages' API, but deleting/recreating thread is cleaner for now
-    // Or we just wipe local state and let the user start fresh, but DB stays.
-    // Let's do a hard reset of the current thread content if possible, but since we don't have deleteMessages API readily exposed,
-    // we'll assume "Delete Thread" behavior but keep the UI simpler.
-    // BETTER APPROACH: Just delete the thread and immediately create a new one to replace it.
 
     try {
       await deleteThread(threadId);
@@ -387,11 +403,23 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           // Reload full thread to ensure UI is synced
           loadMessages(threadId);
 
-        } catch (error) {
-          console.error('Claude Chat Error:', error);
-          setMessages(prev => prev.map(m =>
-            m.id === aiMsgId ? { ...m, content: "Sorry, I encountered an error connecting to Claude. Please try again." } : m
-          ));
+        } catch (error: any) {
+            let errorMessage = "Sorry, I encountered an error connecting to Claude. Please try again.";
+            
+            // Check for API key errors
+            if (error.message?.includes('CLAUDE_API_KEY_MISSING')) {
+              errorMessage = "⚠️ Claude API key not found. Please add your API key in Settings → API Keys to use Script Chat.";
+            } else if (error.message?.includes('CLAUDE_API_KEY_INVALID')) {
+              errorMessage = "⚠️ Invalid Claude API key. Please update your API key in Settings → API Keys.";
+            } else if (error.message?.includes('authentication_error')) {
+              errorMessage = "⚠️ Claude authentication failed. Please verify your API key in Settings → API Keys.";
+            }
+            
+            console.error('Claude Chat Error:', error);
+            
+            setMessages(prev => prev.map(m =>
+              m.id === aiMsgId ? { ...m, content: errorMessage } : m
+            ));
         }
       }
     } catch (error: any) {
@@ -544,6 +572,13 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
             )}
           </div>
         </div>
+
+        {/* WARNING BANNER */}
+        {hasClaudeKey === false && tier === 'pro' && !useLocal && (
+          <div className="p-3 bg-yellow-900/20 border-b border-yellow-800 text-sm text-yellow-200">
+            ⚠️ Claude API key required. <a href="/settings/api-keys" className="underline font-medium hover:text-yellow-100">Add key →</a>
+          </div>
+        )}
 
         {/* MESSAGES */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">

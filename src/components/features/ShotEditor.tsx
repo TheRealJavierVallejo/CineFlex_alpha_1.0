@@ -305,9 +305,17 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       onUpdateShot(updated);
       showToast(isBaseModel ? "Draft image generated" : "Pro render successful", 'success');
 
-    } catch (e: any) {
-      console.error(e);
-      showToast(`Render failed: ${e.message}`, 'error');
+    } catch (error: any) {
+        let errorMessage = "Failed to generate image. Please try again.";
+  
+        if (error.message?.includes('GEMINI_API_KEY_MISSING')) {
+            errorMessage = "⚠️ Gemini API key not found. Please add your Gemini API key in Settings → API Keys to generate images.";
+        } else if (error.message?.includes('GEMINI_API_KEY_INVALID')) {
+            errorMessage = "⚠️ Invalid Gemini API key. Please update your key in Settings → API Keys.";
+        }
+  
+        console.error('Image generation error:', error);
+        showToast(errorMessage, 'error');
     } finally {
       setIsGenerating(false);
     }

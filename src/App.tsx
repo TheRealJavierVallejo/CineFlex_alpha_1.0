@@ -20,6 +20,7 @@ import {
     LazyWrapper,
     StoryNotesEditor
 } from './components/features/LazyComponents';
+import { ApiKeySettings } from './components/features/ApiKeySettings';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
@@ -177,6 +178,7 @@ const App: React.FC = () => {
                     <Routes>
                         <Route path="/" element={<ProjectLibrary />} />
                         <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
+                        <Route path="/settings/api-keys" element={<ApiKeySettings />} />
                         <Route path="/project/:projectId" element={<WorkspaceLayout />}>
                             <Route index element={<DashboardPage />} />
                             <Route path="timeline" element={<TimelinePage />} />
