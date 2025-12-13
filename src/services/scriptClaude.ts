@@ -55,7 +55,7 @@ export async function chatWithScriptClaude(
 
         // 4. Stream from Claude API
         const stream = await client.messages.stream({
-            model: 'claude-3-5-sonnet-20240620',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: 4000, // Large buffer for script writing
             temperature: 0.7,
             system: systemPrompt,

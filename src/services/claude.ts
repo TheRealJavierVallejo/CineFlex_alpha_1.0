@@ -252,7 +252,7 @@ export async function chatWithClaudeStreaming(
 
         // Create streaming message
         const stream = await client.messages.stream({
-            model: 'claude-3-5-sonnet-20240620', // Updated model string for 3.5 Sonnet
+            model: 'claude-sonnet-4-20250514',
             max_tokens: maxTokens,
             temperature,
             system: systemContent,
@@ -328,7 +328,7 @@ export async function chatWithClaude(
         });
 
         const response = await client.messages.create({
-            model: 'claude-3-5-sonnet-20240620',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: maxTokens,
             temperature,
             system: systemText,
