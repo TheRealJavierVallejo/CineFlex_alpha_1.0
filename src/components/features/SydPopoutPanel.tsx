@@ -277,7 +277,13 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             if (tier === 'pro') {
                 console.log('[SYD AGENT - PRO PATH] Using Claude streaming for Pro tier');
                 console.log('[SYD AGENT - PRO PATH] Context system prompt exists:', !!context?.systemPrompt);
+                console.log('[SYD AGENT - PRO PATH] Context system prompt exists:', !!context?.systemPrompt);
                 console.log('[SYD AGENT - PRO PATH] Full context object:', context);
+
+                // Verify API configuration
+                const apiKey = localStorage.getItem('cineflex_claude_api_key') || import.meta.env.VITE_CLAUDE_API_KEY || 'NOT_SET';
+                console.log('[SYD API CHECK] Key starts with:', apiKey.substring(0, 10));
+                console.log('[SYD API CHECK] Is Claude key (sk-ant-):', apiKey.startsWith('sk-ant-'));
 
                 // Fallbacks for missing context values
                 const baseSystemPrompt = context?.systemPrompt || 'You are Syd, a professional screenwriting assistant helping with screenplay development.';
@@ -385,7 +391,8 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
         } catch (error: any) {
             // Use error classification for user-friendly messages
-            const classified = classifyGeminiError(error);
+            // Pro tier uses Claude - classify Claude errors
+            const classified = tier === 'pro' ? classifyClaudeError(error) : classifyGeminiError(error);
             const errorMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'system',

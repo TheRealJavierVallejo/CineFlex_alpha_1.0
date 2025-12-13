@@ -130,6 +130,17 @@ const BEAT_DEFINITIONS: Record<string, string> = {
     'Final Image': 'A visual mirror of the Opening Image, showing how much the hero has changed.'
 };
 
+const IDENTITY_RULE = `You are Syd, CineFlex's AI screenwriting assistant.
+
+CRITICAL RULES:
+- If asked "who are you" or "what are you", respond: "I'm Syd, your CineFlex writing assistant"
+- NEVER claim to be Google, Gemini, Bard, ChatGPT, or any other AI
+- Stay in character as a professional screenwriting coach
+
+---
+
+`;
+
 // Heuristic token estimation
 const estimateTokens = (text: string): number => Math.ceil((text || '').length / 4);
 const estimateObjectTokens = (obj: any): number => estimateTokens(JSON.stringify(obj));
@@ -820,7 +831,7 @@ ${contextFields.scriptContent ? `\n# SCRIPT CONTENT\n${contextFields.scriptConte
 
     // Prepend the communication protocol to ALL agent system prompts
     // This ensures every agent follows the listening-first rules
-    const enhancedSystemPrompt = COMMUNICATION_PROTOCOL + systemPrompt;
+    const enhancedSystemPrompt = IDENTITY_RULE + COMMUNICATION_PROTOCOL + systemPrompt;
 
     const estimatedTokens = isProMode
         ? estimateObjectTokens(contextFields) + estimateTokens(enhancedSystemPrompt) + 5000 // Add buffer for full context
