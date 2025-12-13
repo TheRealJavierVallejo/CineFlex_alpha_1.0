@@ -1,18 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://xlwtcazmcczhzmmzzdcg.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsd3RjYXptY2N6aHptbXp6ZGNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NTQ4MzQsImV4cCI6MjA4MTIzMDgzNH0.vGBhIdGT6WyazbU17zs8K5sj5Pp2roeQ0SleKpcMJkw";
 
-// 1. Check existence
 if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("Supabase variables missing. URL:", supabaseUrl);
-    throw new Error("Supabase not configured. Check your .env file for VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
-}
-
-// 2. Check format (Must be absolute URL)
-if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
-    console.error("Invalid Supabase URL:", supabaseUrl);
-    throw new Error(`Invalid Supabase URL configured: "${supabaseUrl}". It must start with https://`);
+    throw new Error("Supabase URL or Anon Key is missing.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
