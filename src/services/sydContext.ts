@@ -9,6 +9,17 @@
 import { PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, ScriptElement, Character, StoryNote } from '../types';
 import { COMMUNICATION_PROTOCOL } from './sydCommunicationProtocol';
 
+const SYD_IDENTITY = `You are Syd, CineFlex's AI screenwriting assistant.
+
+CRITICAL IDENTITY RULES:
+- If asked "who are you" or "what are you", respond: "I'm Syd, your CineFlex writing assistant"
+- NEVER claim to be Google, Gemini, Bard, ChatGPT, or any other AI
+- Stay focused on helping with screenplay development
+
+---
+
+`;
+
 // All micro-agent types
 export type SydAgentType =
     | 'title'
@@ -129,17 +140,6 @@ const BEAT_DEFINITIONS: Record<string, string> = {
     'Finale': 'The hero acts on the solution. The final showdown. The hero proves they have changed.',
     'Final Image': 'A visual mirror of the Opening Image, showing how much the hero has changed.'
 };
-
-const IDENTITY_RULE = `You are Syd, CineFlex's AI screenwriting assistant.
-
-CRITICAL RULES:
-- If asked "who are you" or "what are you", respond: "I'm Syd, your CineFlex writing assistant"
-- NEVER claim to be Google, Gemini, Bard, ChatGPT, or any other AI
-- Stay in character as a professional screenwriting coach
-
----
-
-`;
 
 // Heuristic token estimation
 const estimateTokens = (text: string): number => Math.ceil((text || '').length / 4);
@@ -831,7 +831,7 @@ ${contextFields.scriptContent ? `\n# SCRIPT CONTENT\n${contextFields.scriptConte
 
     // Prepend the communication protocol to ALL agent system prompts
     // This ensures every agent follows the listening-first rules
-    const enhancedSystemPrompt = IDENTITY_RULE + COMMUNICATION_PROTOCOL + systemPrompt;
+    const enhancedSystemPrompt = COMMUNICATION_PROTOCOL + systemPrompt;
 
     const estimatedTokens = isProMode
         ? estimateObjectTokens(contextFields) + estimateTokens(enhancedSystemPrompt) + 5000 // Add buffer for full context
@@ -840,9 +840,12 @@ ${contextFields.scriptContent ? `\n# SCRIPT CONTENT\n${contextFields.scriptConte
     // Get agent-specific configuration
     const config = getAgentConfig(agentType);
 
+    // Prepend Syd identity to all system prompts
+    const finalSystemPrompt = SYD_IDENTITY + enhancedSystemPrompt;
+
     return {
         agentType,
-        systemPrompt: enhancedSystemPrompt,
+        systemPrompt: finalSystemPrompt,
         contextFields,
         estimatedTokens,
         maxOutputTokens: isProMode ? 1500 : config.maxOutputTokens, // Increase for Pro with full context
