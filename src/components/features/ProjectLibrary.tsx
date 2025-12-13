@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectMetadata, ShowToastFn, ToastNotification } from '../../types';
 import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, importProjectFromJSON } from '../../services/storage';
-import { Plus, Trash2, Download, Upload, FileText, Loader2, Film, Settings, LogIn, User } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, FileText, Loader2, Film, Settings, LogIn, User, LogOut, Key } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
 import { AppSettings } from './AppSettings';
 import { supabase } from '../../supabaseClient';
@@ -22,7 +22,9 @@ export const ProjectLibrary: React.FC = () => {
    const [showSettings, setShowSettings] = useState(false);
    const [toasts, setToasts] = useState<ToastNotification[]>([]);
    const [user, setUser] = useState<any>(null);
+   const [showUserMenu, setShowUserMenu] = useState(false);
    const fileInputRef = useRef<HTMLInputElement>(null);
+   const menuRef = useRef<HTMLDivElement>(null);
 
    useEffect(() => {
       loadProjects();
@@ -37,11 +39,27 @@ export const ProjectLibrary: React.FC = () => {
          const b = parseInt(savedColor.slice(5, 7), 16);
          document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
       }
+
+      // Close menu on click outside
+      const handleClickOutside = (event: MouseEvent) => {
+         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            setShowUserMenu(false);
+         }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
    }, []);
 
    const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
+   };
+
+   const handleSignOut = async () => {
+      await supabase.auth.signOut();
+      setUser(null);
+      setShowUserMenu(false);
+      showToast("Signed out successfully", "success");
    };
 
    const showToast: ShowToastFn = (message, type = 'info', action) => {
@@ -174,14 +192,44 @@ export const ProjectLibrary: React.FC = () => {
                <div className="h-8 w-[1px] bg-border mx-2" />
 
                {user ? (
-                  <button
-                     onClick={() => setShowSettings(true)}
-                     className="h-9 px-3 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary text-xs font-bold flex items-center gap-2 transition-all"
-                     title="Account Settings"
-                  >
-                     <User className="w-3.5 h-3.5" />
-                     <span className="hidden sm:inline">{user.email?.split('@')[0]}</span>
-                  </button>
+                  <div className="relative" ref={menuRef}>
+                     <button
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className={`h-9 px-3 rounded-sm border hover:border-primary hover:text-primary text-xs font-bold flex items-center gap-2 transition-all ${showUserMenu ? 'bg-surface-secondary border-primary text-primary' : 'bg-surface border-border text-text-secondary'}`}
+                        title="Account Menu"
+                     >
+                        <User className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{user.email?.split('@')[0]}</span>
+                     </button>
+
+                     {showUserMenu && (
+                        <div className="absolute top-full right-0 mt-2 w-48 bg-surface border border-border rounded-md shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                           <div className="px-3 py-2 border-b border-border mb-1">
+                              <p className="text-[10px] uppercase font-bold text-text-muted">Logged in as</p>
+                              <p className="text-xs text-text-primary truncate">{user.email}</p>
+                           </div>
+                           <button
+                              onClick={() => { navigate('/settings/api-keys'); setShowUserMenu(false); }}
+                              className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-secondary flex items-center gap-2"
+                           >
+                              <Key className="w-3.5 h-3.5" /> API Keys
+                           </button>
+                           <button
+                              onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
+                              className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-secondary flex items-center gap-2"
+                           >
+                              <Settings className="w-3.5 h-3.5" /> App Settings
+                           </button>
+                           <div className="h-px bg-border my-1" />
+                           <button
+                              onClick={handleSignOut}
+                              className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                           >
+                              <LogOut className="w-3.5 h-3.5" /> Sign Out
+                           </button>
+                        </div>
+                     )}
+                  </div>
                ) : (
                   <button
                      onClick={() => navigate('/auth')}
@@ -190,14 +238,6 @@ export const ProjectLibrary: React.FC = () => {
                      <LogIn className="w-3.5 h-3.5" /> Sign In
                   </button>
                )}
-
-               <button
-                  onClick={() => setShowSettings(true)}
-                  className="h-9 w-9 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary flex items-center justify-center transition-all"
-                  title="App Settings"
-               >
-                  <Settings className="w-4 h-4" />
-               </button>
             </div>
          </div>
 

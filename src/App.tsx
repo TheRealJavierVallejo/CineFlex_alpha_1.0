@@ -23,6 +23,7 @@ import {
 import { ApiKeySettings } from './components/features/ApiKeySettings';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 import { AuthPage } from './components/features/AuthPage';
+import { ProtectedRoute } from './components/ProtectedRoute'; // IMPORTED
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
@@ -178,8 +179,13 @@ const App: React.FC = () => {
                     <Routes>
                         <Route path="/" element={<ProjectLibrary />} />
                         <Route path="/auth" element={<AuthPage />} />
+                        
+                        {/* Protected Routes */}
+                        <Route element={<ProtectedRoute />}>
+                            <Route path="/settings/api-keys" element={<ApiKeySettings />} />
+                        </Route>
+
                         <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
-                        <Route path="/settings/api-keys" element={<ApiKeySettings />} />
                         <Route path="/project/:projectId" element={<WorkspaceLayout />}>
                             <Route index element={<DashboardPage />} />
                             <Route path="timeline" element={<TimelinePage />} />
