@@ -9,7 +9,7 @@
 import type { GoogleGenAI } from "@google/genai";
 import { Shot, Project, Character, Outfit, ScriptElement, Location, StoryNote } from '../types';
 import { constructPrompt } from './promptBuilder';
-import { supabase } from '../supabaseClient';
+import { supabase } from './supabaseClient';
 
 // --- KEY MANAGEMENT ---
 
@@ -373,7 +373,7 @@ export const chatWithScript = async (
   characters: Character[],
   storyNotes: StoryNote[]
 ): Promise<string> => {
-    throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
+  throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
 };
 
 // --- SCRIPT ASSISTANT (STREAMING CHAT) ---
@@ -384,7 +384,7 @@ export const chatWithScriptStreaming = async (
   systemPrompt: string,
   onChunk: (chunk: string) => void
 ): Promise<string> => {
-    throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
+  throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
 };
 
 // --- TOKEN ESTIMATION UTILITIES ---
@@ -437,7 +437,7 @@ export const chatWithScriptDurable = async (
   storyNotes: StoryNote[],
   threadId: string // NEW ARGUMENT
 ): Promise<{ replyText: string; messages: SydMessage[] }> => {
-    throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
+  throw new Error('DEPRECATED: Use Claude for chat. Gemini is only for image generation.');
 };
 
 export { constructPrompt };

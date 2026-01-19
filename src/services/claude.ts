@@ -6,26 +6,26 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '../supabaseClient';
+import { supabase } from './supabaseClient';
 
 // CRITICAL: Get API key from user's database profile, NOT hardcoded
 export async function getUserClaudeApiKey(): Promise<string | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('claude_api_key')
-      .eq('id', user.id)
-      .single();
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('claude_api_key')
+            .eq('id', user.id)
+            .single();
 
-    if (error || !data?.claude_api_key) return null;
-    return data.claude_api_key;
-  } catch (error) {
-    console.error('Error fetching Claude API key:', error);
-    return null;
-  }
+        if (error || !data?.claude_api_key) return null;
+        return data.claude_api_key;
+    } catch (error) {
+        console.error('Error fetching Claude API key:', error);
+        return null;
+    }
 }
 
 // --- ERROR TYPES ---
@@ -50,20 +50,20 @@ export interface ClaudeError {
 // --- CLIENT INITIALIZATION ---
 // Note: We cannot cache the client globally anymore since it depends on the user session
 export async function getClaudeClient(): Promise<Anthropic> {
-  const apiKey = await getUserClaudeApiKey();
-  
-  if (!apiKey) {
-    throw new Error('CLAUDE_API_KEY_MISSING: Please add your Claude API key in Account Settings');
-  }
+    const apiKey = await getUserClaudeApiKey();
 
-  if (!apiKey.startsWith('sk-ant-')) {
-    throw new Error('CLAUDE_API_KEY_INVALID: Invalid Claude API key format');
-  }
+    if (!apiKey) {
+        throw new Error('CLAUDE_API_KEY_MISSING: Please add your Claude API key in Account Settings');
+    }
 
-  return new Anthropic({
-    apiKey,
-    dangerouslyAllowBrowser: true // Required for browser usage
-  });
+    if (!apiKey.startsWith('sk-ant-')) {
+        throw new Error('CLAUDE_API_KEY_INVALID: Invalid Claude API key format');
+    }
+
+    return new Anthropic({
+        apiKey,
+        dangerouslyAllowBrowser: true // Required for browser usage
+    });
 }
 
 // --- ERROR CLASSIFICATION ---

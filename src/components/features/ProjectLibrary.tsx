@@ -10,7 +10,7 @@ import { getProjectsList, createNewProject, deleteProject, exportProjectToJSON, 
 import { Plus, Trash2, Download, Upload, FileText, Loader2, Film, Settings, LogIn, User, LogOut, Key } from 'lucide-react';
 import { ToastContainer } from '../features/Toast';
 import { AppSettings } from './AppSettings';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 
 export const ProjectLibrary: React.FC = () => {
    const navigate = useNavigate();
@@ -68,9 +68,9 @@ export const ProjectLibrary: React.FC = () => {
    };
    const closeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
-   const loadProjects = () => {
-      const list = getProjectsList();
-      setProjects(list);
+   const loadProjects = async () => {
+      const list = await getProjectsList();
+      setProjects(list || []);
    };
 
    const openProject = (id: string) => {
@@ -87,10 +87,13 @@ export const ProjectLibrary: React.FC = () => {
          openProject(id);
       } catch (error) {
          showToast("Failed to create project", 'error');
+         console.error(error);
       } finally {
          setIsCreating(false);
       }
    };
+
+   // ... (Keep existing handlers)
 
    const handleDelete = async (id: string, name: string, e: React.MouseEvent) => {
       e.stopPropagation();
@@ -143,6 +146,9 @@ export const ProjectLibrary: React.FC = () => {
       reader.readAsText(file);
    };
 
+   // Migration Helper
+   const [showMigration, setShowMigration] = useState(false);
+
    return (
       <div className="h-screen w-screen bg-background text-text-primary flex flex-col font-sans">
          <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -152,7 +158,6 @@ export const ProjectLibrary: React.FC = () => {
          {/* Toolbar */}
          <div className="h-14 border-b border-border flex items-center justify-between px-8 bg-background shrink-0 z-10">
             <div className="flex items-center gap-8">
-
                {/* CINEFLEX BRANDING */}
                <div className="flex items-center gap-3 select-none group cursor-default">
                   <div className="w-8 h-8 bg-surface border border-border group-hover:border-primary/50 flex items-center justify-center relative overflow-hidden rounded-full transition-colors duration-300">
@@ -182,10 +187,19 @@ export const ProjectLibrary: React.FC = () => {
 
             <div className="flex items-center gap-3">
                <button
+                  onClick={() => setShowMigration(true)}
+                  className="h-9 px-4 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all"
+               >
+                  <Upload className="w-3.5 h-3.5" /> Migration Tool
+               </button>
+
+               <div className="h-8 w-[1px] bg-border mx-2" />
+
+               <button
                   onClick={() => fileInputRef.current?.click()}
                   className="h-9 px-4 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all"
                >
-                  <Upload className="w-3.5 h-3.5" /> Import
+                  <Upload className="w-3.5 h-3.5" /> Import JSON
                </button>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
 
@@ -255,14 +269,24 @@ export const ProjectLibrary: React.FC = () => {
             <div className="w-full">
                {projects.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-32 text-text-muted">
-                     <div className="w-20 h-20 bg-surface rounded-sm flex items-center justify-center mb-6 border border-border">
-                        <FileText className="w-8 h-8 opacity-20" />
+                     <div className="w-24 h-24 bg-surface rounded-full flex items-center justify-center mb-6 border border-border shadow-xl animate-pulse">
+                        <Film className="w-10 h-10 text-primary opacity-80" />
                      </div>
-                     <p className="text-sm font-mono uppercase tracking-widest">No projects found</p>
+                     <h2 className="text-xl font-bold text-text-primary mb-2 tracking-tight">Welcome to CineFlex</h2>
+                     <p className="text-sm font-mono opacity-60 mb-8 max-w-md text-center">
+                        Your professional cloud-synced studio awaits. <br /> Create your first project to begin.
+                     </p>
+
+                     <button
+                        onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="New Project Name..."]')?.focus()}
+                        className="px-6 py-3 bg-primary text-white rounded-sm font-bold uppercase tracking-widest text-xs hover:bg-primary-hover transition-all shadow-glow flex items-center gap-2"
+                     >
+                        <Plus className="w-4 h-4" /> Create First Script
+                     </button>
                   </div>
                ) : (
                   <div className="flex flex-col">
-                     {projects.map(proj => (
+                     {(projects || []).map(proj => (
                         <div
                            key={proj.id}
                            onClick={() => setSelection(proj.id)}
@@ -299,8 +323,8 @@ export const ProjectLibrary: React.FC = () => {
 
          {/* Status Footer */}
          <div className="h-8 bg-background border-t border-border text-[9px] flex items-center px-8 font-mono select-none text-text-secondary uppercase tracking-widest justify-between shrink-0">
-            <span>CINEFLEX SYSTEM v3.1</span>
-            <span>{projects.length} PROJECTS INDEXED</span>
+            <span>CINEFLEX CLOUD v1.0</span>
+            <span>{projects.length} PROJECTS SYNCED</span>
          </div>
 
          {/* Delete Confirmation Modal */}

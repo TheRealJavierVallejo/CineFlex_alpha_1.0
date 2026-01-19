@@ -87,7 +87,7 @@ export const WorkspaceLayout: React.FC = () => {
     });
 
     const showToast: ShowToastFn = useCallback((message, type = 'info', action) => {
-        const id = Date.now();
+        const id = Date.now() + Math.random(); // Unique even within same millisecond
         setToasts(prev => [...prev, { id, message, type, action }]);
     }, []);
 

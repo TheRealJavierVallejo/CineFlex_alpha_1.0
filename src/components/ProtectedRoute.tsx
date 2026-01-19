@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { Loader2 } from 'lucide-react';
 
 export const ProtectedRoute: React.FC = () => {

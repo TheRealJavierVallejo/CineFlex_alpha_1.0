@@ -3,12 +3,12 @@ import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, C
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { chatWithScriptClaude } from '../../services/scriptClaude';
 import { getCharacters, getStoryNotes } from '../../services/storage';
-import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread } from '../../services/sydChatStore';
+import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread, updateThreadTitle } from '../../services/sydChatStore';
 import { Character, StoryNote, SydMessage, SydThread } from '../../types';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { ModelDownloadModal } from '../ui/ModelDownloadModal';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 
 interface Message {
   id: string;
@@ -58,19 +58,19 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        
+
         const { data } = await supabase
           .from('profiles')
           .select('claude_api_key')
           .eq('id', user.id)
           .single();
-        
+
         setHasClaudeKey(!!data?.claude_api_key);
       } catch (error) {
         console.error('Error checking API key:', error);
       }
     };
-    
+
     checkApiKey();
   }, [tier]);
 
@@ -224,25 +224,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     if (!editingTitle.trim()) return;
 
     try {
-      const { openDB } = await import('../../services/storage');
-      const db = await openDB();
-
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction('syd_threads', 'readwrite');
-        const store = tx.objectStore('syd_threads');
-        const getRequest = store.get(threadId);
-
-        getRequest.onsuccess = () => {
-          const thread = getRequest.result as SydThread;
-          if (thread) {
-            const updatedThread = { ...thread, title: editingTitle.trim() };
-            store.put(updatedThread);
-          }
-        };
-
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
+      await updateThreadTitle(threadId, editingTitle.trim());
 
       // Update local state
       setThreads(prev => prev.map(t =>
@@ -403,22 +385,22 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           loadMessages(threadId);
 
         } catch (error: any) {
-            let errorMessage = "Sorry, I encountered an error connecting to Claude. Please try again.";
-            
-            // Check for API key errors
-            if (error.message?.includes('CLAUDE_API_KEY_MISSING')) {
-              errorMessage = "⚠️ Claude API key not found. Please add your API key in Settings → API Keys to use Script Chat.";
-            } else if (error.message?.includes('CLAUDE_API_KEY_INVALID')) {
-              errorMessage = "⚠️ Invalid Claude API key. Please update your API key in Settings → API Keys.";
-            } else if (error.message?.includes('authentication_error')) {
-              errorMessage = "⚠️ Claude authentication failed. Please verify your API key in Settings → API Keys.";
-            }
-            
-            console.error('Claude Chat Error:', error);
-            
-            setMessages(prev => prev.map(m =>
-              m.id === aiMsgId ? { ...m, content: errorMessage } : m
-            ));
+          let errorMessage = "Sorry, I encountered an error connecting to Claude. Please try again.";
+
+          // Check for API key errors
+          if (error.message?.includes('CLAUDE_API_KEY_MISSING')) {
+            errorMessage = "⚠️ Claude API key not found. Please add your API key in Settings → API Keys to use Script Chat.";
+          } else if (error.message?.includes('CLAUDE_API_KEY_INVALID')) {
+            errorMessage = "⚠️ Invalid Claude API key. Please update your API key in Settings → API Keys.";
+          } else if (error.message?.includes('authentication_error')) {
+            errorMessage = "⚠️ Claude authentication failed. Please verify your API key in Settings → API Keys.";
+          }
+
+          console.error('Claude Chat Error:', error);
+
+          setMessages(prev => prev.map(m =>
+            m.id === aiMsgId ? { ...m, content: errorMessage } : m
+          ));
         }
       }
     } catch (error: any) {

@@ -1,4 +1,4 @@
-import { openDB, dbGet, dbSet, dbGetAllKeys } from './storage';
+import { openDB, dbGet, dbSet, dbGetAllKeys } from './storageLocal';
 import { SydThread, SydMessage } from '../types';
 
 /**
@@ -148,6 +148,26 @@ export const appendMessage = async (params: {
         };
 
         request.onerror = () => reject(request.error);
+        tx.onerror = () => reject(tx.error);
+    });
+};
+
+export const updateThreadTitle = async (threadId: string, newTitle: string): Promise<void> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('syd_threads', 'readwrite');
+        const store = tx.objectStore('syd_threads');
+        const getRequest = store.get(threadId);
+
+        getRequest.onsuccess = () => {
+            const thread = getRequest.result as SydThread;
+            if (thread) {
+                const updatedThread = { ...thread, title: newTitle.trim(), updatedAt: new Date().toISOString() };
+                store.put(updatedThread);
+            }
+        };
+
+        tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });
 };

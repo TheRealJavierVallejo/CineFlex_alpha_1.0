@@ -8,7 +8,7 @@ import { chatWithClaudeStreaming, classifyClaudeError, estimateClaudeConversatio
 import { detectFrustrationPatterns, buildEnhancedSystemPrompt } from '../../services/sydCommunicationProtocol';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 
 interface ChatMessage {
     id: string;
@@ -364,28 +364,28 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 } catch (streamError: any) {
                     // Streaming failed, update placeholder with error
                     setStreamingMessageId(null);
-                    
+
                     let errorMessage = "Sorry, I encountered an error. Please try again.";
-    
+
                     // Check for missing API key errors
                     if (streamError.message?.includes('CLAUDE_API_KEY_MISSING')) {
-                      errorMessage = "⚠️ Claude API key not found. Please add your API key in Account Settings to use Syd.";
+                        errorMessage = "⚠️ Claude API key not found. Please add your API key in Account Settings to use Syd.";
                     } else if (streamError.message?.includes('CLAUDE_API_KEY_INVALID')) {
-                      errorMessage = "⚠️ Invalid Claude API key format. Please check your API key in Account Settings.";
+                        errorMessage = "⚠️ Invalid Claude API key format. Please check your API key in Account Settings.";
                     } else if (streamError.message?.includes('authentication_error')) {
-                      errorMessage = "⚠️ Claude API authentication failed. Please verify your API key in Account Settings.";
+                        errorMessage = "⚠️ Claude API authentication failed. Please verify your API key in Account Settings.";
                     } else {
-                      // Use existing error classification
-                      const classified = classifyClaudeError(streamError);
-                      errorMessage = classified.userMessage;
+                        // Use existing error classification
+                        const classified = classifyClaudeError(streamError);
+                        errorMessage = classified.userMessage;
                     }
-                    
+
                     console.error('Claude Chat Error:', streamError);
-                    
+
                     setMessages(prev => prev.map(msg =>
-                      msg.id === assistantMsgId
-                        ? { ...msg, role: 'system', content: errorMessage }
-                        : msg
+                        msg.id === assistantMsgId
+                            ? { ...msg, role: 'system', content: errorMessage }
+                            : msg
                     ));
                 }
             } else {
@@ -412,17 +412,17 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             // This catch block might not be reached due to inner try/catch in Pro path, 
             // but kept for safety and free tier
             let errorMessage = "Sorry, I encountered an error. Please try again.";
-            
+
             if (tier === 'pro') {
                 if (error.message?.includes('CLAUDE_API_KEY_MISSING')) {
-                  errorMessage = "⚠️ Claude API key not found. Please add your API key in Account Settings to use Syd.";
+                    errorMessage = "⚠️ Claude API key not found. Please add your API key in Account Settings to use Syd.";
                 } else if (error.message?.includes('CLAUDE_API_KEY_INVALID')) {
-                  errorMessage = "⚠️ Invalid Claude API key format. Please check your API key in Account Settings.";
+                    errorMessage = "⚠️ Invalid Claude API key format. Please check your API key in Account Settings.";
                 } else if (error.message?.includes('authentication_error')) {
-                  errorMessage = "⚠️ Claude API authentication failed. Please verify your API key in Account Settings.";
+                    errorMessage = "⚠️ Claude API authentication failed. Please verify your API key in Account Settings.";
                 } else {
-                  const classified = classifyClaudeError(error);
-                  errorMessage = classified.userMessage;
+                    const classified = classifyClaudeError(error);
+                    errorMessage = classified.userMessage;
                 }
             } else {
                 const classified = classifyGeminiError(error);
@@ -606,18 +606,18 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
                 {/* KEY CHECK BANNER */}
                 {isOpen && hasClaudeKey === false && tier === 'pro' && (
-                  <div className="p-4 bg-yellow-900/20 border border-yellow-800 rounded-lg text-sm text-yellow-200">
-                    <p className="font-medium mb-2">⚠️ Claude API Key Required</p>
-                    <p className="mb-3 text-xs opacity-90">
-                      To use Syd, please add your Claude API key in Account Settings.
-                    </p>
-                    <a 
-                      href="/settings/api-keys" 
-                      className="inline-block px-3 py-1.5 bg-yellow-700 hover:bg-yellow-600 text-white rounded text-xs font-bold uppercase tracking-wide transition-colors"
-                    >
-                      Add API Key →
-                    </a>
-                  </div>
+                    <div className="p-4 bg-yellow-900/20 border border-yellow-800 rounded-lg text-sm text-yellow-200">
+                        <p className="font-medium mb-2">⚠️ Claude API Key Required</p>
+                        <p className="mb-3 text-xs opacity-90">
+                            To use Syd, please add your Claude API key in Account Settings.
+                        </p>
+                        <a
+                            href="/settings/api-keys"
+                            className="inline-block px-3 py-1.5 bg-yellow-700 hover:bg-yellow-600 text-white rounded text-xs font-bold uppercase tracking-wide transition-colors"
+                        >
+                            Add API Key →
+                        </a>
+                    </div>
                 )}
 
                 {/* EMPTY STATE / ERROR STATE UI */}

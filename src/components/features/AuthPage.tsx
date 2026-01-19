@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Film, Loader2, Mail, Lock } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-surface border border-border rounded-lg shadow-2xl p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        
+
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center mb-4 text-primary">
             <Film className="w-6 h-6" />

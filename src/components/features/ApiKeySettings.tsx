@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 import { Eye, EyeOff, Save, AlertCircle, CheckCircle, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,7 +29,7 @@ export const ApiKeySettings: React.FC = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-         console.error('Error loading API keys:', error);
+        console.error('Error loading API keys:', error);
       }
 
       if (data) {
@@ -88,8 +88,8 @@ export const ApiKeySettings: React.FC = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       {/* Back Button */}
-      <button 
-        onClick={() => navigate('/')} 
+      <button
+        onClick={() => navigate('/')}
         className="mb-6 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
       >
         <ChevronLeft size={18} />
