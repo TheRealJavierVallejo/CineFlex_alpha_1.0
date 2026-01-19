@@ -15,7 +15,7 @@ export interface Database {
                     id: string
                     name: string
                     created_at: string
-                    updated_at: string
+                    last_synced: string
                     settings: Json
                     user_id: string
                 }
@@ -23,7 +23,7 @@ export interface Database {
                     id: string
                     name: string
                     created_at?: string
-                    updated_at?: string
+                    last_synced?: string
                     settings?: Json
                     user_id?: string
                 }
@@ -31,7 +31,7 @@ export interface Database {
                     id?: string
                     name?: string
                     created_at?: string
-                    updated_at?: string
+                    last_synced?: string
                     settings?: Json
                     user_id?: string
                 }

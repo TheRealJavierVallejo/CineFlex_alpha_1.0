@@ -16,7 +16,7 @@
 -- Create a table for public profiles
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
-  updated_at TIMESTAMP WITH TIME ZONE,
+  last_synced TIMESTAMP WITH TIME ZONE,
   claude_api_key TEXT,
   gemini_api_key TEXT,
   claude_api_key_updated_at TIMESTAMP WITH TIME ZONE,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS public.projects (
   user_id UUID REFERENCES auth.users NOT NULL,
   name TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  last_synced TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   settings JSONB DEFAULT '{}'::jsonb,
   
   CONSTRAINT projects_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE

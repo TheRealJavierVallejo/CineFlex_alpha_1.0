@@ -51,7 +51,7 @@ export const persistImage = async (dataUrlOrBlobUrl: string): Promise<string> =>
 // --- PROJECTS ---
 
 export const getProjectsList = async (): Promise<ProjectMetadata[]> => {
-    const { data, error } = await supabase.from('projects').select('id, name, created_at, last_updated');
+    const { data, error } = await supabase.from('projects').select('id, name, created_at, last_synced');
     if (error) {
         console.error('Error fetching projects list:', error.message);
         return [];
@@ -60,7 +60,7 @@ export const getProjectsList = async (): Promise<ProjectMetadata[]> => {
         id: p.id,
         name: p.name,
         createdAt: new Date(p.created_at).getTime(),
-        lastModified: new Date(p.last_updated).getTime(),
+        lastModified: new Date(p.last_synced).getTime(),
         shotCount: 0,
         characterCount: 0
     }));
@@ -217,7 +217,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     // 2. Update Projects (Settings)
     const { error: pErr } = await supabase.from('projects').update({
         settings: cleanProject.settings,
-        last_updated: new Date().toISOString()
+        last_synced: new Date().toISOString()
     }).eq('id', projectId);
 
     if (pErr) console.error("Save Project Metadata Failed", pErr);
@@ -273,6 +273,25 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     }
 
     // TODO: Metadata updates
+};
+
+export const subscribeToProjectChanges = (projectId: string, onSceneChange: (payload: any) => void, onShotChange: (payload: any) => void) => {
+    const channel = supabase.channel(`project-${projectId}`)
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'scenes', filter: `project_id=eq.${projectId}` },
+            (payload) => onSceneChange(payload)
+        )
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'shots', filter: `project_id=eq.${projectId}` },
+            (payload) => onShotChange(payload)
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
 };
 
 export const saveProjectDataDebounced = debounce(saveProjectData, 2000);
