@@ -51,11 +51,21 @@ export const persistImage = async (dataUrlOrBlobUrl: string): Promise<string> =>
 // --- PROJECTS ---
 
 export const getProjectsList = async (): Promise<ProjectMetadata[]> => {
-    const { data, error } = await supabase.from('projects').select('id, name, created_at, last_synced');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return [];
+    }
+
+    const { data, error } = await supabase
+        .from('projects')
+        .select('id, name, created_at, last_synced')
+        .eq('user_id', user.id);
+
     if (error) {
         console.error('Error fetching projects list:', error.message);
         return [];
     }
+
     return (data || []).map((p: any) => ({
         id: p.id,
         name: p.name,
@@ -129,6 +139,12 @@ const ensureImagesPersisted = async (obj: any): Promise<any> => {
 // --- DATA ACCESS ---
 
 export const getProjectData = async (projectId: string): Promise<Project | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("Cannot load project: User not authenticated");
+        return null;
+    }
+
     // Join scenes and shots
     const { data: projectData, error: projError } = await supabase
         .from('projects')

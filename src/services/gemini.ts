@@ -21,7 +21,7 @@ export async function getUserGeminiApiKey(): Promise<string | null> {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*') // <-- Using * bypasses the 406 error
       .eq('id', user.id)
       .single();
 

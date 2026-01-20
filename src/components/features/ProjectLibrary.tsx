@@ -40,6 +40,12 @@ export const ProjectLibrary: React.FC = () => {
          document.documentElement.style.setProperty('--color-primary-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
       }
 
+      // Listen to auth state changes
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+         setUser(session?.user ?? null);
+         loadProjects();
+      });
+
       // Close menu on click outside
       const handleClickOutside = (event: MouseEvent) => {
          if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -47,7 +53,11 @@ export const ProjectLibrary: React.FC = () => {
          }
       };
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+
+      return () => {
+         authListener?.subscription.unsubscribe();
+         document.removeEventListener('mousedown', handleClickOutside);
+      };
    }, []);
 
    const checkUser = async () => {
@@ -69,6 +79,11 @@ export const ProjectLibrary: React.FC = () => {
    const closeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
    const loadProjects = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+         setProjects([]);
+         return;
+      }
       const list = await getProjectsList();
       setProjects(list || []);
    };
