@@ -21,9 +21,18 @@ export async function getUserGeminiApiKey(): Promise<string | null> {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('gemini_api_key')
+      .select('*')
       .eq('id', user.id)
+      .neq('id', crypto.randomUUID()) // Cache Buster
       .single();
+
+    if (error) {
+      console.error('Error fetching Gemini API key:', error);
+      if (error.code === '406') {
+        console.error('CRITICAL: 406 Warning - Schema Cache Deadlock. Please reload Dashboard.');
+      }
+      return null;
+    }
 
     if (error || !data?.gemini_api_key) return null;
     return data.gemini_api_key;
