@@ -23,7 +23,6 @@ export async function getUserGeminiApiKey(): Promise<string | null> {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .neq('id', crypto.randomUUID()) // Cache Buster
       .single();
 
     if (error) {
