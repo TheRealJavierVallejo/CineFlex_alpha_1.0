@@ -14,11 +14,25 @@ const createSingletonClient = () => {
     const globalClient = (window as any).__supabaseClient;
     if (globalClient) return globalClient;
 
-    const client = createClient<Database>(supabaseUrl, supabaseAnonKey);
+    const client = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      }
+    });
     (window as any).__supabaseClient = client;
     return client;
   }
-  return createClient<Database>(supabaseUrl, supabaseAnonKey);
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    }
+  });
 };
 
 export const supabase = createSingletonClient();
