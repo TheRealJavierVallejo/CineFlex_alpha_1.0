@@ -132,15 +132,12 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor.operations, onUndoRedoChange, editor]);
 
-    // 🔥 NEW: Save on unmount
+    // 🔥 FIXED: Empty dependencies to prevent infinite loops. Save happens via onBlur instead.
     useEffect(() => {
         return () => {
-            if (value && value.length > 0) {
-                const elements = slateToScriptElements(value);
-                onChange(elements);
-            }
+            // No unmount save here to avoid loops
         };
-    }, [value, onChange]);
+    }, []);
 
     // SmartType State Machine
     const {

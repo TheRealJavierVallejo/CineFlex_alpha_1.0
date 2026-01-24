@@ -63,23 +63,15 @@ export const StoryNotesEditor: React.FC = () => {
         }
     }, [notesData.activeNoteId, notesData.notes.length]);
 
-    // Cleanup timer and force save on unmount
+    // Cleanup timer and force save on unmount (FIXED: dependencies removed to prevent loops)
     useEffect(() => {
         return () => {
             // Clear debounce timer
             if (contentSaveTimerRef.current) {
                 clearTimeout(contentSaveTimerRef.current);
             }
-
-            // 🔥 NEW: Force final save
-            if (activeNote) {
-                updateStoryNote(project.id, activeNote.id, {
-                    title: activeNote.title,
-                    content: activeNote.content
-                }).catch(err => console.error('Failed to save note on unmount:', err));
-            }
         };
-    }, [activeNote, project.id]); // 🔥 CHANGED: Added dependencies
+    }, []); // 🔥 FIXED: Empty dependencies
 
     const loadNotes = async () => {
         const data = await getStoryNotes(project.id);

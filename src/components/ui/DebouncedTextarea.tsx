@@ -33,18 +33,14 @@ export const DebouncedTextarea: React.FC<DebouncedTextareaProps> = ({
         }
     }, [localValue, initialValue, onChange]);
 
-    // 🔥 NEW: Save on unmount
+    // 🔥 FIXED: Empty dependencies to prevent infinite loops. Save happens via onBlur instead.
     useEffect(() => {
         return () => {
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
-            // Final save on unmount if changed
-            if (localValue !== initialValue) {
-                onChange(localValue);
-            }
         };
-    }, [localValue, initialValue, onChange]);
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
