@@ -67,7 +67,7 @@ export const STORY_STRUCTURE_TYPES = [
 
 export const TARGET_AUDIENCE_RATINGS = [
   "General Audiences (G)",
-  "Parental Guidance (PG)", 
+  "Parental Guidance (PG)",
   "Teen & Up (PG-13)",
   "Mature (R)",
   "Adult Only (NC-17)"
@@ -75,8 +75,7 @@ export const TARGET_AUDIENCE_RATINGS = [
 
 export const MODEL_OPTIONS = [
   { label: "Gemini (Fast)", value: "gemini-2.5-flash-image" },
-  { label: "Gemini (Pro)", value: "gemini-3-pro-image-preview" },
-  { label: "Student Draft (Base)", value: "pollinations" }
+  { label: "Gemini (Pro)", value: "gemini-3-pro-image-preview" }
 ];
 
 export const ASPECT_RATIOS = [
@@ -132,19 +131,19 @@ export const UI_COLOR_PALETTE = [
   "#A1A1AA", // Zinc
   "#52525B", // Gunmetal
   "#27272A", // Graphite
-  
+
   // Row 2: The Voltage (High Energy)
   "#E11D48", // Cinema Red
   "#EF4444", // Alert Red
   "#F97316", // Safety Orange
   "#F59E0B", // Amber Signal
-  
+
   // Row 3: The Studio (Cool & Tech)
   "#3B82F6", // Reference Blue
   "#6366F1", // Indigo
   "#8B5CF6", // Electric Violet
   "#D946EF", // Neon Fuchsia
-  
+
   // Row 4: The Elements (Natural/SciFi)
   "#14B8A6", // Teal
   "#10B981", // Emerald

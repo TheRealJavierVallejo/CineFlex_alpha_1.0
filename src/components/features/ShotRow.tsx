@@ -46,7 +46,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
     // Screenplay Standard Formatting Logic (Matching ScriptPage exactly)
     const getElementStyle = (type: ScriptElement['type']) => {
         const base = "font-screenplay text-[16px] leading-snug text-text-primary whitespace-pre-wrap relative";
-        
+
         // Using standard screenplay indentations (approximate for web display)
         // 1 inch approx 96px or 6rem
         switch (type) {
@@ -91,7 +91,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
     return (
         <>
             <div className="group/row grid grid-cols-2 border-b border-border hover:bg-surface-secondary transition-colors relative min-h-[220px]">
-                
+
                 {/* 1. VISUAL COLUMN (50% Width) */}
                 <div className="p-6 border-r border-border flex flex-col gap-4 bg-surface justify-center relative">
                     {/* Header: Shot Number & Meta */}
@@ -104,7 +104,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                                 {shot.shotType} • {shot.aspectRatio || '16:9'}
                             </span>
                         </div>
-                        
+
                         <div className="flex gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
@@ -120,8 +120,8 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                     <div className="w-full flex items-center justify-center">
                         <div
                             className="w-full relative group/visual cursor-pointer hover:border-primary transition-all duration-200 rounded-sm overflow-hidden bg-[#050505] border border-border shadow-sm"
-                            style={{ 
-                                ...aspectRatioStyle, 
+                            style={{
+                                ...aspectRatioStyle,
                                 maxHeight: '400px'
                             }}
                             onClick={() => {
@@ -132,16 +132,20 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                                 }
                             }}
                         >
-                            <LazyImage 
-                                src={shot.generatedImage} 
-                                className="w-full h-full object-contain" 
-                                placeholder={
-                                    <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-text-muted group-hover/visual:text-text-secondary transition-colors bg-surface-secondary/20">
-                                        <Plus className="w-8 h-8 opacity-50" />
-                                        <span className="text-[9px] uppercase tracking-widest font-bold opacity-70">Add Visual</span>
-                                    </div>
-                                }
+                            <LazyImage
+                                src={shot.generatedImage}
+                                alt={`Shot ${shot.sequence}`}
+                                className="w-full h-full"
+                                aspectRatio={shot.aspectRatio || '16/9'}
                             />
+
+                            {/* Add Visual Placeholder Overlay (Legacy Support) */}
+                            {!shot.generatedImage && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-text-muted group-hover/visual:text-text-secondary transition-colors bg-surface-secondary/20">
+                                    <Plus className="w-8 h-8 opacity-50" />
+                                    <span className="text-[9px] uppercase tracking-widest font-bold opacity-70">Add Visual</span>
+                                </div>
+                            )}
 
                             {/* Draft Badge */}
                             {shot.generatedImage && shot.model?.includes('Student') && (
@@ -154,7 +158,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                             {shot.generatedImage && (
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/visual:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
                                     <span className="text-[10px] uppercase font-bold text-white tracking-widest border border-white/30 bg-black/50 px-3 py-1.5 rounded-sm flex items-center gap-2 hover:bg-primary hover:border-primary transition-colors">
-                                        <Edit2 className="w-3 h-3"/> Edit Shot
+                                        <Edit2 className="w-3 h-3" /> Edit Shot
                                     </span>
                                 </div>
                             )}
@@ -182,13 +186,13 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                         <div className="flex flex-col w-full max-w-[600px] mx-auto">
                             {sortedElements.map((el) => {
                                 const { className, style } = getElementStyle(el.type);
-                                
+
                                 return (
                                     <div key={el.id} className="relative group/element">
                                         <div className={className} style={style}>
                                             {el.content}
                                         </div>
-                                        
+
                                         {/* Subtle Unlink on Hover */}
                                         <button
                                             onClick={() => onUnlinkElement(shot.id, el.id)}
@@ -211,9 +215,9 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
                         >
                             <Type className="w-3 h-3" /> Link Script Line
                         </button>
-                        
+
                         {sortedElements.length > 0 && (
-                             <span className="text-[9px] text-text-muted font-mono">{sortedElements.length} lines linked</span>
+                            <span className="text-[9px] text-text-muted font-mono">{sortedElements.length} lines linked</span>
                         )}
                     </div>
                 </div>
@@ -258,7 +262,7 @@ export const ShotRow: React.FC<ShotRowProps> = memo(({
         prev.shot.description === next.shot.description &&
         prev.shot.generatedImage === next.shot.generatedImage &&
         prev.shot.sequence === next.shot.sequence &&
-        prev.shot.aspectRatio === next.shot.aspectRatio && 
+        prev.shot.aspectRatio === next.shot.aspectRatio &&
         prev.linkedElements.length === next.linkedElements.length &&
         prev.linkedElements.every((el, i) => el.id === next.linkedElements[i].id)
     );

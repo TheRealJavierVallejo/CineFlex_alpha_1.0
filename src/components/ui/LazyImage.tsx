@@ -1,86 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon, Loader2 } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
 
 interface LazyImageProps {
-    src?: string;
-    alt?: string;
+    src: string | undefined;
+    alt: string;
     className?: string;
-    placeholder?: React.ReactNode;
+    aspectRatio?: string;
 }
 
-export const LazyImage: React.FC<LazyImageProps> = ({ 
-    src, 
-    alt, 
-    className = "",
-    placeholder
-}) => {
+export const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className = '', aspectRatio = '16/9' }) => {
     const [isLoaded, setIsLoaded] = useState(false);
-    const [isVisible, setIsVisible] = useState(false);
-    const [error, setError] = useState(false);
+    const [isInView, setIsInView] = useState(false);
     const imgRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (!imgRef.current) return;
+
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting) {
-                    setIsVisible(true);
-                    observer.disconnect();
-                }
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        setIsInView(true);
+                        observer.disconnect();
+                    }
+                });
             },
-            { threshold: 0.1, rootMargin: '50px' }
+            { rootMargin: '200px' }
         );
 
-        if (imgRef.current) {
-            observer.observe(imgRef.current);
-        }
-
+        observer.observe(imgRef.current);
         return () => observer.disconnect();
     }, []);
 
-    // Reset state if src changes
-    useEffect(() => {
-        if (isVisible) {
-            setIsLoaded(false);
-            setError(false);
-        }
-    }, [src, isVisible]);
-
     if (!src) {
         return (
-            <div className={`flex items-center justify-center bg-surface-secondary ${className}`}>
-                 {placeholder || <ImageIcon className="w-6 h-6 text-text-muted opacity-20" />}
+            <div
+                ref={imgRef}
+                className={`bg-surface-secondary flex items-center justify-center ${className}`}
+                style={{ aspectRatio }}
+            >
+                <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div ref={imgRef} className={`relative overflow-hidden bg-surface-secondary ${className}`}>
-            {isVisible && !error && (
-                <img
-                    src={src}
-                    alt={alt || "Shot content"}
-                    className={`
-                        w-full h-full object-cover transition-opacity duration-500
-                        ${isLoaded ? 'opacity-100' : 'opacity-0'}
-                    `}
-                    onLoad={() => setIsLoaded(true)}
-                    onError={() => setError(true)}
-                />
-            )}
-
-            {/* Loading State */}
-            {isVisible && !isLoaded && !error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-surface-secondary">
-                    <Loader2 className="w-5 h-5 text-primary animate-spin opacity-50" />
-                </div>
-            )}
-
-            {/* Error State */}
-            {error && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-secondary text-text-muted p-2 text-center">
-                    <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
-                    <span className="text-[9px] uppercase">Failed to load</span>
-                </div>
+        <div ref={imgRef} className={`relative ${className}`} style={{ aspectRatio }}>
+            {!isInView ? (
+                <div className="w-full h-full bg-surface-secondary animate-pulse" />
+            ) : (
+                <>
+                    {!isLoaded && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-surface-secondary">
+                            <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
+                        </div>
+                    )}
+                    <img
+                        src={src}
+                        alt={alt}
+                        className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
+                            }`}
+                        onLoad={() => setIsLoaded(true)}
+                        loading="lazy"
+                    />
+                </>
             )}
         </div>
     );

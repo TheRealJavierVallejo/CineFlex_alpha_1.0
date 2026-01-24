@@ -21,8 +21,7 @@ interface ShotPreviewProps {
     setIsFullscreen: (value: boolean) => void;
     getAspectRatioStyle: (ratio: string) => React.CSSProperties;
     selectedAspectRatio: string;
-    tier: 'free' | 'pro'; // RECEIVED TIER
-    viewMode: 'base' | 'pro'; // RECEIVED VIEW MODE
+
 }
 
 export const ShotPreview: React.FC<ShotPreviewProps> = ({
@@ -42,11 +41,8 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
     setIsFullscreen,
     getAspectRatioStyle,
     selectedAspectRatio,
-    tier,
-    viewMode
 }) => {
-    // Determine if the "Generate" action is locked (User is Free AND looking at Pro View)
-    const isLocked = tier === 'free' && viewMode === 'pro';
+
 
     return (
         <div className="flex-1 media-bg flex flex-col relative">
@@ -54,47 +50,33 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
             <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
                 <div className="flex items-center gap-4">
 
-                    {/* PRO TIER CONTROLS */}
-                    {tier === 'pro' && (
-                        <>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
-                                <div className="flex bg-surface-secondary rounded border border-border p-0.5">
-                                    {[1, 2, 4].map(v => (
-                                        <button
-                                            key={v}
-                                            onClick={() => setVariationCount(v)}
-                                            className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
-                                        >
-                                            {v}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="h-4 w-[1px] bg-border" />
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
-                                <select
-                                    value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
-                                >
-                                    {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                                </select>
-                            </div>
-                            <div className="h-4 w-[1px] bg-border" />
-                        </>
-                    )}
 
-                    {/* FREE TIER BADGE */}
-                    {tier === 'free' && (
-                        <>
-                            <div className="flex items-center gap-2">
-                                <GraduationCap className="w-3.5 h-3.5 text-text-muted" />
-                                <span className="text-xs font-bold text-text-secondary">Student Mode</span>
-                            </div>
-                            <div className="h-4 w-[1px] bg-border" />
-                        </>
-                    )}
+
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Variations:</label>
+                        <div className="flex bg-surface-secondary rounded border border-border p-0.5">
+                            {[1, 2, 4].map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => setVariationCount(v)}
+                                    className={`w-8 h-6 text-xs font-medium rounded transition-colors ${variationCount === v ? 'bg-primary text-white' : 'text-text-tertiary hover:text-text-primary'}`}
+                                >
+                                    {v}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="h-4 w-[1px] bg-border" />
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold text-text-secondary uppercase tracking-wide">Model:</label>
+                        <select
+                            value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
+                            className="bg-surface-secondary border border-border h-7 text-xs text-text-secondary rounded px-2 outline-none focus:border-primary transition-colors cursor-pointer"
+                        >
+                            {MODEL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                    </div>
+                    <div className="h-4 w-[1px] bg-border" />
 
                     <button
                         onClick={onShowPromptPreview}
@@ -148,12 +130,7 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                             </div>
                         )}
 
-                        {/* Free Tier Watermark (Optional Visual Aid) */}
-                        {tier === 'free' && shot.generatedImage && (
-                            <div className="absolute bottom-4 right-4 pointer-events-none opacity-50">
-                                <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/50 px-2 py-1 rounded border border-white/20">Student Preview</span>
-                            </div>
-                        )}
+
                     </div>
                 </div>
 
@@ -194,29 +171,16 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                     Save Draft
                 </Button>
 
-                {tier === 'pro' ? (
-                    <Button
-                        variant="primary"
-                        icon={<Wand2 className="w-4 h-4" />}
-                        onClick={onGenerate}
-                        loading={isGenerating}
-                        disabled={!shot.description && !shot.sketchImage}
-                        className="px-8 shadow-lg shadow-blue-900/20"
-                    >
-                        {shot.generatedImage ? 'Regenerate' : 'Generate Shot'}
-                    </Button>
-                ) : (
-                    <Button
-                        variant={isLocked ? "secondary" : "primary"}
-                        icon={isLocked ? <Lock className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                        onClick={onGenerate}
-                        loading={isGenerating}
-                        disabled={(!shot.description && !shot.sketchImage) || isLocked}
-                        className={`px-8 ${isLocked ? 'opacity-70 cursor-not-allowed' : 'bg-zinc-700 hover:bg-zinc-600 text-white border-zinc-600'}`}
-                    >
-                        {isLocked ? 'Unlock Pro to Render' : (shot.generatedImage ? 'Regenerate (Fast)' : 'Fast Generate')}
-                    </Button>
-                )}
+                <Button
+                    variant="primary"
+                    icon={<Wand2 className="w-4 h-4" />}
+                    onClick={onGenerate}
+                    loading={isGenerating}
+                    disabled={!shot.description && !shot.sketchImage}
+                    className="px-8 shadow-lg shadow-blue-900/20"
+                >
+                    {shot.generatedImage ? 'Regenerate' : 'Generate Shot'}
+                </Button>
             </div>
         </div>
     );

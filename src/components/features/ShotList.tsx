@@ -84,13 +84,10 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
               {/* Thumbnail */}
               <div className="aspect-video relative bg-background">
                 <LazyImage
-                    src={shot.generatedImage || shot.sketchImage}
-                    className="w-full h-full"
-                    placeholder={
-                        <div className="w-full h-full flex items-center justify-center">
-                            <Camera className="w-5 h-5 text-zinc-700" />
-                        </div>
-                    }
+                  src={shot.generatedImage || shot.sketchImage}
+                  alt={`Shot ${shot.sequence}`}
+                  className="w-full h-full"
+                  aspectRatio={shot.aspectRatio || '16/9'}
                 />
 
                 <div className="absolute top-1 left-1 media-control px-1.5 py-0.5 rounded-[1px] text-[9px] font-mono text-white border border-white/10 z-10">
@@ -99,9 +96,9 @@ export const ShotList: React.FC<ShotListProps> = ({ project, onAddShot, onEditSh
 
                 {/* Draft Badge */}
                 {shot.model?.includes('Student') && (
-                    <div className="absolute top-1 right-1 media-control px-1.5 py-0.5 rounded-[1px] text-[8px] font-bold uppercase text-zinc-300 border border-white/10 z-10 flex items-center gap-1">
-                        <GraduationCap className="w-2.5 h-2.5" /> Draft
-                    </div>
+                  <div className="absolute top-1 right-1 media-control px-1.5 py-0.5 rounded-[1px] text-[8px] font-bold uppercase text-zinc-300 border border-white/10 z-10 flex items-center gap-1">
+                    <GraduationCap className="w-2.5 h-2.5" /> Draft
+                  </div>
                 )}
 
                 {/* Actions overlay - Hover Buttons still useful for quick access */}

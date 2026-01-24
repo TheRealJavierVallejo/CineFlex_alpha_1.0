@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../types';
-import { generateHybridImage } from '../../services/imageGen';
+import { generateShotImage } from '../../services/imageGen';
 import { analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
 import { MODEL_OPTIONS } from '../../constants';
@@ -83,16 +83,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
   // Local Settings
   // Force reset if tier changes (Safety Mechanism)
-  const [selectedModel, setSelectedModel] = useState(
-    shot.model && tier === 'pro' ? shot.model : (tier === 'free' ? 'pollinations' : MODEL_OPTIONS[0].value)
-  );
+  const [selectedModel, setSelectedModel] = useState(MODEL_OPTIONS[0].value);
 
-  // Effect to enforce model constraint when tier changes dynamically
-  useEffect(() => {
-    if (tier === 'free') {
-      setSelectedModel('pollinations');
-    }
-  }, [tier]);
+
 
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(shot.aspectRatio || project.settings.aspectRatio || '16:9');
   const [variationCount, setVariationCount] = useState<number>(project.settings.variationCount || 1);
@@ -244,11 +237,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   }, [showToast]);
 
   const handleGenerate = async () => {
-    // BLOCK GENERATION IF IN LOCKED PRO MODE
-    if (tier === 'free' && viewMode === 'pro') {
-      showToast("Unlock Pro to use Studio features", 'info');
-      return;
-    }
+
 
     if (!shot.description?.trim() && !shot.sketchImage) {
       showToast("Please add a scene description or upload a sketch before rendering.", 'warning');
@@ -261,9 +250,8 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       const effectiveShot = noCharacters ? { ...shot, negativePrompt: (shot.negativePrompt || '') + ', humans, people, characters, faces' } : shot;
       const effectiveChars = noCharacters ? [] : activeChars;
 
-      // Use new Hybrid Generator
-      const img = await generateHybridImage(
-        tier,
+      // Use Gemini Generator
+      const img = await generateShotImage(
         effectiveShot,
         project,
         effectiveChars,
@@ -276,23 +264,10 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
         }
       );
 
-      // Determine correct model name for metadata
-      // If hybrid image returned, we check if it was actually pollinations (Free Tier or User Selection)
-      const isBaseModel = tier === 'free' || selectedModel === 'pollinations';
-      const finalModelName = isBaseModel ? 'Student Draft (Base)' : selectedModel;
+      const finalModelName = selectedModel;
 
       const imageId = crypto.randomUUID();
-      await addToImageLibrary(project.id, {
-        id: imageId,
-        projectId: project.id,
-        url: img,
-        createdAt: Date.now(),
-        shotId: shot.id,
-        prompt: constructPrompt(shot, project, effectiveChars, outfits, activeLocation),
-        model: finalModelName, // Use the correct name here
-        aspectRatio: selectedAspectRatio,
-        isFavorite: true
-      });
+      await addToImageLibrary();
 
       const updated = {
         ...shot,
@@ -303,7 +278,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
       setShot(updated);
       onUpdateShot(updated);
-      showToast(isBaseModel ? "Draft image generated" : "Pro render successful", 'success');
+      showToast("Render successful", 'success');
 
     } catch (error: any) {
       let errorMessage = "Failed to generate image. Please try again.";
@@ -329,7 +304,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     const library = await getImageLibrary(project.id);
     const selectedImageItem = library.find(item => item.url === image);
     if (selectedImageItem && !selectedImageItem.isFavorite) {
-      await toggleImageFavorite(project.id, selectedImageItem.id);
+      await toggleImageFavorite();
     }
 
     setShowVariationPicker(false);

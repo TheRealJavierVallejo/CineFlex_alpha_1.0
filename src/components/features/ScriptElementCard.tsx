@@ -7,6 +7,7 @@
 import React from 'react';
 import { ScriptElement, Shot } from '../../types';
 import { Film, X, Link as LinkIcon, Plus } from 'lucide-react';
+import { LazyImage } from '../ui/LazyImage';
 import Button from '../ui/Button';
 
 interface ScriptElementCardProps {
@@ -93,10 +94,11 @@ export const ScriptElementCard: React.FC<ScriptElementCardProps> = ({
             <div key={shot.id} className="relative group/shot w-full aspect-video shrink-0 shadow-sm">
               <div className="w-full h-full bg-background border-2 border-primary/20 rounded-sm overflow-hidden cursor-pointer hover:border-primary transition-colors">
                 {shot.generatedImage ? (
-                  <img
+                  <LazyImage
                     src={shot.generatedImage}
                     className="w-full h-full object-cover"
                     alt={`Shot ${shot.sequence}`}
+                    aspectRatio={shot.aspectRatio || '16/9'}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-surface-secondary">

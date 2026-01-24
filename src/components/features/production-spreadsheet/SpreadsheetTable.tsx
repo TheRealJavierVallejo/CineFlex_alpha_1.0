@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Project, Shot } from '../../../types';
 import { SHOT_TYPES, ASPECT_RATIOS, TIMES_OF_DAY } from '../../../constants';
 import { CheckSquare, Square, Film, Edit2, Layers, Trash2, GraduationCap } from 'lucide-react';
+import { LazyImage } from '../../ui/LazyImage';
 import { FixedSizeList as List, areEqual } from 'react-window';
 import type { ListChildComponentProps } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
@@ -57,11 +58,12 @@ const Row = memo(({ index, style, data }: ListChildComponentProps<SpreadsheetTab
 
             <div className="w-16 p-1 h-full cursor-pointer relative flex items-center justify-center" onClick={() => onEditShot(shot)}>
                 {shot.generatedImage ? (
-                    <>
-                        <img src={shot.generatedImage} className={`h-full w-auto object-contain rounded-sm border ${isDraft ? 'border-dashed border-text-muted' : 'border-border'}`} alt="Shot" />
-                        {/* Tiny draft dot */}
-                        {isDraft && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-white rounded-full shadow-sm" title="Draft Quality" />}
-                    </>
+                    <LazyImage
+                        src={shot.generatedImage}
+                        alt={idString}
+                        className={`h-full w-auto rounded-sm border ${isDraft ? 'border-dashed border-text-muted' : 'border-border'}`}
+                        aspectRatio="16/9" // Spreadsheet uses fixed tiny thumbs
+                    />
                 ) : (
                     <div className="w-10 h-8 bg-surface rounded-sm border border-border flex items-center justify-center group-hover:border-text-muted">
                         <Film className="w-3 h-3 text-text-muted" />

@@ -181,26 +181,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
                                 </button>
                             </div>
 
-                            {/* DEV TOOLS */}
-                            <div className="border-t border-border pt-6">
-                                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 mb-3">
-                                    <Shield className="w-3.5 h-3.5" /> Developer Simulation
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        onClick={() => { setTier('free'); showToast("Switched to Free Tier Simulation", 'info'); }}
-                                        className={`p-3 rounded border text-xs font-bold uppercase tracking-wide transition-all ${tier === 'free' ? 'bg-surface border-text-muted text-text-primary' : 'bg-surface-secondary border-transparent text-text-muted hover:text-text-secondary'}`}
-                                    >
-                                        Simulate Free
-                                    </button>
-                                    <button
-                                        onClick={() => { setTier('pro'); showToast("Switched to Pro Tier Simulation", 'success'); }}
-                                        className={`p-3 rounded border text-xs font-bold uppercase tracking-wide transition-all ${tier === 'pro' ? 'bg-surface border-primary text-primary' : 'bg-surface-secondary border-transparent text-text-muted hover:text-text-secondary'}`}
-                                    >
-                                        Simulate Pro
-                                    </button>
-                                </div>
-                            </div>
+
                         </div>
                     )}
                 </div>
