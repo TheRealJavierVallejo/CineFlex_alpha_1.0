@@ -312,24 +312,7 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     const shots = (projectData.shots || []).sort((a: any, b: any) => a.sequence - b.sequence);
     const scriptElements = scriptData?.content || [];
 
-    // Parse shots metadata back to fields if needed, or if stored as columns
-    const parsedShots = shots.map((s: any) => ({
-        ...s,
-        ...s.metadata, // Spread JSONB metadata back into object
-        metadata: undefined
-    }));
-
-    const parsedScenes = scenes.map((s: any) => ({
-        ...s,
-        scriptElements: typeof s.script_elements === 'string' ? JSON.parse(s.script_elements) : s.script_elements
-    }));
-
-    // Check for schema transform needed?
-    // Assuming DB snake_case vs App camelCase.
-
-    // Quick mapper (Partial) -- Reusing logic from existing file
-    // Ideally this should use a proper transformer utility
-
+    // Helper functions for case transformation
     const toCamel = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
     const deepToCamel = (obj: any): any => {
         if (Array.isArray(obj)) return obj.map(deepToCamel);
@@ -342,6 +325,31 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
         }
         return obj;
     };
+
+    // Parse shots metadata back to fields if needed, or if stored as columns
+    const parsedShots = shots.map((s: any) => {
+        const transformed = deepToCamel(s);
+
+        if (transformed.metadata && typeof transformed.metadata === 'object') {
+            return {
+                ...transformed,
+                ...transformed.metadata,
+                metadata: undefined
+            };
+        }
+
+        return transformed;
+    });
+
+    const parsedScenes = scenes.map((s: any) => ({
+        ...s,
+        scriptElements: typeof s.script_elements === 'string' ? JSON.parse(s.script_elements) : s.script_elements
+    }));
+
+    // Check for schema transform needed?
+    // Assuming DB snake_case vs App camelCase.
+
+
 
     const cleanProject = deepToCamel(projectData) as any;
     // Specific fixes
