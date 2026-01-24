@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { debounce } from '../../utils/debounce';
 
 interface DebouncedTextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange'> {
@@ -10,26 +10,56 @@ interface DebouncedTextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLT
 export const DebouncedTextarea: React.FC<DebouncedTextareaProps> = ({
     value: initialValue,
     onChange,
-    debounceTime = 500,
+    debounceTime = 300, // 🔥 CHANGED: 500ms → 300ms
     ...props
 }) => {
     const [localValue, setLocalValue] = useState(initialValue);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Sync external value changes to local state
     useEffect(() => {
         setLocalValue(initialValue);
     }, [initialValue]);
 
-    const debouncedOnChange = useCallback(
-        debounce((val: string) => {
-            onChange(val);
-        }, debounceTime),
-        [onChange, debounceTime]
-    );
+    // 🔥 NEW: Force immediate save (no debounce)
+    const forceSave = useCallback(() => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+        }
+        // Only save if value actually changed
+        if (localValue !== initialValue) {
+            onChange(localValue);
+        }
+    }, [localValue, initialValue, onChange]);
+
+    // 🔥 NEW: Save on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+            // Final save on unmount if changed
+            if (localValue !== initialValue) {
+                onChange(localValue);
+            }
+        };
+    }, [localValue, initialValue, onChange]);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
         setLocalValue(val);
-        debouncedOnChange(val);
+
+        // Clear existing timer
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+
+        // Set new timer
+        debounceTimerRef.current = setTimeout(() => {
+            onChange(val);
+            debounceTimerRef.current = null;
+        }, debounceTime);
     };
 
     return (
@@ -37,6 +67,7 @@ export const DebouncedTextarea: React.FC<DebouncedTextareaProps> = ({
             {...props}
             value={localValue}
             onChange={handleChange}
+            onBlur={forceSave} // 🔥 NEW: Save on blur
         />
     );
 };

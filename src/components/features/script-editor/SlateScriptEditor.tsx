@@ -132,6 +132,16 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor.operations, onUndoRedoChange, editor]);
 
+    // 🔥 NEW: Save on unmount
+    useEffect(() => {
+        return () => {
+            if (value && value.length > 0) {
+                const elements = slateToScriptElements(value);
+                onChange(elements);
+            }
+        };
+    }, [value, onChange]);
+
     // SmartType State Machine
     const {
         state,
@@ -194,9 +204,15 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         () => debounce((nodes: Descendant[]) => {
             const elements = slateToScriptElements(nodes);
             onChange(elements);
-        }, 500),
+        }, 300), // 🔥 CHANGED: 500ms -> 300ms
         [onChange]
     );
+
+    // 🔥 NEW: Force immediate save without debounce
+    const forceSave = useCallback(() => {
+        const elements = slateToScriptElements(value);
+        onChange(elements);
+    }, [value, onChange]);
 
     const handleChange = useCallback((newValue: Descendant[]) => {
         setValue(newValue);
@@ -376,6 +392,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             renderLeaf={renderLeaf}
                             decorate={decorateWithPlaceholders(editor)}
                             onKeyDown={handleKeyDown}
+                            onBlur={forceSave} // 🔥 NEW: Save on blur
                             placeholder="Start writing your screenplay..."
                             spellCheck={false}
                             className="outline-none"

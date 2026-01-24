@@ -553,14 +553,14 @@ export const toggleImageFavorite = async () => { };
 // Story Dev
 export const getPlotDevelopment = async () => undefined;
 export const savePlotDevelopment = async () => { };
-export const getCharacterDevelopments = async () => [];
-export const saveCharacterDevelopments = async () => { };
+export const getCharacterDevelopments = async (projectId: string): Promise<CharacterDevelopment[]> => [];
+export const saveCharacterDevelopments = async (projectId: string, chars: CharacterDevelopment[]) => { };
 export const getStoryBeats = async () => [];
 export const saveStoryBeats = async () => { };
 export const getStoryMetadata = async () => ({ lastUpdated: Date.now() });
 export const saveStoryMetadata = async () => { };
-export const getStoryNotes = async (projectId: string) => ({ notes: [], activeNoteId: null });
-export const saveStoryNotes = async () => { };
+export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> => ({ notes: [], activeNoteId: null });
+export const saveStoryNotes = async (projectId: string, data: StoryNotesData) => { };
 export const createStoryNote = async (projectId: string) => ({
     id: crypto.randomUUID(),
     title: '',
@@ -568,8 +568,8 @@ export const createStoryNote = async (projectId: string) => ({
     createdAt: Date.now(),
     updatedAt: Date.now()
 });
-export const updateStoryNote = async () => { };
-export const deleteStoryNote = async () => { };
+export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>) => { };
+export const deleteStoryNote = async (projectId: string, noteId: string) => { };
 
 export const garbageCollect = async () => { };
 

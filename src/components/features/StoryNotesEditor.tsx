@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Sparkles, FileText } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import {
@@ -63,14 +63,23 @@ export const StoryNotesEditor: React.FC = () => {
         }
     }, [notesData.activeNoteId, notesData.notes.length]);
 
-    // Cleanup timer on unmount
+    // Cleanup timer and force save on unmount
     useEffect(() => {
         return () => {
+            // Clear debounce timer
             if (contentSaveTimerRef.current) {
                 clearTimeout(contentSaveTimerRef.current);
             }
+
+            // 🔥 NEW: Force final save
+            if (activeNote) {
+                updateStoryNote(project.id, activeNote.id, {
+                    title: activeNote.title,
+                    content: activeNote.content
+                }).catch(err => console.error('Failed to save note on unmount:', err));
+            }
         };
-    }, []);
+    }, [activeNote, project.id]); // 🔥 CHANGED: Added dependencies
 
     const loadNotes = async () => {
         const data = await getStoryNotes(project.id);
@@ -139,15 +148,32 @@ export const StoryNotesEditor: React.FC = () => {
             )
         }));
 
-        // Debounced save with ref-based timer
+        // Debounced save
         if (contentSaveTimerRef.current) {
             clearTimeout(contentSaveTimerRef.current);
         }
         contentSaveTimerRef.current = setTimeout(async () => {
             await updateStoryNote(project.id, activeNote.id, { content });
             contentSaveTimerRef.current = null;
-        }, 500);
+        }, 300); // 🔥 CHANGED: 500ms → 300ms
     };
+
+    // 🔥 NEW: Force save without debounce
+    const forceSaveActiveNote = useCallback(async () => {
+        if (!activeNote) return;
+
+        // Clear pending timer
+        if (contentSaveTimerRef.current) {
+            clearTimeout(contentSaveTimerRef.current);
+            contentSaveTimerRef.current = null;
+        }
+
+        // Save immediately
+        await updateStoryNote(project.id, activeNote.id, {
+            title: activeNote.title,
+            content: activeNote.content
+        });
+    }, [activeNote, project.id]);
 
     const handleDeleteNote = async (noteId: string) => {
         if (notesData.notes.length === 1) {
@@ -320,6 +346,7 @@ export const StoryNotesEditor: React.FC = () => {
                                     ref={contentTextareaRef}
                                     value={activeNote.content}
                                     onChange={(e) => handleUpdateContent(e.target.value)}
+                                    onBlur={forceSaveActiveNote} // 🔥 NEW
                                     placeholder="Start writing your notes here..."
                                     className="w-full h-full min-h-[600px] bg-transparent text-text-primary text-base leading-relaxed resize-none border-none outline-none placeholder:text-text-muted font-mono"
                                     style={{

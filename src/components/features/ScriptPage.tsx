@@ -78,7 +78,7 @@ export const ScriptPage: React.FC = () => {
                 setSaveStatus('saved');
                 setTimeout(() => setSaveStatus('idle'), 2000);
             }, 500);
-        }, 1000),
+        }, 500), // 🔥 CHANGED: 1000ms -> 500ms
         [updateScriptElements, projectId]
     );
 
