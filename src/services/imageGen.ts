@@ -60,11 +60,11 @@ export const generateHybridImage = async (
     }
 
     // --- CASE B: POLLINATIONS (BASE / FREE) ---
-    
+
     // A. Aspect Ratio Logic (Calculate Integer Dimensions - Multiples of 16 for Flux stability)
     let width = 1280;
     let height = 720;
-    
+
     if (options.aspectRatio) {
         const parts = options.aspectRatio.split(':').map(Number);
         const wRatio = parts[0];
@@ -72,9 +72,9 @@ export const generateHybridImage = async (
 
         if (!isNaN(wRatio) && !isNaN(hRatio)) {
             // Target ~1MP for speed/reliability on free tier
-            const targetPixels = 1000000; 
+            const targetPixels = 1000000;
             const scale = Math.sqrt(targetPixels / (wRatio * hRatio));
-            
+
             // Round to nearest 16
             width = Math.round((wRatio * scale) / 16) * 16;
             height = Math.round((hRatio * scale) / 16) * 16;
@@ -83,19 +83,19 @@ export const generateHybridImage = async (
 
     // B. Construct Prompt using the Smart Enhancer
     const fullPrompt = enhancePromptForFreeTier(shot, project, characters, outfits, location);
-    
+
     // C. Safety Truncation (Pollinations URL limit safety)
     const safePrompt = fullPrompt.slice(0, 800); // reduced to 800 to be safe
     const encodedPrompt = encodeURIComponent(safePrompt);
-    
+
     // D. Append negative prompt
-    const negativeParam = shot.negativePrompt 
-        ? `&negative=${encodeURIComponent(shot.negativePrompt.slice(0, 200))}` 
+    const negativeParam = shot.negativePrompt
+        ? `&negative=${encodeURIComponent(shot.negativePrompt.slice(0, 200))}`
         : "";
-    
+
     // E. Add randomness (Seed)
     const seed = Math.floor(Math.random() * 1000000);
-    
+
     // F. Construct URL
     // Using 'flux' model. Ensure nologo=true.
     const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${seed}&model=flux${negativeParam}`;
