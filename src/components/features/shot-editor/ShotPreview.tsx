@@ -113,7 +113,7 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
             <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden media-bg">
                 {/* Main Image */}
                 <div className="relative w-full max-w-5xl flex items-center justify-center flex-1" style={{ maxHeight: '100%' }}>
-                    <div className="relative bg-zinc-100 dark:bg-black group rounded-md overflow-hidden border border-border dark:border-white/10 shadow-2xl" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '65vh' }}>
+                    <div className="relative media-bg group rounded-md overflow-hidden border border-border dark:border-white/10 shadow-2xl" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '65vh' }}>
                         {shot.generatedImage ? (
                             <img src={shot.generatedImage} className="block w-full h-full object-contain border-none outline-none m-0 p-0 bg-transparent transform scale-[1.01]" alt="Rendered Shot" />
                         ) : (

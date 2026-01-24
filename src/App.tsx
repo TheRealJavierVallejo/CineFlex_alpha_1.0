@@ -165,10 +165,11 @@ const App: React.FC = () => {
             }
         }
         const savedMode = localStorage.getItem('cinesketch_theme_mode');
-        if (savedMode === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
+        // Default to DARK if null, or if 'dark'.
+        if (savedMode === 'light') {
             document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
         }
     }, []);
 
