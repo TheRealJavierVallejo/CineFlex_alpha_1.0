@@ -111,6 +111,22 @@ export const StoryNotesEditor: React.FC = () => {
     };
 
     const handleSelectNote = async (noteId: string) => {
+        // 🔥 NEW: Force save current note before switching
+        if (activeNote) {
+            // Clear any pending debounce
+            if (contentSaveTimerRef.current) {
+                clearTimeout(contentSaveTimerRef.current);
+                contentSaveTimerRef.current = null;
+            }
+
+            // Save immediately
+            await updateStoryNote(project.id, activeNote.id, {
+                title: activeNote.title,
+                content: activeNote.content
+            });
+        }
+
+        // Now switch to new note
         setNotesData(prev => ({ ...prev, activeNoteId: noteId }));
     };
 
