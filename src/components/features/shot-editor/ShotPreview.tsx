@@ -53,7 +53,7 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
             {/* HEADER */}
             <div className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
                 <div className="flex items-center gap-4">
-                    
+
                     {/* PRO TIER CONTROLS */}
                     {tier === 'pro' && (
                         <>
@@ -113,11 +113,11 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
             <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden media-bg">
                 {/* Main Image */}
                 <div className="relative w-full max-w-5xl flex items-center justify-center flex-1" style={{ maxHeight: '100%' }}>
-                    <div className="relative bg-[#050505] group rounded-md overflow-hidden border border-white/5 shadow-2xl" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '65vh' }}>
+                    <div className="relative bg-surface-secondary dark:bg-black group rounded-md overflow-hidden border border-border dark:border-white/10 shadow-2xl" style={{ ...getAspectRatioStyle(selectedAspectRatio), width: '100%', maxHeight: '65vh' }}>
                         {shot.generatedImage ? (
                             <img src={shot.generatedImage} className="block w-full h-full object-contain border-none outline-none m-0 p-0 bg-transparent transform scale-[1.01]" alt="Rendered Shot" />
                         ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-text-tertiary">
                                 {isGenerating ? (
                                     <div className="flex flex-col items-center gap-4 animate-pulse">
                                         <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -125,9 +125,9 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                                     </div>
                                 ) : (
                                     <>
-                                        <ImageIcon className="w-20 h-20 mb-6 opacity-20" />
-                                        <div className="text-sm font-mono opacity-40 uppercase tracking-widest">Viewport Empty</div>
-                                        <div className="text-xs opacity-30 mt-2">Enter prompt and click Generate</div>
+                                        <ImageIcon className="w-20 h-20 mb-6 text-text-muted opacity-40" />
+                                        <div className="text-sm font-mono text-text-secondary uppercase tracking-widest">Viewport Empty</div>
+                                        <div className="text-xs text-text-tertiary mt-2">Enter prompt and click Generate</div>
                                     </>
                                 )}
                             </div>
@@ -147,12 +147,12 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                                 </a>
                             </div>
                         )}
-                        
+
                         {/* Free Tier Watermark (Optional Visual Aid) */}
                         {tier === 'free' && shot.generatedImage && (
-                           <div className="absolute bottom-4 right-4 pointer-events-none opacity-50">
-                               <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/50 px-2 py-1 rounded border border-white/20">Student Preview</span>
-                           </div>
+                            <div className="absolute bottom-4 right-4 pointer-events-none opacity-50">
+                                <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/50 px-2 py-1 rounded border border-white/20">Student Preview</span>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -214,7 +214,7 @@ export const ShotPreview: React.FC<ShotPreviewProps> = ({
                         disabled={(!shot.description && !shot.sketchImage) || isLocked}
                         className={`px-8 ${isLocked ? 'opacity-70 cursor-not-allowed' : 'bg-zinc-700 hover:bg-zinc-600 text-white border-zinc-600'}`}
                     >
-                         {isLocked ? 'Unlock Pro to Render' : (shot.generatedImage ? 'Regenerate (Fast)' : 'Fast Generate')}
+                        {isLocked ? 'Unlock Pro to Render' : (shot.generatedImage ? 'Regenerate (Fast)' : 'Fast Generate')}
                     </Button>
                 )}
             </div>

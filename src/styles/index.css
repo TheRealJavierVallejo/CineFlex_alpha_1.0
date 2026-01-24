@@ -63,10 +63,10 @@
   --color-text-muted: #A1A1AA;
 
   /* SPECIAL */
-  --color-overlay-bg: rgba(0, 0, 0, 0.8);
-  --color-modal-bg: rgba(0, 0, 0, 0.9);
-  --color-media-bg: #000000;
-  --color-media-control: rgba(0, 0, 0, 0.6);
+  --color-overlay-bg: rgba(0, 0, 0, 0.4);
+  --color-modal-bg: rgba(255, 255, 255, 0.95);
+  --color-media-bg: var(--bg-surface-secondary);
+  --color-media-control: rgba(255, 255, 255, 0.8);
 }
 
 /* 2. TAILWIND CONFIGURATION */
