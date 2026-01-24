@@ -162,7 +162,7 @@ export const ProjectLibrary: React.FC = () => {
    };
 
    // Migration Helper
-   const [showMigration, setShowMigration] = useState(false);
+
 
    return (
       <div className="h-screen w-screen bg-background text-text-primary flex flex-col font-sans">
@@ -201,14 +201,7 @@ export const ProjectLibrary: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-               <button
-                  onClick={() => setShowMigration(true)}
-                  className="h-9 px-4 rounded-sm bg-surface border border-border hover:border-primary text-text-secondary hover:text-primary text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all"
-               >
-                  <Upload className="w-3.5 h-3.5" /> Migration Tool
-               </button>
 
-               <div className="h-8 w-[1px] bg-border mx-2" />
 
                <button
                   onClick={() => fileInputRef.current?.click()}

@@ -19,12 +19,12 @@ const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles = "inline-flex items-center justify-center font-bold uppercase tracking-wider transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 focus:ring-offset-black select-none";
-  
+
   const variants = {
-    primary: "bg-primary hover:bg-primary-hover text-white border border-primary shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]",
-    secondary: "bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-zinc-700",
-    ghost: "bg-transparent hover:bg-white/5 text-zinc-500 hover:text-white border border-transparent hover:border-zinc-800",
-    danger: "bg-red-900/20 hover:bg-red-900/50 text-red-500 hover:text-red-200 border border-red-900/50"
+    primary: "bg-primary hover:bg-primary-hover text-white border border-primary shadow-sm hover:shadow-md",
+    secondary: "bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary border border-border hover:border-text-muted",
+    ghost: "bg-transparent hover:bg-surface-secondary text-text-muted hover:text-text-primary border border-transparent",
+    danger: "bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-600 border border-red-500/20 hover:border-red-500/50"
   };
 
   const sizes = {

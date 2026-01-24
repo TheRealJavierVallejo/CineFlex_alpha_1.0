@@ -160,7 +160,7 @@ export const ScriptPage: React.FC = () => {
                             {/* PERFECT CENTER - No padding, no black bars */}
                             <div className="min-h-full flex items-center justify-center pb-[50vh]">
                                 {/* Fixed 850px width, perfectly centered */}
-                                <div className="w-[850px]">
+                                <div className="w-full max-w-[850px]">
                                     {elements.length === 0 ? (
                                         <div className="mt-20">
                                             <EmptyProjectState

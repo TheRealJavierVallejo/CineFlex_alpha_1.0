@@ -15,37 +15,163 @@ const KEYS = {
     ACTIVE_PROJECT_ID: 'cinesketch_active_project_id',
 };
 
+// --- STORAGE HELPERS ---
+
+const IMAGE_BUCKET = 'images';
+const PUBLIC_IMAGES_SEGMENT = '/storage/v1/object/public/images/';
+
+const getSupabaseImagePathFromUrl = (url: string): string | null => {
+    if (!url || typeof url !== 'string') return null;
+    const idx = url.indexOf(PUBLIC_IMAGES_SEGMENT);
+    if (idx === -1) return null;
+    return url.substring(idx + PUBLIC_IMAGES_SEGMENT.length); // everything after ".../images/"
+};
+
+const chunk = <T,>(arr: T[], size: number) => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+};
+
+const collectReferencedProjectImagePaths = (projectId: string, obj: any, paths: Set<string> = new Set()) => {
+    if (!obj) return paths;
+
+    if (typeof obj === 'string') {
+        const storagePath = getSupabaseImagePathFromUrl(obj);
+        if (storagePath && storagePath.startsWith(`${projectId}/`)) {
+            paths.add(storagePath);
+        }
+        return paths;
+    }
+
+    if (Array.isArray(obj)) {
+        obj.forEach(v => collectReferencedProjectImagePaths(projectId, v, paths));
+        return paths;
+    }
+
+    if (typeof obj === 'object') {
+        Object.values(obj).forEach(v => collectReferencedProjectImagePaths(projectId, v, paths));
+        return paths;
+    }
+
+    return paths;
+};
+
+const listAllFilesInProjectFolder = async (projectId: string): Promise<string[]> => {
+    const allPaths: string[] = [];
+    let offset = 0;
+    const limit = 100;
+
+    while (true) {
+        const { data, error } = await supabase.storage
+            .from(IMAGE_BUCKET)
+            .list(projectId, { limit, offset });
+
+        if (error) {
+            console.error('[STORAGE] list() failed:', error);
+            return allPaths;
+        }
+
+        const files = (data || []).filter(x => x.name && !x.id?.endsWith('/'));
+        files.forEach(f => {
+            allPaths.push(`${projectId}/${f.name}`);
+        });
+
+        if (!data || data.length < limit) break;
+        offset += limit;
+    }
+
+    return allPaths;
+};
+
+const cleanupUnusedProjectImages = async (projectId: string, project: any) => {
+    try {
+        const referenced = collectReferencedProjectImagePaths(projectId, project);
+        const existing = await listAllFilesInProjectFolder(projectId);
+
+        const toDelete = existing.filter(p => !referenced.has(p));
+
+        if (toDelete.length === 0) return;
+
+        // Supabase remove() supports up to 1000 at a time; chunk to be safe
+        for (const batch of chunk(toDelete, 1000)) {
+            const { error } = await supabase.storage.from(IMAGE_BUCKET).remove(batch);
+            if (error) {
+                console.error('[STORAGE] remove() failed:', error);
+            }
+        }
+
+        console.log(`[STORAGE] Deleted ${toDelete.length} unused images for project ${projectId}`);
+    } catch (e) {
+        console.error('[STORAGE] cleanup failed:', e);
+    }
+};
+
 // --- IMAGES & STORAGE ---
 
-export const persistImage = async (dataUrlOrBlobUrl: string): Promise<string> => {
-    if (!dataUrlOrBlobUrl || dataUrlOrBlobUrl.startsWith('http')) return dataUrlOrBlobUrl;
+export const persistImage = async (projectId: string, url: string): Promise<string> => {
+    if (!url) return url;
 
-    const fileExt = dataUrlOrBlobUrl.substring("data:image/".length, dataUrlOrBlobUrl.indexOf(";base64"));
-    // Default to png if unknown
-    const ext = fileExt.includes('jpeg') ? 'jpg' : 'png';
-    const fileName = `${crypto.randomUUID()}.${ext}`;
-    const filePath = `${fileName}`;
+    // If this is already a Supabase public URL in our bucket, try to ensure it lives under `${projectId}/`
+    const existingPath = getSupabaseImagePathFromUrl(url);
+    if (existingPath) {
+        if (existingPath.startsWith(`${projectId}/`)) {
+            return url; // already in correct folder
+        }
 
-    let blob: Blob;
+        // Try to move it into the project folder (gradual migration of old images)
+        const fileName = existingPath.split('/').pop();
+        if (!fileName) return url;
+
+        const newPath = `${projectId}/${fileName}`;
+
+        try {
+            const { error: moveError } = await supabase.storage
+                .from(IMAGE_BUCKET)
+                .move(existingPath, newPath);
+
+            if (!moveError) {
+                const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(newPath);
+                return data.publicUrl;
+            }
+
+            // If move fails (policy), keep original URL
+            console.warn('[STORAGE] move() failed, keeping original URL:', moveError);
+            return url;
+        } catch (e) {
+            console.warn('[STORAGE] move() threw, keeping original URL:', e);
+            return url;
+        }
+    }
+
+    // If it's a non-supabase http URL (like Unsplash), do nothing
+    if (url.startsWith('http')) return url;
+
+    // Otherwise it's a blob: URL or data: URL; upload it
     try {
-        const res = await fetch(dataUrlOrBlobUrl);
-        blob = await res.blob();
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const mimeType = blob.type || 'image/png';
+        const ext = mimeType.split('/')[1] || 'png';
+
+        const fileName = `${crypto.randomUUID()}.${ext}`;
+        const storagePath = `${projectId}/${fileName}`;
+
+        const { error } = await supabase.storage
+            .from(IMAGE_BUCKET)
+            .upload(storagePath, blob, { upsert: true, contentType: mimeType });
+
+        if (error) {
+            console.error('[STORAGE] upload failed:', error);
+            return url;
+        }
+
+        const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
+        return data.publicUrl;
     } catch (e) {
-        console.error("Failed to convert image to blob", e);
-        return dataUrlOrBlobUrl;
+        console.error('[STORAGE] persistImage failed:', e);
+        return url;
     }
-
-    const { error } = await supabase.storage
-        .from('images')
-        .upload(filePath, blob, { upsert: true });
-
-    if (error) {
-        console.error('Upload Error:', error);
-        return dataUrlOrBlobUrl;
-    }
-
-    const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-    return data.publicUrl;
 };
 
 // --- PROJECTS ---
@@ -107,6 +233,20 @@ export const createNewProject = async (name: string): Promise<string> => {
 };
 
 export const deleteProject = async (projectId: string) => {
+    // 1. Delete all images in storage for this project
+    try {
+        const allFiles = await listAllFilesInProjectFolder(projectId);
+        if (allFiles.length > 0) {
+            for (const batch of chunk(allFiles, 1000)) {
+                await supabase.storage.from(IMAGE_BUCKET).remove(batch);
+            }
+            console.log(`[STORAGE] Deleted ${allFiles.length} images for deleted project ${projectId}`);
+        }
+    } catch (e) {
+        console.error('[STORAGE] Failed to cleanup images for deleted project:', e);
+    }
+
+    // 2. Delete DB Record
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
     if (error) console.error("Delete failed", error);
     if (getActiveProjectId() === projectId) setActiveProjectId(null);
@@ -116,9 +256,9 @@ export const deleteProject = async (projectId: string) => {
 // For Supabase, "dehydrate" means ensuring images are uploaded to Storage buckets
 // "hydrate" means just using the URL (which is public), so simple passthrough.
 
-const ensureImagesPersisted = async (obj: any): Promise<any> => {
+const ensureImagesPersisted = async (projectId: string, obj: any): Promise<any> => {
     if (!obj || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return Promise.all(obj.map(ensureImagesPersisted));
+    if (Array.isArray(obj)) return Promise.all(obj.map(v => ensureImagesPersisted(projectId, v)));
 
     const newObj: any = { ...obj };
     const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
@@ -126,11 +266,11 @@ const ensureImagesPersisted = async (obj: any): Promise<any> => {
 
     for (const key of Object.keys(newObj)) {
         if (imageFields.includes(key) && typeof newObj[key] === 'string') {
-            newObj[key] = await persistImage(newObj[key]);
+            newObj[key] = await persistImage(projectId, newObj[key]);
         } else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
-            newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(img)));
+            newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(projectId, img)));
         } else if (typeof newObj[key] === 'object') {
-            newObj[key] = await ensureImagesPersisted(newObj[key]);
+            newObj[key] = await ensureImagesPersisted(projectId, newObj[key]);
         }
     }
     return newObj;
@@ -184,24 +324,11 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
         scriptElements: typeof s.script_elements === 'string' ? JSON.parse(s.script_elements) : s.script_elements
     }));
 
-    // Convert keys from snake_case (DB) to camelCase (App)? 
-    // Or rely on JS mapping? Zod schema validation would be good here.
-    // For now, assuming direct mapping or simple transformation.
-    // NOTE: Supabase returns what is in DB. DB columns are snake_case. App expects camelCase.
-    // We MUST map snake_case to camelCase manually here or use a transformer.
+    // Check for schema transform needed?
+    // Assuming DB snake_case vs App camelCase.
 
-    // Quick mapper (Partial)
-    const mapKeys = (o: any): any => { // TODO: robust implementation
-        // Implementing minimal mapping for verifying integration
-        return o;
-    };
-
-    // Actually, `types.ts` defines camelCase. DB `created_at`.
-    // We need a mapper. Since query returns DB columns.
-
-    // TODO: Full Mapper implementation. For this iteration, I'll rely on the fact that I created tables with snake_case
-    // but the APP uses camelCase. THIS IS A BREAKING CHANGE if not handled.
-    // I will implementation a simple transform.
+    // Quick mapper (Partial) -- Reusing logic from existing file
+    // Ideally this should use a proper transformer utility
 
     const toCamel = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
     const deepToCamel = (obj: any): any => {
@@ -228,7 +355,7 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
 
 export const saveProjectData = async (projectId: string, project: Project) => {
     // 1. Persist Images first
-    const cleanProject = await ensureImagesPersisted(project);
+    const cleanProject = await ensureImagesPersisted(projectId, project);
 
     // 2. Update Projects (Settings)
     const { error: pErr } = await supabase.from('projects').update({
@@ -238,7 +365,6 @@ export const saveProjectData = async (projectId: string, project: Project) => {
 
     if (pErr) console.error("Save Project Metadata Failed", pErr);
 
-    // 3. Update Scripts
     // 3. Update Scripts
     // Using onConflict='project_id' relies on the unique constraint on that column.
     const { error: scErr } = await supabase.from('scripts').upsert({
@@ -288,7 +414,8 @@ export const saveProjectData = async (projectId: string, project: Project) => {
         if (shErr) console.error("Save Shots Failed", shErr);
     }
 
-    // TODO: Metadata updates
+    // 6. Cleanup Unused Images (Fire & Forget)
+    cleanupUnusedProjectImages(projectId, cleanProject);
 };
 
 export const subscribeToProjectChanges = (projectId: string, onSceneChange: (payload: any) => void, onShotChange: (payload: any) => void) => {
@@ -327,7 +454,7 @@ export const getCharacters = async (projectId: string): Promise<Character[]> => 
 };
 
 export const saveCharacters = async (projectId: string, chars: Character[]) => {
-    const cleanChars = await ensureImagesPersisted(chars);
+    const cleanChars = await ensureImagesPersisted(projectId, chars);
     const rows = cleanChars.map((c: Character) => ({
         id: c.id,
         project_id: projectId,
@@ -354,7 +481,7 @@ export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
 };
 
 export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
-    const clean = await ensureImagesPersisted(outfits);
+    const clean = await ensureImagesPersisted(projectId, outfits);
     const rows = clean.map((c: Outfit) => ({
         id: c.id,
         project_id: projectId,
@@ -376,7 +503,7 @@ export const getLocations = async (projectId: string): Promise<Location[]> => {
 };
 
 export const saveLocations = async (projectId: string, locs: Location[]) => {
-    const clean = await ensureImagesPersisted(locs);
+    const clean = await ensureImagesPersisted(projectId, locs);
     const rows = clean.map((c: Location) => ({
         id: c.id,
         project_id: projectId,

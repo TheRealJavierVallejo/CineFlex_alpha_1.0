@@ -113,6 +113,7 @@ export interface Scene {
   actionNotes: string;     // General description of what happens
   scriptElements?: ScriptElement[]; // The raw script lines for this scene
   locationId?: string;     // Link to a specific Location Asset
+  metadata?: Record<string, any>;
 }
 
 // 📸 SHOT: A single camera angle or image

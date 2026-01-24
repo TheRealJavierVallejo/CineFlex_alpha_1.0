@@ -41,21 +41,21 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
 
         // Map Fountain Types to CineFlex Types
         switch (token.type) {
-            case 'scene_heading': 
-                type = 'scene_heading'; 
+            case 'scene_heading':
+                type = 'scene_heading';
                 if (token.scene_number) {
                     sceneNumber = token.scene_number;
                 }
                 break;
-            case 'character': 
-                type = 'character'; 
+            case 'character':
+                type = 'character';
                 // Apply dual flag if we are inside a dual block
                 if (isDualBlock) dual = true;
                 break;
             case 'parenthetical': type = 'parenthetical'; break;
             case 'dialogue': type = 'dialogue'; break;
             case 'transition': type = 'transition'; break;
-            
+
             // PRESERVE SPECIAL FORMATTING (Mapped to Action)
             case 'note':
                 content = `[[${content}]]`;
@@ -104,7 +104,7 @@ export const convertFountainToElements = (tokens: FountainToken[]): ScriptElemen
  */
 export const generateFountainText = (elements: ScriptElement[]): string => {
     let output = '';
-    
+
     elements.forEach((el, index) => {
         // Add spacing rules based on types
         if (el.type === 'scene_heading') {
@@ -146,118 +146,153 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
  * Scans the script top-to-bottom and links dialogue to the active character.
  */
 export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[] => {
-  let activeCharacterName = '';
+    let activeCharacterName = '';
 
-  return elements.map(el => {
-    const cleanEl: ScriptElement = {
-        id: el.id,
-        type: el.type,
-        content: el.content,
-        sequence: el.sequence,
-        sceneId: el.sceneId,
-        associatedShotIds: el.associatedShotIds,
-        dual: el.dual, // Preserve dual property
-        sceneNumber: el.sceneNumber // Preserve scene number
-    };
+    return elements.map(el => {
+        const cleanEl: ScriptElement = {
+            id: el.id,
+            type: el.type,
+            content: el.content,
+            sequence: el.sequence,
+            sceneId: el.sceneId,
+            associatedShotIds: el.associatedShotIds,
+            dual: el.dual, // Preserve dual property
+            sceneNumber: el.sceneNumber // Preserve scene number
+        };
 
-    if (cleanEl.type === 'character') {
-      // Clean up caret for dual dialogue if present in raw text
-      // (This handles manual typing of caret in editor)
-      if (cleanEl.content.trim().endsWith('^')) {
-          cleanEl.content = cleanEl.content.replace(/\^$/, '').trim();
-          cleanEl.dual = true;
-      }
-      activeCharacterName = cleanEl.content;
-      return cleanEl;
-    }
+        if (cleanEl.type === 'character') {
+            // Clean up caret for dual dialogue if present in raw text
+            // (This handles manual typing of caret in editor)
+            if (cleanEl.content.trim().endsWith('^')) {
+                cleanEl.content = cleanEl.content.replace(/\^$/, '').trim();
+                cleanEl.dual = true;
+            }
+            activeCharacterName = cleanEl.content;
+            return cleanEl;
+        }
 
-    if (cleanEl.type === 'dialogue' || cleanEl.type === 'parenthetical') {
-      if (activeCharacterName) {
-        cleanEl.character = activeCharacterName;
-      }
-      return cleanEl;
-    }
+        if (cleanEl.type === 'dialogue' || cleanEl.type === 'parenthetical') {
+            if (activeCharacterName) {
+                cleanEl.character = activeCharacterName;
+            }
+            return cleanEl;
+        }
 
-    activeCharacterName = '';
-    return cleanEl;
-  });
+        activeCharacterName = '';
+        return cleanEl;
+    });
 };
 
 /**
  * Re-analyzes the entire scriptElements array.
- * Syncs Scene objects with the text.
+ * Syncs Scene objects with the text with high stability.
  */
 export const syncScriptToScenes = (project: Project): Project => {
-  if (!project.scriptElements) return project;
+    if (!project.scriptElements) return project;
 
-  const enrichedElements = enrichScriptElements(project.scriptElements);
+    const enrichedElements = enrichScriptElements(project.scriptElements);
+    const newScenes: Scene[] = [];
+    const updatedElements: ScriptElement[] = [];
 
-  const newScenes: Scene[] = [];
-  const updatedElements: ScriptElement[] = [];
-  
-  let currentScene: Scene | null = null;
-  let sceneSequence = 1;
+    let currentScene: Scene | null = null;
+    let sceneSequence = 1;
 
-  const existingScenesMap = new Map(project.scenes.map(s => [s.id, s]));
+    // --- RECONCILIATION STRATEGY ---
+    // 1. Create a fingerprint map of existing scenes: "HEADING|OCCURRENCE"
+    // This allows us to track "INT. KITCHEN - DAY (1st time)" vs (2nd time).
+    const existingScenesByFingerprint = new Map<string, Scene>();
+    const headingCounts: Record<string, number> = {};
 
-  for (let i = 0; i < enrichedElements.length; i++) {
-    const el = { ...enrichedElements[i] };
-    
-    // CASE A: NEW SCENE HEADING
-    if (el.type === 'scene_heading') {
-      let sceneId = el.sceneId;
+    project.scenes.forEach(s => {
+        const h = s.heading.toUpperCase();
+        headingCounts[h] = (headingCounts[h] || 0) + 1;
+        const fingerprint = `${h}|${headingCounts[h]}`;
+        existingScenesByFingerprint.set(fingerprint, s);
+    });
 
-      if (!sceneId || !existingScenesMap.has(sceneId)) {
-         sceneId = sceneId || crypto.randomUUID(); 
-      }
+    // Reset counts for the new pass
+    const newHeadingCounts: Record<string, number> = {};
 
-      const sceneObj: Scene = {
-        id: sceneId,
-        sequence: sceneSequence++,
-        heading: el.content.toUpperCase(),
-        actionNotes: '', 
-        scriptElements: [] 
-      };
+    for (let i = 0; i < enrichedElements.length; i++) {
+        const el = { ...enrichedElements[i] };
 
-      currentScene = sceneObj;
-      newScenes.push(sceneObj);
-      
-      el.sceneId = sceneId;
-    } 
-    // CASE B: CONTENT WITHIN SCENE
-    else if (currentScene) {
-      el.sceneId = currentScene.id;
-      
-      if (el.type === 'action') {
-        currentScene.actionNotes += (currentScene.actionNotes ? '\n' : '') + el.content;
-      }
-    } 
-    // CASE C: ORPHANED CONTENT
-    else {
-      if (!currentScene) {
-          const sceneId = crypto.randomUUID();
-          const sceneObj: Scene = {
-             id: sceneId,
-             sequence: sceneSequence++,
-             heading: 'START OF SCRIPT',
-             actionNotes: '',
-             scriptElements: []
-          };
-          currentScene = sceneObj;
-          newScenes.push(sceneObj);
-      }
-      el.sceneId = currentScene.id;
+        // CASE A: NEW SCENE HEADING
+        if (el.type === 'scene_heading') {
+            const h = el.content.toUpperCase();
+            newHeadingCounts[h] = (newHeadingCounts[h] || 0) + 1;
+            const fingerprint = `${h}|${newHeadingCounts[h]}`;
+
+            // Try to match with an existing scene
+            const matchedScene = existingScenesByFingerprint.get(fingerprint);
+            
+            // Stable ID: reuse matched ID, or use element's sceneId, or generate new one
+            const sceneId = matchedScene?.id || el.sceneId || crypto.randomUUID();
+
+            const sceneObj: Scene = {
+                id: sceneId,
+                sequence: sceneSequence++,
+                heading: h,
+                actionNotes: '',
+                scriptElements: [],
+                // Preserve metadata if we matched an existing scene
+                locationId: matchedScene?.locationId,
+                metadata: matchedScene?.metadata,
+            };
+
+            currentScene = sceneObj;
+            newScenes.push(sceneObj);
+
+            el.sceneId = sceneId;
+        }
+        // CASE B: CONTENT WITHIN SCENE
+        else if (currentScene) {
+            el.sceneId = currentScene.id;
+
+            if (el.type === 'action') {
+                currentScene.actionNotes += (currentScene.actionNotes ? '\n' : '') + el.content;
+            }
+        }
+        // CASE C: ORPHANED CONTENT (Start of script before first heading)
+        else {
+            const h = 'START OF SCRIPT';
+            newHeadingCounts[h] = (newHeadingCounts[h] || 0) + 1;
+            const fingerprint = `${h}|${newHeadingCounts[h]}`;
+            
+            const matchedScene = existingScenesByFingerprint.get(fingerprint);
+            
+            // Check if we already created a "START OF SCRIPT" scene in this pass
+            if (!newScenes.length || newScenes[0].heading !== 'START OF SCRIPT') {
+                const sceneId = matchedScene?.id || crypto.randomUUID();
+                const sceneObj: Scene = {
+                    id: sceneId,
+                    sequence: sceneSequence++,
+                    heading: h,
+                    actionNotes: '',
+                    scriptElements: [],
+                    locationId: matchedScene?.locationId,
+                    metadata: matchedScene?.metadata,
+                };
+                currentScene = sceneObj;
+                newScenes.push(sceneObj);
+            } else {
+                currentScene = newScenes[0];
+            }
+            el.sceneId = currentScene.id;
+
+            if (el.type === 'action') {
+                currentScene.actionNotes += (currentScene.actionNotes ? '\n' : '') + el.content;
+            }
+        }
+
+        updatedElements.push(el);
     }
 
-    updatedElements.push(el);
-  }
-
-  return {
-    ...project,
-    scenes: newScenes,
-    scriptElements: updatedElements,
-    lastModified: Date.now()
-  };
+    return {
+        ...project,
+        scenes: newScenes,
+        scriptElements: updatedElements,
+        lastModified: Date.now()
+    };
 };
 
 export const generateScriptFromScenes = (scenes: Scene[]): ScriptElement[] => {
@@ -283,13 +318,13 @@ export const generateScriptFromScenes = (scenes: Scene[]): ScriptElement[] => {
                 sequence: seq++
             });
         }
-        
+
         if (scene.scriptElements && scene.scriptElements.length > 0) {
             scene.scriptElements.forEach(el => {
                 if (el.type !== 'scene_heading') {
                     elements.push({
                         ...el,
-                        id: crypto.randomUUID(), 
+                        id: crypto.randomUUID(),
                         sceneId: scene.id,
                         sequence: seq++
                     });
