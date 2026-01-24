@@ -165,10 +165,10 @@ const App: React.FC = () => {
             }
         }
         const savedMode = localStorage.getItem('cinesketch_theme_mode');
-        if (savedMode === 'light') {
-            document.documentElement.classList.add('light');
+        if (savedMode === 'dark') {
+            document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('light');
+            document.documentElement.classList.remove('dark');
         }
     }, []);
 
@@ -179,7 +179,7 @@ const App: React.FC = () => {
                     <Routes>
                         <Route path="/" element={<ProjectLibrary />} />
                         <Route path="/auth" element={<AuthPage />} />
-                        
+
                         {/* Protected Routes */}
                         <Route element={<ProtectedRoute />}>
                             <Route path="/settings/api-keys" element={<ApiKeySettings />} />

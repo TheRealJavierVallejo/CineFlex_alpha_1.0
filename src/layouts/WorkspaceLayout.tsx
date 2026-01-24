@@ -96,13 +96,13 @@ export const WorkspaceLayout: React.FC = () => {
     }, []);
 
     const toggleTheme = useCallback(() => {
-        const isLight = document.documentElement.classList.contains('light');
-        if (isLight) {
-            document.documentElement.classList.remove('light');
-            localStorage.setItem('cinesketch_theme_mode', 'dark');
-        } else {
-            document.documentElement.classList.add('light');
+        const isDark = document.documentElement.classList.contains('dark');
+        if (isDark) {
+            document.documentElement.classList.remove('dark');
             localStorage.setItem('cinesketch_theme_mode', 'light');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('cinesketch_theme_mode', 'dark');
         }
     }, []);
 

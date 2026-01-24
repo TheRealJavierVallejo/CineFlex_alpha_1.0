@@ -16,36 +16,7 @@
   /* CONTRAST FOREGROUND (Auto-calculated: White or Black) */
   --color-primary-foreground: #FFFFFF;
 
-  /* DARK MODE: SOFT CHARCOAL */
-  --bg-app: #0C0C0E;
-  --bg-panel: #141416;
-  --bg-surface: #1C1C1F;
-  --bg-surface-hover: #27272A;
-  --bg-surface-secondary: #222225;
-
-  /* BORDERS */
-  --color-border: #2A2A2D;
-  --color-border-subtle: #202022;
-  --color-border-focus: var(--color-primary);
-
-  /* TYPOGRAPHY */
-  --color-text-primary: #EEEEEE;
-  --color-text-secondary: #888888;
-  --color-text-tertiary: #555555;
-  --color-text-muted: #444444;
-
-  /* SPECIAL */
-  --color-overlay-bg: rgba(0, 0, 0, 0.8);
-  --color-modal-bg: rgba(0, 0, 0, 0.9);
-  --color-media-bg: #000000;
-  --color-media-control: rgba(0, 0, 0, 0.6);
-
-  --header-height: 48px;
-}
-
-/* LIGHT MODE OVERRIDES */
-:root.light {
-  /* LIGHT MODE: SILVER PAPER */
+  /* LIGHT MODE (DEFAULT): SILVER PAPER */
   --bg-app: #E4E4E7;
   --bg-panel: #F8F8FA;
   --bg-surface: #FFFFFF;
@@ -55,6 +26,7 @@
   /* BORDERS */
   --color-border: #D4D4D8;
   --color-border-subtle: #E4E4E7;
+  --color-border-focus: var(--color-primary);
 
   /* TYPOGRAPHY */
   --color-text-primary: #09090B;
@@ -67,6 +39,34 @@
   --color-modal-bg: rgba(255, 255, 255, 0.95);
   --color-media-bg: var(--bg-surface-secondary);
   --color-media-control: rgba(255, 255, 255, 0.8);
+
+  --header-height: 48px;
+}
+
+/* DARK MODE OVERRIDES */
+.dark {
+  /* DARK MODE: SOFT CHARCOAL */
+  --bg-app: #0C0C0E;
+  --bg-panel: #141416;
+  --bg-surface: #1C1C1F;
+  --bg-surface-hover: #27272A;
+  --bg-surface-secondary: #222225;
+
+  /* BORDERS */
+  --color-border: #2A2A2D;
+  --color-border-subtle: #202022;
+
+  /* TYPOGRAPHY */
+  --color-text-primary: #EEEEEE;
+  --color-text-secondary: #888888;
+  --color-text-tertiary: #555555;
+  --color-text-muted: #444444;
+
+  /* SPECIAL */
+  --color-overlay-bg: rgba(0, 0, 0, 0.8);
+  --color-modal-bg: rgba(0, 0, 0, 0.9);
+  --color-media-bg: #000000;
+  --color-media-control: rgba(0, 0, 0, 0.6);
 }
 
 /* 2. TAILWIND CONFIGURATION */
@@ -126,7 +126,7 @@
 
   /* Strict Screenplay Leading: 16px (1.0rem) matches 6 lines/inch exactly at 96DPI */
   .leading-screenplay {
-    line-height: 1.0rem !important; 
+    line-height: 1.0rem !important;
   }
 
   /* Minimal Scrollbar */
@@ -167,6 +167,7 @@
     background-image: none !important;
     --tw-ring-color: transparent !important;
   }
+
   .script-input-no-border:focus,
   .script-input-no-border:active,
   .script-input-no-border:focus-visible {
@@ -178,23 +179,27 @@
     background-image: none !important;
     ring: 0 !important;
   }
+
   .script-input-no-border::placeholder {
-    opacity: 1 !important; 
+    opacity: 1 !important;
   }
 
   /* Accessibility Overrides */
   .bg-primary {
     color: var(--color-primary-foreground) !important;
   }
+
   .bg-primary .text-white,
   .bg-primary svg,
   .bg-primary .text-primary-foreground {
     color: var(--color-primary-foreground) !important;
   }
+
   .hover\:bg-primary:hover {
     background-color: var(--color-primary) !important;
     color: var(--color-primary-foreground) !important;
   }
+
   .hover\:bg-primary:hover .text-white,
   .hover\:bg-primary:hover svg {
     color: var(--color-primary-foreground) !important;
@@ -204,7 +209,7 @@
   .focus-visible-ring {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
-  
+
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
@@ -214,7 +219,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -225,19 +233,49 @@
   .skip-link {
     @apply absolute left-0 top-0 bg-primary text-white px-4 py-2 z-[100] transition-transform -translate-y-full;
   }
+
   .skip-link:focus {
     @apply translate-y-0;
   }
 
   /* Theme-Aware Utilities */
-  .overlay-dark { background-color: var(--color-overlay-bg); }
-  .modal-bg-dark { background-color: var(--color-modal-bg); }
-  .media-bg { background-color: var(--color-media-bg); }
-  .media-control { background-color: var(--color-media-control); }
-  .bg-app { background-color: var(--bg-app); }
-  .bg-panel { background-color: var(--bg-panel); }
-  .bg-surface-adaptive { background-color: var(--bg-surface); }
-  .bg-surface-hover-adaptive { background-color: var(--bg-surface-hover); }
-  .input-bg { background-color: var(--bg-surface-secondary); }
-  .input-bg-focus { background-color: var(--bg-app); }
+  .overlay-dark {
+    background-color: var(--color-overlay-bg);
+  }
+
+  .modal-bg-dark {
+    background-color: var(--color-modal-bg);
+  }
+
+  .media-bg {
+    background-color: var(--color-media-bg);
+  }
+
+  .media-control {
+    background-color: var(--color-media-control);
+  }
+
+  .bg-app {
+    background-color: var(--bg-app);
+  }
+
+  .bg-panel {
+    background-color: var(--bg-panel);
+  }
+
+  .bg-surface-adaptive {
+    background-color: var(--bg-surface);
+  }
+
+  .bg-surface-hover-adaptive {
+    background-color: var(--bg-surface-hover);
+  }
+
+  .input-bg {
+    background-color: var(--bg-surface-secondary);
+  }
+
+  .input-bg-focus {
+    background-color: var(--bg-app);
+  }
 }

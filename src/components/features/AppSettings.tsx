@@ -56,15 +56,15 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ onClose, showToast }) 
     const handleThemeModeChange = (mode: 'dark' | 'light') => {
         setThemeMode(mode);
         localStorage.setItem('cinesketch_theme_mode', mode);
-        if (mode === 'light') {
-            document.documentElement.classList.add('light');
+        if (mode === 'dark') {
+            document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('light');
+            document.documentElement.classList.remove('dark');
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[100] modal-bg-dark backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] bg-overlay backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
 
                 {/* Header */}
