@@ -354,7 +354,7 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     const cleanProject = deepToCamel(projectData) as any;
     // Specific fixes
     cleanProject.scenes = deepToCamel(scenes);
-    cleanProject.shots = deepToCamel(parsedShots);
+    cleanProject.shots = parsedShots;
     cleanProject.scriptElements = scriptElements; // array
     cleanProject.settings = projectData.settings; // already JSON
 
