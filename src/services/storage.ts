@@ -376,8 +376,17 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     if (scErr) console.error("Save Script Failed:", scErr.message, scErr.details, scErr.hint);
 
     // 4. Update Scenes
-    // Note: Deleting deleted scenes? Upsert is safer but accumulating garbage?
-    // For now, upsert.
+    const currentSceneIds = cleanProject.scenes.map((s: any) => s.id);
+
+    // Prune orphaned scenes (that exist in DB but not in current project state)
+    const { error: scenePruneErr } = await supabase
+        .from('scenes')
+        .delete()
+        .eq('project_id', projectId)
+        .not('id', 'in', `(${currentSceneIds.length > 0 ? currentSceneIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+
+    if (scenePruneErr) console.error("Prune Scenes Failed", scenePruneErr);
+
     const dbScenes = cleanProject.scenes.map((s: any) => ({
         id: s.id,
         project_id: projectId,
@@ -394,6 +403,17 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     }
 
     // 5. Update Shots
+    const currentShotIds = cleanProject.shots.map((s: any) => s.id);
+
+    // Prune orphaned shots
+    const { error: shotPruneErr } = await supabase
+        .from('shots')
+        .delete()
+        .eq('project_id', projectId)
+        .not('id', 'in', `(${currentShotIds.length > 0 ? currentShotIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+
+    if (shotPruneErr) console.error("Prune Shots Failed", shotPruneErr);
+
     const dbShots = cleanProject.shots.map((s: any) => {
         const { id, sceneId, sequence, shotType, description, dialogue, cameraMovement, ...rest } = s;
         return {
