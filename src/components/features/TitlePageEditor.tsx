@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { TitlePageData } from '../../types';
-import Input from '../ui/Input';
+import Input, { Textarea } from '../ui/Input';
 import Button from '../ui/Button';
 import { Plus, X, Save } from 'lucide-react';
 import { debounce } from '../../utils/debounce';
@@ -74,7 +74,7 @@ export const TitlePageEditor: React.FC = () => {
 
   return (
     <div className="flex-1 h-full overflow-y-auto bg-app p-8 flex justify-center">
-      <div className="w-full max-w-2xl space-y-8">
+      <div className="w-full max-w-2xl space-y-4">
 
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div>
@@ -86,9 +86,9 @@ export const TitlePageEditor: React.FC = () => {
           <SaveIndicator status={saveStatus} />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Main Info */}
-          <div className="space-y-4 bg-surface p-6 rounded-lg border border-border">
+          <div className="space-y-4 bg-surface p-4 rounded-lg border border-border">
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-4">Script Details</h3>
             
             <div className="space-y-2">
@@ -112,7 +112,7 @@ export const TitlePageEditor: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-text-secondary">Source Material (Optional)</label>
+                <label className="text-sm font-medium text-text-secondary">Source</label>
                 <Input
                   value={data.source || ''}
                   onChange={(e) => handleChange('source', e.target.value)}
@@ -144,7 +144,7 @@ export const TitlePageEditor: React.FC = () => {
           </div>
 
           {/* Draft Info */}
-          <div className="space-y-4 bg-surface p-6 rounded-lg border border-border">
+          <div className="space-y-4 bg-surface p-4 rounded-lg border border-border">
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-4">Draft Information</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -158,7 +158,7 @@ export const TitlePageEditor: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-text-secondary">Draft Version (Optional)</label>
+                <label className="text-sm font-medium text-text-secondary">Version</label>
                 <Input
                   value={data.draftVersion || ''}
                   onChange={(e) => handleChange('draftVersion', e.target.value)}
@@ -169,21 +169,21 @@ export const TitlePageEditor: React.FC = () => {
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-4 bg-surface p-6 rounded-lg border border-border">
+          <div className="space-y-4 bg-surface p-4 rounded-lg border border-border">
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-4">Contact & Legal</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text-secondary">Contact Info</label>
-                <textarea
+                <Textarea
                   value={data.contact || ''}
                   onChange={(e) => handleChange('contact', e.target.value)}
                   placeholder="Address, Phone, Email..."
-                  className="w-full h-24 bg-surface-secondary border border-border rounded-md p-3 text-sm text-text-primary resize-none outline-none focus:border-primary"
+                  className="h-24 resize-none"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-text-secondary">Copyright</label>
                   <Input
@@ -193,8 +193,8 @@ export const TitlePageEditor: React.FC = () => {
                   />
                 </div>
                 
-                <div className="space-y-2 mt-4">
-                  <label className="text-sm font-medium text-text-secondary">WGA Registration (Optional)</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-text-secondary">WGA Registration</label>
                   <Input
                     value={data.wgaRegistration || ''}
                     onChange={(e) => handleChange('wgaRegistration', e.target.value)}
