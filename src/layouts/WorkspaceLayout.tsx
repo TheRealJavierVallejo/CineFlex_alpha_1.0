@@ -6,7 +6,6 @@ import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
-import SaveStatusIndicator from '../components/ui/SaveStatusIndicator';
 import { Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -16,8 +15,7 @@ import { StorageWarning } from '../components/ui/StorageWarning';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ScriptChat } from '../components/features/ScriptChat';
 import { ResizableDivider } from '../components/ui/ResizableDivider';
-import { useSaveStatus } from '../context/SaveStatusContext';
-import { SaveIndicator } from '../components/ui/SaveIndicator';
+import { Header } from '../components/layout/Header';
 
 // Context type for child routes
 export interface WorkspaceContextType {
@@ -45,7 +43,7 @@ export const WorkspaceLayout: React.FC = () => {
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
-    const { setSaving, setSaved, setError } = useSaveStatus();
+    // const { setSaving, setSaved, setError } = useSaveStatus(); // Handled by useAutoSave hook now
 
     // Split View State
     const [sydOpen, setSydOpen] = useState(false);
@@ -59,21 +57,14 @@ export const WorkspaceLayout: React.FC = () => {
         localStorage.setItem('cinesketch_syd_width', sydWidth.toString());
     }, [sydWidth]);
 
-    // Auto-save with debouncing
+    // Auto-save with debouncing (Now handles global SaveStatus internally)
     const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
         project,
         useCallback(async (data: Project | null) => {
             if (data?.id) {
-                setSaving();
-                try {
-                    await saveProjectData(data.id, data);
-                    setSaved();
-                } catch (error) {
-                    setError('Failed to save project');
-                    throw error; // Re-throw for useAutoSave's internal error state
-                }
+                await saveProjectData(data.id, data);
             }
-        }, [setSaving, setSaved, setError]),
+        }, []),
         {
             delay: 1000,
             onError: (error) => {
@@ -309,12 +300,7 @@ export const WorkspaceLayout: React.FC = () => {
                     }}
                 >
                     {/* Status Bar (Minimal Header) */}
-                    <div className="h-10 border-b border-border flex items-center justify-between px-4 bg-background shrink-0 z-30">
-                        <div className="text-xs font-bold text-text-secondary truncate">{project.name}</div>
-                        <div className="flex items-center gap-2">
-                            <SaveIndicator />
-                        </div>
-                    </div>
+                    <Header projectName={project.name} />
 
                     {/* Content */}
                     <main className="flex-1 bg-background relative overflow-hidden">

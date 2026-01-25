@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { debounce } from '../utils/debounce';
+import { useSaveStatus } from '../context/SaveStatusContext';
 
 interface UseAutoSaveOptions {
     delay?: number; // Debounce delay in milliseconds (default: 1000)
@@ -16,6 +17,7 @@ export function useAutoSave<T>(
     options: UseAutoSaveOptions = {}
 ) {
     const { delay = 1000, onSave, onSuccess, onError } = options;
+    const { setSaving, setSaved, setError: setGlobalError } = useSaveStatus();
 
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -30,12 +32,14 @@ export function useAutoSave<T>(
 
             try {
                 setSaveStatus('saving');
+                setSaving();
                 onSave?.();
 
                 await saveFunction(dataToSave);
 
                 if (isMountedRef.current) {
                     setSaveStatus('saved');
+                    setSaved();
                     setLastSavedAt(new Date());
                     onSuccess?.();
 
@@ -53,6 +57,7 @@ export function useAutoSave<T>(
             } catch (error) {
                 if (isMountedRef.current) {
                     setSaveStatus('error');
+                    setGlobalError(error instanceof Error ? error.message : 'Save failed');
                     onError?.(error as Error);
                     console.error('Auto-save failed:', error);
                 }
@@ -75,12 +80,14 @@ export function useAutoSave<T>(
     const saveNow = useCallback(async () => {
         try {
             setSaveStatus('saving');
+            setSaving();
             onSave?.();
 
             await saveFunction(data);
 
             if (isMountedRef.current) {
                 setSaveStatus('saved');
+                setSaved();
                 setLastSavedAt(new Date());
                 onSuccess?.();
 
@@ -97,6 +104,7 @@ export function useAutoSave<T>(
         } catch (error) {
             if (isMountedRef.current) {
                 setSaveStatus('error');
+                setGlobalError(error instanceof Error ? error.message : 'Save failed');
                 onError?.(error as Error);
             }
         }
