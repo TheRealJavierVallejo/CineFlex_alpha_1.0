@@ -538,8 +538,112 @@ export const subscribeToProjectChanges = (projectId: string, onSceneChange: (pay
         supabase.removeChannel(channel);
     };
 };
+// ============================================================
+// SAVE QUEUE: Prevents race conditions from concurrent saves
+// ============================================================
 
-export const saveProjectDataDebounced = debounce(saveProjectData, 2000);
+/**
+ * Queue that ensures saves execute sequentially, not concurrently.
+ * Pattern used by Notion, Google Docs, Linear.
+ */
+class SaveQueue {
+    private queue: Array<() => Promise<void>> = [];
+    private isProcessing = false;
+
+    /**
+     * Add a save operation to the queue
+     */
+    enqueue(operation: () => Promise<void>) {
+        this.queue.push(operation);
+        this.processQueue();
+    }
+
+    /**
+     * Process queue sequentially (one at a time)
+     */
+    private async processQueue() {
+        // If already processing, exit (next save will be picked up)
+        if (this.isProcessing) return;
+
+        // If queue is empty, exit
+        if (this.queue.length === 0) return;
+
+        this.isProcessing = true;
+
+        try {
+            // Process all saves in order
+            while (this.queue.length > 0) {
+                const operation = this.queue.shift()!;
+                try {
+                    await operation();
+                } catch (err) {
+                    console.error('[SAVE QUEUE] Operation failed:', err);
+                    // Continue processing next save even if one fails
+                }
+            }
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+
+    /**
+     * Check if queue has pending operations
+     */
+    hasPending(): boolean {
+        return this.queue.length > 0 || this.isProcessing;
+    }
+
+    /**
+     * Get number of pending saves
+     */
+    getPendingCount(): number {
+        return this.queue.length;
+    }
+}
+
+// Singleton save queue
+const saveQueue = new SaveQueue();
+
+/**
+ * Debounced save that uses the queue to prevent race conditions
+ */
+const createQueuedDebouncedSave = () => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let pendingProjectId: string | null = null;
+    let pendingProject: Project | null = null;
+
+    return (projectId: string, project: Project) => {
+        // Clear existing timeout
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+
+        // Store latest state
+        pendingProjectId = projectId;
+        pendingProject = project;
+
+        // Debounce: wait 2 seconds of inactivity
+        timeoutId = setTimeout(() => {
+            if (!pendingProjectId || !pendingProject) return;
+
+            const finalProjectId = pendingProjectId;
+            const finalProject = pendingProject;
+
+            // Clear pending state
+            pendingProjectId = null;
+            pendingProject = null;
+
+            // Add to queue (will execute sequentially)
+            saveQueue.enqueue(async () => {
+                console.log(`[SAVE QUEUE] Saving project ${finalProjectId}...`);
+                await saveProjectData(finalProjectId, finalProject);
+                console.log(`[SAVE QUEUE] ✅ Save complete for ${finalProjectId}`);
+            });
+        }, 2000);
+    };
+};
+
+export const saveProjectDataDebounced = createQueuedDebouncedSave();
 
 // --- ASSETS ---
 
