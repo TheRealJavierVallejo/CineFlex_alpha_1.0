@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement } from '../types';
+import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
@@ -148,6 +148,21 @@ export const WorkspaceLayout: React.FC = () => {
         if (!project) return;
         try {
             const parsed = await parseScript(file);
+
+            // Extract Title Page from parsed metadata
+            const titlePage: TitlePageData = {
+                title: parsed.metadata.title || project.name,
+                authors: parsed.metadata.author ? [parsed.metadata.author] : [],
+                credit: 'Written by',
+                draftDate: new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                // Merge any specific fields if parseScript returns them in future (currently uses metadata)
+                ...(parsed.titlePage || {})
+            };
+
             const tempProject: Project = {
                 ...project,
                 scriptElements: parsed.elements,
@@ -155,8 +170,10 @@ export const WorkspaceLayout: React.FC = () => {
                     name: file.name,
                     uploadedAt: Date.now(),
                     format: file.name.endsWith('.fountain') ? 'fountain' : 'txt'
-                }
+                },
+                titlePage: titlePage // ✅ Save title page
             };
+
             const syncedProject = syncScriptToScenes(tempProject);
             handleUpdateProject(syncedProject);
             showToast(`Script imported & synced (${parsed.elements.length} lines)`, 'success');
