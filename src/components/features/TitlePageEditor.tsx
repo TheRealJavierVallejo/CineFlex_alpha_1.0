@@ -34,7 +34,7 @@ const TEMPLATES = {
 type TemplateKey = keyof typeof TEMPLATES;
 
 export const TitlePageEditor: React.FC = () => {
-  const { project, updateProject } = useWorkspace();
+  const { project, handleUpdateProject } = useWorkspace();
   const [data, setData] = useState<TitlePageData>({
     title: project.name,
     credit: 'Written by',
@@ -65,7 +65,7 @@ export const TitlePageEditor: React.FC = () => {
 
   const debouncedSave = debounce((newData: TitlePageData) => {
     setSaveStatus('saving');
-    updateProject({ ...project, titlePage: newData });
+    handleUpdateProject({ ...project, titlePage: newData });
     setTimeout(() => setSaveStatus('saved'), 800);
     setTimeout(() => setSaveStatus('idle'), 3000);
   }, 1000);
