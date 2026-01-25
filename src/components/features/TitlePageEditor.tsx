@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { TitlePageData } from '../../types';
-import { Input } from '../ui/Input';
+import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { Plus, X, Save } from 'lucide-react';
 import { debounce } from '../../utils/debounce';
@@ -137,7 +137,7 @@ export const TitlePageEditor: React.FC = () => {
                   )}
                 </div>
               ))}
-              <Button variant="outline" size="sm" onClick={addAuthor} className="mt-2 text-xs">
+              <Button variant="secondary" size="sm" onClick={addAuthor} className="mt-2 text-xs">
                 <Plus className="w-3 h-3 mr-1" /> Add Author
               </Button>
             </div>
