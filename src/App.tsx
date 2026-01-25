@@ -25,7 +25,7 @@ import { ApiKeySettings } from './components/features/ApiKeySettings';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 import { AuthPage } from './components/features/AuthPage';
 import { ProtectedRoute } from './components/ProtectedRoute'; // IMPORTED
-import { WelcomeScreen } from './pages/WelcomeScreen';
+import { WelcomeBanner } from './components/ui/WelcomeBanner';
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
@@ -38,23 +38,70 @@ const DashboardPage = () => {
         handleEditShot,
         handleDeleteShot,
         handleDuplicateShot,
+        importScript,
         showToast
     } = useWorkspace();
 
+    const [showWelcome, setShowWelcome] = React.useState(() => {
+        // Check if project is truly empty AND user hasn't dismissed banner
+        const dismissed = localStorage.getItem(`welcome_dismissed_${project.id}`);
+        const isEmpty = project.scenes.length === 0 &&
+            project.shots.length === 0 &&
+            (!project.scriptElements || project.scriptElements.length === 0);
+        return isEmpty && !dismissed;
+    });
+
+    const handleDismissWelcome = () => {
+        localStorage.setItem(`welcome_dismissed_${project.id}`, 'true');
+        setShowWelcome(false);
+    };
+
+    const handleImportScript = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.fountain,.txt,.pdf';
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                try {
+                    await importScript(file);
+                    showToast('Script imported successfully', 'success');
+                    handleDismissWelcome(); // Dismiss banner after import
+                } catch (error) {
+                    showToast('Failed to import script', 'error');
+                }
+            }
+        };
+        input.click();
+    };
+
     return (
-        <div className="absolute inset-0 overflow-hidden">
-            <ErrorBoundary>
-                <LazyWrapper>
-                    <ProductionSpreadsheet
-                        project={project}
-                        onUpdateShot={handleUpdateShot}
-                        onEditShot={handleEditShot}
-                        onDeleteShot={handleDeleteShot}
-                        onDuplicateShot={handleDuplicateShot}
-                        showToast={showToast}
-                    />
-                </LazyWrapper>
-            </ErrorBoundary>
+        <div className="absolute inset-0 overflow-hidden flex flex-col">
+            {/* Welcome banner - only shows when empty and not dismissed */}
+            {showWelcome && (
+                <WelcomeBanner
+                    projectId={project.id}
+                    projectName={project.name}
+                    onImportScript={handleImportScript}
+                    onDismiss={handleDismissWelcome}
+                />
+            )}
+
+            {/* Dashboard content - always visible */}
+            <div className="flex-1 overflow-hidden relative">
+                <ErrorBoundary>
+                    <LazyWrapper>
+                        <ProductionSpreadsheet
+                            project={project}
+                            onUpdateShot={handleUpdateShot}
+                            onEditShot={handleEditShot}
+                            onDeleteShot={handleDeleteShot}
+                            onDuplicateShot={handleDuplicateShot}
+                            showToast={showToast}
+                        />
+                    </LazyWrapper>
+                </ErrorBoundary>
+            </div>
         </div>
     );
 };
@@ -190,8 +237,7 @@ const App: React.FC = () => {
 
                         <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
                         <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                            <Route index element={<WelcomeScreen />} />
-                            <Route path="dashboard" element={<DashboardPage />} />
+                            <Route index element={<DashboardPage />} />
                             <Route path="timeline" element={<TimelinePage />} />
                             <Route path="script" element={<ScriptEditorPage />} />
                             <Route path="story-notes" element={<StoryNotesPage />} />
