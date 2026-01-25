@@ -212,15 +212,27 @@ export const createNewThreadForProject = async (projectId: string): Promise<SydT
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
 
+    // 1. Get current thread count from Supabase (authoritative source)
+    const { data: existingThreads, error: countError } = await supabase
+        .from('syd_threads')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id);
+
+    if (countError) throw countError;
+
+    const threadNumber = (existingThreads?.length || 0) + 1;
+    const title = `Chat ${threadNumber}`;
+
     const newThread: SydThread = {
         id: crypto.randomUUID(),
         projectId: projectId,
-        title: `Chat ${Date.now()}`,
+        title: title, // ✅ Now "Chat 1", "Chat 2", etc.
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
 
-    // 1. Save to Supabase
+    // 2. Save to Supabase
     const { error } = await supabase.from('syd_threads').insert({
         id: newThread.id,
         project_id: newThread.projectId,
@@ -232,7 +244,7 @@ export const createNewThreadForProject = async (projectId: string): Promise<SydT
 
     if (error) throw error;
 
-    // 2. Save to IndexedDB (Backup)
+    // 3. Save to IndexedDB (Backup)
     try {
         await saveThreadInIndexedDB(newThread);
     } catch (e) {

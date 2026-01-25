@@ -102,15 +102,21 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const loadThreads = async (pid: string) => {
     try {
       const list = await listThreadsForProject(pid);
+
       if (list.length === 0) {
-        // Auto-create first thread
+        // Only create if we're sure there are no threads
         const newThread = await createNewThreadForProject(pid);
         setThreads([newThread]);
         setThreadId(newThread.id);
-        setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
+        setMessages([{
+          id: 'welcome',
+          role: 'model',
+          content: initialWelcomeMsg,
+          createdAt: new Date().toISOString()
+        }]);
       } else {
         setThreads(list);
-        // Default to most recent if not set, or keep current
+        // Default to most recent thread
         if (!threadId) {
           setThreadId(list[0].id);
           loadMessages(list[0].id, pid);
