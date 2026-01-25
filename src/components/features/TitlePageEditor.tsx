@@ -65,7 +65,7 @@ export const TitlePageEditor: React.FC = () => {
 
   const debouncedSave = debounce((newData: TitlePageData) => {
     setSaveStatus('saving');
-    updateProject({ titlePage: newData });
+    updateProject({ ...project, titlePage: newData });
     setTimeout(() => setSaveStatus('saved'), 800);
     setTimeout(() => setSaveStatus('idle'), 3000);
   }, 1000);
