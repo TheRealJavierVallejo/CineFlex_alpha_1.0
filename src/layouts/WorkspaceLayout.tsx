@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData } from '../types';
-import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
+import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
@@ -42,14 +42,7 @@ export const WorkspaceLayout: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
 
-    // Add save queue refs
-    const saveQueueRef = React.useRef<Promise<void>>(Promise.resolve());
-    const projectRef = React.useRef<Project | null>(project);
 
-    // Keep projectRef in sync
-    useEffect(() => {
-        projectRef.current = project;
-    }, [project]);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -67,34 +60,15 @@ export const WorkspaceLayout: React.FC = () => {
         localStorage.setItem('cinesketch_syd_width', sydWidth.toString());
     }, [sydWidth]);
 
-    // Auto-save with debouncing (Now handles global SaveStatus internally)
-    // Queued save function
-    const queuedSave = useCallback(async (data: Project | null) => {
-        if (!data?.id) return;
 
-        // Wait for previous save
-        await saveQueueRef.current;
-
-        // Create new save promise
-        saveQueueRef.current = (async () => {
-            try {
-                // Use ref to get latest state in case of rapid updates
-                const latestProject = projectRef.current;
-                if (latestProject?.id) {
-                    await saveProjectData(latestProject.id, latestProject);
-                }
-            } catch (error) {
-                console.error('Queued save failed:', error);
-                throw error;
-            }
-        })();
-
-        return saveQueueRef.current;
-    }, []);
 
     const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
         project,
-        queuedSave,
+        useCallback((data: Project | null) => {
+            if (data?.id) {
+                saveProjectDataDebounced(data.id, data);
+            }
+        }, []),
         {
             delay: 1000,
             onError: (error) => {
