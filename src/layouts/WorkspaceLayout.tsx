@@ -375,7 +375,7 @@ export const WorkspaceLayout: React.FC = () => {
 
                                 {/* Card 2: Write in Editor */}
                                 <button
-                                    onClick={() => navigate(`/workspace/${project.id}/script`)}
+                                    onClick={() => navigate(`/project/${project.id}/script`)}
                                     className="p-6 bg-surface border border-border rounded-lg hover:border-primary transition-colors text-left group"
                                 >
                                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
@@ -391,7 +391,7 @@ export const WorkspaceLayout: React.FC = () => {
 
                                 {/* Card 3: Create Scenes */}
                                 <button
-                                    onClick={() => navigate(`/workspace/${project.id}/timeline`)}
+                                    onClick={() => navigate(`/project/${project.id}/timeline`)}
                                     className="p-6 bg-surface border border-border rounded-lg hover:border-primary transition-colors text-left group"
                                 >
                                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
