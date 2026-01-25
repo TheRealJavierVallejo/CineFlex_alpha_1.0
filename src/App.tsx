@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { LocalLlmProvider } from './context/LocalLlmContext';
+import { SaveStatusProvider } from './context/SaveStatusContext';
 import { UpgradeModal } from './components/ui/UpgradeModal';
 import {
     TimelineView,
@@ -206,7 +207,9 @@ const App: React.FC = () => {
 
 const WrappedApp = () => (
     <ErrorBoundary>
-        <App />
+        <SaveStatusProvider>
+            <App />
+        </SaveStatusProvider>
     </ErrorBoundary>
 );
 
