@@ -3,27 +3,56 @@
  * Delays execution of a function until after a specified wait time has elapsed
  * since the last time it was invoked.
  * 
+ * Now supports .cancel() and .flush() methods (Lodash-style API).
+ * 
  * @param func - Function to debounce
  * @param wait - Milliseconds to wait before executing
- * @returns Debounced function
+ * @returns Debounced function with .cancel() and .flush() methods
  */
+
+interface DebouncedFunc<T extends (...args: any[]) => any> {
+    (...args: Parameters<T>): void;
+    cancel: () => void;
+    flush: () => void;
+}
+
 export function debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
-): (...args: Parameters<T>) => void {
+): DebouncedFunc<T> {
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    let lastArgs: Parameters<T> | null = null;
 
-    return function executedFunction(...args: Parameters<T>) {
-        const later = () => {
-            timeout = null;
-            func(...args);
-        };
-
+    const debouncedFunction = function (...args: Parameters<T>) {
+        lastArgs = args;
         if (timeout !== null) {
             clearTimeout(timeout);
         }
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => {
+            timeout = null;
+            lastArgs = null;
+            func(...args);
+        }, wait);
+    } as DebouncedFunc<T>;
+
+    debouncedFunction.cancel = () => {
+        if (timeout !== null) {
+            clearTimeout(timeout);
+            timeout = null;
+            lastArgs = null;
+        }
     };
+
+    debouncedFunction.flush = () => {
+        if (timeout !== null && lastArgs !== null) {
+            clearTimeout(timeout);
+            timeout = null;
+            func(...lastArgs);
+            lastArgs = null;
+        }
+    };
+
+    return debouncedFunction;
 }
 
 /**

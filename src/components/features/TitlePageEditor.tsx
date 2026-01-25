@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { TitlePageData } from '../../types';
 import Input, { Textarea } from '../ui/Input';
@@ -34,7 +34,7 @@ const TEMPLATES = {
 type TemplateKey = keyof typeof TEMPLATES;
 
 export const TitlePageEditor: React.FC = () => {
-  const { project, handleUpdateProject, saveNow } = useWorkspace(); // Fixed destructuring here? No, saveNow wasn't exposed. Wait.
+  const { project, handleUpdateProject, saveNow } = useWorkspace();
   const [data, setData] = useState<TitlePageData>({
     title: project.name,
     credit: 'Written by',
@@ -50,97 +50,108 @@ export const TitlePageEditor: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>('feature');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  // Store debounced function in ref so it's stable across renders
+  const debouncedSaveRef = useRef<ReturnType<typeof debounce<(newData: TitlePageData) => void>> | null>(null);
+
+  // Refs to access latest state in cleanup without stale closures
+  const dataRef = useRef(data);
+  const projectRef = useRef(project);
+
+  // Keep refs in sync
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
+
+  // Initialize debounced save once on mount
+  useEffect(() => {
+    debouncedSaveRef.current = debounce((newData: TitlePageData) => {
+      setSaveStatus('saving');
+      handleUpdateProject({ ...projectRef.current, titlePage: newData });
+      setTimeout(() => setSaveStatus('saved'), 800);
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }, 1000);
+
+    // Cleanup on unmount: cancel pending + force save latest data
+    return () => {
+      debouncedSaveRef.current?.cancel();
+
+      // Force immediate save with latest data from refs
+      const currentData = dataRef.current;
+      if (currentData.title || currentData.authors?.[0]) {
+        handleUpdateProject({ ...projectRef.current, titlePage: currentData });
+        saveNow();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← Empty deps: debounce instance created once
+
   // Load existing data on mount
   useEffect(() => {
     if (project.titlePage) {
       setData(prev => ({ ...prev, ...project.titlePage }));
     } else {
-      // If no title page data, initialize with reasonable defaults
-      setData(prev => ({
-        ...prev,
-        title: project.name,
-      }));
+      setData(prev => ({ ...prev, title: project.name }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
+  const handleChange = useCallback((field: keyof TitlePageData, value: string) => {
+    setData(prev => {
+      const newData = { ...prev, [field]: value };
+      debouncedSaveRef.current?.(newData);
+      return newData;
+    });
   }, []);
 
-  // Force save when user leaves tab/window
-  useEffect(() => {
-    const handleSaveAndExit = async () => {
-      // Cancel debounce and save immediately
-      if (data.title || data.authors?.[0]) {
-        handleUpdateProject({ ...project, titlePage: data });
-        // We need to trigger the actual save, not just update the context state
-        // Assuming saveNow triggers the persistence layer
-        if (saveNow) await saveNow();
-      }
-    };
+  const handleAuthorChange = useCallback((index: number, value: string) => {
+    setData(prev => {
+      const newAuthors = [...(prev.authors || [])];
+      newAuthors[index] = value;
+      const newData = { ...prev, authors: newAuthors };
+      debouncedSaveRef.current?.(newData);
+      return newData;
+    });
+  }, []);
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        handleSaveAndExit();
-      }
-    };
+  const addAuthor = useCallback(() => {
+    setData(prev => {
+      const newAuthors = [...(prev.authors || []), ''];
+      const newData = { ...prev, authors: newAuthors };
+      debouncedSaveRef.current?.(newData);
+      return newData;
+    });
+  }, []);
 
-    window.addEventListener('beforeunload', handleSaveAndExit);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+  const removeAuthor = useCallback((index: number) => {
+    setData(prev => {
+      const newAuthors = (prev.authors || []).filter((_, i) => i !== index);
+      if (newAuthors.length === 0) newAuthors.push('');
+      const newData = { ...prev, authors: newAuthors };
+      debouncedSaveRef.current?.(newData);
+      return newData;
+    });
+  }, []);
 
-    return () => {
-      handleSaveAndExit();
-      window.removeEventListener('beforeunload', handleSaveAndExit);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [data, project, handleUpdateProject, saveNow]);
-
-  const debouncedSave = debounce((newData: TitlePageData) => {
-    setSaveStatus('saving');
-    handleUpdateProject({ ...project, titlePage: newData });
-    setTimeout(() => setSaveStatus('saved'), 800);
-    setTimeout(() => setSaveStatus('idle'), 3000);
-  }, 1000);
-
-  const handleChange = (field: keyof TitlePageData, value: string) => {
-    const newData = { ...data, [field]: value };
-    setData(newData);
-    debouncedSave(newData);
-  };
-
-  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleTemplateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTemplate = e.target.value as TemplateKey;
     setSelectedTemplate(newTemplate);
 
-    // Only update credit if it matches one of the other template defaults (or empty)
-    // This prevents overwriting custom credits
-    const currentCredit = data.credit?.trim();
-    const isDefaultCredit = Object.values(TEMPLATES).some(t => t.credit === currentCredit) || !currentCredit;
+    setData(prev => {
+      const currentCredit = prev.credit?.trim();
+      const isDefaultCredit = Object.values(TEMPLATES).some(t => t.credit === currentCredit) || !currentCredit;
 
-    if (isDefaultCredit) {
-      handleChange('credit', TEMPLATES[newTemplate].credit);
-    }
-  };
-
-  const handleAuthorChange = (index: number, value: string) => {
-    const newAuthors = [...(data.authors || [])];
-    newAuthors[index] = value;
-    const newData = { ...data, authors: newAuthors };
-    setData(newData);
-    debouncedSave(newData);
-  };
-
-  const addAuthor = () => {
-    const newAuthors = [...(data.authors || []), ''];
-    const newData = { ...data, authors: newAuthors };
-    setData(newData);
-    debouncedSave(newData);
-  };
-
-  const removeAuthor = (index: number) => {
-    const newAuthors = (data.authors || []).filter((_, i) => i !== index);
-    if (newAuthors.length === 0) newAuthors.push(''); // Always keep at least one
-    const newData = { ...data, authors: newAuthors };
-    setData(newData);
-    debouncedSave(newData);
-  };
+      if (isDefaultCredit) {
+        const newData = { ...prev, credit: TEMPLATES[newTemplate].credit };
+        debouncedSaveRef.current?.(newData);
+        return newData;
+      }
+      return prev;
+    });
+  }, []);
 
   return (
     <div className="flex-1 h-full overflow-hidden bg-app flex flex-col">
@@ -153,7 +164,7 @@ export const TitlePageEditor: React.FC = () => {
               Standard screenplay title page formatting.
             </p>
           </div>
-          
+
           {/* Template Selector */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Template</label>
@@ -170,7 +181,7 @@ export const TitlePageEditor: React.FC = () => {
             </select>
           </div>
         </div>
-        
+
         <SaveIndicator status={saveStatus} />
       </div>
 
@@ -178,14 +189,14 @@ export const TitlePageEditor: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="p-8 h-full">
           <div className="flex flex-col lg:flex-row gap-8 h-full max-w-[1400px] mx-auto">
-            
+
             {/* LEFT: FORM EDITOR */}
             <div className="w-full lg:w-1/2 space-y-6">
-              
+
               {/* Main Info */}
               <div className="space-y-4 bg-surface p-5 rounded-lg border border-border">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Script Details</h3>
-                
+
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-text-secondary">Title</label>
                   <Input
@@ -241,7 +252,7 @@ export const TitlePageEditor: React.FC = () => {
               {/* Draft Info */}
               <div className="space-y-4 bg-surface p-5 rounded-lg border border-border">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Draft Information</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-text-secondary">Draft Date</label>
@@ -266,7 +277,7 @@ export const TitlePageEditor: React.FC = () => {
               {/* Contact Info */}
               <div className="space-y-4 bg-surface p-5 rounded-lg border border-border">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Contact & Legal</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-text-secondary">Contact Info</label>
@@ -287,7 +298,7 @@ export const TitlePageEditor: React.FC = () => {
                         placeholder="© 2024 Name"
                       />
                     </div>
-                    
+
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-text-secondary">WGA Registration</label>
                       <Input
@@ -299,25 +310,25 @@ export const TitlePageEditor: React.FC = () => {
                   </div>
                 </div>
 
-                 <div className="space-y-1">
-                    <label className="text-xs font-medium text-text-secondary">Additional Info</label>
-                    <Input
-                      value={data.additionalInfo || ''}
-                      onChange={(e) => handleChange('additionalInfo', e.target.value)}
-                      placeholder="Any other details..."
-                    />
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-text-secondary">Additional Info</label>
+                  <Input
+                    value={data.additionalInfo || ''}
+                    onChange={(e) => handleChange('additionalInfo', e.target.value)}
+                    placeholder="Any other details..."
+                  />
                 </div>
               </div>
             </div>
 
             {/* RIGHT: LIVE PREVIEW */}
             <div className="w-full lg:w-1/2 flex items-start justify-center pt-4 lg:pt-0 sticky top-0">
-               <div className="w-full max-w-[500px]">
-                  <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 text-center">Live Preview</div>
-                  <TitlePagePreview data={data} />
-               </div>
+              <div className="w-full max-w-[500px]">
+                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 text-center">Live Preview</div>
+                <TitlePagePreview data={data} />
+              </div>
             </div>
-            
+
           </div>
         </div>
       </div>
