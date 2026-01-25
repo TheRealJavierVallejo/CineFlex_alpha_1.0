@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS public.projects (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   last_synced TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   settings JSONB DEFAULT '{}'::jsonb,
+  title_page JSONB DEFAULT NULL,
   
   CONSTRAINT projects_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
