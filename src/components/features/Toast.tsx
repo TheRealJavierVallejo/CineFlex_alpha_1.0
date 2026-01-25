@@ -12,11 +12,12 @@ interface ToastContainerProps {
   onClose: (id: number) => void;
 }
 
-export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onClose }) => {
+// Memoized to prevent re-renders when unrelated state changes
+export const ToastContainer = React.memo<ToastContainerProps>(({ toasts, onClose }) => {
   return (
-    <div 
+    <div
       className="fixed bottom-8 right-6 z-[200] flex flex-col gap-2 pointer-events-none"
-      role="region" 
+      role="region"
       aria-label="Notifications"
     >
       {toasts.map((toast) => (
@@ -24,14 +25,15 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onClose 
       ))}
     </div>
   );
-};
+});
 
 interface ToastItemProps {
   toast: ToastNotification;
   onClose: () => void;
 }
 
-const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
+// Memoized to prevent re-renders of individual toasts
+const ToastItem = React.memo<ToastItemProps>(({ toast, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => onClose(), 3000);
     return () => clearTimeout(timer);
@@ -47,21 +49,21 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
   };
 
   return (
-    <div 
+    <div
       className={`
         pointer-events-auto min-w-[240px] max-w-[320px] p-3 rounded-sm border-l-2 flex items-center gap-3 
         animate-in slide-in-from-bottom-2 fade-in duration-200 border border-t-0 border-r-0 border-b-0
         ${getStyles()}
       `}
     >
-      {toast.type === 'success' ? <Check className="w-4 h-4 text-primary" /> : 
-       toast.type === 'error' ? <AlertCircle className="w-4 h-4 text-red-500" /> : 
-       <Info className="w-4 h-4 text-zinc-500" />}
-      
+      {toast.type === 'success' ? <Check className="w-4 h-4 text-primary" /> :
+        toast.type === 'error' ? <AlertCircle className="w-4 h-4 text-red-500" /> :
+          <Info className="w-4 h-4 text-zinc-500" />}
+
       <div className="flex-1 text-[12px] font-medium">{toast.message}</div>
-      
+
       {toast.action && (
-        <button 
+        <button
           onClick={toast.action.onClick}
           className="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-sm transition-colors uppercase font-bold tracking-wide"
         >
@@ -70,4 +72,4 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
       )}
     </div>
   );
-};
+});

@@ -3,7 +3,8 @@ import { AlertTriangle, HardDrive } from 'lucide-react';
 import { useStorageQuota, formatBytes } from '../../utils/storageQuota';
 import { garbageCollect } from '../../services/storage';
 
-export const StorageWarning: React.FC = () => {
+// Memoized to prevent re-renders (has no props, so only renders once)
+export const StorageWarning = React.memo(() => {
     const { quota, loading } = useStorageQuota();
 
     if (loading || !quota || !quota.isNearLimit) return null;
@@ -23,7 +24,7 @@ export const StorageWarning: React.FC = () => {
             <div className="p-2 bg-white/10 rounded-full">
                 {quota.isCritical ? <AlertTriangle className="w-5 h-5" /> : <HardDrive className="w-5 h-5" />}
             </div>
-            
+
             <div className="flex-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider mb-1">
                     {quota.isCritical ? 'Storage Critical' : 'Storage Warning'}
@@ -32,12 +33,12 @@ export const StorageWarning: React.FC = () => {
                     {formatBytes(quota.usage)} used of {formatBytes(quota.quota)} ({Math.round(quota.percentUsed)}%)
                 </p>
                 <div className="w-full h-1 bg-black/20 rounded-full overflow-hidden">
-                    <div 
-                        className="h-full bg-white transition-all duration-500" 
-                        style={{ width: `${quota.percentUsed}%` }} 
+                    <div
+                        className="h-full bg-white transition-all duration-500"
+                        style={{ width: `${quota.percentUsed}%` }}
                     />
                 </div>
-                <button 
+                <button
                     onClick={handleCleanup}
                     className="mt-2 text-[10px] underline font-bold hover:text-white"
                 >
@@ -46,4 +47,4 @@ export const StorageWarning: React.FC = () => {
             </div>
         </div>
     );
-};
+});

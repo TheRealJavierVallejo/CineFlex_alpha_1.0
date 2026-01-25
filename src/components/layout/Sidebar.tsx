@@ -8,7 +8,8 @@ interface SidebarProps {
     sydOpen: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onSydClick, sydOpen }) => {
+// Memoized to prevent re-renders when project state changes
+export const Sidebar = React.memo<SidebarProps>(({ onSydClick, sydOpen }) => {
     const { tier } = useSubscription();
     const navigate = useNavigate();
 
@@ -63,4 +64,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSydClick, sydOpen }) => {
             </div>
         </div>
     );
-};
+});
