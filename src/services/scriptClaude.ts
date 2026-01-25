@@ -23,11 +23,11 @@ export async function chatWithScriptClaude(
     const apiKey = await getUserClaudeApiKey();
 
     if (!apiKey) {
-      throw new Error('CLAUDE_API_KEY_MISSING: Please add your Claude API key in Account Settings');
+        throw new Error('CLAUDE_API_KEY_MISSING: Please add your Claude API key in Account Settings');
     }
 
     if (!apiKey.startsWith('sk-ant-')) {
-      throw new Error('CLAUDE_API_KEY_INVALID: Invalid Claude API key format');
+        throw new Error('CLAUDE_API_KEY_INVALID: Invalid Claude API key format');
     }
 
     const client = await getClaudeClient();
@@ -55,10 +55,16 @@ export async function chatWithScriptClaude(
 
         // 4. Stream from Claude API
         const stream = await client.messages.stream({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 4000, // Large buffer for script writing
+            model: 'claude-3-5-haiku-20241022',
+            max_tokens: 1500, // Reduced from 4000 to save costs
             temperature: 0.7,
-            system: systemPrompt,
+            system: [
+                {
+                    type: "text",
+                    text: systemPrompt,
+                    cache_control: { type: "ephemeral" }
+                } as Anthropic.TextBlockParam
+            ],
             messages: history
         });
 
