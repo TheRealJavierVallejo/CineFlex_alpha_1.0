@@ -68,6 +68,7 @@ export interface ImageLibraryItem {
   model?: string;
   aspectRatio?: string;
   isFavorite?: boolean; // Whether this image has been marked as a favorite
+  metadata?: any;
 }
 
 // 🌍 WORLD SETTINGS: The general "Vibe" of the movie

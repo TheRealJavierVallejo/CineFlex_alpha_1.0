@@ -1,16 +1,22 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface LazyImageProps {
-    src: string | undefined;
-    alt: string;
+    src: string;
+    alt?: string;
     className?: string;
-    aspectRatio?: string;
+    loadingClassName?: string;
 }
 
-export const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className = '', aspectRatio = '16/9' }) => {
+export const LazyImage: React.FC<LazyImageProps> = ({
+    src,
+    alt = '',
+    className = '',
+    loadingClassName = ''
+}) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
-    const imgRef = useRef<HTMLDivElement>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
         if (!imgRef.current) return;
@@ -24,46 +30,30 @@ export const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className = '', 
                     }
                 });
             },
-            { rootMargin: '200px' }
+            {
+                rootMargin: '50px'
+            }
         );
 
         observer.observe(imgRef.current);
+
         return () => observer.disconnect();
     }, []);
 
-    if (!src) {
-        return (
-            <div
-                ref={imgRef}
-                className={`bg-surface-secondary flex items-center justify-center ${className}`}
-                style={{ aspectRatio }}
-            >
-                <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
-            </div>
-        );
-    }
-
     return (
-        <div ref={imgRef} className={`relative ${className}`} style={{ aspectRatio }}>
-            {!isInView ? (
-                <div className="w-full h-full bg-surface-secondary animate-pulse" />
-            ) : (
-                <>
-                    {!isLoaded && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-surface-secondary">
-                            <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
-                        </div>
-                    )}
-                    <img
-                        src={src}
-                        alt={alt}
-                        className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
-                            }`}
-                        onLoad={() => setIsLoaded(true)}
-                        loading="lazy"
-                    />
-                </>
+        <div className="relative w-full h-full">
+            {!isLoaded && (
+                <div className={`absolute inset-0 flex items-center justify-center bg-surface-secondary ${loadingClassName}`}>
+                    <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
+                </div>
             )}
+            <img
+                ref={imgRef}
+                src={isInView ? src : ''}
+                alt={alt}
+                className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                onLoad={() => setIsLoaded(true)}
+            />
         </div>
     );
 };

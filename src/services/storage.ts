@@ -544,11 +544,100 @@ export const saveLocations = async (projectId: string, locs: Location[]) => {
 
 // --- STUBS for other/legacy ---
 // Image Library - could add table later.
-export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => [];
-export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => { };
-export const addToImageLibrary = async () => { };
-export const addBatchToImageLibrary = async () => { };
-export const toggleImageFavorite = async () => { };
+export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => {
+    const { data, error } = await supabase
+        .from('image_library')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(500);
+
+    if (error) {
+        console.error('Error loading image library:', error);
+        return [];
+    }
+
+    return (data || []).map((item: any) => ({
+        id: item.id,
+        projectId: item.project_id,
+        url: item.url,
+        prompt: item.prompt || '',
+        metadata: item.metadata || {},
+        isFavorite: item.is_favorite || false,
+        createdAt: new Date(item.created_at).getTime()
+    }));
+};
+
+export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
+    console.warn('saveImageLibrary is deprecated, use addToImageLibrary');
+};
+
+export const addToImageLibrary = async (projectId: string, url: string, prompt?: string, metadata?: any): Promise<ImageLibraryItem> => {
+    const newItem = {
+        id: crypto.randomUUID(),
+        project_id: projectId,
+        url,
+        prompt: prompt || '',
+        metadata: metadata || {},
+        is_favorite: false,
+        created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+        .from('image_library')
+        .insert(newItem)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error adding to image library:', error);
+        throw error;
+    }
+
+    return {
+        id: data.id,
+        projectId: data.project_id,
+        url: data.url,
+        prompt: data.prompt,
+        metadata: data.metadata,
+        isFavorite: data.is_favorite,
+        createdAt: new Date(data.created_at).getTime()
+    };
+};
+
+export const addBatchToImageLibrary = async (projectId: string, images: Array<{ url: string, prompt?: string, metadata?: any }>) => {
+    const items = images.map(img => ({
+        id: crypto.randomUUID(),
+        project_id: projectId,
+        url: img.url,
+        prompt: img.prompt || '',
+        metadata: img.metadata || {},
+        is_favorite: false,
+        created_at: new Date().toISOString()
+    }));
+
+    const { error } = await supabase
+        .from('image_library')
+        .insert(items);
+
+    if (error) {
+        console.error('Error batch adding to image library:', error);
+        throw error;
+    }
+};
+
+export const toggleImageFavorite = async (projectId: string, imageId: string, isFavorite: boolean) => {
+    const { error } = await supabase
+        .from('image_library')
+        .update({ is_favorite: isFavorite })
+        .eq('id', imageId)
+        .eq('project_id', projectId);
+
+    if (error) {
+        console.error('Error toggling favorite:', error);
+        throw error;
+    }
+};
 
 // Story Dev
 export const getPlotDevelopment = async () => undefined;
@@ -559,17 +648,113 @@ export const getStoryBeats = async () => [];
 export const saveStoryBeats = async () => { };
 export const getStoryMetadata = async () => ({ lastUpdated: Date.now() });
 export const saveStoryMetadata = async () => { };
-export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> => ({ notes: [], activeNoteId: null });
-export const saveStoryNotes = async (projectId: string, data: StoryNotesData) => { };
-export const createStoryNote = async (projectId: string) => ({
-    id: crypto.randomUUID(),
-    title: '',
-    content: '',
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-});
-export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>) => { };
-export const deleteStoryNote = async (projectId: string, noteId: string) => { };
+export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> => {
+    const { data, error } = await supabase
+        .from('story_notes')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('order_index', { ascending: true }); // 🔥 Using order_index for sorting
+
+    if (error) {
+        console.error('Error loading story notes:', error);
+        return { notes: [], activeNoteId: null };
+    }
+
+    const notes: StoryNote[] = (data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        order: n.order_index || 0,
+        createdAt: new Date(n.created_at).getTime(),
+        updatedAt: new Date(n.updated_at).getTime()
+    }));
+
+    return {
+        notes,
+        activeNoteId: notes.length > 0 ? notes[0].id : null
+    };
+};
+
+export const saveStoryNotes = async (projectId: string, data: StoryNotesData) => {
+    // Not used - we use individual note updates instead
+};
+
+export const createStoryNote = async (projectId: string): Promise<StoryNote> => {
+    // Get highest order to append
+    const { data: latest } = await supabase
+        .from('story_notes')
+        .select('order_index')
+        .eq('project_id', projectId)
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .single();
+
+    const nextOrder = latest ? (latest.order_index + 1) : 0;
+
+    const newNote = {
+        id: crypto.randomUUID(),
+        project_id: projectId,
+        title: '',
+        content: '',
+        order_index: nextOrder,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+        .from('story_notes')
+        .insert(newNote)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error creating story note:', error);
+        throw error;
+    }
+
+    return {
+        id: data.id,
+        title: data.title,
+        content: data.content,
+        order: data.order_index,
+        createdAt: new Date(data.created_at).getTime(),
+        updatedAt: new Date(data.updated_at).getTime()
+    };
+};
+
+export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>) => {
+    const dbUpdates: any = {
+        updated_at: new Date().toISOString()
+    };
+
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.content !== undefined) dbUpdates.content = updates.content;
+    if (updates.order !== undefined) dbUpdates.order_index = updates.order;
+
+    const { error } = await supabase
+        .from('story_notes')
+        .update(dbUpdates)
+        .eq('id', noteId)
+        .eq('project_id', projectId);
+
+    if (error) {
+        console.error('Error updating story note:', error);
+        throw error;
+    }
+};
+
+export const deleteStoryNote = async (projectId: string, noteId: string) => {
+    const { error } = await supabase
+        .from('story_notes')
+        .delete()
+        .eq('id', noteId)
+        .eq('project_id', projectId);
+
+    if (error) {
+        console.error('Error deleting story note:', error);
+        throw error;
+    }
+};
 
 export const garbageCollect = async () => { };
 

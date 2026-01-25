@@ -3,6 +3,7 @@ import { ImageLibraryItem } from '../../types';
 import { getImageLibrary } from '../../services/storage';
 import { X, Plus, Search, Image as ImageIcon, Loader2, LayoutGrid, Film } from 'lucide-react';
 import Button from '../ui/Button';
+import { LazyImage } from '../ui/LazyImage';
 
 interface ImageSelectorModalProps {
     isOpen: boolean;
@@ -100,7 +101,10 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
                                 onClick={() => onSelect(img)}
                                 className="group relative aspect-video media-bg rounded-lg overflow-hidden cursor-pointer border border-transparent hover:border-primary transition-all"
                             >
-                                <img src={img.url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
+                                <LazyImage
+                                    src={img.url}
+                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                />
 
                                 {/* Info Overlay */}
                                 <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-200">
