@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { TitlePageData } from '../../types';
 import { Input } from '../ui/Input';
-import { Button } from '../ui/Button';
+import Button from '../ui/Button';
 import { Plus, X, Save } from 'lucide-react';
 import { debounce } from '../../utils/debounce';
 import { SaveIndicator } from '../ui/SaveIndicator';
