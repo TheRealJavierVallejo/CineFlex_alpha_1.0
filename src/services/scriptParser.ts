@@ -5,7 +5,7 @@
  * Converts raw file data into structured ScriptElements.
  */
 
-import { Scene, ScriptElement } from '../types';
+import { Scene, ScriptElement, TitlePageData } from '../types';
 import { parseFountain as parseFountainLib } from '../lib/fountain';
 import { convertFountainToElements } from './scriptUtils';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -20,6 +20,7 @@ export interface ParsedScript {
     title?: string;
     author?: string;
   };
+  titlePage?: TitlePageData; // Added field
 }
 
 // --- MAIN PARSER ENTRY ---
@@ -50,12 +51,34 @@ function parseFountain(text: string): ParsedScript {
   const output = parseFountainLib(text, true);
   const elements = convertFountainToElements(output.tokens);
   
+  // Extract Title Page Data
+  const titlePage: TitlePageData = {};
+  const authors: string[] = [];
+
+  // Iterate over tokens to find metadata (usually at the start)
+  for (const token of output.tokens) {
+      if (token.type === 'title') titlePage.title = token.text;
+      if (token.type === 'credit') titlePage.credit = token.text;
+      if (token.type === 'author') authors.push(token.text || '');
+      if (token.type === 'authors') authors.push(token.text || '');
+      if (token.type === 'source') titlePage.source = token.text;
+      if (token.type === 'draft_date' || token.type === 'date') titlePage.draftDate = token.text;
+      if (token.type === 'contact') titlePage.contact = token.text;
+      if (token.type === 'copyright') titlePage.copyright = token.text;
+      if (token.type === 'notes') titlePage.additionalInfo = token.text;
+  }
+
+  if (authors.length > 0) {
+      titlePage.authors = authors;
+  }
+
   return {
     scenes: [],
     elements,
     metadata: {
-      title: output.title || 'Untitled Script'
-    }
+      title: output.title || titlePage.title || 'Untitled Script'
+    },
+    titlePage
   };
 }
 
@@ -65,6 +88,7 @@ function parseFDX(xmlText: string): ParsedScript {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, "text/xml");
   
+  // Parse Script Elements
   const paragraphs = Array.from(doc.querySelectorAll('Paragraph'));
   const elements: ScriptElement[] = [];
   let sequence = 1;
@@ -100,12 +124,45 @@ function parseFDX(xmlText: string): ParsedScript {
     });
   });
 
+  // Parse Title Page
+  const titlePage: TitlePageData = {};
+  const titlePageNode = doc.querySelector('TitlePage');
+  
+  if (titlePageNode) {
+      const getText = (tag: string) => {
+          const nodes = titlePageNode.querySelectorAll(tag + ' Paragraph Text');
+          return Array.from(nodes).map(n => n.textContent).join('\n').trim();
+      };
+
+      const title = getText('Title');
+      if (title) titlePage.title = title;
+
+      const credit = getText('Credit');
+      if (credit) titlePage.credit = credit;
+
+      const author = getText('Author');
+      if (author) titlePage.authors = [author];
+
+      const source = getText('Source');
+      if (source) titlePage.source = source;
+
+      const date = getText('Date');
+      if (date) titlePage.draftDate = date;
+      
+      const contact = getText('Contact');
+      if (contact) titlePage.contact = contact;
+      
+      const copyright = getText('Copyright');
+      if (copyright) titlePage.copyright = copyright;
+  }
+
   return {
     scenes: [],
     elements,
     metadata: {
-      title: 'Imported FDX Script'
-    }
+      title: titlePage.title || 'Imported FDX Script'
+    },
+    titlePage
   };
 }
 

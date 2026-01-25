@@ -5,7 +5,8 @@ import { ScriptElement } from '../../types';
 import {
     Sparkles,
     BookOpen,
-    Wand2
+    Wand2,
+    FileText
 } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { SmartTypeManager } from './script-editor/SmartTypeManager';
@@ -18,6 +19,7 @@ import { exportToPDF } from '../../services/exportService';
 import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { learnFromScript } from '../../services/smartType';
+import { TitlePageEditor } from './TitlePageEditor';
 
 export const ScriptPage: React.FC = () => {
     const { project, updateScriptElements, importScript } = useWorkspace();
@@ -31,6 +33,9 @@ export const ScriptPage: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isImporting, setIsImporting] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
+
+    // View Mode: Script vs Title Page
+    const [viewMode, setViewMode] = useState<'script' | 'title_page'>('script');
 
     // Editor State
     const [canUndo, setCanUndo] = useState(false);
@@ -106,8 +111,6 @@ export const ScriptPage: React.FC = () => {
         }
     };
 
-
-
     // DEFINING TOOLS (Syd removed for custom split view)
     const tools: Tool[] = [
         {
@@ -134,101 +137,128 @@ export const ScriptPage: React.FC = () => {
             {/* ADD overflow-hidden HERE to prevent horizontal scroll */}
             <div className="relative h-full flex flex-col font-sans bg-app transition-colors duration-300 overflow-hidden">
 
-                <ScriptPageToolbar
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    onUndo={() => editorRef.current?.undo()}
-                    onRedo={() => editorRef.current?.redo()}
-                    isPaperWhite={isPaperWhite}
-                    onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
-                    onExport={() => exportToPDF(project)}
-                    saveStatus={saveStatus}
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    sydOpen={sydOpen}
-                    onToggleSyd={() => setSydOpen(!sydOpen)}
-                />
+                {/* TAB NAVIGATION ABOVE TOOLBAR */}
+                <div className="flex items-center px-4 pt-2 bg-app border-b border-border gap-1 shrink-0">
+                    <button
+                        onClick={() => setViewMode('script')}
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'script' 
+                            ? 'bg-surface text-primary border-border border-b-surface' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
+                    >
+                        Script
+                    </button>
+                    <button
+                        onClick={() => setViewMode('title_page')}
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'title_page' 
+                            ? 'bg-surface text-primary border-border border-b-surface' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
+                    >
+                        Title Page
+                    </button>
+                </div>
+
+                {viewMode === 'script' && (
+                    <ScriptPageToolbar
+                        canUndo={canUndo}
+                        canRedo={canRedo}
+                        onUndo={() => editorRef.current?.undo()}
+                        onRedo={() => editorRef.current?.redo()}
+                        isPaperWhite={isPaperWhite}
+                        onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
+                        onExport={() => exportToPDF(project)}
+                        saveStatus={saveStatus}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        sydOpen={sydOpen}
+                        onToggleSyd={() => setSydOpen(!sydOpen)}
+                    />
+                )}
 
                 {/* MAIN SPLIT CONTENT - FIXED ARCHITECTURE */}
-                <div className="flex flex-row w-full flex-1 min-h-0 overflow-hidden">
-                    {/* LEFT: Editor Area - TRULY CENTERED */}
-                    <div
-                        className={`h-full flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${sydOpen ? 'w-1/2' : 'w-full'
-                            }`}
-                    >
-                        <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-                            {/* PERFECT CENTER - No padding, no black bars */}
-                            <div className="min-h-full flex items-center justify-center pb-[50vh]">
-                                {/* Fixed 850px width, perfectly centered */}
-                                <div className="w-full max-w-[850px]">
-                                    {elements.length === 0 ? (
-                                        <div className="mt-20">
-                                            <EmptyProjectState
-                                                title="Start Writing"
-                                                description="Create your first scene or import an existing screenplay."
-                                                onCreate={() => {
-                                                    const id = crypto.randomUUID();
-                                                    setElements([{ id, type: 'scene_heading', content: 'INT. START - DAY', sequence: 1 }]);
+                <div className="flex flex-row w-full flex-1 min-h-0 overflow-hidden bg-surface">
+                    
+                    {/* VIEW CONTENT */}
+                    <div className={`h-full flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${sydOpen ? 'w-1/2' : 'w-full'}`}>
+                        
+                        {viewMode === 'title_page' ? (
+                            <TitlePageEditor />
+                        ) : (
+                            <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+                                {/* PERFECT CENTER - No padding, no black bars */}
+                                <div className="min-h-full flex items-center justify-center pb-[50vh]">
+                                    {/* Fixed 850px width, perfectly centered */}
+                                    <div className="w-full max-w-[850px]">
+                                        {elements.length === 0 ? (
+                                            <div className="mt-20">
+                                                <EmptyProjectState
+                                                    title="Start Writing"
+                                                    description="Create your first scene or import an existing screenplay."
+                                                    onCreate={() => {
+                                                        const id = crypto.randomUUID();
+                                                        setElements([{ id, type: 'scene_heading', content: 'INT. START - DAY', sequence: 1 }]);
+                                                    }}
+                                                    onImport={handleImportScript}
+                                                    isImporting={isImporting}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <SlateScriptEditor
+                                                ref={editorRef}
+                                                initialElements={elements}
+                                                onChange={(updatedElements) => {
+                                                    setElements(updatedElements);
+                                                    debouncedSync(updatedElements);
                                                 }}
-                                                onImport={handleImportScript}
-                                                isImporting={isImporting}
+                                                onUndoRedoChange={(undo, redo) => {
+                                                    setCanUndo(undo);
+                                                    setCanRedo(redo);
+                                                }}
+                                                onPageChange={(curr, total) => {
+                                                    setCurrentPage(curr);
+                                                    setTotalPages(total);
+                                                }}
+                                                isLightMode={isPaperWhite}
+                                                projectId={project.id}
                                             />
-                                        </div>
-                                    ) : (
-                                        <SlateScriptEditor
-                                            ref={editorRef}
-                                            initialElements={elements}
-                                            onChange={(updatedElements) => {
-                                                setElements(updatedElements);
-                                                debouncedSync(updatedElements);
-                                            }}
-                                            onUndoRedoChange={(undo, redo) => {
-                                                setCanUndo(undo);
-                                                setCanRedo(redo);
-                                            }}
-                                            onPageChange={(curr, total) => {
-                                                setCurrentPage(curr);
-                                                setTotalPages(total);
-                                            }}
-                                            isLightMode={isPaperWhite}
-                                            projectId={project.id}
-                                        />
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Keyboard Shortcut Helper (unchanged) */}
-                        <div className="absolute bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
-                            <div className="pointer-events-auto">
-                                {showShortcuts && (
-                                    <div className="bg-surface border border-border rounded-lg shadow-xl p-4 mb-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in duration-200">
-                                        <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
-                                            <h3 className="font-bold text-xs text-text-primary uppercase tracking-wider">Shortcuts</h3>
-                                            <button onClick={() => setShowShortcuts(false)} className="text-text-muted hover:text-text-primary text-lg leading-none">×</button>
+                        {/* Keyboard Shortcut Helper (Script view only) */}
+                        {viewMode === 'script' && (
+                            <div className="absolute bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
+                                <div className="pointer-events-auto">
+                                    {showShortcuts && (
+                                        <div className="bg-surface border border-border rounded-lg shadow-xl p-4 mb-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in duration-200">
+                                            <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
+                                                <h3 className="font-bold text-xs text-text-primary uppercase tracking-wider">Shortcuts</h3>
+                                                <button onClick={() => setShowShortcuts(false)} className="text-text-muted hover:text-text-primary text-lg leading-none">×</button>
+                                            </div>
+                                            <div className="text-[10px] space-y-1.5 font-mono text-text-secondary">
+                                                <div className="flex justify-between"><span>Scene Heading</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘1</span></div>
+                                                <div className="flex justify-between"><span>Action</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘2</span></div>
+                                                <div className="flex justify-between"><span>Character</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘3</span></div>
+                                                <div className="flex justify-between"><span>Dialogue</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘4</span></div>
+                                                <div className="flex justify-between"><span>Parenthetical</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘5</span></div>
+                                                <div className="flex justify-between"><span>Transition</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘6</span></div>
+                                                <div className="border-t border-border my-1"></div>
+                                                <div className="flex justify-between"><span>Cycle Type</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">Tab</span></div>
+                                                <div className="flex justify-between"><span>New Element</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">Enter</span></div>
+                                            </div>
                                         </div>
-                                        <div className="text-[10px] space-y-1.5 font-mono text-text-secondary">
-                                            <div className="flex justify-between"><span>Scene Heading</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘1</span></div>
-                                            <div className="flex justify-between"><span>Action</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘2</span></div>
-                                            <div className="flex justify-between"><span>Character</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘3</span></div>
-                                            <div className="flex justify-between"><span>Dialogue</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘4</span></div>
-                                            <div className="flex justify-between"><span>Parenthetical</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘5</span></div>
-                                            <div className="flex justify-between"><span>Transition</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">⌘6</span></div>
-                                            <div className="border-t border-border my-1"></div>
-                                            <div className="flex justify-between"><span>Cycle Type</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">Tab</span></div>
-                                            <div className="flex justify-between"><span>New Element</span> <span className="bg-surface-secondary px-1 rounded border border-border text-text-primary">Enter</span></div>
-                                        </div>
-                                    </div>
-                                )}
-                                <button
-                                    onClick={() => setShowShortcuts(!showShortcuts)}
-                                    className={`w-8 h-8 rounded-full shadow-lg flex items-center justify-center transition-all ${showShortcuts ? 'bg-primary text-white' : 'bg-surface border border-border text-text-muted hover:text-text-primary hover:border-primary'}`}
-                                    title="Keyboard Shortcuts"
-                                >
-                                    <span className="font-mono text-sm font-bold">?</span>
-                                </button>
+                                    )}
+                                    <button
+                                        onClick={() => setShowShortcuts(!showShortcuts)}
+                                        className={`w-8 h-8 rounded-full shadow-lg flex items-center justify-center transition-all ${showShortcuts ? 'bg-primary text-white' : 'bg-surface border border-border text-text-muted hover:text-text-primary hover:border-primary'}`}
+                                        title="Keyboard Shortcuts"
+                                    >
+                                        <span className="font-mono text-sm font-bold">?</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* RIGHT: Syd Panel - PROPERLY SPLIT, NOT OVERLAY */}

@@ -249,6 +249,20 @@ export interface ProjectMetadata {
   characterCount: number;
 }
 
+// 📄 TITLE PAGE: Standard screenplay title page info
+export interface TitlePageData {
+  title?: string;
+  authors?: string[];
+  credit?: string;
+  source?: string;
+  draftDate?: string;
+  draftVersion?: string;
+  contact?: string;
+  copyright?: string;
+  wgaRegistration?: string;
+  additionalInfo?: string;
+}
+
 // 📦 PROJECT: The big container for EVERYTHING
 export interface Project {
   id: string;
@@ -266,6 +280,7 @@ export interface Project {
     format: 'fountain' | 'fdx' | 'pdf' | 'txt'
   };
   scriptElements?: ScriptElement[]; // The full list of script lines
+  titlePage?: TitlePageData; // 📄 NEW: Title page metadata
 
   // Story Development (Syd Micro-Agent System)
   plotDevelopment?: PlotDevelopment;
