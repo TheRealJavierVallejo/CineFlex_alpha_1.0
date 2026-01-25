@@ -109,6 +109,30 @@ const cleanupUnusedProjectImages = async (projectId: string, project: any) => {
 
 // --- IMAGES & STORAGE ---
 
+/**
+ * Retry configuration for upload operations
+ */
+const RETRY_CONFIG = {
+    maxRetries: 3,
+    initialDelayMs: 1000, // Start with 1 second
+    maxDelayMs: 8000      // Cap at 8 seconds
+};
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate exponential backoff delay: 1s, 2s, 4s, 8s (capped)
+ */
+function getRetryDelay(attempt: number): number {
+    const delay = RETRY_CONFIG.initialDelayMs * Math.pow(2, attempt);
+    return Math.min(delay, RETRY_CONFIG.maxDelayMs);
+}
+
 export const persistImage = async (projectId: string, url: string): Promise<string> => {
     if (!url) return url;
 
@@ -147,31 +171,57 @@ export const persistImage = async (projectId: string, url: string): Promise<stri
     // If it's a non-supabase http URL (like Unsplash), do nothing
     if (url.startsWith('http')) return url;
 
-    // Otherwise it's a blob: URL or data: URL; upload it
-    try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const mimeType = blob.type || 'image/png';
-        const ext = mimeType.split('/')[1] || 'png';
+    // Otherwise it's a blob: URL or data: URL; upload it with retry logic
+    let lastError: Error | null = null;
 
-        const fileName = `${crypto.randomUUID()}.${ext}`;
-        const storagePath = `${projectId}/${fileName}`;
+    for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch blob: ${response.statusText}`);
+            }
 
-        const { error } = await supabase.storage
-            .from(IMAGE_BUCKET)
-            .upload(storagePath, blob, { upsert: true, contentType: mimeType });
+            const blob = await response.blob();
+            const mimeType = blob.type || 'image/png';
+            const ext = mimeType.split('/')[1] || 'png';
 
-        if (error) {
-            console.error('[STORAGE] upload failed:', error);
-            return url;
+            const fileName = `${crypto.randomUUID()}.${ext}`;
+            const storagePath = `${projectId}/${fileName}`;
+
+            console.log(`[STORAGE] Upload attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}: ${fileName}`);
+
+            const { error } = await supabase.storage
+                .from(IMAGE_BUCKET)
+                .upload(storagePath, blob, { upsert: true, contentType: mimeType });
+
+            if (error) {
+                throw error;
+            }
+
+            // Success! Get public URL
+            const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
+            console.log(`[STORAGE] ✅ Upload successful: ${data.publicUrl}`);
+            return data.publicUrl;
+
+        } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+
+            // If this was the last attempt, don't sleep
+            if (attempt === RETRY_CONFIG.maxRetries) {
+                console.error(`[STORAGE] ❌ Upload failed after ${RETRY_CONFIG.maxRetries + 1} attempts:`, lastError);
+                break;
+            }
+
+            // Calculate delay and retry
+            const delayMs = getRetryDelay(attempt);
+            console.warn(`[STORAGE] ⚠️ Upload attempt ${attempt + 1} failed, retrying in ${delayMs}ms...`, lastError.message);
+            await sleep(delayMs);
         }
-
-        const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
-        return data.publicUrl;
-    } catch (e) {
-        console.error('[STORAGE] persistImage failed:', e);
-        return url;
     }
+
+    // All retries failed - return original blob: URL as last resort
+    console.error('[STORAGE] ⚠️ WARNING: Returning blob: URL (will be lost on refresh)');
+    return url;
 };
 
 // --- PROJECTS ---
