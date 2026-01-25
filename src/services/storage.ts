@@ -385,6 +385,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     // 2. Update Projects (Settings, Story Dev, Script File)
     const { error: pErr } = await supabase.from('projects').update({
         settings: cleanProject.settings,
+        title_page: cleanProject.titlePage,
         plot_development: cleanProject.plotDevelopment,
         character_developments: cleanProject.characterDevelopments,
         story_beats: cleanProject.storyBeats,

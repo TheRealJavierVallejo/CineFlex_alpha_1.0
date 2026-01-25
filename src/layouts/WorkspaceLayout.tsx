@@ -31,6 +31,7 @@ export interface WorkspaceContextType {
     importScript: (file: File) => Promise<void>;
     updateScriptElements: (elements: ScriptElement[]) => void;
     showToast: ShowToastFn;
+    saveNow: () => Promise<void>;
 }
 
 export const WorkspaceLayout: React.FC = () => {
@@ -277,10 +278,10 @@ export const WorkspaceLayout: React.FC = () => {
         project: project!,
         handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, updateScriptElements, showToast
+        importScript, updateScriptElements, showToast, saveNow
     }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, updateScriptElements, showToast]);
+        importScript, updateScriptElements, showToast, saveNow]);
 
     if (isLoading || !project) {
         return (

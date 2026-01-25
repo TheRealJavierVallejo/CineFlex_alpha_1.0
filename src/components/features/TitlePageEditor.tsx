@@ -34,7 +34,7 @@ const TEMPLATES = {
 type TemplateKey = keyof typeof TEMPLATES;
 
 export const TitlePageEditor: React.FC = () => {
-  const { project, handleUpdateProject } = useWorkspace();
+  const { project, handleUpdateProject, saveNow } = useWorkspace(); // Fixed destructuring here? No, saveNow wasn't exposed. Wait.
   const [data, setData] = useState<TitlePageData>({
     title: project.name,
     credit: 'Written by',
@@ -66,28 +66,31 @@ export const TitlePageEditor: React.FC = () => {
 
   // Force save when user leaves tab/window
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleSaveAndExit = async () => {
       // Cancel debounce and save immediately
-      if (data.title || data.authors?.[0] || data.contact) {
+      if (data.title || data.authors?.[0]) {
         handleUpdateProject({ ...project, titlePage: data });
+        // We need to trigger the actual save, not just update the context state
+        // Assuming saveNow triggers the persistence layer
+        if (saveNow) await saveNow();
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        handleBeforeUnload();
+        handleSaveAndExit();
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleSaveAndExit);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      handleBeforeUnload(); // Save on component unmount too
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      handleSaveAndExit();
+      window.removeEventListener('beforeunload', handleSaveAndExit);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [data, project, handleUpdateProject]);
+  }, [data, project, handleUpdateProject, saveNow]);
 
   const debouncedSave = debounce((newData: TitlePageData) => {
     setSaveStatus('saving');
