@@ -262,13 +262,18 @@ const ensureImagesPersisted = async (projectId: string, obj: any): Promise<any> 
 
     const newObj: any = { ...obj };
     const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
-    const arrayImageFields = ['generationCandidates', 'referencePhotos'];
+    const arrayImageFields = ['generationCandidates', 'referencePhotos']; // ✅ referencePhotos included
 
     for (const key of Object.keys(newObj)) {
         if (imageFields.includes(key) && typeof newObj[key] === 'string') {
             newObj[key] = await persistImage(projectId, newObj[key]);
         } else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
-            newObj[key] = await Promise.all(newObj[key].map((img: string) => persistImage(projectId, img)));
+            // 🔥 FIX: Actually persist each image in the array
+            newObj[key] = await Promise.all(
+                newObj[key].map((img: string) =>
+                    typeof img === 'string' ? persistImage(projectId, img) : img
+                )
+            );
         } else if (typeof newObj[key] === 'object') {
             newObj[key] = await ensureImagesPersisted(projectId, newObj[key]);
         }
@@ -483,13 +488,23 @@ export const getCharacters = async (projectId: string): Promise<Character[]> => 
 
 export const saveCharacters = async (projectId: string, chars: Character[]) => {
     const cleanChars = await ensureImagesPersisted(projectId, chars);
+    const currentIds = cleanChars.map((c: Character) => c.id);
+
+    // Prune deleted characters
+    await supabase
+        .from('characters')
+        .delete()
+        .eq('project_id', projectId)
+        .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+
+    // Upsert current characters
     const rows = cleanChars.map((c: Character) => ({
         id: c.id,
         project_id: projectId,
         name: c.name,
         description: c.description,
         image_url: c.imageUrl,
-        reference_photos: c.referencePhotos
+        reference_photos: c.referencePhotos // Now properly persisted above
     }));
     if (rows.length > 0) await supabase.from('characters').upsert(rows);
 };
@@ -510,9 +525,20 @@ export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
 
 export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
     const clean = await ensureImagesPersisted(projectId, outfits);
+    const currentIds = clean.map((c: Outfit) => c.id);
+
+    // Prune deleted outfits
+    await supabase
+        .from('outfits')
+        .delete()
+        .eq('project_id', projectId)
+        .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+
+    // Upsert current outfits
     const rows = clean.map((c: Outfit) => ({
         id: c.id,
         project_id: projectId,
+        character_id: c.characterId, // Now supported (after migration)
         name: c.name,
         description: c.description,
         reference_photos: c.referencePhotos
@@ -532,6 +558,16 @@ export const getLocations = async (projectId: string): Promise<Location[]> => {
 
 export const saveLocations = async (projectId: string, locs: Location[]) => {
     const clean = await ensureImagesPersisted(projectId, locs);
+    const currentIds = clean.map((c: Location) => c.id);
+
+    // Prune deleted locations
+    await supabase
+        .from('locations')
+        .delete()
+        .eq('project_id', projectId)
+        .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+
+    // Upsert current locations
     const rows = clean.map((c: Location) => ({
         id: c.id,
         project_id: projectId,
