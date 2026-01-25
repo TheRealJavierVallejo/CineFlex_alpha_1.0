@@ -2,21 +2,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface LazyImageProps {
-    src: string;
+    src?: string;
     alt?: string;
     className?: string;
     loadingClassName?: string;
+    aspectRatio?: string;
 }
 
 export const LazyImage: React.FC<LazyImageProps> = ({
     src,
     alt = '',
     className = '',
-    loadingClassName = ''
+    loadingClassName = '',
+    aspectRatio = '16/9'
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
-    const imgRef = useRef<HTMLImageElement>(null);
+    const imgRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!imgRef.current) return;
@@ -31,7 +33,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
                 });
             },
             {
-                rootMargin: '50px'
+                rootMargin: '100px'
             }
         );
 
@@ -40,20 +42,30 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         return () => observer.disconnect();
     }, []);
 
+    if (!src) {
+        return (
+            <div className={`flex items-center justify-center bg-surface-secondary ${className}`} style={{ aspectRatio }}>
+                <Loader2 className="w-6 h-6 text-text-tertiary" />
+            </div>
+        );
+    }
+
     return (
-        <div className="relative w-full h-full">
-            {!isLoaded && (
+        <div ref={imgRef} className={`relative ${className}`} style={{ aspectRatio }}>
+            {!isLoaded && isInView && (
                 <div className={`absolute inset-0 flex items-center justify-center bg-surface-secondary ${loadingClassName}`}>
-                    <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
+                    <Loader2 className="w-6 h-6 text-text-tertiary animate-spin" />
                 </div>
             )}
-            <img
-                ref={imgRef}
-                src={isInView ? src : ''}
-                alt={alt}
-                className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-                onLoad={() => setIsLoaded(true)}
-            />
+            {isInView && src && (
+                <img
+                    src={src}
+                    alt={alt}
+                    className={`w-full h-full object-cover ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                    onLoad={() => setIsLoaded(true)}
+                    loading="lazy"
+                />
+            )}
         </div>
     );
 };

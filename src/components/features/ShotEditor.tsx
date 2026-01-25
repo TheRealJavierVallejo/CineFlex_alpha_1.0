@@ -267,7 +267,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       const finalModelName = selectedModel;
 
       const imageId = crypto.randomUUID();
-      await addToImageLibrary();
+      await addToImageLibrary(project.id, img, shot.description);
 
       const updated = {
         ...shot,
@@ -304,7 +304,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     const library = await getImageLibrary(project.id);
     const selectedImageItem = library.find(item => item.url === image);
     if (selectedImageItem && !selectedImageItem.isFavorite) {
-      await toggleImageFavorite();
+      await toggleImageFavorite(project.id, selectedImageItem.id, true);
     }
 
     setShowVariationPicker(false);
