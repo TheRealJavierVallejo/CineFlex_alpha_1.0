@@ -61,7 +61,8 @@ export const TitlePageEditor: React.FC = () => {
         title: project.name,
       }));
     }
-  }, [project.titlePage, project.name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const debouncedSave = debounce((newData: TitlePageData) => {
     setSaveStatus('saving');
