@@ -8,6 +8,31 @@ import { debounce } from '../../utils/debounce';
 import { SaveIndicator } from '../ui/SaveIndicator';
 import { TitlePagePreview } from './TitlePagePreview';
 
+const TEMPLATES = {
+  feature: {
+    label: 'Feature Film',
+    credit: 'Written by',
+    format: 'feature'
+  },
+  tv_pilot: {
+    label: 'TV Pilot',
+    credit: 'Teleplay by',
+    format: 'tv'
+  },
+  tv_spec: {
+    label: 'TV Spec',
+    credit: 'Spec Script by',
+    format: 'tv'
+  },
+  short: {
+    label: 'Short Film',
+    credit: 'A Short Film by',
+    format: 'short'
+  }
+};
+
+type TemplateKey = keyof typeof TEMPLATES;
+
 export const TitlePageEditor: React.FC = () => {
   const { project, updateProject } = useWorkspace();
   const [data, setData] = useState<TitlePageData>({
@@ -22,6 +47,7 @@ export const TitlePageEditor: React.FC = () => {
     additionalInfo: ''
   });
 
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>('feature');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // Load existing data on mount
@@ -48,6 +74,20 @@ export const TitlePageEditor: React.FC = () => {
     const newData = { ...data, [field]: value };
     setData(newData);
     debouncedSave(newData);
+  };
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTemplate = e.target.value as TemplateKey;
+    setSelectedTemplate(newTemplate);
+
+    // Only update credit if it matches one of the other template defaults (or empty)
+    // This prevents overwriting custom credits
+    const currentCredit = data.credit?.trim();
+    const isDefaultCredit = Object.values(TEMPLATES).some(t => t.credit === currentCredit) || !currentCredit;
+
+    if (isDefaultCredit) {
+      handleChange('credit', TEMPLATES[newTemplate].credit);
+    }
   };
 
   const handleAuthorChange = (index: number, value: string) => {
@@ -77,12 +117,31 @@ export const TitlePageEditor: React.FC = () => {
     <div className="flex-1 h-full overflow-hidden bg-app flex flex-col">
       {/* Header */}
       <div className="px-8 py-4 border-b border-border bg-app flex items-center justify-between shrink-0 z-10">
-        <div>
-          <h1 className="text-xl font-bold text-text-primary">Title Page</h1>
-          <p className="text-xs text-text-secondary">
-            Standard screenplay title page formatting.
-          </p>
+        <div className="flex items-center gap-6">
+          <div>
+            <h1 className="text-xl font-bold text-text-primary">Title Page</h1>
+            <p className="text-xs text-text-secondary">
+              Standard screenplay title page formatting.
+            </p>
+          </div>
+          
+          {/* Template Selector */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Template</label>
+            <select
+              value={selectedTemplate}
+              onChange={handleTemplateChange}
+              className="bg-transparent text-sm font-medium text-text-primary border-none outline-none cursor-pointer hover:text-primary transition-colors pr-2"
+            >
+              {Object.entries(TEMPLATES).map(([key, tmpl]) => (
+                <option key={key} value={key} className="bg-surface text-text-primary">
+                  {tmpl.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        
         <SaveIndicator status={saveStatus} />
       </div>
 
