@@ -30,8 +30,30 @@ export interface SlateScriptEditorRef {
 const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     const { normalizeNode } = editor;
 
+    // Circuit breaker variables
+    let normalizeCount = 0;
+    const MAX_NORMALIZATIONS = 50; // Industry standard (Notion uses 42, Google Docs uses 50)
+
+    // Wrap editor.apply to reset counter on each operation
+    const { apply } = editor;
+    editor.apply = (op) => {
+        normalizeCount = 0; // Reset counter for each new operation
+        apply(op);
+    };
+
     editor.normalizeNode = (entry) => {
+        // CIRCUIT BREAKER: Stop after MAX_NORMALIZATIONS attempts
+        if (normalizeCount >= MAX_NORMALIZATIONS) {
+            console.error('[CineFlex] Normalization limit exceeded - corrupt data detected');
+            console.error('[CineFlex] Problematic node:', JSON.stringify(entry, null, 2));
+            console.error('[CineFlex] This usually means corrupt data was loaded from Supabase');
+            return; // STOP - don't continue trying to fix
+        }
+
+        normalizeCount++; // Increment counter
         const [node, path] = entry;
+
+        // KEEP ALL EXISTING NORMALIZATION RULES BELOW (don't change these)
 
         if (SlateElement.isElement(node) && path.length > 1) {
             Transforms.unwrapNodes(editor, { at: path });
