@@ -41,6 +41,15 @@ export const WorkspaceLayout: React.FC = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
+
+    // Add save queue refs
+    const saveQueueRef = React.useRef<Promise<void>>(Promise.resolve());
+    const projectRef = React.useRef<Project | null>(project);
+
+    // Keep projectRef in sync
+    useEffect(() => {
+        projectRef.current = project;
+    }, [project]);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -59,13 +68,33 @@ export const WorkspaceLayout: React.FC = () => {
     }, [sydWidth]);
 
     // Auto-save with debouncing (Now handles global SaveStatus internally)
+    // Queued save function
+    const queuedSave = useCallback(async (data: Project | null) => {
+        if (!data?.id) return;
+
+        // Wait for previous save
+        await saveQueueRef.current;
+
+        // Create new save promise
+        saveQueueRef.current = (async () => {
+            try {
+                // Use ref to get latest state in case of rapid updates
+                const latestProject = projectRef.current;
+                if (latestProject?.id) {
+                    await saveProjectData(latestProject.id, latestProject);
+                }
+            } catch (error) {
+                console.error('Queued save failed:', error);
+                throw error;
+            }
+        })();
+
+        return saveQueueRef.current;
+    }, []);
+
     const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
         project,
-        useCallback(async (data: Project | null) => {
-            if (data?.id) {
-                await saveProjectData(data.id, data);
-            }
-        }, []),
+        queuedSave,
         {
             delay: 1000,
             onError: (error) => {
@@ -136,7 +165,12 @@ export const WorkspaceLayout: React.FC = () => {
     };
 
     const handleUpdateProject = useCallback((updated: Project) => {
-        setProject(updated);
+        // Use functional update to avoid stale closures
+        setProject(prev => {
+            // Merge updates to handle partial updates
+            if (!prev) return updated;
+            return { ...prev, ...updated };
+        });
     }, []);
 
     const handleUpdateSettings = useCallback((key: keyof WorldSettings, value: any) => {
