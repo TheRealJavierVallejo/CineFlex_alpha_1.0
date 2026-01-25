@@ -25,6 +25,7 @@ import { ApiKeySettings } from './components/features/ApiKeySettings';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 import { AuthPage } from './components/features/AuthPage';
 import { ProtectedRoute } from './components/ProtectedRoute'; // IMPORTED
+import { WelcomeScreen } from './pages/WelcomeScreen';
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
@@ -189,7 +190,8 @@ const App: React.FC = () => {
 
                         <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
                         <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                            <Route index element={<DashboardPage />} />
+                            <Route index element={<WelcomeScreen />} />
+                            <Route path="dashboard" element={<DashboardPage />} />
                             <Route path="timeline" element={<TimelinePage />} />
                             <Route path="script" element={<ScriptEditorPage />} />
                             <Route path="story-notes" element={<StoryNotesPage />} />
