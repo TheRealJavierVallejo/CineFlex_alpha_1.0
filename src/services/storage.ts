@@ -363,6 +363,18 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     cleanProject.scriptElements = scriptElements; // array
     cleanProject.settings = projectData.settings; // already JSON
 
+    // Ensure story development fields are mapped (deepToCamel handles most, but we map explicitly for safety)
+    cleanProject.plotDevelopment = projectData.plot_development || cleanProject.plotDevelopment;
+    cleanProject.characterDevelopments = projectData.character_developments || cleanProject.characterDevelopments || [];
+    cleanProject.storyBeats = projectData.story_beats || cleanProject.storyBeats || [];
+    cleanProject.storyMetadata = projectData.story_metadata || cleanProject.storyMetadata;
+    cleanProject.storyNotes = projectData.story_notes_data || cleanProject.storyNotes;
+    cleanProject.scriptFile = projectData.script_file || cleanProject.scriptFile;
+
+    // Map timestamps to match the Project interface exactly
+    cleanProject.createdAt = new Date(projectData.created_at).getTime();
+    cleanProject.lastModified = new Date(projectData.last_synced).getTime();
+
     return cleanProject as Project;
 };
 
@@ -370,9 +382,15 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     // 1. Persist Images first
     const cleanProject = await ensureImagesPersisted(projectId, project);
 
-    // 2. Update Projects (Settings)
+    // 2. Update Projects (Settings, Story Dev, Script File)
     const { error: pErr } = await supabase.from('projects').update({
         settings: cleanProject.settings,
+        plot_development: cleanProject.plotDevelopment,
+        character_developments: cleanProject.characterDevelopments,
+        story_beats: cleanProject.storyBeats,
+        story_metadata: cleanProject.storyMetadata,
+        story_notes_data: cleanProject.storyNotes,
+        script_file: cleanProject.scriptFile,
         last_synced: new Date().toISOString()
     }).eq('id', projectId);
 
