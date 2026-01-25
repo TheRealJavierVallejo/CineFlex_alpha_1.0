@@ -32,6 +32,7 @@ export const StoryNotesEditor: React.FC = () => {
     const titleInputRef = useRef<HTMLInputElement>(null);
     const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
     const contentSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const currentContentRef = useRef<string>(''); // 🔥 NEW: Track in ref
 
     // Derive activeNote from notesData (no separate state needed)
     const activeNote = notesData.activeNoteId
@@ -111,23 +112,25 @@ export const StoryNotesEditor: React.FC = () => {
     };
 
     const handleSelectNote = async (noteId: string) => {
-        // 🔥 NEW: Force save current note before switching
+        // 🔥 FIXED: Save using ref (has latest value)
         if (activeNote) {
-            // Clear any pending debounce
             if (contentSaveTimerRef.current) {
                 clearTimeout(contentSaveTimerRef.current);
                 contentSaveTimerRef.current = null;
             }
 
-            // Save immediately
             await updateStoryNote(project.id, activeNote.id, {
                 title: activeNote.title,
-                content: activeNote.content
+                content: currentContentRef.current // 🔥 Use ref, not stale state
             });
         }
 
-        // Now switch to new note
+        // Switch note
         setNotesData(prev => ({ ...prev, activeNoteId: noteId }));
+
+        // 🔥 Reset ref for new note
+        const newNote = notesData.notes.find(n => n.id === noteId);
+        currentContentRef.current = newNote?.content || '';
     };
 
     const handleUpdateTitle = async (title: string) => {
@@ -148,6 +151,9 @@ export const StoryNotesEditor: React.FC = () => {
     const handleUpdateContent = async (content: string) => {
         if (!activeNote) return;
 
+        // 🔥 NEW: Track in ref
+        currentContentRef.current = content;
+
         // Optimistically update local state
         setNotesData(prev => ({
             ...prev,
@@ -161,7 +167,7 @@ export const StoryNotesEditor: React.FC = () => {
             clearTimeout(contentSaveTimerRef.current);
         }
         contentSaveTimerRef.current = setTimeout(async () => {
-            await updateStoryNote(project.id, activeNote.id, { content });
+            await updateStoryNote(project.id, activeNote.id, { content: currentContentRef.current });
             contentSaveTimerRef.current = null;
         }, 300); // 🔥 CHANGED: 500ms → 300ms
     };
@@ -179,7 +185,7 @@ export const StoryNotesEditor: React.FC = () => {
         // Save immediately
         await updateStoryNote(project.id, activeNote.id, {
             title: activeNote.title,
-            content: activeNote.content
+            content: currentContentRef.current // 🔥 Use ref
         });
     }, [activeNote, project.id]);
 
