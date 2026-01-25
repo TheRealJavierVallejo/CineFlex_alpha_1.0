@@ -18,7 +18,7 @@ import { AssetManagerPanel } from './AssetManager';
 import { SpreadsheetFilters } from './production-spreadsheet/SpreadsheetFilters';
 import { SpreadsheetTable } from './production-spreadsheet/SpreadsheetTable';
 import { SpreadsheetBulkActions } from './production-spreadsheet/SpreadsheetBulkActions';
-import { EmptyProjectState } from './EmptyProjectState';
+
 
 interface ProductionSpreadsheetProps {
     project: Project;
@@ -47,9 +47,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     const [filterType, setFilterType] = useState<string>('all');
     const [filterScene, setFilterScene] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
-    
-    // Import State
-    const [isImporting, setIsImporting] = useState(false);
+
+
 
     // Helpers for Project Settings panel
     const addCustomSetting = (field: any, value: string) => {
@@ -73,49 +72,8 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         return scene ? { sequence: scene.sequence, heading: scene.heading } : { sequence: '?', heading: 'Deleted Scene' };
     }, [project.scenes]);
 
-    // --- ONBOARDING HANDLERS ---
-    const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setIsImporting(true);
-        try {
-            await importScript(file);
-            // On successful import, go to script page
-            navigate('script');
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsImporting(false);
-        }
-    };
-    
-    const handleStartWriting = () => {
-        // Initialize with 1 Scene and 1 Script Element so the project is no longer "Empty"
-        const sceneId = crypto.randomUUID();
-        const firstScene: Scene = {
-            id: sceneId,
-            sequence: 1,
-            heading: 'INT. EXAMPLE - DAY',
-            actionNotes: ''
-        };
-        const firstElement: ScriptElement = {
-            id: crypto.randomUUID(),
-            type: 'scene_heading',
-            content: 'INT. EXAMPLE - DAY',
-            sceneId: sceneId,
-            sequence: 1
-        };
 
-        handleUpdateProject({
-            ...project,
-            scenes: [firstScene],
-            scriptElements: [firstElement]
-        });
 
-        // Redirect to Script Editor
-        navigate('script');
-    };
-    
     // --- DERIVED DATA (HOOKS MOVED UP) ---
     const filteredShots = useMemo(() => {
         return project.shots.filter(shot => {
@@ -213,21 +171,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
         }
     ];
 
-    // --- RENDER CHECK (MOVED AFTER HOOKS) ---
-    // If we have no scenes and no shots, we assume it's a fresh project needing setup.
-    if (project.scenes.length === 0 && project.shots.length === 0) {
-        return (
-            <div className="h-full flex flex-col bg-background">
-                <EmptyProjectState 
-                    title="Welcome to your Studio"
-                    description="To begin, please upload an existing screenplay or start writing from scratch."
-                    onImport={handleScriptUpload}
-                    onCreate={handleStartWriting}
-                    isImporting={isImporting}
-                />
-            </div>
-        );
-    }
+
 
     return (
         <PageWithToolRail tools={tools} defaultTool={null}>
