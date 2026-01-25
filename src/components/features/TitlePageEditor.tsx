@@ -64,6 +64,31 @@ export const TitlePageEditor: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Force save when user leaves tab/window
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Cancel debounce and save immediately
+      if (data.title || data.authors?.[0] || data.contact) {
+        handleUpdateProject({ ...project, titlePage: data });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleBeforeUnload();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      handleBeforeUnload(); // Save on component unmount too
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [data, project, handleUpdateProject]);
+
   const debouncedSave = debounce((newData: TitlePageData) => {
     setSaveStatus('saving');
     handleUpdateProject({ ...project, titlePage: newData });
