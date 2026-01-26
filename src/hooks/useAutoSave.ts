@@ -3,10 +3,10 @@ import { debounce } from '../utils/debounce';
 import { useSaveStatus } from '../context/SaveStatusContext';
 
 interface UseAutoSaveOptions {
-    delay?: number; // Debounce delay in milliseconds (default: 1000)
-    onSave?: () => void; // Callback when save starts
-    onSuccess?: () => void; // Callback when save succeeds
-    onError?: (error: Error) => void; // Callback when save fails
+    delay?: number;
+    onSave?: () => void;
+    onSuccess?: () => void;
+    onError?: (error: Error) => void;
 }
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -25,16 +25,13 @@ export function useAutoSave<T>(
     const previousDataRef = useRef<T>(data);
     const statusResetTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Debounced save function
     const debouncedSave = useRef(
         debounce(async (dataToSave: T) => {
             if (!isMountedRef.current) return;
-
             try {
                 setSaveStatus('saving');
                 setSaving();
                 onSave?.();
-
                 await saveFunction(dataToSave);
 
                 if (isMountedRef.current) {
@@ -42,15 +39,9 @@ export function useAutoSave<T>(
                     setSaved();
                     setLastSavedAt(new Date());
                     onSuccess?.();
-
-                    // Reset to idle after 2 seconds
-                    if (statusResetTimerRef.current) {
-                        clearTimeout(statusResetTimerRef.current);
-                    }
+                    if (statusResetTimerRef.current) clearTimeout(statusResetTimerRef.current);
                     statusResetTimerRef.current = setTimeout(() => {
-                        if (isMountedRef.current) {
-                            setSaveStatus('idle');
-                        }
+                        if (isMountedRef.current) setSaveStatus('idle');
                         statusResetTimerRef.current = null;
                     }, 2000);
                 }
@@ -67,39 +58,23 @@ export function useAutoSave<T>(
 
     // Trigger save when data changes
     useEffect(() => {
-        // Skip first render (initial data load)
-        if (previousDataRef.current === data) {
-            return;
-        }
-
+        if (previousDataRef.current === data) return;
         previousDataRef.current = data;
         debouncedSave(data);
     }, [data, debouncedSave]);
 
-    // Manual save function (bypasses debounce)
     const saveNow = useCallback(async () => {
+        debouncedSave.cancel(); // Cancel pending debounce if we force save
         try {
             setSaveStatus('saving');
             setSaving();
             onSave?.();
-
             await saveFunction(data);
-
             if (isMountedRef.current) {
                 setSaveStatus('saved');
                 setSaved();
                 setLastSavedAt(new Date());
                 onSuccess?.();
-
-                if (statusResetTimerRef.current) {
-                    clearTimeout(statusResetTimerRef.current);
-                }
-                statusResetTimerRef.current = setTimeout(() => {
-                    if (isMountedRef.current) {
-                        setSaveStatus('idle');
-                    }
-                    statusResetTimerRef.current = null;
-                }, 2000);
             }
         } catch (error) {
             if (isMountedRef.current) {
@@ -108,60 +83,38 @@ export function useAutoSave<T>(
                 onError?.(error as Error);
             }
         }
-    }, [data, saveFunction, onSave, onSuccess, onError]);
+    }, [data, saveFunction, onSave, onSuccess, onError, debouncedSave]);
 
-    // Handle visibility change (tab switch/close)
+    // EXPOSED CANCEL FUNCTION
+    const cancel = useCallback(() => {
+        debouncedSave.cancel();
+    }, [debouncedSave]);
+
     useEffect(() => {
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'hidden') {
-                // Force immediate save when tab becomes hidden
-                saveNow();
-            }
+            if (document.visibilityState === 'hidden') saveNow();
         };
-
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('beforeunload', saveNow); // Try to save on close (best effort)
-
+        window.addEventListener('beforeunload', saveNow);
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('beforeunload', saveNow);
         };
     }, [saveNow]);
 
-    // Cleanup on unmount - Force save if pending and clear timers
     useEffect(() => {
         return () => {
             isMountedRef.current = false;
-
-            // Clear any pending status reset timer
-            if (statusResetTimerRef.current) {
-                clearTimeout(statusResetTimerRef.current);
-            }
-
-            // If we have unsaved changes (status is saving or idle with pending debounce), try to save
-            // Note: We can't guarantee async completion on unmount, but we can trigger the request.
-            // For critical data, visibilitychange is more reliable.
-            saveNow();
+            if (statusResetTimerRef.current) clearTimeout(statusResetTimerRef.current);
+            debouncedSave.flush(); // Try to flush pending saves on unmount
         };
-    }, [saveNow]);
-
-    // Cancel pending auto-save
-    const cancelAutoSave = useCallback(() => {
-        debouncedSave.cancel();
-        if (statusResetTimerRef.current) {
-            clearTimeout(statusResetTimerRef.current);
-            statusResetTimerRef.current = null;
-        }
-        if (saveStatus === 'saving' || saveStatus === 'idle') {
-            setSaveStatus('idle'); // Reset if we canceled in-flight or pending
-        }
-    }, [debouncedSave, saveStatus]);
+    }, [debouncedSave]);
 
     return {
         saveStatus,
         lastSavedAt,
         saveNow,
-        cancel: cancelAutoSave
+        cancel // Now exposed
     };
 }
 
