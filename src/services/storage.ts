@@ -17,18 +17,9 @@ const KEYS = {
 
 // --- STORAGE HELPERS ---
 
-/**
- * Recursively removes null bytes and invalid characters from strings/objects
- * to prevent Postgres 400/JSON errors.
- */
 const cleanForJson = <T>(data: T): T => {
-    if (typeof data === 'string') {
-        // Remove null bytes (\u0000) which break Postgres JSONB
-        return data.replace(/\u0000/g, '') as unknown as T;
-    }
-    if (Array.isArray(data)) {
-        return data.map(cleanForJson) as unknown as T;
-    }
+    if (typeof data === 'string') return data.replace(/\u0000/g, '') as unknown as T;
+    if (Array.isArray(data)) return data.map(cleanForJson) as unknown as T;
     if (data !== null && typeof data === 'object') {
         const cleaned: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
