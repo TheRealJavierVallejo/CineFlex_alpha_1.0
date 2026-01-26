@@ -105,11 +105,10 @@ export function useAutoSave<T>(
         return () => {
             isMountedRef.current = false;
             if (statusResetTimerRef.current) clearTimeout(statusResetTimerRef.current);
-            debouncedSave.cancel(); // Cancel pending saves on unmount
+            debouncedSave.cancel();
         };
     }, [debouncedSave]);
 
     return { saveStatus, lastSavedAt, saveNow, cancel };
 }
-
 export default useAutoSave;

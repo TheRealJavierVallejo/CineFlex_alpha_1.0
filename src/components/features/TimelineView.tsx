@@ -17,7 +17,7 @@ import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { Hash, Search } from 'lucide-react';
 import { useSubscription } from '../../context/SubscriptionContext';
-import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
+import { WorkspaceContextType } from '../../context/WorkspaceContext';
 
 interface TimelineViewProps {
   project: Project;

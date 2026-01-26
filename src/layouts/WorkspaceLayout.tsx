@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { WorkspaceContextType } from '../context/WorkspaceContext'; // NEW IMPORT
 import { Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -16,7 +17,6 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { ScriptChat } from '../components/features/ScriptChat';
 import { ResizableDivider } from '../components/ui/ResizableDivider';
 import { Header } from '../components/layout/Header';
-import { WorkspaceContextType } from '../context/WorkspaceContext';
 
 export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
@@ -165,7 +165,7 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleCreateDraft = useCallback(async (name?: string) => {
         if (!project) return;
-        cancelAutoSave(); // STOP AUTO-SAVE
+        cancelAutoSave(); // ✅ FIXED: Uses hook's cancel function
 
         const draftName = name || `Snapshot ${project.drafts.length + 1}`;
         const newDraft: ScriptDraft = {
@@ -181,7 +181,7 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
-        cancelAutoSave(); // STOP AUTO-SAVE
+        cancelAutoSave(); // ✅ FIXED
 
         const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
         if (!draft) { showToast("Draft not found", 'error'); return; }
@@ -202,7 +202,7 @@ export const WorkspaceLayout: React.FC = () => {
         if (!project) return;
         if (project.activeDraftId === draftId) { showToast("Cannot delete the active draft", 'warning'); return; }
 
-        cancelAutoSave(); // STOP AUTO-SAVE
+        cancelAutoSave(); // ✅ FIXED
 
         let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
         let activeId = project.activeDraftId;
