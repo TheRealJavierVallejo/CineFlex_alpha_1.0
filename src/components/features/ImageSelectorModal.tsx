@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ImageLibraryItem } from '../../types';
 import { getImageLibrary } from '../../services/storage';
-import { X, Plus, Search, Image as ImageIcon, Loader2, LayoutGrid, Film } from 'lucide-react';
+import { X, Plus, Search, Image as ImageIcon, Loader2, LayoutGrid, Film, AlertCircle } from 'lucide-react';
 import Button from '../ui/Button';
 import { LazyImage } from '../ui/LazyImage';
 
@@ -15,6 +15,7 @@ interface ImageSelectorModalProps {
 export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose, onSelect, projectId }) => {
     const [images, setImages] = useState<ImageLibraryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'all' | 'favorites'>('all');
 
@@ -26,11 +27,13 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
 
     const loadLibrary = async () => {
         setIsLoading(true);
+        setError(null); // Clear previous errors
         try {
             const lib = await getImageLibrary(projectId);
             setImages(lib);
         } catch (e) {
-            console.error(e);
+            console.error('Failed to load image library:', e);
+            setError('Failed to load image library. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -78,6 +81,26 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, 
                         Refresh
                     </Button>
                 </div>
+
+                {/* Error Banner */}
+                {error && (
+                    <div className="mx-6 mt-4 p-4 bg-red-900/20 border border-red-800 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                        <div className="text-red-400 shrink-0">
+                            <AlertCircle className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm text-red-200 font-medium mb-1">Error Loading Images</p>
+                            <p className="text-xs text-red-300/80">{error}</p>
+                        </div>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={loadLibrary}
+                        >
+                            Retry
+                        </Button>
+                    </div>
+                )}
 
                 {/* Grid */}
                 <div className="flex-1 overflow-y-auto p-6 bg-background">
