@@ -704,7 +704,7 @@ const createQueuedDebouncedSave = () => {
     let pendingProjectId: string | null = null;
     let pendingProject: Project | null = null;
 
-    return (projectId: string, project: Project) => {
+    const save = (projectId: string, project: Project) => {
         // Clear existing timeout
         if (timeoutId) {
             clearTimeout(timeoutId);
@@ -724,6 +724,7 @@ const createQueuedDebouncedSave = () => {
             // Clear pending state
             pendingProjectId = null;
             pendingProject = null;
+            timeoutId = null;
 
             // Add to queue (will execute sequentially)
             saveQueue.enqueue(async () => {
@@ -733,6 +734,18 @@ const createQueuedDebouncedSave = () => {
             });
         }, 2000);
     };
+
+    save.cancel = () => {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+            pendingProjectId = null;
+            pendingProject = null;
+            console.log('[SAVE QUEUE] 🛑 Pending save cancelled due to transactional operation');
+        }
+    };
+
+    return save;
 };
 
 export const saveProjectDataDebounced = createQueuedDebouncedSave();

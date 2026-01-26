@@ -255,6 +255,9 @@ export const WorkspaceLayout: React.FC = () => {
     const handleCreateDraft = useCallback(async (name?: string) => {
         if (!project) return;
 
+        // Cancel any pending auto-saves to prevent overwrite
+        saveProjectDataDebounced.cancel();
+
         const draftName = name || `Snapshot ${project.drafts.length + 1}`;
         const newDraft: ScriptDraft = {
             id: crypto.randomUUID(),
@@ -276,6 +279,9 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
+
+        // Cancel any pending auto-saves to prevent overwrite
+        saveProjectDataDebounced.cancel();
 
         const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
         if (!draft) {
@@ -313,6 +319,9 @@ export const WorkspaceLayout: React.FC = () => {
             showToast("Cannot delete the active draft", 'warning');
             return;
         }
+
+        // Cancel any pending auto-saves to prevent overwrite
+        saveProjectDataDebounced.cancel();
 
         let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
         let activeId = project.activeDraftId;
