@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
-import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced, saveProjectDataSequential, saveProjectDataImmediate } from '../services/storage';
+import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataSequential, saveProjectDataImmediate } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
