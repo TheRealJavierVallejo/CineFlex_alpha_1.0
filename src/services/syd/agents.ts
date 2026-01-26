@@ -65,3 +65,32 @@ export const constructSystemPrompt = (agentType: SydAgentType, variables: Record
 
     return prompt;
 };
+
+/**
+ * Validates that all required context fields are present.
+ * Throws an error if any required fields are missing.
+ * 
+ * @param agentType - The agent type to validate
+ * @param context - The context object with field values
+ * @throws Error if required fields are missing
+ */
+export const validateRequiredContext = (
+    agentType: SydAgentType,
+    context: Record<string, string | undefined>
+): void => {
+    const agent = SYD_AGENTS[agentType];
+    const missing: string[] = [];
+
+    for (const field of agent.requiredContext) {
+        if (!context[field] || context[field]?.trim() === '') {
+            missing.push(field);
+        }
+    }
+
+    if (missing.length > 0) {
+        throw new Error(
+            `Agent "${agentType}" missing required context: ${missing.join(', ')}. ` +
+            `Please provide these fields before calling this agent.`
+        );
+    }
+};
