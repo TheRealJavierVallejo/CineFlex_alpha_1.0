@@ -13,7 +13,6 @@ import { ScriptChat } from './ScriptChat';
 import { SmartTypeManager } from './script-editor/SmartTypeManager';
 import { ScriptPageToolbar } from './script-editor/ScriptPageToolbar';
 import { StoryPanel } from './StoryPanel';
-import { VersionsPanel } from './script-editor/VersionsPanel';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements } from '../../services/scriptUtils';
@@ -22,6 +21,7 @@ import { EmptyProjectState } from './EmptyProjectState';
 import { PageWithToolRail, Tool } from '../layout/PageWithToolRail';
 import { learnFromScript } from '../../services/smartType';
 import { TitlePageEditor } from './TitlePageEditor';
+import { DraftsManager } from './script-editor/DraftsManager';
 
 export const ScriptPage: React.FC = () => {
     const { project, updateScriptElements, importScript } = useWorkspace();
@@ -36,8 +36,8 @@ export const ScriptPage: React.FC = () => {
     const [isImporting, setIsImporting] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
 
-    // View Mode: Script vs Title Page
-    const [viewMode, setViewMode] = useState<'script' | 'title_page'>('script');
+    // View Mode: Script vs Title Page vs Drafts
+    const [viewMode, setViewMode] = useState<'script' | 'title_page' | 'drafts'>('script');
 
     // Editor State
     const [canUndo, setCanUndo] = useState(false);
@@ -85,7 +85,7 @@ export const ScriptPage: React.FC = () => {
                 setSaveStatus('saved');
                 setTimeout(() => setSaveStatus('idle'), 2000);
             }, 500);
-        }, 500), // 🔥 CHANGED: 1000ms -> 500ms
+        }, 500), 
         [updateScriptElements, projectId]
     );
 
@@ -113,7 +113,7 @@ export const ScriptPage: React.FC = () => {
         }
     };
 
-    // DEFINING TOOLS (Syd removed for custom split view)
+    // DEFINING TOOLS (Versions removed, moved to top tab)
     const tools: Tool[] = [
         {
             id: 'story',
@@ -128,14 +128,6 @@ export const ScriptPage: React.FC = () => {
             label: 'SmartType',
             icon: <Wand2 className="w-5 h-5" />,
             content: <SmartTypeManager projectId={project.id} onClose={() => { }} />,
-            noScroll: true
-        },
-        {
-            id: 'versions',
-            label: 'Versions',
-            icon: <History className="w-5 h-5" />,
-            content: <VersionsPanel />,
-            width: '350px',
             noScroll: true
         }
     ];
@@ -165,6 +157,14 @@ export const ScriptPage: React.FC = () => {
                     >
                         Title Page
                     </button>
+                    <button
+                        onClick={() => setViewMode('drafts')}
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'drafts'
+                            ? 'bg-surface text-primary border-border border-b-surface'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
+                    >
+                        Drafts
+                    </button>
                 </div>
 
                 {viewMode === 'script' && (
@@ -192,6 +192,8 @@ export const ScriptPage: React.FC = () => {
 
                         {viewMode === 'title_page' ? (
                             <TitlePageEditor />
+                        ) : viewMode === 'drafts' ? (
+                            <DraftsManager />
                         ) : (
                             <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
                                 {/* PERFECT CENTER - No padding, no black bars */}
@@ -215,7 +217,8 @@ export const ScriptPage: React.FC = () => {
                                             <SlateScriptEditor
                                                 key={project.activeDraftId || 'default'}
                                                 ref={editorRef}
-                                                initialElements={elements}
+                                                // Initialize with PROPS not STATE to avoid race condition
+                                                initialElements={project.scriptElements || []}
                                                 onChange={(updatedElements) => {
                                                     setElements(updatedElements);
                                                     debouncedSync(updatedElements);
