@@ -85,8 +85,8 @@ const listAllFilesInProjectFolder = async (projectId: string): Promise<string[]>
             return allPaths;
         }
 
-        const files = (data || []).filter(x => x.name && !x.id?.endsWith('/'));
-        files.forEach(f => {
+        const files = (data || []).filter((x: { name: string; id: string }) => x.name && !x.id?.endsWith('/'));
+        files.forEach((f: { name: string }) => {
             allPaths.push(`${projectId}/${f.name}`);
         });
 
@@ -406,7 +406,9 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
         .select(`
             *,
             scenes (*),
-            shots (*)
+            shots (*),
+            drafts,
+            active_draft_id
         `)
         .eq('id', projectId)
         .single();
@@ -485,6 +487,8 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     cleanProject.storyNotes = projectData.story_notes_data || cleanProject.storyNotes;
     cleanProject.scriptFile = projectData.script_file || cleanProject.scriptFile;
     cleanProject.titlePage = projectData.title_page || cleanProject.titlePage;
+    cleanProject.drafts = projectData.drafts || [];
+    cleanProject.activeDraftId = projectData.active_draft_id || cleanProject.activeDraftId;
 
     // Map timestamps to match the Project interface exactly
     cleanProject.createdAt = new Date(projectData.created_at).getTime();
@@ -515,6 +519,8 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         story_metadata: cleanProject.storyMetadata,
         story_notes_data: cleanProject.storyNotes,
         script_file: cleanProject.scriptFile,
+        drafts: cleanProject.drafts,
+        active_draft_id: cleanProject.activeDraftId,
         last_synced: new Date().toISOString()
     }).eq('id', projectId);
 
@@ -611,12 +617,12 @@ export const subscribeToProjectChanges = (
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'scenes', filter: `project_id=eq.${projectId}` },
-            (payload) => onSceneChange(payload as unknown as { new: Scene; old: Scene })
+            (payload: any) => onSceneChange(payload as unknown as { new: Scene; old: Scene })
         )
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'shots', filter: `project_id=eq.${projectId}` },
-            (payload) => onShotChange(payload as unknown as { new: Shot; old: Shot })
+            (payload: any) => onShotChange(payload as unknown as { new: Shot; old: Shot })
         )
         .subscribe();
 
