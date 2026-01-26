@@ -56,7 +56,7 @@ export async function chatWithScriptClaude(
         // 4. Stream from Claude API
         const stream = await client.messages.stream({
             model: 'claude-3-5-haiku-20241022',
-            max_tokens: 1500, // Reduced from 4000 to save costs
+            max_tokens: 4000, // Haiku is already cheap; don't sacrifice UX
             temperature: 0.7,
             system: [
                 {

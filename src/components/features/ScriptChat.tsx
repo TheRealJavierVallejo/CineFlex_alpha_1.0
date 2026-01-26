@@ -91,13 +91,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     }
   }, [project?.id]);
 
-  // LocalStorage Persistence for Active Thread (Cache)
-  useEffect(() => {
-    if (project?.id && threadId && messages.length > 0) {
-      const key = `syd - chat - history - ${project.id} -${threadId} `;
-      localStorage.setItem(key, JSON.stringify(messages));
-    }
-  }, [messages, project?.id, threadId]);
 
   const loadThreads = async (pid: string) => {
     try {
@@ -132,16 +125,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     try {
       setMessages([]); // clear current view
 
-      // Try LocalStorage Cache first for instant load
-      const cacheKey = `syd - chat - history - ${pid || project?.id} -${tid} `;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          setMessages(JSON.parse(cached));
-        } catch (e) { /* ignore corrupt cache */ }
-      }
-
-      // Then fetch robust DB source
+      // Fetch robust DB source
       const dbMessages = await listMessagesForThread(tid);
       if (dbMessages.length > 0) {
         const uiMessages: Message[] = dbMessages.map(m => ({
@@ -151,7 +135,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           createdAt: m.createdAt
         })).filter(m => m.role === 'user' || m.role === 'model');
         setMessages(uiMessages);
-      } else if (!cached) {
+      } else {
         setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
       }
     } catch (e) {
@@ -209,10 +193,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         return remaining;
       });
 
-      // Clear cache
-      if (project?.id) {
-        localStorage.removeItem(`syd - chat - history - ${project.id} -${tid} `);
-      }
 
       showToast("Conversation deleted", 'success');
     } catch (e) {
@@ -253,8 +233,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
     try {
       await deleteThread(threadId);
-      // Clear cache
-      localStorage.removeItem(`syd - chat - history - ${project.id} -${threadId} `);
 
       const newThread = await createNewThreadForProject(project.id);
       setThreads(prev => prev.map(t => t.id === threadId ? newThread : t)); // Replace in list

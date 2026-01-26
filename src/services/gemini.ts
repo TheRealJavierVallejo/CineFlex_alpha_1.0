@@ -324,7 +324,7 @@ export const generateBatchShotImages = async (
   options: { model: string; aspectRatio: string; imageSize?: string },
   count: number = 1
 ): Promise<string[]> => {
-  // Execute serially with individual retries to avoid partial failures failing the whole batch
+  // Execute serially with individual retries
   const results: string[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -333,11 +333,15 @@ export const generateBatchShotImages = async (
       results.push(img);
     } catch (e) {
       console.error(`Batch item ${i} failed`, e);
-      // If individual fails, we continue best effort, or rethrow? 
-      // For now, let's rethrow to alert user of failure.
-      throw e;
+      // Continue best effort - don't fail the whole batch
     }
   }
+
+  // If nothing was generated but we tried to generate something
+  if (results.length === 0 && count > 0) {
+    throw new Error("Batch generation failed. No images could be generated.");
+  }
+
   return results;
 };
 
