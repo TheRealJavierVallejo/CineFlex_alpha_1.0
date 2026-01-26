@@ -7,7 +7,6 @@ import { classifyGeminiError } from '../../services/imageGen';
 import { chatWithClaudeStreaming, classifyClaudeError, estimateClaudeConversationTokens } from '../../services/claude';
 import { detectFrustrationPatterns, buildEnhancedSystemPrompt } from '../../services/sydCommunicationProtocol';
 import { useSubscription } from '../../context/SubscriptionContext';
-import { useLocalLlm } from '../../context/LocalLlmContext';
 import { supabase } from '../../services/supabaseClient';
 
 interface ChatMessage {
@@ -64,7 +63,6 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     initialMessages
 }) => {
     const { tier } = useSubscription();
-    const { isReady, isDownloading, downloadProgress, downloadText, error, initModel } = useLocalLlm();
 
     // Initialize with props, but don't depend on them for resets to avoid loops
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -154,11 +152,6 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             return;
         }
 
-        // While the local model is still warming up, show empty chat
-        if (tier === 'free' && !isReady) {
-            return;
-        }
-
         // When ready, inject a friendly assistant greeting if empty
         setMessages(prev => {
             if (prev.length > 0) return prev;
@@ -194,7 +187,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     // 2. Auto-scroll on new messages or status changes
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages.length, isReady, downloadText, isGenerating]);
+    }, [messages.length, isGenerating]);
 
     // 3. Calculate token usage for Pro tier display (Claude 200K context)
     useEffect(() => {
@@ -275,7 +268,6 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
     const handleSend = async () => {
         if (!inputValue.trim() || isGenerating) return;
-        if (tier === 'free' && !isReady) return;
 
         const userMsg: ChatMessage = {
             id: crypto.randomUUID(),
@@ -388,7 +380,9 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                     ));
                 }
             } else {
-                // Free tier ONLY: use non-streaming via callback
+                // Cloud tier check removed as we are now all cloud
+                // For now, fallback to pro path or warn
+                console.warn("Free tier message sent - using onSendMessage callback");
                 const response = await onSendMessage(inputValue, conversationHistory);
 
                 const assistantMsg: ChatMessage = {
@@ -486,45 +480,12 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
     const baseStatusClasses = "flex items-center gap-2 text-text-primary text-xs font-bold px-2.5 py-1.5 bg-primary/10 rounded border border-primary/20 shadow-sm w-full justify-center transition-all";
 
     if (tier === 'free') {
-        if (error) {
-            statusElement = (
-                <div className={baseStatusClasses}>
-                    <AlertCircle className="w-3.5 h-3.5 text-text-primary" />
-                    <span className="text-text-primary">Error: {error.slice(0, 15)}...</span>
-                </div>
-            );
-        } else if (isDownloading) {
-            statusElement = (
-                <div className={baseStatusClasses}>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-text-primary" />
-                    <span className="text-text-primary">Warming up: {downloadProgress}%</span>
-                </div>
-            );
-        } else if (isGenerating) {
-            statusElement = (
-                <div className={baseStatusClasses}>
-                    <BrainCircuit className="w-3.5 h-3.5 animate-pulse text-text-primary" />
-                    <span className="text-text-primary">Generating Response...</span>
-                </div>
-            );
-        } else if (!isReady) {
-            statusElement = (
-                <button
-                    onClick={initModel}
-                    className={`${baseStatusClasses} hover:bg-primary/20 cursor-pointer`}
-                >
-                    <Download className="w-3.5 h-3.5 text-text-primary" />
-                    <span className="text-text-primary">Load Engine</span>
-                </button>
-            );
-        } else {
-            statusElement = (
-                <div className={baseStatusClasses}>
-                    <Cpu className="w-3.5 h-3.5 text-text-primary" />
-                    <span className="text-text-primary">Syd Jr. Ready</span>
-                </div>
-            );
-        }
+        statusElement = (
+            <div className={baseStatusClasses}>
+                <Sparkles className="w-3.5 h-3.5 text-text-primary" />
+                <span className="text-text-primary">Syd Active</span>
+            </div>
+        );
     } else {
         // PRO TIER (Cloud)
         if (isGenerating) {
@@ -621,16 +582,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                     </div>
                 )}
 
-                {/* EMPTY STATE / ERROR STATE UI */}
-                {tier === 'free' && !isReady && !isDownloading && !error && (
-                    <div className="flex flex-col items-center justify-center py-8 text-center space-y-3 opacity-70">
-                        <Zap className="w-8 h-8 text-text-muted" />
-                        <p className="text-xs text-text-secondary">Engine Standby</p>
-                        <button onClick={initModel} className="text-[10px] bg-primary text-white px-3 py-1.5 rounded font-bold hover:bg-primary-hover transition-colors">
-                            Connect to Local AI
-                        </button>
-                    </div>
-                )}
+                {/* EMPTY STATE UI - Simplfied */}
 
                 {messages.map(msg => (
                     <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-1 duration-300`}>
@@ -694,8 +646,8 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                                 handleSend();
                             }
                         }}
-                        placeholder={!isReady && tier === 'free' ? "Connect to Local AI first..." : "Type instructions..."}
-                        disabled={isGenerating || (tier === 'free' && !isReady)}
+                        placeholder="Type instructions..."
+                        disabled={isGenerating}
                         className="flex-1 px-3 py-2 bg-surface border border-border rounded-md text-text-primary text-xs focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none disabled:opacity-50 transition-all placeholder:text-text-muted"
                         autoFocus
                         rows={1}
@@ -703,18 +655,13 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                     />
                     <button
                         onClick={handleSend}
-                        disabled={!inputValue.trim() || isGenerating || (tier === 'free' && !isReady)}
+                        disabled={!inputValue.trim() || isGenerating}
                         className="p-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center"
                     >
                         {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                 </div>
-                {tier === 'free' && (
-                    <div className="text-[8px] text-text-muted mt-2 text-center flex items-center justify-center gap-1 opacity-60">
-                        <Cpu className="w-2.5 h-2.5" />
-                        <span>Running locally. No data leaves your device.</span>
-                    </div>
-                )}
+                {/* Disclaimer removed */}
             </div>
         </div>
     );

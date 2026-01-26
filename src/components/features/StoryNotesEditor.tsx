@@ -12,13 +12,11 @@ import {
 import { StoryNote, StoryNotesData } from '../../types';
 import { SydPopoutPanel } from './SydPopoutPanel';
 import { selectContextForAgent, SydContext } from '../../services/sydContext';
-import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 
 export const StoryNotesEditor: React.FC = () => {
     const { project, showToast } = useWorkspace();
     const { tier } = useSubscription();
-    const { generateMicroAgent } = useLocalLlm();
 
     const [notesData, setNotesData] = useState<StoryNotesData>({ notes: [], activeNoteId: null });
     const [isSaving, setIsSaving] = useState(false);
@@ -252,15 +250,9 @@ export const StoryNotesEditor: React.FC = () => {
 
     const handleSydMessage = async (message: string, messageHistory?: Array<{ role: string, content: string }>): Promise<string> => {
         if (!sydContext) return '';
-
-        const raw = await generateMicroAgent(
-            sydContext.systemPrompt,
-            { ...sydContext.contextFields, userMessage: message },
-            sydContext.maxOutputTokens,
-            messageHistory
-        );
-
-        return raw;
+        // Deprecated for cloud streaming logic in SydPopoutPanel
+        console.warn("handleSydMessage called in StoryNotesEditor. This is deprecated for cloud streaming.");
+        return "";
     };
 
     if (!project) {

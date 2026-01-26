@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, X, Check, BrainCircuit, Sparkles, Plus, ChevronDown, UserPlus } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
-import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import {
     getPlotDevelopment,
     savePlotDevelopment,
     getCharacterDevelopments,
     saveCharacterDevelopments,
-    // getCharacters, // REMOVED
-    getStoryNotes, // Added for Full Context
+    getStoryNotes,
     getStoryBeats,
     saveStoryBeats,
     getStoryMetadata,
@@ -23,8 +21,6 @@ import { CharacterCard } from './story/CharacterCard';
 import { BeatCard } from './story/BeatCard';
 import { SydPopoutPanel } from './SydPopoutPanel';
 import { useStoryProgress } from '../../hooks/useStoryProgress';
-import { summarizer } from '../../services/syd/summarizer';
-import { ModelDownloadModal } from '../ui/ModelDownloadModal';
 import { STORY_STRUCTURE_TYPES, TARGET_AUDIENCE_RATINGS } from '../../constants';
 
 // Save the Cat beat names
@@ -59,7 +55,6 @@ const sanitizeSydResponse = (text: string): string => {
 
 export const StoryPanel: React.FC = () => {
     const { project, showToast } = useWorkspace();
-    const { isReady, generateMicroAgent, initModel, isModelCached, isSupported } = useLocalLlm();
     const { tier } = useSubscription();
 
     // Data State
@@ -72,7 +67,6 @@ export const StoryPanel: React.FC = () => {
     const [activeSydField, setActiveSydField] = useState<string | null>(null);
     const [sydContext, setSydContext] = useState<SydContext | null>(null);
     const [sydAnchor, setSydAnchor] = useState<HTMLElement | null>(null);
-    const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [pendingSydRequest, setPendingSydRequest] = useState<{ agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string } | null>(null);
 
     // Story Type UI State
@@ -88,37 +82,13 @@ export const StoryPanel: React.FC = () => {
     // Progressive Disclosure
     const progress = useStoryProgress(plot, characters, beats);
 
-    // Auto-Summary Logic
+    // Auto-Summary Logic (Disabled for now as it relied on Local AI generator)
     useEffect(() => {
-        if (!isReady) return;
-
-        const checkAndSummarize = async () => {
-            if (progress.foundationComplete && !plot.foundationSummary) {
-                const content = `Genre: ${plot.genre}\nTheme: ${plot.theme}\nTone: ${plot.tone}`;
-                const summary = await summarizer.generateSummary(content, 50, generateMicroAgent);
-                handlePlotChange({ foundationSummary: summary });
-            }
-            if (progress.coreComplete && !plot.coreSummary) {
-                const content = `Title: ${plot.title}\nLogline: ${plot.logline}`;
-                const summary = await summarizer.generateSummary(content, 50, generateMicroAgent);
-                handlePlotChange({ coreSummary: summary });
-            }
-            if (progress.actOneComplete && !metadata.actOneSummary) {
-                const act1Content = beats.slice(0, 6).map(b => `${b.beatName}: ${b.content}`).join('\n');
-                const summary = await summarizer.generateSummary(act1Content, 100, generateMicroAgent);
-                setMetadata(prev => ({ ...prev, actOneSummary: summary }));
-                await saveStoryMetadata(project.id, { ...metadata, actOneSummary: summary });
-            }
-        };
-
-        const timer = setTimeout(checkAndSummarize, 2000);
-        return () => clearTimeout(timer);
-    }, [progress, isReady, plot, beats, metadata, project?.id, generateMicroAgent]);
+        // TODO: Re-enable cloud-based summarization if needed
+    }, [progress, plot, beats, metadata, project?.id]);
 
     // Load Data
-    // Full Context State (Pro Tier)
-    const [scriptElements, setScriptElements] = useState<any[]>([]); // Using any[] to avoid missing import if ScriptElement not imported, will fix import next
-    // const [allCharacters, setAllCharacters] = useState<any[]>([]); // REMOVED: Using 'characters' state instead
+    const [scriptElements, setScriptElements] = useState<any[]>([]);
     const [storyNotes, setStoryNotes] = useState<any[]>([]);
 
     useEffect(() => {
@@ -158,19 +128,18 @@ export const StoryPanel: React.FC = () => {
         // Load full context for Pro Tier
         if (project.id && tier === 'pro') {
             setScriptElements(project.scriptElements || []);
-            // Characters are already loaded by main useEffect
             getStoryNotes(project.id).then(data => setStoryNotes(data.notes));
         }
 
     }, [project, tier]);
 
-    // Retry pending request after download/init
+    // Retry pending request
     useEffect(() => {
-        if (isReady && pendingSydRequest) {
+        if (pendingSydRequest) {
             handleRequestSyd(pendingSydRequest.agentType, pendingSydRequest.fieldId, pendingSydRequest.anchorEl, pendingSydRequest.charId);
             setPendingSydRequest(null);
         }
-    }, [isReady, pendingSydRequest]);
+    }, [pendingSydRequest]);
 
     // Save Handlers
     const handlePlotChange = async (updates: Partial<PlotDevelopment>) => {
@@ -230,26 +199,6 @@ export const StoryPanel: React.FC = () => {
             return;
         }
 
-        // --- READINESS CHECK ---
-        if (tier === 'free') {
-            if (!isSupported) {
-                showToast("Your browser does not support Local AI (WebGPU).", 'error');
-                return;
-            }
-
-            if (!isReady) {
-                if (isModelCached) {
-                    // Cached but cold: Start warming up and proceed to open UI (UI will show "Warming up")
-                    initModel();
-                } else {
-                    // Not cached: Must download first. Stop and show modal.
-                    setPendingSydRequest({ agentType, fieldId, anchorEl, charId });
-                    setShowDownloadModal(true);
-                    return;
-                }
-            }
-        }
-
         const character = charId ? characters.find(c => c.id === charId) : undefined;
 
         // Prepare full context data if Pro
@@ -261,10 +210,7 @@ export const StoryPanel: React.FC = () => {
                 notesString = storyNotes.map((n: any) => `## ${n.title}\n${n.content}`).join('\n\n---\n\n');
             }
             if (scriptElements.length > 0) {
-                // Pro mode: Include ALL script elements (no limit)
-                // Free mode: Include last 50 elements
-                const elementsToInclude = tier === 'pro' ? scriptElements : scriptElements.slice(-50);
-
+                const elementsToInclude = scriptElements;
                 scriptString = elementsToInclude.map((el: any) => {
                     if (el.type === 'scene_heading') return `\n${el.content}`;
                     if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
@@ -280,7 +226,7 @@ export const StoryPanel: React.FC = () => {
             character,
             beats,
             metadata,
-            characters, // allCharacters (from existing state)
+            characters,
             notesString,
             scriptString,
             tier === 'pro'
@@ -299,15 +245,9 @@ export const StoryPanel: React.FC = () => {
 
     const handleSydMessage = async (message: string, messageHistory?: Array<{ role: string, content: string }>): Promise<string> => {
         if (!sydContext) return '';
-
-        const raw = await generateMicroAgent(
-            sydContext.systemPrompt,
-            { ...sydContext.contextFields, userMessage: message },
-            sydContext.maxOutputTokens,
-            messageHistory
-        );
-
-        return sanitizeSydResponse(raw);
+        // Placeholder as this panel now handles streaming directly in SydPopoutPanel for cloud
+        console.warn("handleSydMessage called in StoryPanel. This is deprecated for cloud streaming.");
+        return "";
     };
 
     if (!project) {
@@ -315,17 +255,7 @@ export const StoryPanel: React.FC = () => {
     }
 
     return (
-        <>
-            <ModelDownloadModal
-                isOpen={showDownloadModal}
-                onClose={() => { setShowDownloadModal(false); setPendingSydRequest(null); }}
-                onConfirm={() => {
-                    initModel();
-                    setShowDownloadModal(false);
-                    // Pending request will trigger via useEffect when isReady becomes true
-                }}
-            />
-
+        <div className="h-full flex flex-col overflow-hidden relative">
             <div ref={scrollContainerRef} className="h-full overflow-y-auto bg-background pb-32">
                 {/* Header (Native Feel) */}
                 <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-8 py-6">
@@ -532,8 +462,8 @@ export const StoryPanel: React.FC = () => {
                                     id="target_audience"
                                     label="Audience Profile"
                                     value={plot.targetAudienceDescription || ''}
-                                    onChange={(val) => handlePlotChange({ targetAudienceDescription: val })}
-                                    onRequestSyd={(el) => handleRequestSyd('target_audience', 'target_audience', el)}
+                                    onChange={(val: string) => handlePlotChange({ targetAudienceDescription: val })}
+                                    onRequestSyd={(el: HTMLElement) => handleRequestSyd('target_audience', 'target_audience', el)}
                                     isActiveSyd={activeSydField === 'target_audience'}
                                     placeholder="Who is this story for? Age, interests, similar movies they enjoy..."
                                     multiline={true}
@@ -545,8 +475,8 @@ export const StoryPanel: React.FC = () => {
                                 id="title"
                                 label="Working Title"
                                 value={plot.title || ''}
-                                onChange={(val) => handlePlotChange({ title: val })}
-                                onRequestSyd={(el) => handleRequestSyd('title', 'title', el)}
+                                onChange={(val: string) => handlePlotChange({ title: val })}
+                                onRequestSyd={(el: HTMLElement) => handleRequestSyd('title', 'title', el)}
                                 isActiveSyd={activeSydField === 'title'}
                                 placeholder="Enter title or ask Syd to brainstorm..."
                             />
@@ -555,10 +485,10 @@ export const StoryPanel: React.FC = () => {
                                 id="logline"
                                 label="Logline (The Hook)"
                                 value={plot.logline || ''}
-                                onChange={(val) => handlePlotChange({ logline: val })}
+                                onChange={(val: string) => handlePlotChange({ logline: val })}
                                 multiline={true}
                                 minHeight="60px"
-                                onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
+                                onRequestSyd={(el: HTMLElement) => handleRequestSyd('logline', 'logline', el)}
                                 isActiveSyd={activeSydField === 'logline'}
                                 placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
                             />
@@ -567,10 +497,10 @@ export const StoryPanel: React.FC = () => {
                                 id="budget"
                                 label="Budget Constraints"
                                 value={plot.budget || ''}
-                                onChange={(val) => handlePlotChange({ budget: val })}
+                                onChange={(val: string) => handlePlotChange({ budget: val })}
                                 multiline={true}
                                 minHeight="60px"
-                                onRequestSyd={(el) => handleRequestSyd('budget' as any, 'budget', el)}
+                                onRequestSyd={(el: HTMLElement) => handleRequestSyd('budget' as any, 'budget', el)}
                                 isActiveSyd={activeSydField === 'budget'}
                                 placeholder="Production budget level (e.g., Micro-budget, Low-budget, Studio) and any specific limitations..."
                             />
@@ -606,9 +536,9 @@ export const StoryPanel: React.FC = () => {
                                 <CharacterCard
                                     key={char.id}
                                     character={char}
-                                    onChange={(updates) => handleCharacterChange(char.id, updates)}
+                                    onChange={(updates: Partial<CharacterDevelopment>) => handleCharacterChange(char.id, updates)}
                                     onDelete={() => handleDeleteCharacter(char.id)}
-                                    onRequestSyd={(fieldSuffix, el) => handleRequestSyd(`character_${fieldSuffix}` as SydAgentType, `char-${char.id}-${fieldSuffix}`, el, char.id)}
+                                    onRequestSyd={(fieldSuffix: string, el: HTMLElement) => handleRequestSyd(`character_${fieldSuffix}` as SydAgentType, `char-${char.id}-${fieldSuffix}`, el, char.id)}
                                     activeSydField={activeSydField?.startsWith(`char-${char.id}`) ? activeSydField.split('-').pop() || null : null}
                                 />
                             ))}
@@ -632,8 +562,8 @@ export const StoryPanel: React.FC = () => {
                                 <BeatCard
                                     key={beat.id}
                                     beat={beat}
-                                    onChange={(updates) => handleBeatChange(beat.id, updates)}
-                                    onRequestSyd={(el) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
+                                    onChange={(updates: Partial<StoryBeat>) => handleBeatChange(beat.id, updates)}
+                                    onRequestSyd={(el: HTMLElement) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
                                     isActiveSyd={activeSydField === `beat-${beat.id}`}
                                 />
                             ))}
@@ -651,6 +581,6 @@ export const StoryPanel: React.FC = () => {
                 onClose={handleCloseSyd}
                 onSendMessage={handleSydMessage}
             />
-        </>
+        </div>
     );
 };

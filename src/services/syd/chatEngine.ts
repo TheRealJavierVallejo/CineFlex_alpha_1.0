@@ -1,7 +1,7 @@
 import { chatWithScriptClaude } from '../scriptClaude';
 import { ScriptElement, Character, StoryNote } from '../../types';
 
-export type ChatProvider = 'claude' | 'local';
+export type ChatProvider = 'claude';
 
 interface StreamConfig {
     projectId: string;
@@ -40,8 +40,6 @@ export async function streamSydResponse(
             onChunk
         );
     } else {
-        // Local Logic is currently handled via LocalLlmContext in the UI components
-        // to maintain hook integrity. This placeholder is for future unified local streaming.
-        throw new Error("Local streaming should be handled via LocalLlmContext for now.");
+        throw new Error(`Provider ${provider} is not supported or has been removed.`);
     }
 }

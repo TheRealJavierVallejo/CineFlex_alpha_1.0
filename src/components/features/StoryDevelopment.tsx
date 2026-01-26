@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronRight, Lock, Check, BrainCircuit } from 'lucide-react';
+import { Check, BrainCircuit, Sparkles, Plus } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
-import { useLocalLlm } from '../../context/LocalLlmContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import {
     getPlotDevelopment,
     savePlotDevelopment,
     getCharacterDevelopments,
     saveCharacterDevelopments,
-    // getCharacters, // REMOVED
-    getStoryNotes, // Added for Full Context
+    getStoryNotes,
     getStoryBeats,
     saveStoryBeats,
     getStoryMetadata,
@@ -23,8 +21,6 @@ import { CharacterCard } from './story/CharacterCard';
 import { BeatCard } from './story/BeatCard';
 import { SydPopoutPanel } from './SydPopoutPanel';
 import { useStoryProgress } from '../../hooks/useStoryProgress';
-import { summarizer } from '../../services/syd/summarizer';
-import { ModelDownloadModal } from '../ui/ModelDownloadModal';
 
 // Save the Cat beat names
 const STORY_BEAT_NAMES = [
@@ -43,7 +39,6 @@ const BEAT_AGENT_TYPES: SydAgentType[] = [
 
 export const StoryDevelopment: React.FC = () => {
     const { project, showToast } = useWorkspace();
-    const { isReady, generateMicroAgent, initModel, isModelCached, isSupported } = useLocalLlm();
     const { tier } = useSubscription();
 
     // Data State
@@ -51,57 +46,25 @@ export const StoryDevelopment: React.FC = () => {
     const [characters, setCharacters] = useState<CharacterDevelopment[]>([]);
     const [beats, setBeats] = useState<StoryBeat[]>([]);
     const [metadata, setMetadata] = useState<StoryMetadata>({ lastUpdated: Date.now() });
-    const [isLoading, setIsLoading] = useState(false);
 
     // Syd State
     const [activeSydField, setActiveSydField] = useState<string | null>(null);
     const [sydContext, setSydContext] = useState<SydContext | null>(null);
     const [sydAnchor, setSydAnchor] = useState<HTMLElement | null>(null);
-    const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [pendingSydRequest, setPendingSydRequest] = useState<{ agentType: SydAgentType, fieldId: string, anchorEl: HTMLElement, charId?: string } | null>(null);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Progressive Disclosure (still used for visual checkmarks, but not for locking)
+    // Progressive Disclosure
     const progress = useStoryProgress(plot, characters, beats);
 
-    // Auto-Summary Logic
-    useEffect(() => {
-        if (!isReady) return;
-
-        const checkAndSummarize = async () => {
-            if (progress.foundationComplete && !plot.foundationSummary) {
-                const content = `Genre: ${plot.genre}\nTheme: ${plot.theme}\nTone: ${plot.tone}`;
-                const summary = await summarizer.generateSummary(content, 50, generateMicroAgent);
-                handlePlotChange({ foundationSummary: summary });
-            }
-            if (progress.coreComplete && !plot.coreSummary) {
-                const content = `Title: ${plot.title}\nLogline: ${plot.logline}`;
-                const summary = await summarizer.generateSummary(content, 50, generateMicroAgent);
-                handlePlotChange({ coreSummary: summary });
-            }
-            if (progress.actOneComplete && !metadata.actOneSummary) {
-                const act1Content = beats.slice(0, 6).map(b => `${b.beatName}: ${b.content}`).join('\n');
-                const summary = await summarizer.generateSummary(act1Content, 100, generateMicroAgent);
-                setMetadata(prev => ({ ...prev, actOneSummary: summary }));
-                await saveStoryMetadata(project.id, { ...metadata, actOneSummary: summary });
-            }
-        };
-
-        const timer = setTimeout(checkAndSummarize, 2000);
-        return () => clearTimeout(timer);
-    }, [progress, isReady, plot, beats, metadata, project?.id, generateMicroAgent]);
-
     // Load Data
-    // Full Context State (Pro Tier)
     const [scriptElements, setScriptElements] = useState<any[]>([]);
-    // const [allCharacters, setAllCharacters] = useState<any[]>([]); // REMOVED: Using 'characters' state
     const [storyNotes, setStoryNotes] = useState<any[]>([]);
 
     useEffect(() => {
         if (!project) return;
 
-        setIsLoading(true);
         Promise.all([
             getPlotDevelopment(project.id),
             getCharacterDevelopments(project.id),
@@ -125,39 +88,40 @@ export const StoryDevelopment: React.FC = () => {
             }
 
             setMetadata(metaData);
-            setIsLoading(false);
         });
 
         // Load full context for Pro Tier
         if (project.id && tier === 'pro') {
             setScriptElements(project.scriptElements || []);
-            // Characters already loaded
             getStoryNotes(project.id).then(data => setStoryNotes(data.notes));
         }
     }, [project, tier]);
 
-    // Retry pending request after download/init
+    // Retry pending request
     useEffect(() => {
-        if (isReady && pendingSydRequest) {
+        if (pendingSydRequest) {
             handleRequestSyd(pendingSydRequest.agentType, pendingSydRequest.fieldId, pendingSydRequest.anchorEl, pendingSydRequest.charId);
             setPendingSydRequest(null);
         }
-    }, [isReady, pendingSydRequest]);
+    }, [pendingSydRequest]);
 
     // Save Handlers
     const handlePlotChange = async (updates: Partial<PlotDevelopment>) => {
+        if (!project) return;
         const newPlot = { ...plot, ...updates };
         setPlot(newPlot);
         await savePlotDevelopment(project.id, newPlot);
     };
 
     const handleCharacterChange = async (charId: string, updates: Partial<CharacterDevelopment>) => {
+        if (!project) return;
         const newChars = characters.map(c => c.id === charId ? { ...c, ...updates } : c);
         setCharacters(newChars);
         await saveCharacterDevelopments(project.id, newChars);
     };
 
     const handleAddCharacter = async (role: 'protagonist' | 'antagonist' | 'supporting') => {
+        if (!project) return;
         const newChar: CharacterDevelopment = {
             id: crypto.randomUUID(),
             name: `New ${role.charAt(0).toUpperCase() + role.slice(1)}`,
@@ -169,12 +133,14 @@ export const StoryDevelopment: React.FC = () => {
     };
 
     const handleDeleteCharacter = async (charId: string) => {
+        if (!project) return;
         const newChars = characters.filter(c => c.id !== charId);
         setCharacters(newChars);
         await saveCharacterDevelopments(project.id, newChars);
     };
 
     const handleBeatChange = async (beatId: string, updates: Partial<StoryBeat>) => {
+        if (!project) return;
         const newBeats = beats.map(b => b.id === beatId ? { ...b, ...updates } : b);
         setBeats(newBeats);
         await saveStoryBeats(project.id, newBeats);
@@ -187,27 +153,25 @@ export const StoryDevelopment: React.FC = () => {
             return;
         }
 
-        // --- READINESS CHECK ---
-        if (tier === 'free') {
-            if (!isSupported) {
-                showToast("Your browser does not support Local AI (WebGPU).", 'error');
-                return;
-            }
+        const character = charId ? characters.find(c => c.id === charId) : undefined;
 
-            if (!isReady) {
-                if (isModelCached) {
-                    // Cached but cold: Start warming up and proceed to open UI (UI will show "Warming up")
-                    initModel();
-                } else {
-                    // Not cached: Must download first. Stop and show modal.
-                    setPendingSydRequest({ agentType, fieldId, anchorEl, charId });
-                    setShowDownloadModal(true);
-                    return;
-                }
+        // Prepare full context data if Pro
+        let notesString = '';
+        let scriptString = '';
+
+        if (tier === 'pro') {
+            if (storyNotes.length > 0) {
+                notesString = storyNotes.map((n: any) => `## ${n.title}\n${n.content}`).join('\n\n---\n\n');
+            }
+            if (scriptElements.length > 0) {
+                scriptString = scriptElements.slice(-50).map((el: any) => {
+                    if (el.type === 'scene_heading') return `\n${el.content}`;
+                    if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
+                    if (el.type === 'dialogue') return `${el.content}`;
+                    return el.content;
+                }).join('\n');
             }
         }
-
-        const character = charId ? characters.find(c => c.id === charId) : undefined;
 
         const context = selectContextForAgent(
             agentType,
@@ -215,20 +179,9 @@ export const StoryDevelopment: React.FC = () => {
             character,
             beats,
             metadata,
-            characters, // allCharacters
-            // Story Notes String
-            (tier === 'pro' && storyNotes.length > 0)
-                ? storyNotes.map((n: any) => `## ${n.title}\n${n.content}`).join('\n\n---\n\n')
-                : '',
-            // Script Content String
-            (tier === 'pro' && scriptElements.length > 0)
-                ? (tier === 'pro' ? scriptElements : scriptElements.slice(-50)).map((el: any) => {
-                    if (el.type === 'scene_heading') return `\n${el.content}`;
-                    if (el.type === 'character') return `\n${el.content.toUpperCase()}`;
-                    if (el.type === 'dialogue') return `${el.content}`;
-                    return el.content;
-                }).join('\n')
-                : '',
+            characters,
+            notesString,
+            scriptString,
             tier === 'pro'
         );
 
@@ -245,12 +198,9 @@ export const StoryDevelopment: React.FC = () => {
 
     const handleSydMessage = async (message: string): Promise<string> => {
         if (!sydContext) return '';
-
-        return await generateMicroAgent(
-            sydContext.systemPrompt,
-            { ...sydContext.contextFields, userMessage: message },
-            sydContext.maxOutputTokens
-        );
+        // Deprecated for cloud streaming logic in SydPopoutPanel
+        console.warn("handleSydMessage called in StoryDevelopment. This is deprecated for cloud streaming.");
+        return "";
     };
 
     if (!project) {
@@ -258,17 +208,7 @@ export const StoryDevelopment: React.FC = () => {
     }
 
     return (
-        <>
-            <ModelDownloadModal
-                isOpen={showDownloadModal}
-                onClose={() => { setShowDownloadModal(false); setPendingSydRequest(null); }}
-                onConfirm={() => {
-                    initModel();
-                    setShowDownloadModal(false);
-                    // Pending request will trigger via useEffect when isReady becomes true
-                }}
-            />
-
+        <div className="h-full flex flex-col overflow-hidden relative">
             <div ref={scrollContainerRef} className="h-full overflow-y-auto bg-background pb-32">
                 {/* Header (Native Feel) */}
                 <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-8 py-6">
@@ -321,8 +261,8 @@ export const StoryDevelopment: React.FC = () => {
                                 id="title"
                                 label="Working Title"
                                 value={plot.title || ''}
-                                onChange={(val) => handlePlotChange({ title: val })}
-                                onRequestSyd={(el) => handleRequestSyd('title', 'title', el)}
+                                onChange={(val: string) => handlePlotChange({ title: val })}
+                                onRequestSyd={(el: HTMLElement) => handleRequestSyd('title', 'title', el)}
                                 isActiveSyd={activeSydField === 'title'}
                                 placeholder="Enter title or ask Syd to brainstorm..."
                             />
@@ -331,10 +271,10 @@ export const StoryDevelopment: React.FC = () => {
                                 id="logline"
                                 label="Logline (The Hook)"
                                 value={plot.logline || ''}
-                                onChange={(val) => handlePlotChange({ logline: val })}
+                                onChange={(val: string) => handlePlotChange({ logline: val })}
                                 multiline={true}
                                 minHeight="50px"
-                                onRequestSyd={(el) => handleRequestSyd('logline', 'logline', el)}
+                                onRequestSyd={(el: HTMLElement) => handleRequestSyd('logline', 'logline', el)}
                                 isActiveSyd={activeSydField === 'logline'}
                                 placeholder="When [INCITING INCIDENT] happens, a [PROTAGONIST] must [ACTION] or else [STAKES]..."
                             />
@@ -361,7 +301,6 @@ export const StoryDevelopment: React.FC = () => {
                                 </button>
                             </div>
                         }
-                    // isLocked={!progress.coreComplete} // REMOVED LOCKING
                     >
                         <div className="space-y-4 pt-4">
                             {characters.length === 0 && (
@@ -377,9 +316,9 @@ export const StoryDevelopment: React.FC = () => {
                                 <CharacterCard
                                     key={char.id}
                                     character={char}
-                                    onChange={(updates) => handleCharacterChange(char.id, updates)}
+                                    onChange={(updates: Partial<CharacterDevelopment>) => handleCharacterChange(char.id, updates)}
                                     onDelete={() => handleDeleteCharacter(char.id)}
-                                    onRequestSyd={(fieldSuffix, el) => handleRequestSyd(`character_${fieldSuffix}` as SydAgentType, `char-${char.id}-${fieldSuffix}`, el, char.id)}
+                                    onRequestSyd={(fieldSuffix: string, el: HTMLElement) => handleRequestSyd(`character_${fieldSuffix}` as SydAgentType, `char-${char.id}-${fieldSuffix}`, el, char.id)}
                                     activeSydField={activeSydField?.startsWith(`char-${char.id}`) ? activeSydField.split('-').pop() || null : null}
                                 />
                             ))}
@@ -390,15 +329,14 @@ export const StoryDevelopment: React.FC = () => {
                     <CollapsibleSection
                         title="Beat Sheet (Save the Cat)"
                         defaultExpanded={true}
-                    // isLocked={!progress.charactersComplete} // REMOVED LOCKING
                     >
                         <div className="space-y-4 pt-4">
                             {beats.map(beat => (
                                 <BeatCard
                                     key={beat.id}
                                     beat={beat}
-                                    onChange={(updates) => handleBeatChange(beat.id, updates)}
-                                    onRequestSyd={(el) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
+                                    onChange={(updates: Partial<StoryBeat>) => handleBeatChange(beat.id, updates)}
+                                    onRequestSyd={(el: HTMLElement) => handleRequestSyd(BEAT_AGENT_TYPES[beat.sequence - 1] || 'beat_opening_image', `beat-${beat.id}`, el)}
                                     isActiveSyd={activeSydField === `beat-${beat.id}`}
                                 />
                             ))}
@@ -428,6 +366,6 @@ export const StoryDevelopment: React.FC = () => {
                 onClose={handleCloseSyd}
                 onSendMessage={handleSydMessage}
             />
-        </>
+        </div>
     );
 };

@@ -1,8 +1,6 @@
 import { SYD_AGENTS, constructSystemPrompt } from './agents';
 
-// This service will interact with the LocalLlmContext
-// Since we can't import the hook here (not a component), we'll define the interface
-// and let the component layer pass the generator function.
+// This service handles content summarization using the provided generator function.
 
 export interface SummarizerService {
     generateSummary: (
