@@ -420,6 +420,7 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     cleanProject.storyMetadata = projectData.story_metadata || cleanProject.storyMetadata;
     cleanProject.storyNotes = projectData.story_notes_data || cleanProject.storyNotes;
     cleanProject.scriptFile = projectData.script_file || cleanProject.scriptFile;
+    cleanProject.titlePage = projectData.title_page || cleanProject.titlePage;
 
     // Map timestamps to match the Project interface exactly
     cleanProject.createdAt = new Date(projectData.created_at).getTime();
@@ -434,6 +435,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
 
     // 2. Update Projects (Settings, Story Dev, Script File)
     const { error: pErr } = await supabase.from('projects').update({
+        name: cleanProject.name,
         settings: cleanProject.settings,
         title_page: cleanProject.titlePage,
         plot_development: cleanProject.plotDevelopment,
