@@ -11,6 +11,9 @@ import { supabase } from './supabaseClient';
 import { ImageLibraryItemSchema, CharacterSchema, OutfitSchema, LocationSchema } from './schemas';
 import { z } from 'zod';
 
+// Helper to check if a string is a valid UUID
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 const KEYS = {
     ACTIVE_PROJECT_ID: 'cinesketch_active_project_id',
 };
@@ -520,6 +523,12 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
 export const saveProjectData = async (projectId: string, project: Project): Promise<void> => {
     // 1. Persist Images first
     const cleanProject = await ensureImagesPersisted(projectId, project);
+
+    // CRITICAL: Final UUID integrity check
+    if (!project.activeDraftId || !isUUID(project.activeDraftId)) {
+        console.error("[STORAGE] Crash blocked: activeDraftId is NOT a UUID!", project.activeDraftId);
+        throw new Error("Internal data error: invalid active draft id (not a valid UUID)");
+    }
 
     // 2. Update Projects (Settings, Story Dev, Script File)
     const { error: pErr } = await supabase.from('projects').update({

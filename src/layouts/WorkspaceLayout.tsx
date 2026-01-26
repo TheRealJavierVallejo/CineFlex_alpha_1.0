@@ -18,6 +18,58 @@ import { ScriptChat } from '../components/features/ScriptChat';
 import { ResizableDivider } from '../components/ui/ResizableDivider';
 import { Header } from '../components/layout/Header';
 
+// Helper to check if a string is a valid UUID
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+/**
+ * Normalizes project drafts and active draft ID to ensure UUID integrity.
+ * Repairs legacy IDs like 'initial-draft' or missing objects.
+ */
+const normalizeDraftsAndActiveId = (project: Project): { project: Project; changed: boolean } => {
+    let changed = false;
+    let drafts = project.drafts || [];
+    let activeId = project.activeDraftId;
+
+    // 1. Ensure every draft has a UUID id
+    drafts = drafts.map(d => {
+        if (!d.id || !isUUID(d.id)) {
+            changed = true;
+            const newId = crypto.randomUUID();
+            if (activeId === d.id) activeId = newId; // Update activeId if it matched this draft
+            return { ...d, id: newId };
+        }
+        return d;
+    });
+
+    // 2. Ensure drafts is not empty
+    if (drafts.length === 0) {
+        const newId = crypto.randomUUID();
+        drafts = [{
+            id: newId,
+            name: 'Initial Script',
+            content: project.scriptElements || [],
+            updatedAt: project.lastModified || Date.now()
+        }];
+        activeId = newId;
+        changed = true;
+    }
+
+    // 3. Ensure activeDraftId is a UUID and exists in drafts
+    if (!activeId || !isUUID(activeId) || !drafts.find(d => d.id === activeId)) {
+        activeId = drafts[0].id;
+        changed = true;
+    }
+
+    if (changed) {
+        return {
+            project: { ...project, drafts, activeDraftId: activeId, scriptElements: drafts.find(d => d.id === activeId)?.content || project.scriptElements },
+            changed: true
+        };
+    }
+
+    return { project, changed: false };
+};
+
 export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
@@ -93,41 +145,15 @@ export const WorkspaceLayout: React.FC = () => {
         try {
             const data = await getProjectData(id);
             if (data) {
-                let needsSave = false;
+                const { project: normalized, changed } = normalizeDraftsAndActiveId(data);
 
-                // 1. REPAIR: Missing Drafts -> Create valid UUID
-                if (!data.drafts || data.drafts.length === 0) {
-                    const newDraftId = crypto.randomUUID();
-                    const initialDraft: ScriptDraft = {
-                        id: newDraftId, // FIXED: Now a valid UUID
-                        name: 'Initial Script',
-                        content: data.scriptElements || [],
-                        updatedAt: data.lastModified || Date.now()
-                    };
-                    data.drafts = [initialDraft];
-                    data.activeDraftId = newDraftId;
-                    data.scriptElements = initialDraft.content;
-                    needsSave = true;
-                }
-                // 2. REPAIR: Invalid ID detected -> Replace with valid UUID
-                else if (data.activeDraftId === 'initial-draft') {
-                    console.log("⚠️ Repairing invalid 'initial-draft' ID...");
-                    const newId = crypto.randomUUID();
-                    data.activeDraftId = newId;
-                    // Fix the ID inside the array too
-                    data.drafts = data.drafts.map(d => d.id === 'initial-draft' ? { ...d, id: newId } : d);
-                    needsSave = true;
-                }
-
-                setProject(data);
+                setProject(normalized);
                 setActiveProjectId(id);
 
-                // 3. PERSIST: Save immediately if repairs were made
-                if (needsSave) {
-                    await saveProjectData(data.id, data);
-                    console.log("✅ Project data repaired and saved.");
+                if (changed) {
+                    console.log("⚠️ Project IDs normalized, persisting migration...");
+                    await saveProjectData(normalized.id, normalized);
                 }
-
             } else {
                 showToast("Project not found", 'error');
                 navigate('/');
@@ -207,16 +233,18 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
-        cancelAutoSave(); // ✅ FIXED
+        cancelAutoSave();
 
-        const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
+        // Integrity Check
+        const { project: normalized } = normalizeDraftsAndActiveId(project);
+        const draft = normalized.drafts.find((d: ScriptDraft) => d.id === draftId);
         if (!draft) { showToast("Draft not found", 'error'); return; }
 
-        const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
-            d.id === project.activeDraftId ? { ...d, content: project.scriptElements || [], updatedAt: Date.now() } : d
+        const updatedDrafts = normalized.drafts.map((d: ScriptDraft) =>
+            d.id === normalized.activeDraftId ? { ...d, content: normalized.scriptElements || [], updatedAt: Date.now() } : d
         );
         const updatedProject: Project = {
-            ...project, drafts: updatedDrafts, activeDraftId: draftId, scriptElements: draft.content, lastModified: Date.now()
+            ...normalized, drafts: updatedDrafts, activeDraftId: draftId, scriptElements: draft.content, lastModified: Date.now()
         };
         const syncedProject = syncScriptToScenes(updatedProject);
         setProject(syncedProject);
@@ -226,13 +254,16 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleDeleteDraft = useCallback(async (draftId: string) => {
         if (!project) return;
-        if (project.activeDraftId === draftId) { showToast("Cannot delete the active draft", 'warning'); return; }
 
-        cancelAutoSave(); // ✅ FIXED
+        // Integrity Check
+        const { project: normalized } = normalizeDraftsAndActiveId(project);
+        if (normalized.activeDraftId === draftId) { showToast("Cannot delete the active draft", 'warning'); return; }
 
-        let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
-        let activeId = project.activeDraftId;
-        let elements = project.scriptElements;
+        cancelAutoSave();
+
+        let updatedDrafts = normalized.drafts.filter((d: ScriptDraft) => d.id !== draftId);
+        let activeId = normalized.activeDraftId;
+        let elements = normalized.scriptElements;
 
         if (updatedDrafts.length === 0) {
             const defaultDraft: ScriptDraft = { id: crypto.randomUUID(), name: 'Main Draft', content: [], updatedAt: Date.now() };
@@ -242,7 +273,7 @@ export const WorkspaceLayout: React.FC = () => {
         }
 
         const updatedProject = {
-            ...project, drafts: updatedDrafts, activeDraftId: activeId, scriptElements: elements, lastModified: Date.now()
+            ...normalized, drafts: updatedDrafts, activeDraftId: activeId, scriptElements: elements, lastModified: Date.now()
         };
 
         setProject(updatedProject);
