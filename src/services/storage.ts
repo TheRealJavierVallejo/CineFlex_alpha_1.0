@@ -17,6 +17,28 @@ const KEYS = {
 
 // --- STORAGE HELPERS ---
 
+/**
+ * Recursively removes null bytes and invalid characters from strings/objects
+ * to prevent Postgres 400/JSON errors.
+ */
+const cleanForJson = <T>(data: T): T => {
+    if (typeof data === 'string') {
+        // Remove null bytes (\u0000) which break Postgres JSONB
+        return data.replace(/\u0000/g, '') as unknown as T;
+    }
+    if (Array.isArray(data)) {
+        return data.map(cleanForJson) as unknown as T;
+    }
+    if (data !== null && typeof data === 'object') {
+        const cleaned: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+            cleaned[key] = cleanForJson(value);
+        }
+        return cleaned as unknown as T;
+    }
+    return data;
+};
+
 const IMAGE_BUCKET = 'images';
 const PUBLIC_IMAGES_SEGMENT = '/storage/v1/object/public/images/';
 
@@ -510,16 +532,16 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
 
     // 2. Update Projects (Settings, Story Dev, Script File)
     const { error: pErr } = await supabase.from('projects').update({
-        name: cleanProject.name,
-        settings: cleanProject.settings,
-        title_page: cleanProject.titlePage,
-        plot_development: cleanProject.plotDevelopment,
-        character_developments: cleanProject.characterDevelopments,
-        story_beats: cleanProject.storyBeats,
-        story_metadata: cleanProject.storyMetadata,
-        story_notes_data: cleanProject.storyNotes,
-        script_file: cleanProject.scriptFile,
-        drafts: cleanProject.drafts,
+        name: cleanForJson(cleanProject.name),
+        settings: cleanForJson(cleanProject.settings),
+        title_page: cleanForJson(cleanProject.titlePage),
+        plot_development: cleanForJson(cleanProject.plotDevelopment),
+        character_developments: cleanForJson(cleanProject.characterDevelopments),
+        story_beats: cleanForJson(cleanProject.storyBeats),
+        story_metadata: cleanForJson(cleanProject.storyMetadata),
+        story_notes_data: cleanForJson(cleanProject.storyNotes),
+        script_file: cleanForJson(cleanProject.scriptFile),
+        drafts: cleanForJson(cleanProject.drafts),
         active_draft_id: cleanProject.activeDraftId,
         last_synced: new Date().toISOString()
     }).eq('id', projectId);
@@ -530,7 +552,7 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
     // Using onConflict='project_id' relies on the unique constraint on that column.
     const { error: scErr } = await supabase.from('scripts').upsert({
         project_id: projectId,
-        content: cleanProject.scriptElements,
+        content: cleanForJson(cleanProject.scriptElements),
         last_saved: new Date().toISOString()
     }, { onConflict: 'project_id', ignoreDuplicates: false });
 
@@ -555,7 +577,7 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         heading: s.heading,
         action_notes: s.actionNotes,
         location_id: s.locationId,
-        script_elements: s.scriptElements // Store as JSONB
+        script_elements: cleanForJson(s.scriptElements) // Store as JSONB
     }));
 
     if (dbScenes.length > 0) {
@@ -586,7 +608,7 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
             description,
             dialogue,
             camera_movement: (s as unknown as Record<string, unknown>).cameraMovement, // Correcting likely field mismatch
-            metadata: rest // Store remaining AI props in metadata
+            metadata: cleanForJson(rest) // Store remaining AI props in metadata
         };
     });
 
