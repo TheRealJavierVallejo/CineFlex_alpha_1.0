@@ -182,7 +182,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
             return [greetingMsg];
         });
-    }, [context, activeAgentType, initialMessages, isReady, tier]);
+    }, [context, activeAgentType, initialMessages, tier]);
 
     // 2. Auto-scroll on new messages or status changes
     useEffect(() => {
