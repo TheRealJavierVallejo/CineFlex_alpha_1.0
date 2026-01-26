@@ -1,6 +1,8 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Undo, Redo, Moon, Sun, Download, FileText, Sparkles } from 'lucide-react';
 import Button from '../../ui/Button';
+import { ExportDialog } from './ExportDialog';
+import { Project } from '../../../types';
 
 interface ScriptPageToolbarProps {
     canUndo: boolean;
@@ -9,12 +11,12 @@ interface ScriptPageToolbarProps {
     onRedo: () => void;
     isPaperWhite: boolean;
     onTogglePaper: () => void;
-    onExport: () => void;
     saveStatus: 'idle' | 'saving' | 'saved';
     currentPage: number;
     totalPages: number;
     sydOpen: boolean;
     onToggleSyd: () => void;
+    project: Project;
 }
 
 export const ScriptPageToolbar: React.FC<ScriptPageToolbarProps> = memo(({
@@ -24,13 +26,15 @@ export const ScriptPageToolbar: React.FC<ScriptPageToolbarProps> = memo(({
     onRedo,
     isPaperWhite,
     onTogglePaper,
-    onExport,
     saveStatus,
     currentPage,
     totalPages,
     sydOpen,
-    onToggleSyd
-}) => {
+    onToggleSyd,
+    project
+}: ScriptPageToolbarProps) => {
+    const [isExportOpen, setIsExportOpen] = useState(false);
+
     return (
         <div className="h-12 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0 z-10">
             {/* Left side: Title + Save status */}
@@ -102,11 +106,17 @@ export const ScriptPageToolbar: React.FC<ScriptPageToolbarProps> = memo(({
                 <Button
                     variant="secondary"
                     size="sm"
-                    onClick={onExport}
+                    onClick={() => setIsExportOpen(true)}
                     icon={<Download className="w-3.5 h-3.5" />}
                 >
                     Export
                 </Button>
+
+                <ExportDialog
+                    isOpen={isExportOpen}
+                    onClose={() => setIsExportOpen(false)}
+                    project={project}
+                />
             </div>
         </div>
     );

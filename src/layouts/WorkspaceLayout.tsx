@@ -44,6 +44,12 @@ export interface WorkspaceContextType {
     importScript: (file: File) => Promise<void>;
     /** Creates a snapshot of the current script as a named draft */
     handleCreateDraft: (name?: string) => void;
+    /** Switches to a different script version */
+    handleSwitchDraft: (draftId: string) => Promise<void>;
+    /** Deletes a script version */
+    handleDeleteDraft: (draftId: string) => void;
+    /** Renames a script version */
+    handleRenameDraft: (draftId: string, name: string) => void;
     /** Direct manual update of the script element array */
     updateScriptElements: (elements: ScriptElement[]) => void;
     /** Global toast trigger for the workspace */
@@ -269,6 +275,61 @@ export const WorkspaceLayout: React.FC = () => {
         showToast(`Draft created: ${draftName}`, 'success');
     }, [project, handleUpdateProject, showToast]);
 
+    const handleSwitchDraft = useCallback(async (draftId: string) => {
+        if (!project) return;
+
+        const draft = project.drafts.find(d => d.id === draftId);
+        if (!draft) {
+            showToast("Draft not found", 'error');
+            return;
+        }
+
+        // 1. Save current elements to the *currently active* draft before switching
+        const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
+            d.id === project.activeDraftId
+                ? { ...d, content: project.scriptElements || [], updatedAt: Date.now() }
+                : d
+        );
+
+        // 2. Prepare the new project state
+        const updatedProject: Project = {
+            ...project,
+            drafts: updatedDrafts,
+            activeDraftId: draftId,
+            scriptElements: draft.content, // Load draft content into editor
+            lastModified: Date.now()
+        };
+
+        // 3. Sync and Update
+        const syncedProject = syncScriptToScenes(updatedProject);
+        handleUpdateProject(syncedProject);
+
+        // 4. Force immediate save
+        await saveProjectData(syncedProject.id, syncedProject);
+
+        showToast(`Switched to: ${draft.name}`, 'success');
+    }, [project, handleUpdateProject, showToast]);
+
+    const handleDeleteDraft = useCallback((draftId: string) => {
+        if (!project) return;
+        if (project.activeDraftId === draftId) {
+            showToast("Cannot delete the active draft", 'warning');
+            return;
+        }
+
+        const updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
+        handleUpdateProject({ ...project, drafts: updatedDrafts });
+        showToast("Draft deleted", 'info');
+    }, [project, handleUpdateProject, showToast]);
+
+    const handleRenameDraft = useCallback((draftId: string, name: string) => {
+        if (!project) return;
+        const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
+            d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
+        );
+        handleUpdateProject({ ...project, drafts: updatedDrafts });
+    }, [project, handleUpdateProject]);
+
     const updateScriptElements = useCallback((elements: ScriptElement[]) => {
         if (!project) return;
         const tempProject = { ...project, scriptElements: elements };
@@ -363,10 +424,12 @@ export const WorkspaceLayout: React.FC = () => {
         project: project!,
         handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, handleCreateDraft, updateScriptElements, showToast, saveNow
+        importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft,
+        updateScriptElements, showToast, saveNow
     }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, handleCreateDraft, updateScriptElements, showToast, saveNow]);
+        importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft,
+        updateScriptElements, showToast, saveNow]);
 
     if (isLoading || !project) {
         return (

@@ -6,12 +6,14 @@ import {
     Sparkles,
     BookOpen,
     Wand2,
-    FileText
+    FileText,
+    History
 } from 'lucide-react';
 import { ScriptChat } from './ScriptChat';
 import { SmartTypeManager } from './script-editor/SmartTypeManager';
 import { ScriptPageToolbar } from './script-editor/ScriptPageToolbar';
 import { StoryPanel } from './StoryPanel';
+import { VersionsPanel } from './script-editor/VersionsPanel';
 import { debounce } from '../../utils/debounce';
 import { useHistory } from '../../hooks/useHistory';
 import { enrichScriptElements } from '../../services/scriptUtils';
@@ -127,6 +129,14 @@ export const ScriptPage: React.FC = () => {
             icon: <Wand2 className="w-5 h-5" />,
             content: <SmartTypeManager projectId={project.id} onClose={() => { }} />,
             noScroll: true
+        },
+        {
+            id: 'versions',
+            label: 'Versions',
+            icon: <History className="w-5 h-5" />,
+            content: <VersionsPanel />,
+            width: '350px',
+            noScroll: true
         }
     ];
 
@@ -141,16 +151,16 @@ export const ScriptPage: React.FC = () => {
                 <div className="flex items-center px-4 pt-2 bg-app border-b border-border gap-1 shrink-0">
                     <button
                         onClick={() => setViewMode('script')}
-                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'script' 
-                            ? 'bg-surface text-primary border-border border-b-surface' 
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'script'
+                            ? 'bg-surface text-primary border-border border-b-surface'
                             : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
                     >
                         Script
                     </button>
                     <button
                         onClick={() => setViewMode('title_page')}
-                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'title_page' 
-                            ? 'bg-surface text-primary border-border border-b-surface' 
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-t border-x border-transparent relative -mb-px ${viewMode === 'title_page'
+                            ? 'bg-surface text-primary border-border border-b-surface'
                             : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'}`}
                     >
                         Title Page
@@ -165,7 +175,7 @@ export const ScriptPage: React.FC = () => {
                         onRedo={() => editorRef.current?.redo()}
                         isPaperWhite={isPaperWhite}
                         onTogglePaper={() => setLocalPaperWhite(!localPaperWhite)}
-                        onExport={() => exportToPDF(project)}
+                        project={project}
                         saveStatus={saveStatus}
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -176,10 +186,10 @@ export const ScriptPage: React.FC = () => {
 
                 {/* MAIN SPLIT CONTENT - FIXED ARCHITECTURE */}
                 <div className="flex flex-row w-full flex-1 min-h-0 overflow-hidden bg-surface">
-                    
+
                     {/* VIEW CONTENT */}
                     <div className={`h-full flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${sydOpen ? 'w-1/2' : 'w-full'}`}>
-                        
+
                         {viewMode === 'title_page' ? (
                             <TitlePageEditor />
                         ) : (

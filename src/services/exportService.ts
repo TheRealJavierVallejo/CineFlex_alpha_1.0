@@ -8,13 +8,24 @@ import { calculatePagination } from './pagination';
  * Handles conversion of script data to various industry formats.
  */
 
+/**
+ * EXPORT SERVICE
+ * Handles conversion of script data to various industry formats.
+ */
+
+export interface ExportOptions {
+    format: 'pdf' | 'fdx' | 'fountain' | 'txt';
+    includeTitlePage: boolean;
+    includeSceneNumbers: boolean;
+    watermark?: string;
+}
+
 // --- 1. FOUNTAIN (TXT) EXPORT ---
-export const exportToTXT = (project: Project): string => {
+export const exportToFountain = (project: Project, options?: Partial<ExportOptions>): string => {
     const tp = project.titlePage;
-    // Generate Header
     let output = '';
-    
-    if (tp) {
+
+    if (options?.includeTitlePage !== false && tp) {
         if (tp.title) output += `Title: ${tp.title}\n`;
         if (tp.credit) output += `Credit: ${tp.credit}\n`;
         if (tp.authors && tp.authors.length > 0) {
@@ -27,16 +38,9 @@ export const exportToTXT = (project: Project): string => {
         if (tp.contact) output += `Contact: ${tp.contact}\n`;
         if (tp.copyright) output += `Copyright: ${tp.copyright}\n`;
         if (tp.additionalInfo) output += `Notes: ${tp.additionalInfo}\n`;
-    } else {
-        // Fallback
-        output += `Title: ${project.name}\n`;
-        output += `Credit: Written by\n`;
-        output += `Draft date: ${new Date().toLocaleDateString()}\n`;
+        output += `\n`; // End title page
     }
-    
-    output += `\n`; // End title page
 
-    // Use shared utility for consistency
     if (project.scriptElements) {
         output += generateFountainText(project.scriptElements);
     }
@@ -45,32 +49,23 @@ export const exportToTXT = (project: Project): string => {
 };
 
 // --- 2. FINAL DRAFT (FDX) EXPORT ---
-export const exportToFDX = (project: Project): string => {
-    // Basic XML structure for FDX
+export const exportToFDX = (project: Project, options?: Partial<ExportOptions>): string => {
     const escapeXML = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
     const tp = project.titlePage;
 
     let xml = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n';
     xml += '<FinalDraft DocumentType="Script" Template="No" Version="4">\n';
-    
-    // Add Title Page Section
-    if (tp) {
+
+    if (options?.includeTitlePage !== false && tp) {
         xml += '  <TitlePage>\n';
-        xml += '    <Header>\n';
-        xml += '      <Paragraph Type="General"><Text>Header</Text></Paragraph>\n';
-        xml += '    </Header>\n';
-        xml += '    <Footer>\n';
-        xml += '      <Paragraph Type="General"><Text>Footer</Text></Paragraph>\n';
-        xml += '    </Footer>\n';
-        
+        xml += '    <Header><Paragraph Type="General"><Text>Header</Text></Paragraph></Header>\n';
+        xml += '    <Footer><Paragraph Type="General"><Text>Footer</Text></Paragraph></Footer>\n';
+
         const addField = (tag: string, value?: string) => {
             if (value) {
                 xml += `    <${tag}>\n`;
-                // FDX title pages often split lines into paragraphs
                 value.split('\n').forEach(line => {
-                    xml += `      <Paragraph Type="General" Alignment="Center">\n`;
-                    xml += `        <Text>${escapeXML(line)}</Text>\n`;
-                    xml += `      </Paragraph>\n`;
+                    xml += `      <Paragraph Type="General" Alignment="Center"><Text>${escapeXML(line)}</Text></Paragraph>\n`;
                 });
                 xml += `    </${tag}>\n`;
             }
@@ -83,12 +78,10 @@ export const exportToFDX = (project: Project): string => {
         addField('Date', tp.draftDate);
         addField('Contact', tp.contact);
         addField('Copyright', tp.copyright);
-        
         xml += '  </TitlePage>\n';
     }
 
     xml += '  <Content>\n';
-
     project.scriptElements?.forEach(el => {
         let type = 'Action';
         switch (el.type) {
@@ -100,271 +93,198 @@ export const exportToFDX = (project: Project): string => {
             case 'transition': type = 'Transition'; break;
         }
 
-        // FDX handles dual dialogue via a "Dual" attribute on the paragraph
         const dualAttr = el.dual ? ' Dual="Yes"' : '';
+        const sceneNumAttr = (options?.includeSceneNumbers && el.type === 'scene_heading' && el.sceneNumber) ? ` Number="${el.sceneNumber}"` : '';
 
-        xml += `    <Paragraph Type="${type}"${dualAttr}>\n`;
+        xml += `    <Paragraph Type="${type}"${dualAttr}${sceneNumAttr}>\n`;
         xml += `      <Text>${escapeXML(el.content)}</Text>\n`;
         xml += `    </Paragraph>\n`;
     });
 
     xml += '  </Content>\n';
     xml += '</FinalDraft>';
-
     return xml;
 };
 
 // --- 3. PDF EXPORT (Industry Standard) ---
-export const exportToPDF = (project: Project) => {
+export const exportToPDF = (project: Project, options: ExportOptions) => {
     const doc = new jsPDF({
         unit: 'in',
-        format: 'letter', // 8.5 x 11
+        format: 'letter',
     });
 
-    // Settings
-    const fontName = 'Courier'; // Standard PDF font
+    const fontName = 'Courier';
     const fontSize = 12;
-    const lineHeight = 0.166; // 6 lines per inch approx (12pt)
-
-    // Margins
+    const lineHeight = 0.166;
     const marginTop = 1.0;
-    const marginBottom = 1.0;
     const marginLeft = 1.5;
-    const pageHeight = 11.0;
     const pageWidth = 8.5;
 
-    // --- TITLE PAGE RENDER ---
+    // Helper for Watermark
+    const renderWatermark = () => {
+        if (!options.watermark) return;
+        const savedColor = doc.getTextColor();
+        doc.setTextColor(200, 200, 200);
+        doc.setFontSize(60);
+        doc.saveGraphicsState();
+        doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
+        doc.text(options.watermark, pageWidth / 2, 5.5, { align: 'center', angle: 45 });
+        doc.restoreGraphicsState();
+        doc.setTextColor(savedColor); // Restore
+        doc.setFontSize(fontSize);
+    };
+
+    // --- TITLE PAGE ---
     const tp = project.titlePage;
-    if (tp) {
+    if (options.includeTitlePage && tp) {
         doc.setFont(fontName, 'normal');
-        
-        // 1. Title (Centered, ~3.5 inches down)
         let cursorY = 3.5;
-        doc.setFontSize(12);
-        
         if (tp.title) {
             const titleLines = doc.splitTextToSize(tp.title.toUpperCase(), 6.0);
             titleLines.forEach((line: string) => {
                 doc.text(line, pageWidth / 2, cursorY, { align: 'center' });
-                cursorY += 0.3; // Double space
+                cursorY += 0.3;
             });
         }
-        
         cursorY += 0.5;
-
-        // 2. Credit
         if (tp.credit) {
             doc.text(tp.credit, pageWidth / 2, cursorY, { align: 'center' });
             cursorY += 0.3;
         }
-
-        // 3. Authors
-        if (tp.authors && tp.authors.length > 0) {
+        if (tp.authors?.length) {
             tp.authors.forEach(auth => {
-                if (auth) {
-                    doc.text(auth, pageWidth / 2, cursorY, { align: 'center' });
-                    cursorY += 0.3;
-                }
+                if (auth) { doc.text(auth, pageWidth / 2, cursorY, { align: 'center' }); cursorY += 0.3; }
             });
         }
+        if (tp.source) { cursorY += 0.2; doc.text(tp.source, pageWidth / 2, cursorY, { align: 'center' }); }
 
-        // 4. Source
-        if (tp.source) {
-             cursorY += 0.2;
-             doc.text(tp.source, pageWidth / 2, cursorY, { align: 'center' });
-        }
-
-        // 5. Contact / Draft Info (Bottom)
-        // Split bottom area: Left (Contact) vs Right (Draft/Copyright)
         const bottomY = 9.0;
-        const leftX = 1.5; // Left margin
-        const rightX = 7.0; // Right margin
+        if (tp.contact) doc.text(doc.splitTextToSize(tp.contact, 3.5), 1.5, bottomY);
 
-        // Bottom Left: Contact
-        if (tp.contact) {
-            const contactLines = doc.splitTextToSize(tp.contact, 3.5);
-            doc.text(contactLines, leftX, bottomY);
-        }
-
-        // Bottom Right: Draft Date, Version, Copyright
         let rightCursorY = bottomY;
-        
-        if (tp.draftVersion) {
-            doc.text(tp.draftVersion, rightX, rightCursorY, { align: 'right' });
-            rightCursorY += 0.2;
-        }
+        if (tp.draftVersion) { doc.text(tp.draftVersion, 7.0, rightCursorY, { align: 'right' }); rightCursorY += 0.2; }
+        if (tp.draftDate) { doc.text(tp.draftDate, 7.0, rightCursorY, { align: 'right' }); rightCursorY += 0.2; }
+        if (tp.copyright) doc.text(tp.copyright, 7.0, rightCursorY, { align: 'right' });
 
-        if (tp.draftDate) {
-            doc.text(tp.draftDate, rightX, rightCursorY, { align: 'right' });
-            rightCursorY += 0.2;
-        }
-        
-        if (tp.copyright) {
-            doc.text(tp.copyright, rightX, rightCursorY, { align: 'right' });
-        }
-        
-        // Add page break for script
         doc.addPage();
     }
 
     // --- SCRIPT CONTENT ---
-    
-    let cursorY = marginTop;
     let currentPdfPage = 1;
-
     const addPage = (pageNum: number) => {
         doc.addPage();
         currentPdfPage = pageNum;
-        cursorY = marginTop;
-        // Add Page Number
-        doc.setFont(fontName, 'normal');
+        renderWatermark();
         doc.setFontSize(12);
         doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
     };
 
-    // Initial Page Number (Page 1)
-    doc.setFont(fontName, 'normal');
+    renderWatermark();
     doc.setFontSize(12);
     doc.text(`${currentPdfPage}.`, 7.5, 0.5, { align: 'right' });
 
     const elements = project.scriptElements || [];
-
-    // Use unified pagination calculation
     const pageMap = calculatePagination(elements);
-
-    // Track dual dialogue state
-    let dualBufferY = 0; // Where the left side started
+    let cursorY = marginTop;
+    let dualBufferY = 0;
 
     for (let i = 0; i < elements.length; i++) {
         const el = elements[i];
         const elementPage = pageMap[el.id] || 1;
 
-        // If element is on a new page, add page break
         if (elementPage > currentPdfPage) {
             addPage(elementPage);
-            dualBufferY = 0; // Reset buffer on new page
+            cursorY = marginTop;
+            dualBufferY = 0;
         }
-
-        // --- DUAL DIALOGUE LOGIC ---
-        const isDualRight = el.dual;
-        const dualWidth = 2.8;
-        const leftColOffset = marginLeft;
-        const rightColOffset = marginLeft + 3.0;
-
-        // --- RENDER ---
-        doc.setFont(fontName, 'normal');
-        doc.setFontSize(fontSize);
 
         let xOffset = marginLeft;
         let maxWidth = 6.0;
         let text = el.content;
         let isUppercase = false;
 
-        // Check if next element is dual (for left column detection)
         const nextIsDual = i + 1 < elements.length && elements[i + 1].dual && elements[i + 1].type === 'character';
 
-        // Determine layout based on type
         switch (el.type) {
             case 'scene_heading':
-                xOffset = marginLeft;
-                maxWidth = 6.0;
-                isUppercase = true;
-                // Add spacing before (only if not first on page)
-                if (cursorY > marginTop) {
-                    cursorY += lineHeight * 2;
+                if (options.includeSceneNumbers && el.sceneNumber) {
+                    doc.text(el.sceneNumber, marginLeft - 0.4, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0));
+                    doc.text(el.sceneNumber, 7.5, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0), { align: 'right' });
                 }
+                maxWidth = 6.0; isUppercase = true;
+                if (cursorY > marginTop) cursorY += lineHeight * 2;
                 break;
             case 'action':
-                xOffset = marginLeft;
                 maxWidth = 6.0;
-                // Add spacing before
-                if (cursorY > marginTop) {
-                    cursorY += lineHeight;
-                }
+                if (cursorY > marginTop) cursorY += lineHeight;
                 break;
             case 'character':
-                if (isDualRight) {
-                    // RIGHT COLUMN
-                    cursorY = dualBufferY;
-                    xOffset = rightColOffset + 0.5;
-                    maxWidth = dualWidth;
-                } else if (nextIsDual) {
-                    // LEFT COLUMN
-                    dualBufferY = cursorY + lineHeight;
-                    xOffset = leftColOffset + 0.5;
-                    maxWidth = dualWidth;
-                    if (cursorY > marginTop) {
-                        cursorY += lineHeight;
-                    }
-                } else {
-                    // STANDARD
-                    xOffset = marginLeft + 2.0;
-                    maxWidth = 3.5;
-                    if (cursorY > marginTop) {
-                        cursorY += lineHeight;
-                    }
-                }
+                if (el.dual) { cursorY = dualBufferY; xOffset = marginLeft + 3.5; maxWidth = 2.8; }
+                else if (nextIsDual) { dualBufferY = cursorY + (cursorY > marginTop ? lineHeight : 0); xOffset = marginLeft + 0.5; maxWidth = 2.8; if (cursorY > marginTop) cursorY += lineHeight; }
+                else { xOffset = marginLeft + 2.0; maxWidth = 3.5; if (cursorY > marginTop) cursorY += lineHeight; }
                 isUppercase = true;
-
-                // Add (CONT'D) if dialogue continues from previous page
-                if (el.isContinued) {
-                    text = text + " (CONT'D)";
-                }
+                if (el.isContinued) text += " (CONT'D)";
                 break;
             case 'dialogue':
-                if (isDualRight) {
-                    xOffset = rightColOffset;
-                    maxWidth = dualWidth;
-                } else if (dualBufferY > 0) {
-                    xOffset = leftColOffset;
-                    maxWidth = dualWidth;
-                } else {
-                    xOffset = marginLeft + 1.0;
-                    maxWidth = 3.5;
-                }
+                if (el.dual) { xOffset = marginLeft + 3.0; maxWidth = 2.8; }
+                else if (dualBufferY > 0) { xOffset = marginLeft; maxWidth = 2.8; }
+                else { xOffset = marginLeft + 1.0; maxWidth = 3.5; }
                 break;
             case 'parenthetical':
-                if (isDualRight) {
-                    xOffset = rightColOffset + 0.3;
-                    maxWidth = dualWidth - 0.6;
-                } else if (dualBufferY > 0) {
-                    xOffset = leftColOffset + 0.3;
-                    maxWidth = dualWidth - 0.6;
-                } else {
-                    xOffset = marginLeft + 1.5;
-                    maxWidth = 3.0;
-                }
+                if (el.dual) { xOffset = marginLeft + 3.3; maxWidth = 2.2; }
+                else if (dualBufferY > 0) { xOffset = marginLeft + 0.3; maxWidth = 2.2; }
+                else { xOffset = marginLeft + 1.5; maxWidth = 3.0; }
                 break;
             case 'transition':
-                xOffset = marginLeft + 4.0;
-                maxWidth = 2.0;
-                isUppercase = true;
-                if (cursorY > marginTop) {
-                    cursorY += lineHeight;
-                }
+                xOffset = marginLeft + 4.0; maxWidth = 2.0; isUppercase = true;
+                if (cursorY > marginTop) cursorY += lineHeight;
                 break;
         }
 
         if (isUppercase) text = text.toUpperCase();
-
         const lines = doc.splitTextToSize(text, maxWidth);
         doc.text(lines, xOffset, cursorY);
-        const blockHeight = lines.length * lineHeight;
+        cursorY += lines.length * lineHeight;
 
-        cursorY += blockHeight;
-
-        // Render (MORE) marker if dialogue continues to next page
         if (el.continuesNext && (el.type === 'dialogue' || el.type === 'character')) {
             cursorY += lineHeight * 0.5;
             doc.text('(MORE)', marginLeft + 3.0, cursorY);
             cursorY += lineHeight * 0.5;
         }
-
-        // Handle dual dialogue buffer reset
-        if (isDualRight) {
-            dualBufferY = 0;
-        }
+        if (el.dual) dualBufferY = 0;
     }
 
     doc.save(`${project.name.replace(/\s+/g, '_')}_script.pdf`);
+};
+
+// Legacy support (defaults to PDF standard)
+export const exportScript = (project: Project, options: ExportOptions) => {
+    switch (options.format) {
+        case 'pdf': exportToPDF(project, options); break;
+        case 'fdx': {
+            const xml = exportToFDX(project, options);
+            downloadFile(xml, `${project.name}.fdx`, 'text/xml');
+            break;
+        }
+        case 'fountain': {
+            const text = exportToFountain(project, options);
+            downloadFile(text, `${project.name}.fountain`, 'text/plain');
+            break;
+        }
+        case 'txt': {
+            const text = exportToFountain(project, options);
+            downloadFile(text, `${project.name}.txt`, 'text/plain');
+            break;
+        }
+    }
+};
+
+const downloadFile = (content: string, filename: string, type: string) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
 };
