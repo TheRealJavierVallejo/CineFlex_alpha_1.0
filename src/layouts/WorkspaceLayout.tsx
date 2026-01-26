@@ -76,7 +76,32 @@ export const WorkspaceLayout: React.FC = () => {
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
-    // const { setSaving, setSaved, setError } = useSaveStatus(); // Handled by useAutoSave hook now
+
+    // 🔥 CRITICAL FIX: Functional update to prevent "Zombie Closure" race conditions
+    // This ensures we always merge new script elements into the LATEST project state,
+    // not the state captured when the debounce started.
+    // HOISTED to ensure availability for all handlers
+    const updateScriptElements = useCallback((elements: ScriptElement[]) => {
+        setProject(prev => {
+            if (!prev) return null;
+
+            // 1. Update project state with new elements
+            const tempProject = { ...prev, scriptElements: elements, lastModified: Date.now() };
+
+            // 2. Sync scenes
+            const syncedProject = syncScriptToScenes(tempProject);
+
+            // 3. Persist elements INTO the active draft object inside project.drafts
+            // We use the *fresh* prev.drafts array, so if a draft was deleted, it's already gone here.
+            const updatedDrafts = syncedProject.drafts.map((d: ScriptDraft) =>
+                d.id === syncedProject.activeDraftId
+                    ? { ...d, content: elements, updatedAt: Date.now() }
+                    : d
+            );
+
+            return { ...syncedProject, drafts: updatedDrafts };
+        });
+    }, []); // No dependencies means this function never recreates, preventing stale closures
 
     // Split View State
     const [sydOpen, setSydOpen] = useState(false);
