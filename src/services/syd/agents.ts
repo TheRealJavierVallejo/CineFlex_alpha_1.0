@@ -59,7 +59,8 @@ export const constructSystemPrompt = (agentType: SydAgentType, variables: Record
 
     // Replace placeholders like [TargetField]
     Object.entries(variables).forEach(([key, value]) => {
-        prompt = prompt.replace(`[${key}]`, value);
+        const placeholder = `[${key}]`;
+        prompt = prompt.split(placeholder).join(value);
     });
 
     return prompt;
