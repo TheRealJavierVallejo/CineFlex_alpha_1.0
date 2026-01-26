@@ -145,10 +145,23 @@ export function useAutoSave<T>(
         };
     }, [saveNow]);
 
+    // Cancel pending auto-save
+    const cancelAutoSave = useCallback(() => {
+        debouncedSave.cancel();
+        if (statusResetTimerRef.current) {
+            clearTimeout(statusResetTimerRef.current);
+            statusResetTimerRef.current = null;
+        }
+        if (saveStatus === 'saving' || saveStatus === 'idle') {
+            setSaveStatus('idle'); // Reset if we canceled in-flight or pending
+        }
+    }, [debouncedSave, saveStatus]);
+
     return {
         saveStatus,
         lastSavedAt,
         saveNow,
+        cancel: cancelAutoSave
     };
 }
 

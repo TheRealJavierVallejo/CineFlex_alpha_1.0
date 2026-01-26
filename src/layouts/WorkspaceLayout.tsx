@@ -122,7 +122,7 @@ export const WorkspaceLayout: React.FC = () => {
         setToasts((prev: ToastNotification[]) => [...prev, { id, message, type, action }]);
     }, []);
 
-    const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
+    const { saveStatus, lastSavedAt, saveNow, cancel: cancelAutoSave } = useAutoSave(
         project,
         useCallback((data: Project | null) => {
             if (data?.id) {
@@ -281,8 +281,8 @@ export const WorkspaceLayout: React.FC = () => {
     const handleCreateDraft = useCallback(async (name?: string) => {
         if (!project) return;
 
-        // Cancel any pending auto-saves to prevent overwrite
-        saveProjectDataDebounced.cancel();
+        // Cancel pending HOOK auto-save (the real one)
+        cancelAutoSave();
 
         const draftName = name || `Snapshot ${project.drafts.length + 1}`;
         const newDraft: ScriptDraft = {
@@ -302,13 +302,13 @@ export const WorkspaceLayout: React.FC = () => {
         // Use immediate transactional save (cancels debounce + queues)
         await saveProjectDataImmediate(updatedProject.id, updatedProject);
         showToast(`Snapshot saved: ${draftName}`, 'success');
-    }, [project, showToast]);
+    }, [project, showToast, cancelAutoSave]);
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
 
-        // Cancel any pending auto-saves to prevent overwrite
-        saveProjectDataDebounced.cancel();
+        // Cancel pending HOOK auto-save (the real one)
+        cancelAutoSave();
 
         const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
         if (!draft) {
@@ -338,7 +338,7 @@ export const WorkspaceLayout: React.FC = () => {
         // Use immediate transactional save
         await saveProjectDataImmediate(syncedProject.id, syncedProject);
         showToast(`Switched to: ${draft.name}`, 'success');
-    }, [project, showToast]);
+    }, [project, showToast, cancelAutoSave]);
 
     const handleDeleteDraft = useCallback(async (draftId: string) => {
         if (!project) return;
@@ -348,8 +348,8 @@ export const WorkspaceLayout: React.FC = () => {
             return;
         }
 
-        // Cancel any pending auto-saves to prevent overwrite
-        saveProjectDataDebounced.cancel();
+        // Cancel pending HOOK auto-save (the real one)
+        cancelAutoSave();
 
         let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
         let activeId = project.activeDraftId;
@@ -380,7 +380,7 @@ export const WorkspaceLayout: React.FC = () => {
         // Use immediate transactional save
         await saveProjectDataImmediate(updatedProject.id, updatedProject);
         showToast("Version deleted", 'info');
-    }, [project, showToast]);
+    }, [project, showToast, cancelAutoSave]);
 
     const handleRenameDraft = useCallback(async (draftId: string, name: string) => {
         if (!project) return;
