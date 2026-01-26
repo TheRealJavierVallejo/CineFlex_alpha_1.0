@@ -309,7 +309,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
                 // Analyze conversation for frustration patterns
                 const frustrationAnalysis = detectFrustrationPatterns(
-                    updatedMessages.map(m => ({ role: m.role, content: m.content }))
+                    recentHistory.map(m => ({ role: m.role, content: m.content }))
                 );
 
                 // Build enhanced system prompt (adds frustration alert if needed)
