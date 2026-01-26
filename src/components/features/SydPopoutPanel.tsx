@@ -684,15 +684,21 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
             {/* Input Area */}
             <div className="p-3 border-t border-border bg-surface-secondary/50 backdrop-blur-sm">
                 <div className="flex gap-2">
-                    <input
-                        type="text"
+                    <textarea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
                         placeholder={!isReady && tier === 'free' ? "Connect to Local AI first..." : "Type instructions..."}
                         disabled={isGenerating || (tier === 'free' && !isReady)}
                         className="flex-1 px-3 py-2 bg-surface border border-border rounded-md text-text-primary text-xs focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none disabled:opacity-50 transition-all placeholder:text-text-muted"
                         autoFocus
+                        rows={1}
+                        style={{ resize: 'none', overflow: 'hidden' }}
                     />
                     <button
                         onClick={handleSend}
