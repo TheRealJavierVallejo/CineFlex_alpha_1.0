@@ -13,11 +13,17 @@ export const DraftsManager: React.FC = () => {
     const [selectedPreviewId, setSelectedPreviewId] = useState<string>(project.activeDraftId || '');
 
     // Ensure we have a valid selection if the active draft changes externally
+    // OR if the currently selected preview draft was deleted
     useEffect(() => {
-        if (!selectedPreviewId && project.activeDraftId) {
+        const draftExists = project.drafts.some(d => d.id === selectedPreviewId);
+        
+        if ((!selectedPreviewId || !draftExists) && project.activeDraftId) {
             setSelectedPreviewId(project.activeDraftId);
+        } else if (!draftExists && project.drafts.length > 0) {
+            // Fallback to first draft if active is also somehow missing
+            setSelectedPreviewId(project.drafts[0].id);
         }
-    }, [project.activeDraftId, selectedPreviewId]);
+    }, [project.drafts, project.activeDraftId, selectedPreviewId]);
 
     // Find the actual draft objects
     const previewDraft = project.drafts.find(d => d.id === selectedPreviewId) || project.drafts[0];
@@ -35,7 +41,6 @@ export const DraftsManager: React.FC = () => {
         e.stopPropagation();
         if (window.confirm(`Are you sure you want to permanently delete "${draftName}"?`)) {
             handleDeleteDraft(draftId);
-            // If we deleted the one being previewed, the component will auto-fallback due to the find() logic above
         }
     };
 
@@ -164,13 +169,14 @@ export const DraftsManager: React.FC = () => {
                 {/* Read-Only Editor */}
                 <div className="flex-1 overflow-y-auto w-full">
                     <div className="min-h-full flex justify-center py-10 pb-[20vh]">
-                        <div className="w-full max-w-[850px] pointer-events-none select-none opacity-90">
+                        <div className="w-full max-w-[850px] opacity-90">
                             {/* We use key to force re-render when preview selection changes */}
                             {previewDraft ? (
                                 <SlateScriptEditor
                                     key={`preview-${previewDraft.id}`}
                                     initialElements={previewDraft.content}
-                                    readOnly={true} // IMPORTANT: Read-only mode
+                                    readOnly={true}
+                                    isLightMode={false} // Force dark mode for preview consistency
                                     projectId={project.id}
                                     onChange={() => {}} // No-op
                                 />
