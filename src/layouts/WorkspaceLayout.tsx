@@ -91,6 +91,11 @@ export const WorkspaceLayout: React.FC = () => {
     }, [sydWidth]);
 
 
+    // Move showToast definition BEFORE useAutoSave
+    const showToast: ShowToastFn = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info', action?: { label: string, onClick: () => void }) => {
+        const id = Date.now() + Math.random(); // Unique even within same millisecond
+        setToasts((prev: ToastNotification[]) => [...prev, { id, message, type, action }]);
+    }, []);
 
     const { saveStatus, lastSavedAt, saveNow } = useAutoSave(
         project,
@@ -121,11 +126,6 @@ export const WorkspaceLayout: React.FC = () => {
         callback: () => setShowCommandPalette(true),
         description: 'Open Command Palette',
     });
-
-    const showToast: ShowToastFn = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info', action?: { label: string, onClick: () => void }) => {
-        const id = Date.now() + Math.random(); // Unique even within same millisecond
-        setToasts((prev: ToastNotification[]) => [...prev, { id, message, type, action }]);
-    }, []);
 
     const closeToast = useCallback((id: number) => {
         setToasts((prev: ToastNotification[]) => prev.filter(t => t.id !== id));
