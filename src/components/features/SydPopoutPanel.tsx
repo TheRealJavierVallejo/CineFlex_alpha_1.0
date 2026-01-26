@@ -86,6 +86,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
     // Streaming response tracking
     const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+    const [streamingContent, setStreamingContent] = useState<string>('');
 
     const [hasClaudeKey, setHasClaudeKey] = useState<boolean | null>(null);
 
@@ -332,12 +333,8 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                         systemPrompt,
                         fullProjectContext,
                         (chunk: string) => {
-                            // Update the streaming message with each chunk
-                            setMessages(prev => prev.map(msg =>
-                                msg.id === assistantMsgId
-                                    ? { ...msg, content: msg.content + chunk }
-                                    : msg
-                            ));
+                            // Update streaming content state instead of messages array
+                            setStreamingContent(prev => prev + chunk);
                         },
                         {
                             temperature: temperature,
@@ -348,6 +345,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
 
                     // Finalize the message
                     setStreamingMessageId(null);
+                    setStreamingContent(''); // Clear streaming state
                     setMessages(prev => prev.map(msg =>
                         msg.id === assistantMsgId
                             ? { ...msg, content: fullResponse }
@@ -364,6 +362,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                 } catch (streamError: any) {
                     // Streaming failed, update placeholder with error
                     setStreamingMessageId(null);
+                    setStreamingContent(''); // Clear streaming content on error
 
                     let errorMessage = "Sorry, I encountered an error. Please try again.";
 
@@ -439,11 +438,13 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
         } finally {
             setIsGenerating(false);
             setStreamingMessageId(null);
+            setStreamingContent('');
         }
     };
 
     // Clear conversation and start fresh
     const handleClearConversation = () => {
+        setStreamingContent('');
         const newSession: ChatSession = {
             id: crypto.randomUUID(),
             agentType: currentSession.agentType,
@@ -658,7 +659,7 @@ export const SydPopoutPanel: React.FC<SydPopoutPanelProps> = ({
                                         a: ({ href, children }) => <a href={href} className="text-primary underline hover:opacity-80" target="_blank" rel="noopener noreferrer">{children}</a>,
                                     }}
                                 >
-                                    {msg.content}
+                                    {streamingMessageId === msg.id ? streamingContent : msg.content}
                                 </ReactMarkdown>
                                 {/* Streaming cursor indicator */}
                                 {streamingMessageId === msg.id && (
