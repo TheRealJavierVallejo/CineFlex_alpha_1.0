@@ -8,6 +8,7 @@ import { Character, StoryNote, SydMessage, SydThread } from '../../types';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useLocalLlm } from '../../context/LocalLlmContext';
 import { ModelDownloadModal } from '../ui/ModelDownloadModal';
+import { classifyClaudeError } from '../../services/claude';
 import { supabase } from '../../services/supabaseClient';
 
 interface Message {
@@ -372,18 +373,15 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
           loadMessages(threadId);
 
         } catch (error: any) {
-          let errorMessage = "Sorry, I encountered an error connecting to Claude. Please try again.";
+          const classified = classifyClaudeError(error);
+          let errorMessage = classified.userMessage;
 
-          // Check for API key errors
-          if (error.message?.includes('CLAUDE_API_KEY_MISSING')) {
-            errorMessage = "⚠️ Claude API key not found. Please add your API key in Settings → API Keys to use Script Chat.";
-          } else if (error.message?.includes('CLAUDE_API_KEY_INVALID')) {
-            errorMessage = "⚠️ Invalid Claude API key. Please update your API key in Settings → API Keys.";
-          } else if (error.message?.includes('authentication_error')) {
-            errorMessage = "⚠️ Claude authentication failed. Please verify your API key in Settings → API Keys.";
+          // Special handling for 401/403 if not fully caught by classifier
+          if (error.status === 401 || error.status === 403 || error.message?.includes('401') || error.message?.includes('403')) {
+            errorMessage = "Authentication failed. Please check your API key in Settings → API Keys.";
           }
 
-          console.error('Claude Chat Error:', error);
+          console.error("Claude Chat Error:", error);
 
           setMessages(prev => prev.map(m =>
             m.id === aiMsgId ? { ...m, content: errorMessage } : m

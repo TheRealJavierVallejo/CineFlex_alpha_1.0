@@ -79,6 +79,25 @@ export function classifyClaudeError(error: any): ClaudeError {
     const errorMessage = error?.message || error?.error?.message || String(error);
     const errorType = error?.error?.type || error?.type || '';
 
+    // Custom UI Error Strings
+    if (errorMessage.includes('CLAUDE_API_KEY_MISSING')) {
+        return {
+            type: ClaudeErrorType.INVALID_KEY,
+            message: errorMessage,
+            userMessage: 'Claude API key not found. Please add your API key in Settings.',
+            retryable: false
+        };
+    }
+
+    if (errorMessage.includes('CLAUDE_API_KEY_INVALID')) {
+        return {
+            type: ClaudeErrorType.INVALID_KEY,
+            message: errorMessage,
+            userMessage: 'Invalid Claude API key format. Please check your key in Settings.',
+            retryable: false
+        };
+    }
+
     // Rate limit
     if (errorType === 'rate_limit_error' || errorMessage.includes('rate limit')) {
         return {

@@ -198,7 +198,8 @@ const withRetry = async <T>(
         }
     }
 
-    throw lastError;
+    const finalClassified = classifyGeminiError(lastError);
+    throw new Error(finalClassified.userMessage);
 };
 
 // --- CORE GENERATION ---
