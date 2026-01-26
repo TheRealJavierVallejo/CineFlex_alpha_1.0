@@ -93,16 +93,42 @@ export const WorkspaceLayout: React.FC = () => {
         try {
             const data = await getProjectData(id);
             if (data) {
+                // 1. Repair Legacy/Invalid Draft IDs (Fixes "initial-draft" UUID error)
+                // If the active draft ID is the invalid string, generate a new valid UUID.
+                let needsSave = false;
+
+                // Ensure drafts array exists
                 if (!data.drafts || data.drafts.length === 0) {
+                    const newDraftId = crypto.randomUUID(); // Generate valid UUID
                     const initialDraft: ScriptDraft = {
-                        id: 'initial-draft', name: 'Initial Script', content: data.scriptElements || [], updatedAt: data.lastModified || Date.now()
+                        id: newDraftId,
+                        name: 'Initial Script',
+                        content: data.scriptElements || [],
+                        updatedAt: data.lastModified || Date.now()
                     };
                     data.drafts = [initialDraft];
-                    data.activeDraftId = initialDraft.id;
+                    data.activeDraftId = newDraftId;
                     data.scriptElements = initialDraft.content;
+                    needsSave = true;
                 }
+                // Fix existing bad data from previous buggy versions
+                else if (data.activeDraftId === 'initial-draft') {
+                    console.log("Repairing invalid draft ID...");
+                    const newId = crypto.randomUUID();
+                    data.activeDraftId = newId;
+                    // Also update the ID inside the drafts array
+                    data.drafts = data.drafts.map(d => d.id === 'initial-draft' ? { ...d, id: newId } : d);
+                    needsSave = true;
+                }
+
                 setProject(data);
                 setActiveProjectId(id);
+
+                // Immediate save to persist the repair
+                if (needsSave) {
+                    saveProjectData(data.id, data).catch(err => console.error("Repair save failed:", err));
+                }
+
             } else {
                 showToast("Project not found", 'error');
                 navigate('/');
