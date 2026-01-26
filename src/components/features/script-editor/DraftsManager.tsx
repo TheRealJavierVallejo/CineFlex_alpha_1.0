@@ -4,7 +4,6 @@ import { SlateScriptEditor } from './SlateScriptEditor';
 import { ScriptDraft } from '../../../types';
 import Button from '../../ui/Button';
 import { Plus, Download, CheckCircle, Eye } from 'lucide-react';
-import { format } from 'date-fns';
 
 export const DraftsManager: React.FC = () => {
     const { project, handleCreateDraft, handleSwitchDraft, importScript } = useWorkspace();
@@ -101,7 +100,7 @@ export const DraftsManager: React.FC = () => {
 
                                 {/* Description / Date */}
                                 <p className="text-xs text-text-secondary mb-4 line-clamp-2">
-                                    Last edited: {format(draft.updatedAt, 'MMM d, yyyy h:mm a')}
+                                    Last edited: {new Date(draft.updatedAt).toLocaleString()}
                                 </p>
 
                                 {/* Action Button */}
