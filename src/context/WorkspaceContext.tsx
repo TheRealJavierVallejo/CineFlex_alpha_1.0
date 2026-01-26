@@ -19,6 +19,9 @@ export interface WorkspaceContextType {
     updateScriptElements: (elements: ScriptElement[]) => void;
     showToast: ShowToastFn;
     saveNow: () => Promise<void>;
+    saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+    lastSavedAt?: Date;
+    lastError?: string;
 }
 
 export function useWorkspace(): WorkspaceContextType {

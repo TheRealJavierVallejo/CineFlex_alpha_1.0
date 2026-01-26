@@ -2,8 +2,15 @@ import React from 'react';
 import { Check, Loader2, AlertCircle, Save } from 'lucide-react';
 import { useSaveStatus } from '../../context/SaveStatusContext';
 
-export const SaveIndicator: React.FC = () => {
-    const { status, errorMessage } = useSaveStatus();
+interface SaveIndicatorProps {
+    status?: 'idle' | 'saving' | 'saved' | 'error';
+    errorMessage?: string;
+}
+
+export const SaveIndicator: React.FC<SaveIndicatorProps> = ({ status: propStatus, errorMessage: propError }) => {
+    const context = useSaveStatus();
+    const status = propStatus || context.status;
+    const errorMessage = propError || context.errorMessage;
 
     if (status === 'saved' || status === 'idle') {
         return (

@@ -546,7 +546,10 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         last_synced: new Date().toISOString()
     }).eq('id', projectId);
 
-    if (pErr) console.error("Save Project Metadata Failed", pErr);
+    if (pErr) {
+        console.error("Save Project Metadata Failed", pErr);
+        throw new Error(`Failed to save project settings: ${pErr.message}`);
+    }
 
     // 3. Update Scripts
     // Using onConflict='project_id' relies on the unique constraint on that column.
@@ -556,7 +559,10 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         last_saved: new Date().toISOString()
     }, { onConflict: 'project_id', ignoreDuplicates: false });
 
-    if (scErr) console.error("Save Script Failed:", scErr.message, scErr.details, scErr.hint);
+    if (scErr) {
+        console.error("Save Script Failed:", scErr.message, scErr.details, scErr.hint);
+        throw new Error(`Failed to save script content: ${scErr.message}`);
+    }
 
     // 4. Update Scenes
     const currentSceneIds = cleanProject.scenes.map((s: Scene) => s.id);
@@ -568,7 +574,11 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         .eq('project_id', projectId)
         .not('id', 'in', `(${currentSceneIds.length > 0 ? currentSceneIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
 
-    if (scenePruneErr) console.error("Prune Scenes Failed", scenePruneErr);
+    if (scenePruneErr) {
+        console.error("Prune Scenes Failed", scenePruneErr);
+        // We throw here because pruning failure impacts data integrity (orphaned records)
+        throw new Error(`Failed to prune orphaned scenes: ${scenePruneErr.message}`);
+    }
 
     const dbScenes = cleanProject.scenes.map((s: Scene) => ({
         id: s.id,
@@ -582,7 +592,10 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
 
     if (dbScenes.length > 0) {
         const { error: sErr } = await supabase.from('scenes').upsert(dbScenes);
-        if (sErr) console.error("Save Scenes Failed", sErr);
+        if (sErr) {
+            console.error("Save Scenes Failed", sErr);
+            throw new Error(`Failed to save scenes: ${sErr.message}`);
+        }
     }
 
     // 5. Update Shots
@@ -595,7 +608,10 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         .eq('project_id', projectId)
         .not('id', 'in', `(${currentShotIds.length > 0 ? currentShotIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
 
-    if (shotPruneErr) console.error("Prune Shots Failed", shotPruneErr);
+    if (shotPruneErr) {
+        console.error("Prune Shots Failed", shotPruneErr);
+        throw new Error(`Failed to prune orphaned shots: ${shotPruneErr.message}`);
+    }
 
     const dbShots = cleanProject.shots.map((s: Shot) => {
         const { id, sceneId, sequence, shotType, description, dialogue, ...rest } = s;
@@ -614,7 +630,10 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
 
     if (dbShots.length > 0) {
         const { error: shErr } = await supabase.from('shots').upsert(dbShots);
-        if (shErr) console.error("Save Shots Failed", shErr);
+        if (shErr) {
+            console.error("Save Shots Failed", shErr);
+            throw new Error(`Failed to save shots: ${shErr.message}`);
+        }
     }
 
     // 6. Cleanup Unused Images (Fire & Forget)

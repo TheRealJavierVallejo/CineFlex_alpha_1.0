@@ -6,6 +6,7 @@ import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useSaveStatus } from '../context/SaveStatusContext';
 import { WorkspaceContextType } from '../context/WorkspaceContext'; // NEW IMPORT
 import { Loader2 } from 'lucide-react';
 import { ShotEditor, LazyWrapper } from '../components/features/LazyComponents';
@@ -96,6 +97,7 @@ export const WorkspaceLayout: React.FC = () => {
         setToasts((prev: ToastNotification[]) => [...prev, { id, message, type, action }]);
     }, []);
 
+    const { status: globalSaveStatus, lastSavedAt: globalLastSavedAt, lastError: globalLastError } = useSaveStatus();
     const { saveStatus, lastSavedAt, saveNow, cancel: cancelAutoSave } = useAutoSave(
         project,
         useCallback((data: Project | null) => {
@@ -363,8 +365,11 @@ export const WorkspaceLayout: React.FC = () => {
     const handleEditShot = useCallback((shot: Shot) => { setEditingShot(shot); setIsEditorOpen(true); }, []);
 
     const contextValue: WorkspaceContextType = useMemo(() => ({
-        project: project!, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot, handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot, importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft, updateScriptElements, showToast, saveNow
-    }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot, handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot, importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft, updateScriptElements, showToast, saveNow]);
+        project: project!, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot, handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot, importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft, updateScriptElements, showToast, saveNow,
+        saveStatus: globalSaveStatus,
+        lastSavedAt: globalLastSavedAt,
+        lastError: globalLastError
+    }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot, handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot, importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft, updateScriptElements, showToast, saveNow, globalSaveStatus, globalLastSavedAt, globalLastError]);
 
     if (isLoading || !project) {
         return (

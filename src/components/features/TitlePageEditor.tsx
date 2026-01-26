@@ -34,7 +34,7 @@ const TEMPLATES = {
 type TemplateKey = keyof typeof TEMPLATES;
 
 export const TitlePageEditor: React.FC = () => {
-  const { project, handleUpdateProject, saveNow } = useWorkspace();
+  const { project, handleUpdateProject, saveNow, saveStatus } = useWorkspace();
   const [data, setData] = useState<TitlePageData>({
     title: project.name,
     credit: 'Written by',
@@ -48,46 +48,6 @@ export const TitlePageEditor: React.FC = () => {
   });
 
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>('feature');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-
-  // Store debounced function in ref so it's stable across renders
-  const debouncedSaveRef = useRef<ReturnType<typeof debounce<(newData: TitlePageData) => void>> | null>(null);
-
-  // Refs to access latest state in cleanup without stale closures
-  const dataRef = useRef(data);
-  const projectRef = useRef(project);
-
-  // Keep refs in sync
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
-
-  useEffect(() => {
-    projectRef.current = project;
-  }, [project]);
-
-  // Initialize debounced save once on mount
-  useEffect(() => {
-    debouncedSaveRef.current = debounce((newData: TitlePageData) => {
-      setSaveStatus('saving');
-      handleUpdateProject({ ...projectRef.current, titlePage: newData });
-      setTimeout(() => setSaveStatus('saved'), 800);
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    }, 1000);
-
-    // Cleanup on unmount: cancel pending + force save latest data
-    return () => {
-      debouncedSaveRef.current?.cancel();
-
-      // Force immediate save with latest data from refs
-      const currentData = dataRef.current;
-      if (currentData.title || currentData.authors?.[0]) {
-        handleUpdateProject({ ...projectRef.current, titlePage: currentData });
-        saveNow();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← Empty deps: debounce instance created once
 
   // Load existing data on mount
   useEffect(() => {
@@ -99,42 +59,46 @@ export const TitlePageEditor: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
+  const triggerUpdate = useCallback((newData: TitlePageData) => {
+    handleUpdateProject({ ...project, titlePage: newData });
+  }, [project, handleUpdateProject]);
+
   const handleChange = useCallback((field: keyof TitlePageData, value: string) => {
     setData(prev => {
       const newData = { ...prev, [field]: value };
-      debouncedSaveRef.current?.(newData);
+      triggerUpdate(newData);
       return newData;
     });
-  }, []);
+  }, [triggerUpdate]);
 
   const handleAuthorChange = useCallback((index: number, value: string) => {
     setData(prev => {
       const newAuthors = [...(prev.authors || [])];
       newAuthors[index] = value;
       const newData = { ...prev, authors: newAuthors };
-      debouncedSaveRef.current?.(newData);
+      triggerUpdate(newData);
       return newData;
     });
-  }, []);
+  }, [triggerUpdate]);
 
   const addAuthor = useCallback(() => {
     setData(prev => {
       const newAuthors = [...(prev.authors || []), ''];
       const newData = { ...prev, authors: newAuthors };
-      debouncedSaveRef.current?.(newData);
+      triggerUpdate(newData);
       return newData;
     });
-  }, []);
+  }, [triggerUpdate]);
 
   const removeAuthor = useCallback((index: number) => {
     setData(prev => {
       const newAuthors = (prev.authors || []).filter((_, i) => i !== index);
       if (newAuthors.length === 0) newAuthors.push('');
       const newData = { ...prev, authors: newAuthors };
-      debouncedSaveRef.current?.(newData);
+      triggerUpdate(newData);
       return newData;
     });
-  }, []);
+  }, [triggerUpdate]);
 
   const handleTemplateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTemplate = e.target.value as TemplateKey;
@@ -146,12 +110,12 @@ export const TitlePageEditor: React.FC = () => {
 
       if (isDefaultCredit) {
         const newData = { ...prev, credit: TEMPLATES[newTemplate].credit };
-        debouncedSaveRef.current?.(newData);
+        triggerUpdate(newData);
         return newData;
       }
       return prev;
     });
-  }, []);
+  }, [triggerUpdate]);
 
   return (
     <div className="flex-1 h-full overflow-hidden bg-app flex flex-col">
@@ -202,6 +166,7 @@ export const TitlePageEditor: React.FC = () => {
                   <Input
                     value={data.title || ''}
                     onChange={(e) => handleChange('title', e.target.value)}
+                    onBlur={() => saveNow()}
                     placeholder="The Great American Screenplay"
                     className="font-bold"
                   />
@@ -213,6 +178,7 @@ export const TitlePageEditor: React.FC = () => {
                     <Input
                       value={data.credit || ''}
                       onChange={(e) => handleChange('credit', e.target.value)}
+                      onBlur={() => saveNow()}
                       placeholder="Written by"
                     />
                   </div>
@@ -222,6 +188,7 @@ export const TitlePageEditor: React.FC = () => {
                     <Input
                       value={data.source || ''}
                       onChange={(e) => handleChange('source', e.target.value)}
+                      onBlur={() => saveNow()}
                       placeholder="Based on..."
                     />
                   </div>
@@ -234,6 +201,7 @@ export const TitlePageEditor: React.FC = () => {
                       <Input
                         value={author}
                         onChange={(e) => handleAuthorChange(idx, e.target.value)}
+                        onBlur={() => saveNow()}
                         placeholder="Jane Doe"
                       />
                       {(data.authors?.length || 0) > 1 && (
@@ -259,6 +227,7 @@ export const TitlePageEditor: React.FC = () => {
                     <Input
                       value={data.draftDate || ''}
                       onChange={(e) => handleChange('draftDate', e.target.value)}
+                      onBlur={() => saveNow()}
                       placeholder="e.g. January 1, 2024"
                     />
                   </div>
@@ -268,6 +237,7 @@ export const TitlePageEditor: React.FC = () => {
                     <Input
                       value={data.draftVersion || ''}
                       onChange={(e) => handleChange('draftVersion', e.target.value)}
+                      onBlur={() => saveNow()}
                       placeholder="e.g. First Draft"
                     />
                   </div>
@@ -284,6 +254,7 @@ export const TitlePageEditor: React.FC = () => {
                     <Textarea
                       value={data.contact || ''}
                       onChange={(e) => handleChange('contact', e.target.value)}
+                      onBlur={() => saveNow()}
                       placeholder="Address, Phone, Email..."
                       className="h-32 resize-none"
                     />
@@ -295,6 +266,7 @@ export const TitlePageEditor: React.FC = () => {
                       <Input
                         value={data.copyright || ''}
                         onChange={(e) => handleChange('copyright', e.target.value)}
+                        onBlur={() => saveNow()}
                         placeholder="© 2024 Name"
                       />
                     </div>
@@ -304,6 +276,7 @@ export const TitlePageEditor: React.FC = () => {
                       <Input
                         value={data.wgaRegistration || ''}
                         onChange={(e) => handleChange('wgaRegistration', e.target.value)}
+                        onBlur={() => saveNow()}
                         placeholder="WGA Number"
                       />
                     </div>
@@ -315,6 +288,7 @@ export const TitlePageEditor: React.FC = () => {
                   <Input
                     value={data.additionalInfo || ''}
                     onChange={(e) => handleChange('additionalInfo', e.target.value)}
+                    onBlur={() => saveNow()}
                     placeholder="Any other details..."
                   />
                 </div>

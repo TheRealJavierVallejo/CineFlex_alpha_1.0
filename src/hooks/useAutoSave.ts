@@ -29,12 +29,14 @@ export function useAutoSave<T>(
         debounce(async (dataToSave: T) => {
             if (!isMountedRef.current) return;
             try {
+                console.log('[AUTOSAVE] start');
                 setSaveStatus('saving');
                 setSaving();
                 onSave?.();
                 await saveFunction(dataToSave);
 
                 if (isMountedRef.current) {
+                    console.log('[AUTOSAVE] success');
                     setSaveStatus('saved');
                     setSaved();
                     setLastSavedAt(new Date());
@@ -47,10 +49,10 @@ export function useAutoSave<T>(
                 }
             } catch (error) {
                 if (isMountedRef.current) {
+                    console.error('[AUTOSAVE] failed:', error);
                     setSaveStatus('error');
                     setGlobalError(error instanceof Error ? error.message : 'Save failed');
                     onError?.(error as Error);
-                    console.error('Auto-save failed:', error);
                 }
             }
         }, delay)
@@ -59,30 +61,14 @@ export function useAutoSave<T>(
     useEffect(() => {
         if (previousDataRef.current === data) return;
         previousDataRef.current = data;
+        console.log('[AUTOSAVE] scheduled');
         debouncedSave(data);
     }, [data, debouncedSave]);
 
     const saveNow = useCallback(async () => {
-        debouncedSave.cancel();
-        try {
-            setSaveStatus('saving');
-            setSaving();
-            onSave?.();
-            await saveFunction(data);
-            if (isMountedRef.current) {
-                setSaveStatus('saved');
-                setSaved();
-                setLastSavedAt(new Date());
-                onSuccess?.();
-            }
-        } catch (error) {
-            if (isMountedRef.current) {
-                setSaveStatus('error');
-                setGlobalError(error instanceof Error ? error.message : 'Save failed');
-                onError?.(error as Error);
-            }
-        }
-    }, [data, saveFunction, onSave, onSuccess, onError, debouncedSave]);
+        console.log('[AUTOSAVE] saving now (flush)');
+        debouncedSave.flush();
+    }, [debouncedSave]);
 
     // EXPOSED CANCEL FUNCTION
     const cancel = useCallback(() => {
