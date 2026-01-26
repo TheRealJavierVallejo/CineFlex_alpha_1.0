@@ -56,7 +56,6 @@ export function useAutoSave<T>(
         }, delay)
     ).current;
 
-    // Trigger save when data changes
     useEffect(() => {
         if (previousDataRef.current === data) return;
         previousDataRef.current = data;
@@ -64,7 +63,7 @@ export function useAutoSave<T>(
     }, [data, debouncedSave]);
 
     const saveNow = useCallback(async () => {
-        debouncedSave.cancel(); // Cancel pending debounce if we force save
+        debouncedSave.cancel();
         try {
             setSaveStatus('saving');
             setSaving();
@@ -106,16 +105,11 @@ export function useAutoSave<T>(
         return () => {
             isMountedRef.current = false;
             if (statusResetTimerRef.current) clearTimeout(statusResetTimerRef.current);
-            debouncedSave.cancel(); // Cancel pending saves on unmount to prevent stale overwrites
+            debouncedSave.cancel(); // Cancel pending saves on unmount
         };
     }, [debouncedSave]);
 
-    return {
-        saveStatus,
-        lastSavedAt,
-        saveNow,
-        cancel // Now exposed
-    };
+    return { saveStatus, lastSavedAt, saveNow, cancel };
 }
 
 export default useAutoSave;
