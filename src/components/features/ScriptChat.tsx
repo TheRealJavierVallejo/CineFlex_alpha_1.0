@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Trash2, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { streamSydResponse } from '../../services/syd/chatEngine';
 import { getCharacters, getStoryNotes } from '../../services/storage';
 import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread, updateThreadTitle } from '../../services/sydChatStore';

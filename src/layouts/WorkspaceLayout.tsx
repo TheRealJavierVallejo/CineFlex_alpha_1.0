@@ -16,26 +16,7 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { ScriptChat } from '../components/features/ScriptChat';
 import { ResizableDivider } from '../components/ui/ResizableDivider';
 import { Header } from '../components/layout/Header';
-
-export interface WorkspaceContextType {
-    project: Project;
-    handleUpdateProject: (updated: Project) => void;
-    handleUpdateSettings: <K extends keyof WorldSettings>(key: K, value: WorldSettings[K]) => void;
-    handleAddShot: () => void;
-    handleEditShot: (shot: Shot) => void;
-    handleUpdateShot: (shot: Shot) => void;
-    handleBulkUpdateShots: (shots: Shot[]) => void;
-    handleDeleteShot: (shotId: string) => void;
-    handleDuplicateShot: (shotId: string) => void;
-    importScript: (file: File) => Promise<void>;
-    handleCreateDraft: (name?: string) => void;
-    handleSwitchDraft: (draftId: string) => Promise<void>;
-    handleDeleteDraft: (draftId: string) => void;
-    handleRenameDraft: (draftId: string, name: string) => void;
-    updateScriptElements: (elements: ScriptElement[]) => void;
-    showToast: ShowToastFn;
-    saveNow: () => Promise<void>;
-}
+import { WorkspaceContextType } from '../context/WorkspaceContext';
 
 export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();

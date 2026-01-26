@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { History, Plus, Trash2, Edit2, Check, X, Clock } from 'lucide-react';
-import { useWorkspace } from '../../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../../context/WorkspaceContext';
 import Button from '../../ui/Button';
 
 export const VersionsPanel: React.FC = () => {

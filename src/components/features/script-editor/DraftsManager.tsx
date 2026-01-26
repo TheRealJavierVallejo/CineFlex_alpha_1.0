@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useWorkspace } from '../../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../../context/WorkspaceContext';
 import { SlateScriptEditor } from './SlateScriptEditor';
 import { ScriptDraft } from '../../../types';
 import Button from '../../ui/Button';
@@ -7,7 +7,7 @@ import { Plus, Download, CheckCircle, Eye, Trash2 } from 'lucide-react';
 
 export const DraftsManager: React.FC = () => {
     const { project, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, importScript } = useWorkspace();
-    
+
     // State for which draft is currently being VIEWED (previewed) on the right
     // Default to the active draft initially
     const [selectedPreviewId, setSelectedPreviewId] = useState<string>(project.activeDraftId || '');
@@ -16,7 +16,7 @@ export const DraftsManager: React.FC = () => {
     // OR if the currently selected preview draft was deleted
     useEffect(() => {
         const draftExists = project.drafts.some(d => d.id === selectedPreviewId);
-        
+
         if ((!selectedPreviewId || !draftExists) && project.activeDraftId) {
             setSelectedPreviewId(project.activeDraftId);
         } else if (!draftExists && project.drafts.length > 0) {
@@ -48,31 +48,31 @@ export const DraftsManager: React.FC = () => {
         <div className="flex flex-row h-full w-full bg-background overflow-hidden">
             {/* LEFT SIDEBAR: Draft List */}
             <div className="w-[400px] flex flex-col border-r border-border bg-surface-secondary/30 h-full">
-                
+
                 {/* Header Section */}
                 <div className="p-6 border-b border-border space-y-4">
                     <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
                         Drafts Editor
                     </h2>
-                    
+
                     <div className="flex gap-3">
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange} 
-                            accept=".pdf,.fountain,.txt,.json" 
-                            className="hidden" 
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept=".pdf,.fountain,.txt,.json"
+                            className="hidden"
                         />
-                        <Button 
-                            variant="secondary" 
+                        <Button
+                            variant="secondary"
                             className="flex-1"
                             onClick={handleImportClick}
                             icon={<Download className="w-4 h-4" />}
                         >
                             Import
                         </Button>
-                        <Button 
-                            variant="primary" 
+                        <Button
+                            variant="primary"
                             className="flex-1"
                             onClick={() => handleCreateDraft()}
                             icon={<Plus className="w-4 h-4" />}
@@ -89,13 +89,13 @@ export const DraftsManager: React.FC = () => {
                         const isSelected = draft.id === selectedPreviewId;
 
                         return (
-                            <div 
+                            <div
                                 key={draft.id}
                                 onClick={() => setSelectedPreviewId(draft.id)}
                                 className={`
                                     relative p-4 rounded-xl border transition-all cursor-pointer group
-                                    ${isSelected 
-                                        ? 'bg-primary/5 border-primary shadow-sm' 
+                                    ${isSelected
+                                        ? 'bg-primary/5 border-primary shadow-sm'
                                         : 'bg-surface border-border hover:border-text-muted hover:bg-surface-secondary'}
                                 `}
                             >
@@ -104,7 +104,7 @@ export const DraftsManager: React.FC = () => {
                                     <h3 className={`font-bold text-base ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
                                         {draft.name}
                                     </h3>
-                                    
+
                                     <div className="flex items-center gap-2">
                                         {isCurrent ? (
                                             <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -159,10 +159,10 @@ export const DraftsManager: React.FC = () => {
                         </span>
                     </div>
                     {previewDraft?.id === project.activeDraftId && (
-                         <span className="text-xs font-medium text-emerald-500 flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-emerald-500 flex items-center gap-1.5">
                             <CheckCircle className="w-3 h-3" />
                             Active Editing Draft
-                         </span>
+                        </span>
                     )}
                 </div>
 
@@ -178,7 +178,7 @@ export const DraftsManager: React.FC = () => {
                                     readOnly={true}
                                     isLightMode={false} // Force dark mode for preview consistency
                                     projectId={project.id}
-                                    onChange={() => {}} // No-op
+                                    onChange={() => { }} // No-op
                                 />
                             ) : (
                                 <div className="text-center text-text-muted mt-20">Select a draft to preview</div>

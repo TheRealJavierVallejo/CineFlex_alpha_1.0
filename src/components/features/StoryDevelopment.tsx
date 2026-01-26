@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check, BrainCircuit, Sparkles, Plus } from 'lucide-react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import {
     getPlotDevelopment,

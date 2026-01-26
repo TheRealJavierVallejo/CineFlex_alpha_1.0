@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { FileText, Plus } from 'lucide-react';
 import Button from '../ui/Button';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 interface EmptyProjectStateProps {
   onImport?: (e: React.ChangeEvent<HTMLInputElement>) => void; // Made optional

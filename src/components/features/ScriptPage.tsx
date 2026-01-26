@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { SlateScriptEditor, SlateScriptEditorRef } from './script-editor/SlateScriptEditor';
 import { ScriptElement } from '../../types';
 import {
@@ -85,7 +85,7 @@ export const ScriptPage: React.FC = () => {
                 setSaveStatus('saved');
                 setTimeout(() => setSaveStatus('idle'), 2000);
             }, 500);
-        }, 500), 
+        }, 500),
         [updateScriptElements, projectId]
     );
 

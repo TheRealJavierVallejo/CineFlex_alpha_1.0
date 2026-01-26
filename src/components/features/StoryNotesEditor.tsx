@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Sparkles, FileText } from 'lucide-react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import {
     getStoryNotes,
     saveStoryNotes,

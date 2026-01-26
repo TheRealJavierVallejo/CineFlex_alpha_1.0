@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, X, Check, BrainCircuit, Sparkles, Plus, ChevronDown, UserPlus } from 'lucide-react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import {
     getPlotDevelopment,

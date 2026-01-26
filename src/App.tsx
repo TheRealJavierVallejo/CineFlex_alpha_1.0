@@ -11,7 +11,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // - [/] Documenting and typed props for `src/App.tsx`
 // - [ ] Refactoring `src/layouts/WorkspaceLayout.tsx`
 import ErrorBoundary from './components/ErrorBoundary';
-import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
+import { WorkspaceLayout } from './layouts/WorkspaceLayout';
+import { useWorkspace } from './context/WorkspaceContext';
 import { WorldSettings } from './types';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { SaveStatusProvider } from './context/SaveStatusContext';

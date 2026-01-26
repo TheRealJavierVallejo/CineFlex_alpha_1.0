@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useWorkspace } from '../../layouts/WorkspaceLayout';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { TitlePageData } from '../../types';
 import Input, { Textarea } from '../ui/Input';
 import Button from '../ui/Button';
