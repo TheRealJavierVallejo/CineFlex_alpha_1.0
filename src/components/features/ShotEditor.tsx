@@ -108,17 +108,17 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       descriptionRef.current.focus();
     }
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showPromptPreview) setShowPromptPreview(false);
         else onClose();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleGenerate();
-    };
+    }, [showPromptPreview, onClose, handleGenerate]);
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showPromptPreview]);
+  }, [handleKeyDown]);
 
   // Loading Message Cycler
   useEffect(() => {
@@ -262,6 +262,11 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       );
 
       const finalModelName = selectedModel;
+
+      if (!img) {
+        showToast("Image generation failed (No data returned).", 'error');
+        return;
+      }
 
       await addToImageLibrary(project.id, img, shot.description);
 

@@ -6,7 +6,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Project, Shot, ShowToastFn, Scene, ScriptElement } from '../../types';
+import { Project, Shot, ShowToastFn, Scene, ScriptElement, WorldSettings } from '../../types';
 import { FileText, Clapperboard, LayoutGrid, Sliders, Package, Settings, Upload } from 'lucide-react';
 import Button from '../ui/Button';
 import { WorkspaceContextType } from '../../layouts/WorkspaceLayout';
@@ -36,11 +36,11 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     onDeleteShot,
     onDuplicateShot,
     showToast
-}) => {
+}: ProductionSpreadsheetProps) => {
     const navigate = useNavigate();
     const { handleBulkUpdateShots, handleUpdateProject, handleUpdateSettings, importScript } = useOutletContext<WorkspaceContextType>();
 
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set<string>());
 
     // Filters
     const [filterText, setFilterText] = useState('');
@@ -51,24 +51,25 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
 
     // Helpers for Project Settings panel
-    const addCustomSetting = useCallback((field: any, value: string) => {
-        const currentList = (project.settings as any)[field] || [];
+    const addCustomSetting = useCallback(<K extends keyof WorldSettings>(field: K, value: string) => {
+        const currentList = (project.settings[field] as unknown as string[]) || [];
         if (!currentList.includes(value)) {
-            const map: any = { 'customEras': 'era', 'customStyles': 'cinematicStyle', 'customTimes': 'timeOfDay', 'customLighting': 'lighting' };
-            const updated = { ...project, settings: { ...project.settings, [field]: [...currentList, value], [map[field]]: value } };
+            const map: Record<string, keyof WorldSettings> = { 'customEras': 'era', 'customStyles': 'cinematicStyle', 'customTimes': 'timeOfDay', 'customLighting': 'lighting' };
+            const updated: Project = { ...project, settings: { ...project.settings, [field]: [...currentList, value], [map[field as string] || field]: value } };
             handleUpdateProject(updated);
         }
     }, [project, handleUpdateProject]);
 
-    const removeCustomSetting = useCallback((field: any, value: string) => {
-        const updated = { ...project, settings: { ...project.settings, [field]: (project.settings as any)[field].filter((i: string) => i !== value) } };
+    const removeCustomSetting = useCallback(<K extends keyof WorldSettings>(field: K, value: string) => {
+        const currentList = (project.settings[field] as unknown as string[]) || [];
+        const updated: Project = { ...project, settings: { ...project.settings, [field]: currentList.filter((i: string) => i !== value) } };
         handleUpdateProject(updated);
     }, [project, handleUpdateProject]);
 
     // --- HELPER: Get Scene Info ---
     const getSceneInfo = useCallback((sceneId?: string) => {
         if (!sceneId) return { sequence: '-', heading: 'Unknown' };
-        const scene = project.scenes.find(s => s.id === sceneId);
+        const scene = project.scenes.find((s: Scene) => s.id === sceneId);
         return scene ? { sequence: scene.sequence, heading: scene.heading } : { sequence: '?', heading: 'Deleted Scene' };
     }, [project.scenes]);
 
@@ -76,7 +77,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
     // --- DERIVED DATA (HOOKS MOVED UP) ---
     const filteredShots = useMemo(() => {
-        return project.shots.filter(shot => {
+        return project.shots.filter((shot: Shot) => {
             const matchesText = (shot.description || '').toLowerCase().includes(filterText.toLowerCase()) ||
                 (shot.notes || '').toLowerCase().includes(filterText.toLowerCase());
             const matchesType = filterType === 'all' || shot.shotType === filterType;
@@ -94,7 +95,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     const allSelected = filteredShots.length > 0 && selectedIds.size === filteredShots.length;
 
     const toggleSelection = useCallback((id: string) => {
-        setSelectedIds(prev => {
+        setSelectedIds((prev: Set<string>) => {
             const newSet = new Set(prev);
             if (newSet.has(id)) newSet.delete(id);
             else newSet.add(id);
@@ -104,26 +105,26 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
     const toggleAll = useCallback(() => {
         if (allSelected) {
-            setSelectedIds(new Set());
+            setSelectedIds(new Set<string>());
         } else {
-            setSelectedIds(new Set(filteredShots.map(s => s.id)));
+            setSelectedIds(new Set(filteredShots.map((s: Shot) => s.id)));
         }
     }, [allSelected, filteredShots]);
 
-    const handleBulkUpdate = useCallback((field: keyof Shot, value: any) => {
+    const handleBulkUpdate = useCallback(<K extends keyof Shot>(field: K, value: Shot[K]) => {
         if (selectedIds.size === 0) return;
         const shotsToUpdate = project.shots
-            .filter(s => selectedIds.has(s.id))
-            .map(s => ({ ...s, [field]: value }));
+            .filter((s: Shot) => selectedIds.has(s.id))
+            .map((s: Shot) => ({ ...s, [field]: value }));
         handleBulkUpdateShots(shotsToUpdate);
         showToast(`Updated ${selectedIds.size} shots`, 'success');
-        setSelectedIds(new Set());
+        setSelectedIds(new Set<string>());
     }, [selectedIds, project.shots, handleBulkUpdateShots, showToast]);
 
     const handleBulkDelete = useCallback(() => {
         if (confirm(`Are you sure you want to delete ${selectedIds.size} shots?`)) {
-            selectedIds.forEach(id => onDeleteShot(id));
-            setSelectedIds(new Set());
+            selectedIds.forEach((id: string) => onDeleteShot(id));
+            setSelectedIds(new Set<string>());
             showToast("Shots deleted", 'info');
         }
     }, [selectedIds, onDeleteShot, showToast]);

@@ -1,3 +1,5 @@
+import { ScriptElement } from '../types';
+
 /**
  * 🧠 SMARTTYPE SERVICE
  * Manages autocomplete suggestions for screenplay elements
@@ -81,9 +83,9 @@ export const getSmartTypeData = (projectId: string): SmartTypeData => {
         let needsSave = false;
 
         // Migration: If old 'locations' exists, map to 'sceneHeaders'
-        if ((data as any).locations && !data.sceneHeaders) {
+        if ((data as Record<string, unknown>).locations && !data.sceneHeaders) {
             data.sceneHeaders = (data as any).locations;
-            delete (data as any).locations;
+            delete (data as Record<string, unknown>).locations;
             needsSave = true;
         }
 
@@ -231,7 +233,7 @@ export const updateSmartTypeEntry = (
 /**
  * Learn from script elements (auto-populate SmartType)
  */
-export const learnFromScript = (projectId: string, elements: any[]): void => {
+export const learnFromScript = (projectId: string, elements: ScriptElement[]): void => {
     const data = getSmartTypeData(projectId);
     let hasChanges = false;
 
@@ -293,7 +295,7 @@ export const learnFromScript = (projectId: string, elements: any[]): void => {
             // Also learn time of day separately for Stage 3
             const match = el.content.match(/^(?:INT\.|EXT\.|INT\/EXT|I\/E|I\/E\.|INT\/EXT\.)\s+(.*?)(?:\s+-\s+(.*))?$/i);
             if (match) {
-                const time = match[3]?.trim(); // Capture group 3 is time (optional)
+                const time = match[2]?.trim(); // Capture group 2 is time (optional)
                 if (time) {
                     addInternal('time_of_day', time);
                 }
@@ -339,10 +341,10 @@ export const getSuggestions = (
             .sort((a, b) => b.frequency - a.frequency)
             .map(e => e.value)
             .filter(v => v.toUpperCase().startsWith(partial.toUpperCase()));
-        
+
         const defaultSuggestions = DEFAULT_TRANSITIONS
             .filter(t => t.toUpperCase().startsWith(partial.toUpperCase()));
-        
+
         // Merge: learned first, then defaults
         const combined = Array.from(new Set([...learnedSuggestions, ...defaultSuggestions]));
         return combined.slice(0, limit);
@@ -361,7 +363,7 @@ export const getSuggestions = (
 
         const locationList = Array.from(locations);
         const partialUpper = partial.toUpperCase();
-        
+
         // Simple filter by partial match
         return locationList
             .filter(l => l.toUpperCase().startsWith(partialUpper))
