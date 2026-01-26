@@ -565,8 +565,8 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         id: s.id,
         project_id: projectId,
         sequence: s.sequence,
-        heading: s.heading,
-        action_notes: s.actionNotes,
+        heading: cleanForJson(s.heading),
+        action_notes: cleanForJson(s.actionNotes),
         location_id: s.locationId,
         script_elements: cleanForJson(s.scriptElements) // Store as JSONB
     }));
@@ -595,10 +595,10 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
             project_id: projectId,
             scene_id: sceneId,
             sequence,
-            shot_type: shotType,
-            description,
-            dialogue,
-            camera_movement: (s as unknown as Record<string, unknown>).cameraMovement, // Correcting likely field mismatch
+            shot_type: cleanForJson(shotType),
+            description: cleanForJson(description),
+            dialogue: cleanForJson(dialogue),
+            camera_movement: cleanForJson((s as unknown as Record<string, unknown>).cameraMovement),
             metadata: cleanForJson(rest) // Store remaining AI props in metadata
         };
     });
@@ -764,7 +764,7 @@ const createQueuedDebouncedSave = () => {
         pendingProjectId = projectId;
         pendingProject = project;
 
-        // Debounce: wait 2 seconds of inactivity
+        // Debounce: wait 1 second of inactivity
         timeoutId = setTimeout(() => {
             if (!pendingProjectId || !pendingProject) return;
 
@@ -783,7 +783,7 @@ const createQueuedDebouncedSave = () => {
                 await saveProjectData(finalProjectId, finalProject);
                 console.log(`[SAVE QUEUE] ✅ Save complete for ${finalProjectId}`);
             });
-        }, 2000);
+        }, 1000);
     };
 
     save.cancel = () => {

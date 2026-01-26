@@ -93,15 +93,13 @@ export const WorkspaceLayout: React.FC = () => {
         try {
             const data = await getProjectData(id);
             if (data) {
-                // 1. Repair Legacy/Invalid Draft IDs (Fixes "initial-draft" UUID error)
-                // If the active draft ID is the invalid string, generate a new valid UUID.
                 let needsSave = false;
 
-                // Ensure drafts array exists
+                // 1. REPAIR: Missing Drafts -> Create valid UUID
                 if (!data.drafts || data.drafts.length === 0) {
-                    const newDraftId = crypto.randomUUID(); // Generate valid UUID
+                    const newDraftId = crypto.randomUUID();
                     const initialDraft: ScriptDraft = {
-                        id: newDraftId,
+                        id: newDraftId, // FIXED: Now a valid UUID
                         name: 'Initial Script',
                         content: data.scriptElements || [],
                         updatedAt: data.lastModified || Date.now()
@@ -111,12 +109,12 @@ export const WorkspaceLayout: React.FC = () => {
                     data.scriptElements = initialDraft.content;
                     needsSave = true;
                 }
-                // Fix existing bad data from previous buggy versions
+                // 2. REPAIR: Invalid ID detected -> Replace with valid UUID
                 else if (data.activeDraftId === 'initial-draft') {
-                    console.log("Repairing invalid draft ID...");
+                    console.log("⚠️ Repairing invalid 'initial-draft' ID...");
                     const newId = crypto.randomUUID();
                     data.activeDraftId = newId;
-                    // Also update the ID inside the drafts array
+                    // Fix the ID inside the array too
                     data.drafts = data.drafts.map(d => d.id === 'initial-draft' ? { ...d, id: newId } : d);
                     needsSave = true;
                 }
@@ -124,9 +122,10 @@ export const WorkspaceLayout: React.FC = () => {
                 setProject(data);
                 setActiveProjectId(id);
 
-                // Immediate save to persist the repair
+                // 3. PERSIST: Save immediately if repairs were made
                 if (needsSave) {
-                    saveProjectData(data.id, data).catch(err => console.error("Repair save failed:", err));
+                    await saveProjectData(data.id, data);
+                    console.log("✅ Project data repaired and saved.");
                 }
 
             } else {
@@ -134,6 +133,7 @@ export const WorkspaceLayout: React.FC = () => {
                 navigate('/');
             }
         } catch (error) {
+            console.error(error);
             showToast("Load failed", 'error');
             navigate('/');
         } finally {
