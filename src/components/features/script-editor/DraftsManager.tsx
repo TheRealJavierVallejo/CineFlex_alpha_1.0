@@ -3,10 +3,10 @@ import { useWorkspace } from '../../../layouts/WorkspaceLayout';
 import { SlateScriptEditor } from './SlateScriptEditor';
 import { ScriptDraft } from '../../../types';
 import Button from '../../ui/Button';
-import { Plus, Download, CheckCircle, Eye } from 'lucide-react';
+import { Plus, Download, CheckCircle, Eye, Trash2 } from 'lucide-react';
 
 export const DraftsManager: React.FC = () => {
-    const { project, handleCreateDraft, handleSwitchDraft, importScript } = useWorkspace();
+    const { project, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, importScript } = useWorkspace();
     
     // State for which draft is currently being VIEWED (previewed) on the right
     // Default to the active draft initially
@@ -29,6 +29,14 @@ export const DraftsManager: React.FC = () => {
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) await importScript(file);
+    };
+
+    const onDeleteClick = (e: React.MouseEvent, draftId: string, draftName: string) => {
+        e.stopPropagation();
+        if (window.confirm(`Are you sure you want to permanently delete "${draftName}"?`)) {
+            handleDeleteDraft(draftId);
+            // If we deleted the one being previewed, the component will auto-fallback due to the find() logic above
+        }
     };
 
     return (
@@ -86,16 +94,28 @@ export const DraftsManager: React.FC = () => {
                                         : 'bg-surface border-border hover:border-text-muted hover:bg-surface-secondary'}
                                 `}
                             >
-                                {/* Header Row: Name + Current Badge */}
+                                {/* Header Row: Name + Badges/Actions */}
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className={`font-bold text-base ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
                                         {draft.name}
                                     </h3>
-                                    {isCurrent && (
-                                        <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                            Current
-                                        </span>
-                                    )}
+                                    
+                                    <div className="flex items-center gap-2">
+                                        {isCurrent ? (
+                                            <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                Current
+                                            </span>
+                                        ) : (
+                                            // Delete Button (Only for non-current drafts)
+                                            <button
+                                                onClick={(e) => onDeleteClick(e, draft.id, draft.name)}
+                                                className="text-text-muted hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                title="Delete Version"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Description / Date */}
