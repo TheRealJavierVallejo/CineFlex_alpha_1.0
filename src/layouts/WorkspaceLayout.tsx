@@ -190,10 +190,11 @@ export const WorkspaceLayout: React.FC = () => {
     }, []);
 
     const handleUpdateSettings = useCallback(<K extends keyof WorldSettings>(key: K, value: WorldSettings[K]) => {
-        if (!project) return;
-        const updated: Project = { ...project, settings: { ...project.settings, [key]: value } };
-        handleUpdateProject(updated);
-    }, [project, handleUpdateProject]);
+        setProject(prev => {
+            if (!prev) return null;
+            return { ...prev, settings: { ...prev.settings, [key]: value } };
+        });
+    }, []);
 
     const importScript = useCallback(async (file: File) => {
         if (!project) return;
@@ -248,134 +249,154 @@ export const WorkspaceLayout: React.FC = () => {
         }
     }, [project, handleUpdateProject, showToast]);
 
-    /** Syncs current scriptElements into the active draft object */
-    const persistActiveDraftContent = useCallback((proj: Project): Project => {
-        const updatedDrafts = proj.drafts.map((d: ScriptDraft) =>
-            d.id === proj.activeDraftId
-                ? { ...d, content: proj.scriptElements || [], updatedAt: Date.now() }
-                : d
-        );
-        return { ...proj, drafts: updatedDrafts };
-    }, []);
 
     const handleCreateDraft = useCallback(async (name?: string) => {
-        if (!project) return;
-        const draftName = name || `Snapshot ${project.drafts.length + 1}`;
+        setProject(currentProject => {
+            if (!currentProject) return null;
 
-        const newDraft: ScriptDraft = {
-            id: crypto.randomUUID(),
-            name: draftName,
-            content: project.scriptElements || [],
-            updatedAt: Date.now()
-        };
-
-        const updatedProject: Project = {
-            ...project,
-            drafts: [...(project.drafts || []), newDraft],
-            lastModified: Date.now()
-        };
-
-        handleUpdateProject(updatedProject);
-        await saveProjectData(updatedProject.id, updatedProject);
-        showToast(`Snapshot saved: ${draftName}`, 'success');
-    }, [project, handleUpdateProject, showToast]);
-
-    const handleSwitchDraft = useCallback(async (draftId: string) => {
-        if (!project) return;
-
-        const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
-        if (!draft) {
-            showToast("Draft not found", 'error');
-            return;
-        }
-
-        // 1. Save current elements to the *currently active* draft before switching
-        const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
-            d.id === project.activeDraftId
-                ? { ...d, content: project.scriptElements || [], updatedAt: Date.now() }
-                : d
-        );
-
-        // 2. Prepare the new project state
-        const updatedProject: Project = {
-            ...project,
-            drafts: updatedDrafts,
-            activeDraftId: draftId,
-            scriptElements: draft.content, // Load draft content into editor
-            lastModified: Date.now()
-        };
-
-        // 3. Sync and Update
-        const syncedProject = syncScriptToScenes(updatedProject);
-        handleUpdateProject(syncedProject);
-
-        // 4. Force immediate save
-        await saveProjectData(syncedProject.id, syncedProject);
-
-        showToast(`Switched to: ${draft.name}`, 'success');
-    }, [project, handleUpdateProject, showToast]);
-
-    const handleDeleteDraft = useCallback(async (draftId: string) => {
-        if (!project) return;
-        if (project.activeDraftId === draftId) {
-            showToast("Cannot delete the active draft", 'warning');
-            return;
-        }
-
-        let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
-
-        // Edge case: if no drafts left, create a default one
-        let activeId = project.activeDraftId;
-        let elements = project.scriptElements;
-
-        if (updatedDrafts.length === 0) {
-            const defaultDraft: ScriptDraft = {
+            const draftName = name || `Snapshot ${currentProject.drafts.length + 1}`;
+            const newDraft: ScriptDraft = {
                 id: crypto.randomUUID(),
-                name: 'Main Draft',
-                content: [],
+                name: draftName,
+                content: currentProject.scriptElements || [],
                 updatedAt: Date.now()
             };
-            updatedDrafts = [defaultDraft];
-            activeId = defaultDraft.id;
-            elements = [];
-        }
 
-        const updatedProject = {
-            ...project,
-            drafts: updatedDrafts,
-            activeDraftId: activeId,
-            scriptElements: elements,
-            lastModified: Date.now()
-        };
-        handleUpdateProject(updatedProject);
-        await saveProjectData(updatedProject.id, updatedProject);
-        showToast("Version deleted", 'info');
-    }, [project, handleUpdateProject, showToast]);
+            const updatedProject = {
+                ...currentProject,
+                drafts: [...(currentProject.drafts || []), newDraft],
+                lastModified: Date.now()
+            };
+
+            // Side effect: save immediately
+            saveProjectData(updatedProject.id, updatedProject).then(() => {
+                showToast(`Snapshot saved: ${draftName}`, 'success');
+            });
+
+            return updatedProject;
+        });
+    }, [showToast]);
+
+    const handleSwitchDraft = useCallback(async (draftId: string) => {
+        setProject(currentProject => {
+            if (!currentProject) return null;
+
+            const draft = currentProject.drafts.find((d: ScriptDraft) => d.id === draftId);
+            if (!draft) {
+                showToast("Draft not found", 'error');
+                return currentProject;
+            }
+
+            // 1. Save current elements to the *currently active* draft before switching
+            const updatedDrafts = currentProject.drafts.map((d: ScriptDraft) =>
+                d.id === currentProject.activeDraftId
+                    ? { ...d, content: currentProject.scriptElements || [], updatedAt: Date.now() }
+                    : d
+            );
+
+            // 2. Prepare the new project state
+            const updatedProject: Project = {
+                ...currentProject,
+                drafts: updatedDrafts,
+                activeDraftId: draftId,
+                scriptElements: draft.content, // Load draft content into editor
+                lastModified: Date.now()
+            };
+
+            // 3. Sync
+            const syncedProject = syncScriptToScenes(updatedProject);
+
+            // 4. Force immediate save via side effect (async)
+            saveProjectData(syncedProject.id, syncedProject).then(() => {
+                 showToast(`Switched to: ${draft.name}`, 'success');
+            });
+
+            return syncedProject;
+        });
+    }, [showToast]);
+
+    const handleDeleteDraft = useCallback(async (draftId: string) => {
+        setProject(currentProject => {
+            if (!currentProject) return null;
+            
+            if (currentProject.activeDraftId === draftId) {
+                showToast("Cannot delete the active draft", 'warning');
+                return currentProject;
+            }
+
+            let updatedDrafts = currentProject.drafts.filter((d: ScriptDraft) => d.id !== draftId);
+            let activeId = currentProject.activeDraftId;
+            let elements = currentProject.scriptElements;
+
+            // Fallback if deleting last draft (shouldn't happen with UI checks, but safe to keep)
+            if (updatedDrafts.length === 0) {
+                const defaultDraft: ScriptDraft = {
+                    id: crypto.randomUUID(),
+                    name: 'Main Draft',
+                    content: [],
+                    updatedAt: Date.now()
+                };
+                updatedDrafts = [defaultDraft];
+                activeId = defaultDraft.id;
+                elements = [];
+            }
+
+            const updatedProject = {
+                ...currentProject,
+                drafts: updatedDrafts,
+                activeDraftId: activeId,
+                scriptElements: elements,
+                lastModified: Date.now()
+            };
+            
+            // Side effect: Save immediately
+            saveProjectData(updatedProject.id, updatedProject).then(() => {
+                showToast("Version deleted", 'info');
+            });
+            
+            return updatedProject;
+        });
+    }, [showToast]);
 
     const handleRenameDraft = useCallback(async (draftId: string, name: string) => {
-        if (!project) return;
-        const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
-            d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
-        );
-        const updatedProject = { ...project, drafts: updatedDrafts, lastModified: Date.now() };
-        handleUpdateProject(updatedProject);
-        await saveProjectData(updatedProject.id, updatedProject);
-    }, [project, handleUpdateProject]);
+        setProject(currentProject => {
+            if (!currentProject) return null;
+            
+            const updatedDrafts = currentProject.drafts.map((d: ScriptDraft) =>
+                d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
+            );
+            const updatedProject = { ...currentProject, drafts: updatedDrafts, lastModified: Date.now() };
+            
+            saveProjectData(updatedProject.id, updatedProject);
+            
+            return updatedProject;
+        });
+    }, []);
 
+    // 🔥 CRITICAL FIX: Functional update to prevent "Zombie Closure" race conditions
+    // This ensures we always merge new script elements into the LATEST project state,
+    // not the state captured when the debounce started.
     const updateScriptElements = useCallback((elements: ScriptElement[]) => {
-        if (!project) return;
+        setProject(prev => {
+            if (!prev) return null;
 
-        // 1. Update project state with new elements
-        const tempProject = { ...project, scriptElements: elements, lastModified: Date.now() };
+            // 1. Update project state with new elements
+            const tempProject = { ...prev, scriptElements: elements, lastModified: Date.now() };
 
-        // 2. Sync scenes
-        const syncedProject = syncScriptToScenes(tempProject);
+            // 2. Sync scenes
+            const syncedProject = syncScriptToScenes(tempProject);
 
-        // 3. Persist elements INTO the active draft object inside project.drafts
-        const fullyUpdatedProject = persistActiveDraftContent(syncedProject);
+            // 3. Persist elements INTO the active draft object inside project.drafts
+            // We use the *fresh* prev.drafts array, so if a draft was deleted, it's already gone here.
+            const updatedDrafts = syncedProject.drafts.map((d: ScriptDraft) =>
+                d.id === syncedProject.activeDraftId
+                    ? { ...d, content: elements, updatedAt: Date.now() }
+                    : d
+            );
 
-        handleUpdateProject(fullyUpdatedProject);
-    }, [project, handleUpdateProject, persistActiveDraftContent]);
+            return { ...syncedProject, drafts: updatedDrafts };
+        });
+    }, []); // No dependencies means this function never recreates, preventing stale closures
 
     const handleAddShot = useCallback(() => {
         if (project && project.scenes.length > 0) {
