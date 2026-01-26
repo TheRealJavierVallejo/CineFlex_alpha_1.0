@@ -125,10 +125,9 @@ export const WorkspaceLayout: React.FC = () => {
     const { saveStatus, lastSavedAt, saveNow, cancel: cancelAutoSave } = useAutoSave(
         project,
         useCallback((data: Project | null) => {
-            if (data?.id) {
-                // Remove double-debounce: call saveProjectData directly
-                saveProjectData(data.id, data);
-            }
+            if (!data?.id) return Promise.resolve();
+            // Return validation promise so useAutoSave waits
+            return saveProjectData(data.id, data);
         }, []),
         {
             delay: 1000,

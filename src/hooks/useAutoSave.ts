@@ -106,7 +106,7 @@ export function useAutoSave<T>(
         return () => {
             isMountedRef.current = false;
             if (statusResetTimerRef.current) clearTimeout(statusResetTimerRef.current);
-            debouncedSave.flush(); // Try to flush pending saves on unmount
+            debouncedSave.cancel(); // Cancel pending saves on unmount to prevent stale overwrites
         };
     }, [debouncedSave]);
 
