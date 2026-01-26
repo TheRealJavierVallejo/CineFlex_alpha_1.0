@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
+import { Send, Bot, User, Loader2, Trash2, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
 import { streamSydResponse } from '../../services/syd/chatEngine';
 import { getCharacters, getStoryNotes } from '../../services/storage';
 import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread, updateThreadTitle } from '../../services/sydChatStore';
-import { Character, StoryNote, SydMessage, SydThread } from '../../types';
+import { Character, StoryNote, SydThread } from '../../types';
 import { useSubscription } from '../../context/SubscriptionContext';
-import { useLocalLlm } from '../../context/LocalLlmContext';
-import { ModelDownloadModal } from '../ui/ModelDownloadModal';
 import { classifyClaudeError } from '../../services/claude';
 import { supabase } from '../../services/supabaseClient';
 
@@ -25,11 +23,8 @@ interface ScriptChatProps {
 export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const { project, showToast } = useWorkspace();
   const { tier } = useSubscription();
-  const { isReady, initModel, streamResponse, isSupported, isModelCached, isCheckingCache } = useLocalLlm();
 
-  const initialWelcomeMsg = tier === 'pro'
-    ? "Hello, I'm SYD. I've read your entire script. What are we working on?"
-    : "Hi! I'm SYD Jr. I'm running offline on your computer. Let's write!";
+  const initialWelcomeMsg = "Hello, I'm SYD. I've read your entire script. What are we working on?";
 
   // State
   const [threads, setThreads] = useState<SydThread[]>([]);
@@ -42,8 +37,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [storyNotes, setStoryNotes] = useState<StoryNote[]>([]);
 
-  const [useLocal, setUseLocal] = useState(tier === 'free');
-  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
@@ -55,7 +48,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
   useEffect(() => {
     const checkApiKey = async () => {
-      if (tier !== 'pro') return;
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -73,32 +65,22 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     };
 
     checkApiKey();
-  }, [tier]);
-
-  // Enforce local for free tier
-  useEffect(() => {
-    if (tier === 'free') {
-      setUseLocal(true);
-    }
-  }, [tier]);
+  }, []);
 
   // Load Context & Threads on Mount
   useEffect(() => {
     if (project?.id) {
       getCharacters(project.id).then(setCharacters);
       getStoryNotes(project.id).then(data => setStoryNotes(data.notes));
-
       loadThreads(project.id);
     }
   }, [project?.id]);
-
 
   const loadThreads = async (pid: string) => {
     try {
       const list = await listThreadsForProject(pid);
 
       if (list.length === 0) {
-        // Only create if we're sure there are no threads
         const newThread = await createNewThreadForProject(pid);
         setThreads([newThread]);
         setThreadId(newThread.id);
@@ -110,10 +92,9 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         }]);
       } else {
         setThreads(list);
-        // Default to most recent thread
         if (!threadId) {
           setThreadId(list[0].id);
-          loadMessages(list[0].id, pid);
+          loadMessages(list[0].id);
         }
       }
     } catch (e) {
@@ -122,11 +103,9 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     }
   };
 
-  const loadMessages = async (tid: string, pid?: string) => {
+  const loadMessages = async (tid: string) => {
     try {
-      setMessages([]); // clear current view
-
-      // Fetch robust DB source
+      setMessages([]);
       const dbMessages = await listMessagesForThread(tid);
       if (dbMessages.length > 0) {
         const uiMessages: Message[] = dbMessages.map(m => ({
@@ -158,7 +137,7 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
   };
 
   const handleSelectThread = (tid: string) => {
-    if (editingThreadId) return; // Prevent switching while editing
+    if (editingThreadId) return;
     setThreadId(tid);
     loadMessages(tid);
   };
@@ -169,32 +148,22 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
     try {
       await deleteThread(tid);
-
-      // Update state correctly with functional update to avoid stale closure
       setThreads(prev => {
         const remaining = prev.filter(t => t.id !== tid);
-
-        // If we deleted the active thread, switch to another
         if (threadId === tid) {
           setThreadId(null);
           setMessages([]);
-
           if (remaining.length > 0) {
-            // Switch to the first available thread
             setTimeout(() => {
               setThreadId(remaining[0].id);
               loadMessages(remaining[0].id);
             }, 0);
           } else if (project?.id) {
-            // No threads left, create new one
             handleNewChat();
           }
         }
-
         return remaining;
       });
-
-
       showToast("Conversation deleted", 'success');
     } catch (e) {
       showToast("Failed to delete thread", 'error');
@@ -209,11 +178,8 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
   const handleSaveEdit = async (threadId: string) => {
     if (!editingTitle.trim()) return;
-
     try {
       await updateThreadTitle(threadId, editingTitle.trim());
-
-      // Update local state
       setThreads(prev => prev.map(t =>
         t.id === threadId ? { ...t, title: editingTitle.trim() } : t
       ));
@@ -234,9 +200,8 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
     try {
       await deleteThread(threadId);
-
       const newThread = await createNewThreadForProject(project.id);
-      setThreads(prev => prev.map(t => t.id === threadId ? newThread : t)); // Replace in list
+      setThreads(prev => prev.map(t => t.id === threadId ? newThread : t));
       setThreadId(newThread.id);
       setMessages([{ id: 'welcome', role: 'model', content: initialWelcomeMsg, createdAt: new Date().toISOString() }]);
       showToast("Chat history cleared", 'success');
@@ -255,39 +220,9 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  useEffect(() => {
-    if (isReady && showDownloadModal) {
-      setShowDownloadModal(false);
-    }
-  }, [isReady, showDownloadModal]);
-
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     if (!project?.id || !threadId) return;
-
-    if (useLocal) {
-      if (!isSupported) {
-        showToast("WebGPU not supported.", 'error');
-        return;
-      }
-      if (!isReady) {
-        if (isModelCached) {
-          const warmupId = crypto.randomUUID();
-          setMessages(prev => [...prev, { id: warmupId, role: 'model', content: 'Warmup: Loading AI engine...' }]);
-          try {
-            await initModel();
-          } catch (e: any) {
-            showToast(e.message || "Failed to initialize AI", 'error');
-            setMessages(prev => prev.filter(m => m.id !== warmupId));
-            return;
-          }
-          setMessages(prev => prev.filter(m => m.id !== warmupId));
-        } else {
-          setShowDownloadModal(true);
-          return;
-        }
-      }
-    }
 
     const tempId = crypto.randomUUID();
     const userMsg: Message = { id: tempId, role: 'user', content: input, createdAt: new Date().toISOString() };
@@ -300,27 +235,33 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
     setMessages(prev => [...prev, aiMsg]);
 
     try {
-      if (useLocal) {
-        // LOCAL PERSISTENCE
-        await appendMessage({
-          threadId,
-          role: 'user',
-          content: { text: userMsg.content }
-        });
+      const elements = project.scriptElements || [];
 
-        const prompt = [
-          "You are SYD Jr., an eager writing assistant running locally on the user's device. You are helpful and quick.",
-          "",
-          `INSTRUCTION: ${userMsg.content} `
-        ].join('\n');
+      await appendMessage({
+        threadId,
+        role: 'user',
+        content: { text: userMsg.content }
+      });
 
-        let fullResponse = "";
-        await streamResponse(prompt, messages.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.content })), (chunk) => {
-          fullResponse += chunk;
-          setMessages(prev => prev.map(m =>
-            m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
-          ));
-        });
+      let fullResponse = "";
+      try {
+        await streamSydResponse(
+          'claude',
+          {
+            projectId: project.id,
+            userMessage: userMsg.content,
+            scriptElements: elements,
+            characters,
+            storyNotes,
+            threadId
+          },
+          (chunk) => {
+            fullResponse += chunk;
+            setMessages(prev => prev.map(m =>
+              m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
+            ));
+          }
+        );
 
         if (fullResponse) {
           await appendMessage({
@@ -329,68 +270,26 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
             content: { text: fullResponse }
           });
         }
-      } else {
-        // CLOUD PERSISTENCE (via Claude for Pro)
-        const elements = project.scriptElements || [];
 
-        // Persist user message first
-        await appendMessage({
-          threadId,
-          role: 'user',
-          content: { text: userMsg.content }
-        });
+        loadMessages(threadId);
 
-        let fullResponse = "";
-        try {
-          await streamSydResponse(
-            'claude',
-            {
-              projectId: project.id,
-              userMessage: userMsg.content,
-              scriptElements: elements,
-              characters,
-              storyNotes,
-              threadId
-            },
-            (chunk) => {
-              fullResponse += chunk;
-              setMessages(prev => prev.map(m =>
-                m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
-              ));
-            }
-          );
+      } catch (error: unknown) {
+        const classified = classifyClaudeError(error);
+        let errorMessage = classified.userMessage;
 
-          // Persist assistant response
-          if (fullResponse) {
-            await appendMessage({
-              threadId,
-              role: 'assistant',
-              content: { text: fullResponse }
-            });
-          }
-
-          // Reload full thread to ensure UI is synced
-          loadMessages(threadId);
-
-        } catch (error: any) {
-          const classified = classifyClaudeError(error);
-          let errorMessage = classified.userMessage;
-
-          // Special handling for 401/403 if not fully caught by classifier
-          if (error.status === 401 || error.status === 403 || error.message?.includes('401') || error.message?.includes('403')) {
-            errorMessage = "Authentication failed. Please check your API key in Settings → API Keys.";
-          }
-
-          console.error("Claude Chat Error:", error);
-
-          setMessages(prev => prev.map(m =>
-            m.id === aiMsgId ? { ...m, content: errorMessage } : m
-          ));
+        if (error instanceof Error && (error.message?.includes('401') || error.message?.includes('403'))) {
+          errorMessage = "Authentication failed. Please check your API key in Settings → API Keys.";
         }
+
+        console.error("Claude Chat Error:", error);
+
+        setMessages(prev => prev.map(m =>
+          m.id === aiMsgId ? { ...m, content: errorMessage } : m
+        ));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      showToast(error.message || "Failed to get response", 'error');
+      showToast(error instanceof Error ? error.message : "Failed to get response", 'error');
       setMessages(prev => prev.filter(m => m.id !== aiMsgId));
     } finally {
       setIsLoading(false);
@@ -399,12 +298,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
   return (
     <div className="flex flex-row w-full h-full bg-surface overflow-hidden">
-      <ModelDownloadModal
-        isOpen={showDownloadModal}
-        onClose={() => setShowDownloadModal(false)}
-        onConfirm={() => initModel()}
-      />
-
       {/* THREAD SIDEBAR (Collapsible) */}
       <div
         className={`shrink-0 border-r border-border bg-surface-secondary flex flex-col transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-60' : 'w-0 opacity-0'}`}
@@ -501,14 +394,12 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
             </button>
             <div className="flex flex-col">
               <div className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
-                {tier === 'pro' ? 'SYD (Pro)' : 'SYD Jr. (Local)'}
+                SYD
               </div>
             </div>
-
           </div>
 
           <div className="flex items-center gap-2">
-
             <button
               onClick={handleClearHistory}
               className="p-1.5 rounded text-text-tertiary hover:text-red-400 transition-colors"
@@ -516,31 +407,11 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
             >
               <Eraser className="w-4 h-4" />
             </button>
-
-            <div className="h-4 w-px bg-border mx-1" />
-
-            {/* Free Tier Indicator - Fixed Class Names */}
-            {tier === 'free' ? (
-              <div className={`flex items-center gap-2 px-2 py-1 bg-background border rounded-full text-[10px] cursor-help transition-colors ${!isSupported ? 'border-red-900/50 text-red-400' : 'border-border text-text-muted'} `} title="Free users use local AI">
-                {isCheckingCache ? <Loader2 className="w-3 h-3 animate-spin" /> : <Cpu className="w-3 h-3" />}
-                <span>{isCheckingCache ? 'Checking...' : isSupported ? 'Offline' : 'Unsupported'}</span>
-              </div>
-            ) : (
-              /* Pro Tier Toggle - Fixed Class Names & Label */
-              <div className="flex bg-background rounded-sm p-0.5 border border-border">
-                <button onClick={() => setUseLocal(false)} className={`px-2 py-1 rounded-sm text-[10px] font-bold flex items-center gap-1 transition-colors ${!useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
-                  <Cloud className="w-3 h-3" /> Claude
-                </button>
-                <button onClick={() => setUseLocal(true)} className={`px-2 py-1 rounded-sm text-[10px] font-bold flex items-center gap-1 transition-colors ${useLocal ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'} `}>
-                  <Cpu className="w-3 h-3" /> Local
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
         {/* WARNING BANNER */}
-        {hasClaudeKey === false && tier === 'pro' && !useLocal && (
+        {hasClaudeKey === false && (
           <div className="p-3 bg-yellow-900/20 border-b border-yellow-800 text-sm text-yellow-200">
             ⚠️ Claude API key required. <a href="/settings/api-keys" className="underline font-medium hover:text-yellow-100">Add key →</a>
           </div>
@@ -550,7 +421,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex gap-3 group px-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''} `}>
-
               {/* Avatar */}
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-surface-secondary text-primary'} `}>
                 {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -558,7 +428,6 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
               {/* Message Content Bubble */}
               <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap relative shadow-sm ${msg.role === 'user' ? 'bg-primary-light/10 border border-primary/20 text-text-primary' : 'bg-surface-secondary text-text-primary border border-border'} `}>
-
                 {/* Content */}
                 <div>
                   {!msg.content && msg.role === 'model' && isLoading ? (
@@ -599,24 +468,17 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={useLocal ? "Ask SYD Jr..." : "Ask SYD..."}
-              disabled={useLocal && (!isSupported || isCheckingCache)}
-              className="w-full bg-surface-secondary border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-text-primary resize-none outline-none focus:border-primary h-[80px] disabled:opacity-50 disabled:cursor-not-allowed font-sans"
+              placeholder="Ask SYD..."
+              className="w-full bg-surface-secondary border border-border rounded-lg pl-3 pr-10 py-3 text-sm text-text-primary resize-none outline-none focus:border-primary h-[80px] font-sans"
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || isLoading || (useLocal && (!isSupported || isCheckingCache))}
+              disabled={!input.trim() || isLoading}
               className="absolute right-3 bottom-3 text-primary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
-          {useLocal && (
-            <div className="text-[9px] text-text-muted mt-2 text-center flex items-center justify-center gap-1">
-              <Cpu className="w-3 h-3" />
-              SYD Jr. runs entirely on your device. Private & Offline.
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -14,7 +14,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import { WorldSettings } from './types';
 import { SubscriptionProvider } from './context/SubscriptionContext';
-import { LocalLlmProvider } from './context/LocalLlmContext';
 import { SaveStatusProvider } from './context/SaveStatusContext';
 import { UpgradeModal } from './components/ui/UpgradeModal';
 import {
@@ -275,31 +274,29 @@ const App: React.FC = () => {
 
     return (
         <SubscriptionProvider>
-            <LocalLlmProvider>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/" element={<ProjectLibrary />} />
-                        <Route path="/auth" element={<AuthPage />} />
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/" element={<ProjectLibrary />} />
+                    <Route path="/auth" element={<AuthPage />} />
 
-                        {/* Protected Routes */}
-                        <Route element={<ProtectedRoute />}>
-                            <Route path="/settings/api-keys" element={<ApiKeySettings />} />
-                        </Route>
+                    {/* Protected Routes */}
+                    <Route element={<ProtectedRoute />}>
+                        <Route path="/settings/api-keys" element={<ApiKeySettings />} />
+                    </Route>
 
-                        <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
-                        <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                            <Route index element={<DashboardPage />} />
-                            <Route path="timeline" element={<TimelinePage />} />
-                            <Route path="script" element={<ScriptEditorPage />} />
-                            <Route path="story-notes" element={<StoryNotesPage />} />
-                            <Route path="assets" element={<AssetsPage />} />
-                            <Route path="settings" element={<SettingsPage />} />
-                        </Route>
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                    <UpgradeModal /> {/* Global Modal */}
-                </BrowserRouter>
-            </LocalLlmProvider>
+                    <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
+                    <Route path="/project/:projectId" element={<WorkspaceLayout />}>
+                        <Route index element={<DashboardPage />} />
+                        <Route path="timeline" element={<TimelinePage />} />
+                        <Route path="script" element={<ScriptEditorPage />} />
+                        <Route path="story-notes" element={<StoryNotesPage />} />
+                        <Route path="assets" element={<AssetsPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                    </Route>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+                <UpgradeModal /> {/* Global Modal */}
+            </BrowserRouter>
         </SubscriptionProvider>
     );
 };
