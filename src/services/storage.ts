@@ -719,6 +719,21 @@ export const saveProjectDataSequential = (projectId: string, project: Project): 
 };
 
 /**
+ * Immediate transactional save.
+ * Cancels any pending auto-save debounce FIRST, then queues this save.
+ * This guarantees "last write wins" for manual actions like delete.
+ */
+export const saveProjectDataImmediate = async (projectId: string, project: Project): Promise<void> => {
+    // 1. Kill any pending auto-save timer
+    saveProjectDataDebounced.cancel();
+
+    // 2. Queue this manual save to run effectively "immediately" (after any in-flight requests finish)
+    return saveQueue.enqueue(async () => {
+        await saveProjectData(projectId, project);
+    });
+};
+
+/**
  * Debounced save that uses the queue to prevent race conditions
  */
 const createQueuedDebouncedSave = () => {

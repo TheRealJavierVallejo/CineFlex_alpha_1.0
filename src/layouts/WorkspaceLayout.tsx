@@ -1,4 +1,7 @@
-import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced, saveProjectDataSequential } from '../services/storage';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
+import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced, saveProjectDataSequential, saveProjectDataImmediate } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
@@ -271,8 +274,8 @@ export const WorkspaceLayout: React.FC = () => {
         };
 
         setProject(updatedProject);
-        // Use sequential transactional save
-        await saveProjectDataSequential(updatedProject.id, updatedProject);
+        // Use immediate transactional save (cancels debounce + queues)
+        await saveProjectDataImmediate(updatedProject.id, updatedProject);
         showToast(`Snapshot saved: ${draftName}`, 'success');
     }, [project, showToast]);
 
@@ -307,8 +310,8 @@ export const WorkspaceLayout: React.FC = () => {
         // 3. Sync & Store
         const syncedProject = syncScriptToScenes(updatedProject);
         setProject(syncedProject);
-        // Use sequential transactional save
-        await saveProjectDataSequential(syncedProject.id, syncedProject);
+        // Use immediate transactional save
+        await saveProjectDataImmediate(syncedProject.id, syncedProject);
         showToast(`Switched to: ${draft.name}`, 'success');
     }, [project, showToast]);
 
@@ -349,8 +352,8 @@ export const WorkspaceLayout: React.FC = () => {
         };
 
         setProject(updatedProject);
-        // Use sequential transactional save
-        await saveProjectDataSequential(updatedProject.id, updatedProject);
+        // Use immediate transactional save
+        await saveProjectDataImmediate(updatedProject.id, updatedProject);
         showToast("Version deleted", 'info');
     }, [project, showToast]);
 
@@ -363,8 +366,8 @@ export const WorkspaceLayout: React.FC = () => {
         const updatedProject = { ...project, drafts: updatedDrafts, lastModified: Date.now() };
 
         setProject(updatedProject);
-        // Use sequential save for rename
-        await saveProjectDataSequential(updatedProject.id, updatedProject);
+        // Use immediate transactional save for rename
+        await saveProjectDataImmediate(updatedProject.id, updatedProject);
     }, [project]);
 
     const handleAddShot = useCallback(() => {
