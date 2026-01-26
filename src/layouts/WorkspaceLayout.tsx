@@ -182,7 +182,7 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleUpdateProject = useCallback((updated: Project) => {
         // Use functional update to avoid stale closures
-        setProject(prev => {
+        setProject((prev: Project | null) => {
             // Merge updates to handle partial updates
             if (!prev) return updated;
             return { ...prev, ...updated };
@@ -248,14 +248,19 @@ export const WorkspaceLayout: React.FC = () => {
         }
     }, [project, handleUpdateProject, showToast]);
 
-    const handleCreateDraft = useCallback((name?: string) => {
-        if (!project) return;
+    /** Syncs current scriptElements into the active draft object */
+    const persistActiveDraftContent = useCallback((proj: Project): Project => {
+        const updatedDrafts = proj.drafts.map((d: ScriptDraft) =>
+            d.id === proj.activeDraftId
+                ? { ...d, content: proj.scriptElements || [], updatedAt: Date.now() }
+                : d
+        );
+        return { ...proj, drafts: updatedDrafts };
+    }, []);
 
-        const timestamp = new Date().toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric'
-        });
-        const draftName = name || `Snapshot - ${timestamp}`;
+    const handleCreateDraft = useCallback(async (name?: string) => {
+        if (!project) return;
+        const draftName = name || `Snapshot ${project.drafts.length + 1}`;
 
         const newDraft: ScriptDraft = {
             id: crypto.randomUUID(),
@@ -267,18 +272,18 @@ export const WorkspaceLayout: React.FC = () => {
         const updatedProject: Project = {
             ...project,
             drafts: [...(project.drafts || []), newDraft],
-            activeDraftId: newDraft.id,
-            scriptElements: newDraft.content
+            lastModified: Date.now()
         };
 
         handleUpdateProject(updatedProject);
-        showToast(`Draft created: ${draftName}`, 'success');
+        await saveProjectData(updatedProject.id, updatedProject);
+        showToast(`Snapshot saved: ${draftName}`, 'success');
     }, [project, handleUpdateProject, showToast]);
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
 
-        const draft = project.drafts.find(d => d.id === draftId);
+        const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
         if (!draft) {
             showToast("Draft not found", 'error');
             return;
@@ -310,32 +315,67 @@ export const WorkspaceLayout: React.FC = () => {
         showToast(`Switched to: ${draft.name}`, 'success');
     }, [project, handleUpdateProject, showToast]);
 
-    const handleDeleteDraft = useCallback((draftId: string) => {
+    const handleDeleteDraft = useCallback(async (draftId: string) => {
         if (!project) return;
         if (project.activeDraftId === draftId) {
             showToast("Cannot delete the active draft", 'warning');
             return;
         }
 
-        const updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
-        handleUpdateProject({ ...project, drafts: updatedDrafts });
-        showToast("Draft deleted", 'info');
+        let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
+
+        // Edge case: if no drafts left, create a default one
+        let activeId = project.activeDraftId;
+        let elements = project.scriptElements;
+
+        if (updatedDrafts.length === 0) {
+            const defaultDraft: ScriptDraft = {
+                id: crypto.randomUUID(),
+                name: 'Main Draft',
+                content: [],
+                updatedAt: Date.now()
+            };
+            updatedDrafts = [defaultDraft];
+            activeId = defaultDraft.id;
+            elements = [];
+        }
+
+        const updatedProject = {
+            ...project,
+            drafts: updatedDrafts,
+            activeDraftId: activeId,
+            scriptElements: elements,
+            lastModified: Date.now()
+        };
+        handleUpdateProject(updatedProject);
+        await saveProjectData(updatedProject.id, updatedProject);
+        showToast("Version deleted", 'info');
     }, [project, handleUpdateProject, showToast]);
 
-    const handleRenameDraft = useCallback((draftId: string, name: string) => {
+    const handleRenameDraft = useCallback(async (draftId: string, name: string) => {
         if (!project) return;
         const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
             d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
         );
-        handleUpdateProject({ ...project, drafts: updatedDrafts });
+        const updatedProject = { ...project, drafts: updatedDrafts, lastModified: Date.now() };
+        handleUpdateProject(updatedProject);
+        await saveProjectData(updatedProject.id, updatedProject);
     }, [project, handleUpdateProject]);
 
     const updateScriptElements = useCallback((elements: ScriptElement[]) => {
         if (!project) return;
-        const tempProject = { ...project, scriptElements: elements };
+
+        // 1. Update project state with new elements
+        const tempProject = { ...project, scriptElements: elements, lastModified: Date.now() };
+
+        // 2. Sync scenes
         const syncedProject = syncScriptToScenes(tempProject);
-        handleUpdateProject(syncedProject);
-    }, [project, handleUpdateProject]);
+
+        // 3. Persist elements INTO the active draft object inside project.drafts
+        const fullyUpdatedProject = persistActiveDraftContent(syncedProject);
+
+        handleUpdateProject(fullyUpdatedProject);
+    }, [project, handleUpdateProject, persistActiveDraftContent]);
 
     const handleAddShot = useCallback(() => {
         if (project && project.scenes.length > 0) {
@@ -496,7 +536,7 @@ export const WorkspaceLayout: React.FC = () => {
                 {sydOpen && (
                     <div style={{ order: 2, display: 'flex' }}>
                         <ResizableDivider
-                            onResize={(newPercent) => {
+                            onResize={(newPercent: number) => {
                                 const clamped = Math.min(70, Math.max(30, newPercent));
                                 setSydWidth(clamped);
                             }}

@@ -18,6 +18,7 @@ export interface ExportOptions {
     includeTitlePage: boolean;
     includeSceneNumbers: boolean;
     watermark?: string;
+    openInNewTab?: boolean;
 }
 
 // --- 1. FOUNTAIN (TXT) EXPORT ---
@@ -254,7 +255,15 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         if (el.dual) dualBufferY = 0;
     }
 
-    doc.save(`${project.name.replace(/\s+/g, '_')}_script.pdf`);
+    const filename = `${project.name.replace(/\s+/g, '_')}_script.pdf`;
+
+    if (options.openInNewTab) {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+    } else {
+        doc.save(filename);
+    }
 };
 
 // Legacy support (defaults to PDF standard)

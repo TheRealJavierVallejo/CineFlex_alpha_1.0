@@ -11,12 +11,13 @@ interface ExportDialogProps {
     project: Project;
 }
 
-export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, project }) => {
+export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, project }: ExportDialogProps) => {
     const [options, setOptions] = useState<ExportOptions>({
         format: 'pdf',
         includeTitlePage: true,
         includeSceneNumbers: false,
-        watermark: ''
+        watermark: '',
+        openInNewTab: true
     });
 
     const formats = [
@@ -107,6 +108,23 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
 
                     <div className="space-y-4">
                         <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Advanced</label>
+
+                        {options.format === 'pdf' && (
+                            <label className="flex items-center gap-3 cursor-pointer group mb-4">
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only"
+                                        checked={options.openInNewTab}
+                                        onChange={(e) => setOptions({ ...options, openInNewTab: e.target.checked })}
+                                    />
+                                    <div className={`w-10 h-5 rounded-full transition-colors ${options.openInNewTab ? 'bg-primary' : 'bg-zinc-700'}`} />
+                                    <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.openInNewTab ? 'translate-x-5' : ''}`} />
+                                </div>
+                                <span className="text-sm font-medium text-text-primary group-hover:text-white transition-colors">Open in New Tab</span>
+                            </label>
+                        )}
+
                         <div className="space-y-1.5">
                             <span className="text-xs text-text-secondary">Watermark (Optional)</span>
                             <input
