@@ -213,6 +213,7 @@ export const ScriptPage: React.FC = () => {
                                             </div>
                                         ) : (
                                             <SlateScriptEditor
+                                                key={project.activeDraftId || 'default'}
                                                 ref={editorRef}
                                                 initialElements={elements}
                                                 onChange={(updatedElements) => {
