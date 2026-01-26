@@ -643,11 +643,23 @@ class SaveQueue {
     private isProcessing = false;
 
     /**
-     * Add a save operation to the queue
+     * Add a save operation to the queue and wait for it to complete.
      */
-    enqueue(operation: () => Promise<void>) {
-        this.queue.push(operation);
-        this.processQueue();
+    enqueue(operation: () => Promise<void>): Promise<void> {
+        return new Promise((resolve, reject) => {
+            // Wrap operation to resolve/reject the promise when done
+            const wrappedOperation = async () => {
+                try {
+                    await operation();
+                    resolve();
+                } catch (err) {
+                    reject(err);
+                }
+            };
+
+            this.queue.push(wrappedOperation);
+            this.processQueue();
+        });
     }
 
     /**
@@ -697,6 +709,16 @@ class SaveQueue {
 const saveQueue = new SaveQueue();
 
 /**
+ * Sequential wrapper for saveProjectData.
+ * Forces the save to join the queue and wait its turn.
+ */
+export const saveProjectDataSequential = (projectId: string, project: Project): Promise<void> => {
+    return saveQueue.enqueue(async () => {
+        await saveProjectData(projectId, project);
+    });
+};
+
+/**
  * Debounced save that uses the queue to prevent race conditions
  */
 const createQueuedDebouncedSave = () => {
@@ -727,6 +749,7 @@ const createQueuedDebouncedSave = () => {
             timeoutId = null;
 
             // Add to queue (will execute sequentially)
+            // We don't await this here because it's fire-and-forget for auto-save
             saveQueue.enqueue(async () => {
                 console.log(`[SAVE QUEUE] Saving project ${finalProjectId}...`);
                 await saveProjectData(finalProjectId, finalProject);

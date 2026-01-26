@@ -1,7 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
-import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced } from '../services/storage';
+import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced, saveProjectDataSequential } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
@@ -243,7 +240,8 @@ export const WorkspaceLayout: React.FC = () => {
 
             const syncedProject = syncScriptToScenes(updatedProject);
             setProject(syncedProject);
-            await saveProjectData(syncedProject.id, syncedProject);
+            // Use sequential save for import as well
+            await saveProjectDataSequential(syncedProject.id, syncedProject);
             showToast(`Script imported as draft: ${draftName}`, 'success');
         } catch (e: unknown) {
             console.error(e);
@@ -273,7 +271,8 @@ export const WorkspaceLayout: React.FC = () => {
         };
 
         setProject(updatedProject);
-        await saveProjectData(updatedProject.id, updatedProject);
+        // Use sequential transactional save
+        await saveProjectDataSequential(updatedProject.id, updatedProject);
         showToast(`Snapshot saved: ${draftName}`, 'success');
     }, [project, showToast]);
 
@@ -308,7 +307,8 @@ export const WorkspaceLayout: React.FC = () => {
         // 3. Sync & Store
         const syncedProject = syncScriptToScenes(updatedProject);
         setProject(syncedProject);
-        await saveProjectData(syncedProject.id, syncedProject);
+        // Use sequential transactional save
+        await saveProjectDataSequential(syncedProject.id, syncedProject);
         showToast(`Switched to: ${draft.name}`, 'success');
     }, [project, showToast]);
 
@@ -349,7 +349,8 @@ export const WorkspaceLayout: React.FC = () => {
         };
 
         setProject(updatedProject);
-        await saveProjectData(updatedProject.id, updatedProject);
+        // Use sequential transactional save
+        await saveProjectDataSequential(updatedProject.id, updatedProject);
         showToast("Version deleted", 'info');
     }, [project, showToast]);
 
@@ -362,33 +363,9 @@ export const WorkspaceLayout: React.FC = () => {
         const updatedProject = { ...project, drafts: updatedDrafts, lastModified: Date.now() };
 
         setProject(updatedProject);
-        await saveProjectData(updatedProject.id, updatedProject);
+        // Use sequential save for rename
+        await saveProjectDataSequential(updatedProject.id, updatedProject);
     }, [project]);
-
-    // 🔥 CRITICAL FIX: Functional update to prevent "Zombie Closure" race conditions
-    // This ensures we always merge new script elements into the LATEST project state,
-    // not the state captured when the debounce started.
-    const updateScriptElements = useCallback((elements: ScriptElement[]) => {
-        setProject(prev => {
-            if (!prev) return null;
-
-            // 1. Update project state with new elements
-            const tempProject = { ...prev, scriptElements: elements, lastModified: Date.now() };
-
-            // 2. Sync scenes
-            const syncedProject = syncScriptToScenes(tempProject);
-
-            // 3. Persist elements INTO the active draft object inside project.drafts
-            // We use the *fresh* prev.drafts array, so if a draft was deleted, it's already gone here.
-            const updatedDrafts = syncedProject.drafts.map((d: ScriptDraft) =>
-                d.id === syncedProject.activeDraftId
-                    ? { ...d, content: elements, updatedAt: Date.now() }
-                    : d
-            );
-
-            return { ...syncedProject, drafts: updatedDrafts };
-        });
-    }, []); // No dependencies means this function never recreates, preventing stale closures
 
     const handleAddShot = useCallback(() => {
         if (project && project.scenes.length > 0) {
