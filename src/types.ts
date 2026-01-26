@@ -135,6 +135,17 @@ export interface ScriptElement {
 }
 
 /**
+ * 📝 SCRIPT DRAFT: A point-in-time version of a screenplay.
+ * Allows for non-destructive script updates and version history.
+ */
+export interface ScriptDraft {
+  id: string;
+  name: string;
+  content: ScriptElement[];
+  updatedAt: number;
+}
+
+/**
  * 🎬 SCENE: A grouping mechanism for script elements and shots in a shared location.
  */
 export interface Scene {
@@ -334,6 +345,10 @@ export interface Project {
   };
   scriptElements?: ScriptElement[];
   titlePage?: TitlePageData;
+
+  // Script Versioning
+  drafts: ScriptDraft[];
+  activeDraftId: string;
 
   // Story Development (Syd Micro-Agent System)
   plotDevelopment?: PlotDevelopment;

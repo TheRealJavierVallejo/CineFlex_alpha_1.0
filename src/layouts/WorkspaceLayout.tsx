@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData } from '../types';
+import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
 import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
@@ -42,6 +42,8 @@ export interface WorkspaceContextType {
     handleDuplicateShot: (shotId: string) => void;
     /** Handles script file parsing and project synchronization */
     importScript: (file: File) => Promise<void>;
+    /** Creates a snapshot of the current script as a named draft */
+    handleCreateDraft: (name?: string) => void;
     /** Direct manual update of the script element array */
     updateScriptElements: (elements: ScriptElement[]) => void;
     /** Global toast trigger for the workspace */
@@ -146,6 +148,18 @@ export const WorkspaceLayout: React.FC = () => {
         try {
             const data = await getProjectData(id);
             if (data) {
+                // Backward Compatibility: If drafts is missing or empty, treat current scriptElements as first draft
+                if (!data.drafts || data.drafts.length === 0) {
+                    const initialDraft: ScriptDraft = {
+                        id: 'initial-draft',
+                        name: 'Initial Script',
+                        content: data.scriptElements || [],
+                        updatedAt: data.lastModified || Date.now()
+                    };
+                    data.drafts = [initialDraft];
+                    data.activeDraftId = initialDraft.id;
+                    data.scriptElements = initialDraft.content;
+                }
                 setProject(data);
                 setActiveProjectId(id);
             } else {
@@ -190,28 +204,69 @@ export const WorkspaceLayout: React.FC = () => {
                     month: 'long',
                     day: 'numeric'
                 }),
-                // Merge any specific fields if parseScript returns them in future (currently uses metadata)
                 ...(parsed.titlePage || {})
             };
 
-            const tempProject: Project = {
+            const timestamp = new Date().toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+            const draftName = `Imported: ${file.name} - ${timestamp}`;
+            const newDraft: ScriptDraft = {
+                id: crypto.randomUUID(),
+                name: draftName,
+                content: parsed.elements,
+                updatedAt: Date.now()
+            };
+
+            const updatedProject: Project = {
                 ...project,
-                scriptElements: parsed.elements,
+                drafts: [...(project.drafts || []), newDraft],
+                activeDraftId: newDraft.id,
+                scriptElements: newDraft.content, // Keep editor working
                 scriptFile: {
                     name: file.name,
                     uploadedAt: Date.now(),
                     format: file.name.endsWith('.fountain') ? 'fountain' : 'txt'
                 },
-                titlePage: titlePage // ✅ Save title page
+                titlePage: titlePage
             };
 
-            const syncedProject = syncScriptToScenes(tempProject);
+            const syncedProject = syncScriptToScenes(updatedProject);
             handleUpdateProject(syncedProject);
-            showToast(`Script imported & synced (${parsed.elements.length} lines)`, 'success');
+            showToast(`Script imported as draft: ${draftName}`, 'success');
         } catch (e: unknown) {
             console.error(e);
             showToast((e as Error).message || "Failed to parse script", 'error');
         }
+    }, [project, handleUpdateProject, showToast]);
+
+    const handleCreateDraft = useCallback((name?: string) => {
+        if (!project) return;
+
+        const timestamp = new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+        const draftName = name || `Snapshot - ${timestamp}`;
+
+        const newDraft: ScriptDraft = {
+            id: crypto.randomUUID(),
+            name: draftName,
+            content: project.scriptElements || [],
+            updatedAt: Date.now()
+        };
+
+        const updatedProject: Project = {
+            ...project,
+            drafts: [...(project.drafts || []), newDraft],
+            activeDraftId: newDraft.id,
+            scriptElements: newDraft.content
+        };
+
+        handleUpdateProject(updatedProject);
+        showToast(`Draft created: ${draftName}`, 'success');
     }, [project, handleUpdateProject, showToast]);
 
     const updateScriptElements = useCallback((elements: ScriptElement[]) => {
@@ -308,10 +363,10 @@ export const WorkspaceLayout: React.FC = () => {
         project: project!,
         handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, updateScriptElements, showToast, saveNow
+        importScript, handleCreateDraft, updateScriptElements, showToast, saveNow
     }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
-        importScript, updateScriptElements, showToast, saveNow]);
+        importScript, handleCreateDraft, updateScriptElements, showToast, saveNow]);
 
     if (isLoading || !project) {
         return (
