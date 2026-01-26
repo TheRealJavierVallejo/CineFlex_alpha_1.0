@@ -3,7 +3,7 @@
  * Commercial Quality Update: Teal Theme & Studio Classes
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, Scene, ShowToastFn, ScriptElement, ImageLibraryItem, Location } from '../../types';
 import Button from '../ui/Button';
@@ -30,8 +30,8 @@ interface TimelineViewProps {
 export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdateProject, onEditShot, showToast }) => {
   const navigate = useNavigate();
   const { importScript } = useOutletContext<WorkspaceContextType>();
-  const { tier } = useSubscription(); 
-  
+  const { tier } = useSubscription();
+
   const [scriptElements, setScriptElements] = useState<ScriptElement[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -68,35 +68,35 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
 
   // --- ONBOARDING HANDLERS ---
   const handleScriptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setIsImporting(true);
-      try {
-          await importScript(file);
-          navigate('/project/' + project.id + '/script');
-      } catch (err) {
-          console.error(err);
-      } finally {
-          setIsImporting(false);
-      }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      await importScript(file);
+      navigate('/project/' + project.id + '/script');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleStartWriting = () => {
-      // Initialize with 1 Scene and 1 Script Element
-      const sceneId = crypto.randomUUID();
-      const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. EXAMPLE - DAY', actionNotes: '' };
-      const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. EXAMPLE - DAY', sceneId, sequence: 1 };
+    // Initialize with 1 Scene and 1 Script Element
+    const sceneId = crypto.randomUUID();
+    const firstScene: Scene = { id: sceneId, sequence: 1, heading: 'INT. EXAMPLE - DAY', actionNotes: '' };
+    const firstElement: ScriptElement = { id: crypto.randomUUID(), type: 'scene_heading', content: 'INT. EXAMPLE - DAY', sceneId, sequence: 1 };
 
-      onUpdateProject({
-          ...project,
-          scenes: [firstScene],
-          scriptElements: [firstElement]
-      });
-      navigate('/project/' + project.id + '/script');
+    onUpdateProject({
+      ...project,
+      scenes: [firstScene],
+      scriptElements: [firstElement]
+    });
+    navigate('/project/' + project.id + '/script');
   };
 
   // --- HANDLERS (Same as before) ---
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
     if (project.scenes.length === 0) {
       showToast("Add scenes before exporting", 'warning');
       return;
@@ -112,9 +112,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [project, tier, showToast]);
 
-  const handleAddScene = () => {
+  const handleAddScene = useCallback(() => {
     const newSceneId = crypto.randomUUID();
     const newScene: Scene = { id: newSceneId, sequence: project.scenes.length + 1, heading: 'INT. NEW SCENE - DAY', actionNotes: '' };
     const newScriptEl: ScriptElement = {
@@ -122,9 +122,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     };
     onUpdateProject({ ...project, scenes: [...project.scenes, newScene], scriptElements: [...(project.scriptElements || []), newScriptEl] });
     showToast("Scene added", 'success');
-  };
+  }, [project, onUpdateProject, showToast]);
 
-  const handleUpdateScene = (sceneId: string, updates: Partial<Scene>) => {
+  const handleUpdateScene = useCallback((sceneId: string, updates: Partial<Scene>) => {
     const updatedScenes = project.scenes.map(s => s.id === sceneId ? { ...s, ...updates } : s);
     let updatedScriptElements = project.scriptElements || [];
     if (updates.heading) {
@@ -134,15 +134,15 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       });
     }
     onUpdateProject({ ...project, scenes: updatedScenes, scriptElements: updatedScriptElements });
-  };
+  }, [project, onUpdateProject]);
 
-  const handleDeleteScene = (sceneId: string) => {
+  const handleDeleteScene = useCallback((sceneId: string) => {
     const scene = project.scenes.find(s => s.id === sceneId);
     if (!scene) return;
     setConfirmDeleteScene({ id: sceneId, name: scene.heading });
-  };
+  }, [project.scenes]);
 
-  const confirmSceneDeletion = () => {
+  const confirmSceneDeletion = useCallback(() => {
     if (!confirmDeleteScene) return;
     const updatedShots = project.shots.filter(s => s.sceneId !== confirmDeleteScene.id);
     const updatedScenes = project.scenes.filter(s => s.id !== confirmDeleteScene.id);
@@ -150,16 +150,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     onUpdateProject({ ...project, scenes: updatedScenes, shots: updatedShots, scriptElements: updatedScriptElements });
     showToast("Scene deleted", 'info');
     setConfirmDeleteScene(null);
-  };
+  }, [confirmDeleteScene, project, onUpdateProject, showToast]);
 
-  const handleMoveScene = (index: number, dir: 'up' | 'down') => {
+  const handleMoveScene = useCallback((index: number, dir: 'up' | 'down') => {
     if ((dir === 'up' && index === 0) || (dir === 'down' && index === project.scenes.length - 1)) return;
     const newScenes = [...project.scenes];
     const target = dir === 'up' ? index - 1 : index + 1;
     [newScenes[index], newScenes[target]] = [newScenes[target], newScenes[index]];
     newScenes.forEach((s, i) => s.sequence = i + 1);
     onUpdateProject({ ...project, scenes: newScenes });
-  };
+  }, [project, onUpdateProject]);
 
   const handleTriggerAddShot = (sceneId: string) => {
     setImageModalState({ isOpen: true, sceneId, updateShotId: null });
@@ -197,30 +197,29 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     setImageModalState({ isOpen: false, sceneId: null, updateShotId: null });
   };
 
-  const handleUpdateShot = (id: string, updates: Partial<Shot>) => {
+  const handleUpdateShot = useCallback((id: string, updates: Partial<Shot>) => {
     const updatedShots = project.shots.map(s => s.id === id ? { ...s, ...updates } : s);
     onUpdateProject({ ...project, shots: updatedShots });
-  };
+  }, [project, onUpdateProject]);
 
-  const handleDeleteShot = (shotId: string) => {
+  const handleDeleteShot = useCallback((shotId: string) => {
     const shotToDelete = project.shots.find(s => s.id === shotId);
     if (!shotToDelete) return;
     const updatedShots = project.shots.filter(s => s.id !== shotId);
-    const updatedElements = scriptElements.map(el => ({ ...el, associatedShotIds: el.associatedShotIds?.filter(id => id !== shotId) }));
+    const updatedElements = (project.scriptElements || []).map(el => ({ ...el, associatedShotIds: el.associatedShotIds?.filter(id => id !== shotId) }));
     onUpdateProject({ ...project, shots: updatedShots, scriptElements: updatedElements });
-    setScriptElements(updatedElements);
-    showToast("Shot deleted", 'info', { label: "Undo", onClick: () => { onUpdateProject({ ...project, shots: [...updatedShots, shotToDelete], scriptElements: project.scriptElements }); setScriptElements(project.scriptElements || []); showToast("Shot restored", 'success'); } });
-  };
+    showToast("Shot deleted", 'info', { label: "Undo", onClick: () => { onUpdateProject({ ...project, shots: [...updatedShots, shotToDelete], scriptElements: project.scriptElements }); showToast("Shot restored", 'success'); } });
+  }, [project, onUpdateProject, showToast]);
 
-  const handleOpenPicker = (shotId: string, type: 'action' | 'dialogue' | 'script') => {
+  const handleOpenPicker = useCallback((shotId: string, type: 'action' | 'dialogue' | 'script') => {
     const shot = project.shots.find(s => s.id === shotId);
     if (!shot) return;
     const sceneId = shot.sceneId || project.scenes[0]?.id;
     if (!sceneId) return;
     setPickerState({ isOpen: true, shotId, type, sceneId });
-  };
+  }, [project.shots, project.scenes]);
 
-  const handleSelectScriptElement = (elements: ScriptElement[]) => {
+  const handleSelectScriptElement = useCallback((elements: ScriptElement[]) => {
     if (!pickerState.shotId) return;
 
     // Auto-generate description from selected elements if one doesn't exist
@@ -247,19 +246,19 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       return s;
     });
     onUpdateProject({ ...project, shots: updatedShots });
-  };
+  }, [pickerState.shotId, project, onUpdateProject]);
 
   const handleUnlinkElement = useCallback((shotId: string, elementId: string) => {
     const updatedShots = project.shots.map(s => s.id === shotId ? { ...s, linkedElementIds: s.linkedElementIds?.filter(id => id !== elementId) || [] } : s);
     onUpdateProject({ ...project, shots: updatedShots });
   }, [project, onUpdateProject]);
 
-  const handleCreateAndLinkShot = async (sceneId: string) => {
+  const handleCreateAndLinkShot = useCallback(async (sceneId: string) => {
     const scene = project.scenes.find(s => s.id === sceneId);
     const newShot: Shot = { id: crypto.randomUUID(), sceneId: sceneId, sequence: project.shots.length + 1, description: '', notes: '', characterIds: [], shotType: 'Wide Shot', aspectRatio: project.settings.aspectRatio, dialogue: '', locationId: scene?.locationId };
     onUpdateProject({ ...project, shots: [...project.shots, newShot] });
     setTimeout(() => handleOpenPicker(newShot.id, 'script'), 100);
-  };
+  }, [project, onUpdateProject, handleOpenPicker]);
 
   // --- TOOL RAIL CONTENT ---
   // Memoize filtered scenes to prevent recalculation on every render
@@ -267,7 +266,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
     return project.scenes.filter(s => s.heading.toLowerCase().includes(sceneSearch.toLowerCase()));
   }, [project.scenes, sceneSearch]);
 
-  const tools: Tool[] = [
+  const tools: Tool[] = useMemo(() => [
     {
       id: 'navigator',
       label: 'Scene Navigator',
@@ -306,7 +305,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
         </div>
       )
     }
-  ];
+  ], [filteredScenes, project.shots, sceneSearch, scrollToScene]);
 
   const hasContent = project.scenes.length > 0;
 
@@ -327,7 +326,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ project, onUpdatePro
       <div className="h-full bg-background overflow-y-auto font-sans relative">
         <TimelineHeader
           isUploadingScript={false}
-          onImportScript={() => {}}
+          onImportScript={() => { }}
           onAddScene={handleAddScene}
           onExportPDF={handleExportPDF}
           isExporting={isExporting}

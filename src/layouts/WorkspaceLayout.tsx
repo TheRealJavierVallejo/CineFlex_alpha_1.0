@@ -17,23 +17,45 @@ import { ScriptChat } from '../components/features/ScriptChat';
 import { ResizableDivider } from '../components/ui/ResizableDivider';
 import { Header } from '../components/layout/Header';
 
-// Context type for child routes
+/**
+ * Global workspace context provided to all project sub-routes.
+ * Facilitates single-source-of-truth project state and standardized operations.
+ */
 export interface WorkspaceContextType {
+    /** The current state of the active movie project */
     project: Project;
+    /** Updates the entire project object and triggers an auto-save */
     handleUpdateProject: (updated: Project) => void;
-    handleUpdateSettings: (key: keyof WorldSettings, value: any) => void;
+    /** updates a single field in the world settings */
+    handleUpdateSettings: <K extends keyof WorldSettings>(key: K, value: WorldSettings[K]) => void;
+    /** Adds a new shot to the first scene of the project */
     handleAddShot: () => void;
+    /** Opens the editor for a specific shot */
     handleEditShot: (shot: Shot) => void;
+    /** Updates or creates a shot in the project state */
     handleUpdateShot: (shot: Shot) => void;
+    /** Performs a high-performance update of multiple shots at once */
     handleBulkUpdateShots: (shots: Shot[]) => void;
+    /** Safely deletes a shot and its script associations with undo support */
     handleDeleteShot: (shotId: string) => void;
+    /** Clones a shot and inserts it immediately after the original */
     handleDuplicateShot: (shotId: string) => void;
+    /** Handles script file parsing and project synchronization */
     importScript: (file: File) => Promise<void>;
+    /** Direct manual update of the script element array */
     updateScriptElements: (elements: ScriptElement[]) => void;
+    /** Global toast trigger for the workspace */
     showToast: ShowToastFn;
+    /** Force an immediate save to the database bypassing debounce */
     saveNow: () => Promise<void>;
 }
 
+/**
+ * WORKSPACE LAYOUT
+ * The main controller for the project editing environment.
+ * Manages project state hydration, auto-save infrastructure, routing,
+ * and provides the context for all sub-pages (Dashboard, Timeline, etc).
+ */
 export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
@@ -147,7 +169,7 @@ export const WorkspaceLayout: React.FC = () => {
         });
     }, []);
 
-    const handleUpdateSettings = useCallback((key: keyof WorldSettings, value: any) => {
+    const handleUpdateSettings = useCallback(<K extends keyof WorldSettings>(key: K, value: WorldSettings[K]) => {
         if (!project) return;
         const updated: Project = { ...project, settings: { ...project.settings, [key]: value } };
         handleUpdateProject(updated);
@@ -186,9 +208,9 @@ export const WorkspaceLayout: React.FC = () => {
             const syncedProject = syncScriptToScenes(tempProject);
             handleUpdateProject(syncedProject);
             showToast(`Script imported & synced (${parsed.elements.length} lines)`, 'success');
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error(e);
-            showToast(e.message || "Failed to parse script", 'error');
+            showToast((e as Error).message || "Failed to parse script", 'error');
         }
     }, [project, handleUpdateProject, showToast]);
 
@@ -392,6 +414,13 @@ export const WorkspaceLayout: React.FC = () => {
     );
 };
 
-export function useWorkspace() {
-    return useOutletContext<WorkspaceContextType>();
+/**
+ * Custom hook to safely access the Workspace context.
+ */
+export function useWorkspace(): WorkspaceContextType {
+    const context = useOutletContext<WorkspaceContextType>();
+    if (!context) {
+        throw new Error("useWorkspace must be used within a WorkspaceLayout outlet context");
+    }
+    return context;
 }

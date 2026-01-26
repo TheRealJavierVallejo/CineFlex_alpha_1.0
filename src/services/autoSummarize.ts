@@ -53,28 +53,33 @@ export async function generateBeatSummary(
     beats: StoryBeat[],
     generateWithModel?: (prompt: string) => Promise<string>
 ): Promise<string> {
-    const combinedContent = beats
-        .sort((a, b) => a.sequence - b.sequence)
-        .map(b => `${b.beatName}: ${b.content || ''}`)
-        .join('\n');
+    try {
+        const combinedContent = beats
+            .sort((a, b) => a.sequence - b.sequence)
+            .map(b => `${b.beatName}: ${b.content || ''}`)
+            .join('\n');
 
-    if (generateWithModel) {
-        try {
-            const prompt = `Summarize the following story beats in 100 words or less. Keep only the key plot points:
+        if (generateWithModel) {
+            try {
+                const prompt = `Summarize the following story beats in 100 words or less. Keep only the key plot points:
 
 ${combinedContent}
 
 Summary:`;
 
-            const summary = await generateWithModel(prompt);
-            return truncateToWordLimit(summary, 100);
-        } catch (e) {
-            console.warn('Model summarization failed, using fallback', e);
+                const summary = await generateWithModel(prompt);
+                return truncateToWordLimit(summary, 100);
+            } catch (e) {
+                console.warn('[AutoSummarize Service] Model summarization failed, using fallback', e);
+            }
         }
-    }
 
-    // Fallback: Simple extraction
-    return extractKeywordSummary(combinedContent, 100);
+        // Fallback: Simple extraction
+        return extractKeywordSummary(combinedContent, 100);
+    } catch (error) {
+        console.error('[AutoSummarize Service] Critical error in generateBeatSummary:', error);
+        return ''; // Return empty summary as safe default
+    }
 }
 
 /**
@@ -86,29 +91,34 @@ export async function generateCharacterProfile(
     character: CharacterDevelopment,
     generateWithModel?: (prompt: string) => Promise<string>
 ): Promise<string> {
-    const profile = `${character.name} (${character.role}): ${character.characterArc || ''}
+    try {
+        const profile = `${character.name} (${character.role}): ${character.characterArc || ''}
 Want: ${character.want || ''}
 Need: ${character.need || ''}
 Lie: ${character.lie || ''}
 Ghost: ${character.ghost || ''}`;
 
-    if (generateWithModel) {
-        try {
-            const prompt = `Summarize this character profile in 75 words or less:
+        if (generateWithModel) {
+            try {
+                const prompt = `Summarize this character profile in 75 words or less:
 
 ${profile}
 
 Summary:`;
 
-            const summary = await generateWithModel(prompt);
-            return truncateToWordLimit(summary, 75);
-        } catch (e) {
-            console.warn('Model character summary failed, using fallback', e);
+                const summary = await generateWithModel(prompt);
+                return truncateToWordLimit(summary, 75);
+            } catch (e) {
+                console.warn('[AutoSummarize Service] Model character summary failed, using fallback', e);
+            }
         }
-    }
 
-    // Fallback: Extract key info
-    return extractKeywordSummary(profile, 75);
+        // Fallback: Extract key info
+        return extractKeywordSummary(profile, 75);
+    } catch (error) {
+        console.error('[AutoSummarize Service] Critical error in generateCharacterProfile:', error);
+        return ''; // Return empty string as safe default
+    }
 }
 
 /**

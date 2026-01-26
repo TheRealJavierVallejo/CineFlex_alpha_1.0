@@ -1,22 +1,33 @@
 /**
- * Debounce utility function
- * Delays execution of a function until after a specified wait time has elapsed
- * since the last time it was invoked.
- * 
- * Now supports .cancel() and .flush() methods (Lodash-style API).
- * 
- * @param func - Function to debounce
- * @param wait - Milliseconds to wait before executing
- * @returns Debounced function with .cancel() and .flush() methods
+ * 🛠️ UTILITY: DEBOUNCE & THROTTLE
+ * Professional implementation of execution decorators to improve UI performance
+ * and reduce redundant service calls.
  */
 
-interface DebouncedFunc<T extends (...args: any[]) => any> {
+/**
+ * Functional interface for a debounced function.
+ * Includes methods to control the execution lifecycle.
+ */
+interface DebouncedFunc<T extends (...args: unknown[]) => void> {
+    /** Executes the function with debouncing logic */
     (...args: Parameters<T>): void;
+    /** Cancels any pending execution */
     cancel: () => void;
+    /** Immediately executes any pending call and cancels the timer */
     flush: () => void;
 }
 
-export function debounce<T extends (...args: any[]) => any>(
+/**
+ * Creates a debounced version of a function that delays execution until after 
+ * 'wait' milliseconds have elapsed since the last time it was invoked.
+ * 
+ * Useful for handling rapid input events (like search or auto-save).
+ * 
+ * @param func - The function to debounce.
+ * @param wait - Milliseconds to delay.
+ * @returns A debounced function with .cancel() and .flush() control methods.
+ */
+export function debounce<T extends (...args: unknown[]) => void>(
     func: T,
     wait: number
 ): DebouncedFunc<T> {
@@ -56,14 +67,16 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 /**
- * Throttle utility function  
- * Ensures a function is only called once per specified time period
+ * Creates a throttled version of a function that only invokes the provided 
+ * function at most once per every 'limit' milliseconds.
  * 
- * @param func - Function to throttle
- * @param limit - Minimum milliseconds between calls
- * @returns Throttled function
+ * Useful for handling scroll or resize events to maintain UI smoothness.
+ * 
+ * @param func - The function to throttle.
+ * @param limit - Minimum milliseconds between calls.
+ * @returns A throttled version of the function.
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => void>(
     func: T,
     limit: number
 ): (...args: Parameters<T>) => void {

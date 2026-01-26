@@ -5,6 +5,10 @@
  * It tells the computer exactly what a "Project", "Character", or "Shot" looks like.
  */
 
+/**
+ * Navigation state within the application.
+ * Controls which high-level view is currently displayed.
+ */
 export enum ViewState {
   DASHBOARD = 'DASHBOARD', // The Grid View of images
   TIMELINE = 'TIMELINE',   // The Script View
@@ -14,7 +18,10 @@ export enum ViewState {
   SETTINGS = 'SETTINGS'    // The Project Configuration View
 }
 
-// 🔔 TOAST: Updated for Stacking and Undo Actions
+/**
+ * A notification message system for the UI.
+ * Supports stacking, different levels of severity, and optional action buttons.
+ */
 export interface ToastNotification {
   id: number;
   message: string;
@@ -25,13 +32,19 @@ export interface ToastNotification {
   };
 }
 
+/**
+ * Functional interface for displaying a toast notification.
+ */
 export type ShowToastFn = (
   message: string,
   type?: 'success' | 'error' | 'warning' | 'info',
   action?: { label: string; onClick: () => void }
 ) => void;
 
-// 👤 CHARACTER: Defines a person in your movie
+/**
+ * 👤 CHARACTER: Defines a person in your movie.
+ * Stores core identity and reference visual data for AI generation.
+ */
 export interface Character {
   id: string;              // A unique ID (like a barcode) so the computer doesn't get confused
   name: string;            // The character's name
@@ -40,7 +53,10 @@ export interface Character {
   referencePhotos?: string[]; // A list of photos you uploaded for this person
 }
 
-// 👕 OUTFIT: Defines clothes for a character
+/**
+ * 👕 OUTFIT: Defines clothes for a character.
+ * Tied to a specific character to ensure consistency across shots.
+ */
 export interface Outfit {
   id: string;
   characterId: string;     // Links this outfit to a specific Character ID
@@ -49,7 +65,10 @@ export interface Outfit {
   referencePhotos?: string[]; // Photos of what the clothes look like
 }
 
-// 📍 LOCATION: Defines a set or environment
+/**
+ * 📍 LOCATION: Defines a set or environment.
+ * Provides the visual foundation for scene-based image generation.
+ */
 export interface Location {
   id: string;
   name: string;            // e.g., "Main Street"
@@ -57,7 +76,10 @@ export interface Location {
   referencePhotos?: string[]; // Location scout photos
 }
 
-// 🖼️ IMAGE LIBRARY: A collection of all generated images for the project
+/**
+ * 🖼️ IMAGE LIBRARY ITEM: A single entry in the project's generated image gallery.
+ * Includes generation metadata (prompt, model) for reproduction.
+ */
 export interface ImageLibraryItem {
   id: string;
   projectId: string;
@@ -68,10 +90,13 @@ export interface ImageLibraryItem {
   model?: string;
   aspectRatio?: string;
   isFavorite?: boolean; // Whether this image has been marked as a favorite
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
-// 🌍 WORLD SETTINGS: The general "Vibe" of the movie
+/**
+ * 🌍 WORLD SETTINGS: The general "Vibe" of the movie.
+ * Controls the overall cinematic style, era, and technical generation settings.
+ */
 export interface WorldSettings {
   era: string;             // e.g., "1980s"
   location: string;        // (Deprecated)
@@ -90,7 +115,10 @@ export interface WorldSettings {
   customLocations?: string[];
 }
 
-// 📝 SCRIPT ELEMENT: A single line from a screenplay
+/**
+ * 📝 SCRIPT ELEMENT: A single logical unit of a screenplay.
+ * Follows industry-standard formatting segments (headings, dialogue, action, etc.).
+ */
 export interface ScriptElement {
   id: string;
   type: 'scene_heading' | 'action' | 'dialogue' | 'character' | 'parenthetical' | 'transition';
@@ -106,7 +134,9 @@ export interface ScriptElement {
   keptTogether?: boolean;  // This element was kept with adjacent elements for pagination
 }
 
-// 🎬 SCENE: A group of shots in one location
+/**
+ * 🎬 SCENE: A grouping mechanism for script elements and shots in a shared location.
+ */
 export interface Scene {
   id: string;
   sequence: number;        // Order in the movie (1, 2, 3...)
@@ -114,10 +144,13 @@ export interface Scene {
   actionNotes: string;     // General description of what happens
   scriptElements?: ScriptElement[]; // The raw script lines for this scene
   locationId?: string;     // Link to a specific Location Asset
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
-// 📸 SHOT: A single camera angle or image
+/**
+ * 📸 SHOT: A specific camera realization of a script segment.
+ * Contains all parameters for generating a specific storyboard frame.
+ */
 export interface Shot {
   id: string;
   sceneId?: string;        // Which scene this belongs to
@@ -148,17 +181,20 @@ export interface Shot {
   referenceStrength?: number;
 }
 
-// 📖 STORY DEVELOPMENT: Fields for plot, character arcs, and story structure
+/**
+ * 📖 PLOT DEVELOPMENT: High-level story narrative fields.
+ * Used for building foundations, titles, and loglines via Syd.
+ */
 export interface PlotDevelopment {
   // Foundation (unlock first)
   genre?: string;
   theme?: string;
   tone?: string;
   storyTypes?: string[];
-  setting?: string; // NEW
-  budget?: string;  // NEW
+  setting?: string;
+  budget?: string;
 
-  // NEW: Target Audience
+  // Target Audience
   targetAudienceRating?: string;      // Dropdown (PG, R, etc.)
   targetAudienceDescription?: string; // Textarea (Who is this for?)
 
@@ -168,7 +204,6 @@ export interface PlotDevelopment {
 
   // Advanced (unlock after logline)
   audienceTarget?: string;
-  // setting field is now at root, keeping here for backward compat if needed or just use root
   bStory?: string;
   notes?: string;
 
@@ -177,6 +212,9 @@ export interface PlotDevelopment {
   coreSummary?: string;
 }
 
+/**
+ * Tracks the completion status of different story development stages.
+ */
 export interface StoryProgress {
   foundationComplete: boolean;
   coreComplete: boolean;
@@ -186,6 +224,10 @@ export interface StoryProgress {
   actThreeComplete: boolean;
 }
 
+/**
+ * Detailed backstory and growth arc for a character.
+ * Separate from visual Character asset; focuses on narrative utility.
+ */
 export interface CharacterDevelopment {
   id: string;
 
@@ -195,27 +237,30 @@ export interface CharacterDevelopment {
   role: 'protagonist' | 'antagonist' | 'supporting';
 
   // Arc fields (progressive unlock)
-  age?: string;         // New: "25", "30s"
-  description?: string; // New: "Appearance, personality"
+  age?: string;
+  description?: string;
   physicalDescription?: string; // Legacy
   personality?: string; // Legacy
   archetypes?: string[];
-  archetype?: string;   // New: Dropdown selection (or custom)
+  archetype?: string;
 
   want?: string;        // External goal
   need?: string;        // Internal growth
   lie?: string;         // False belief
   ghost?: string;       // Past trauma
 
-  strengths?: string;   // New: Skills/Talents
-  weaknesses?: string;  // New: Flaws
+  strengths?: string;
+  weaknesses?: string;
 
   characterArc?: string; // Legacy arc field
-  arcSummary?: string;   // New: "How they change"
+  arcSummary?: string;
 
   notes?: string;
 }
 
+/**
+ * A critical plot point in professional story structure (Save the Cat).
+ */
 export interface StoryBeat {
   id: string;
   beatName: string;     // e.g., "Opening Image", "Catalyst"
@@ -225,13 +270,15 @@ export interface StoryBeat {
   isComplete: boolean;
 }
 
-// Auto-summary metadata for token compression
+/**
+ * Auto-summary metadata for token compression management.
+ * Keeps Syd's memory efficient across long scripts.
+ */
 export interface StoryMetadata {
-  // Auto-generated summaries for context management
-  actOneSummary?: string;    // Auto after beats 1-5
-  actTwoASummary?: string;   // Auto after beats 6-10
-  actTwoBSummary?: string;   // Auto after beats 11-12
-  actThreeSummary?: string;  // Auto after beats 13-15
+  actOneSummary?: string;
+  actTwoASummary?: string;
+  actTwoBSummary?: string;
+  actThreeSummary?: string;
 
   // Character profile summaries (compressed)
   characterProfiles?: Record<string, string>; // characterId -> compressed profile (75 words max)
@@ -239,7 +286,9 @@ export interface StoryMetadata {
   lastUpdated: number;
 }
 
-// 📂 PROJECT METADATA: Basic info shown on the "Welcome Screen" cards
+/**
+ * 📂 PROJECT METADATA: Basic identification and statistics for a project.
+ */
 export interface ProjectMetadata {
   id: string;
   name: string;
@@ -249,7 +298,9 @@ export interface ProjectMetadata {
   characterCount: number;
 }
 
-// 📄 TITLE PAGE: Standard screenplay title page info
+/**
+ * 📄 TITLE PAGE: Industry-standard screenplay title page metadata.
+ */
 export interface TitlePageData {
   title?: string;
   authors?: string[];
@@ -263,13 +314,15 @@ export interface TitlePageData {
   additionalInfo?: string;
 }
 
-// 📦 PROJECT: The big container for EVERYTHING
+/**
+ * 📦 PROJECT: The root data structure containing the entire creative work.
+ */
 export interface Project {
   id: string;
   name: string;
-  settings: WorldSettings; // The era, style, etc.
-  scenes: Scene[];         // List of all scenes
-  shots: Shot[];           // List of all shots
+  settings: WorldSettings;
+  scenes: Scene[];
+  shots: Shot[];
   createdAt: number;
   lastModified: number;
 
@@ -279,8 +332,8 @@ export interface Project {
     uploadedAt: number;
     format: 'fountain' | 'fdx' | 'pdf' | 'txt'
   };
-  scriptElements?: ScriptElement[]; // The full list of script lines
-  titlePage?: TitlePageData; // 📄 NEW: Title page metadata
+  scriptElements?: ScriptElement[];
+  titlePage?: TitlePageData;
 
   // Story Development (Syd Micro-Agent System)
   plotDevelopment?: PlotDevelopment;
@@ -290,7 +343,9 @@ export interface Project {
   storyNotes?: StoryNotesData;
 }
 
-// 📝 STORY NOTES: Freeform notes for story development
+/**
+ * A single freeform note for story brainstorming.
+ */
 export interface StoryNote {
   id: string;
   title: string;
@@ -300,23 +355,30 @@ export interface StoryNote {
   order: number; // For sorting in list
 }
 
+/**
+ * Top-level structure for the story notes system.
+ */
 export interface StoryNotesData {
   notes: StoryNote[];
   activeNoteId: string | null;
 }
 
-// 📤 EXPORT: The format used when you save a file to your computer
+/**
+ * 📤 PROJECT EXPORT: The portable JSON format for sharing or backup.
+ */
 export interface ProjectExport {
   version: number;
   metadata: ProjectMetadata;
   project: Project;
   characters: Character[];
   outfits: Outfit[];
-  locations: Location[]; // New export field
+  locations: Location[];
   library: ImageLibraryItem[];
 }
 
-// 💬 SYD CHAT: Durable Chat History
+/**
+ * 💬 SYD THREAD: A conversation instance with the AI assistant.
+ */
 export interface SydThread {
   id: string;
   projectId: string;
@@ -325,11 +387,14 @@ export interface SydThread {
   updatedAt: string;
 }
 
+/**
+ * A single message within a Syd chat thread.
+ */
 export interface SydMessage {
   id: string;
   threadId: string;
   role: 'user' | 'assistant' | 'system';
-  content: { text: string;[key: string]: any };
+  content: { text: string;[key: string]: unknown };
   tokenCount?: number;
   idx: number; // Monotonically increasing per thread
   createdAt: string;

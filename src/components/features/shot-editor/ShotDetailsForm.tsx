@@ -5,6 +5,8 @@ import { CollapsibleSection } from '../../ui/CollapsibleSection';
 import { FileText, MapPin, Info, Camera, Users, Ban, Settings, Upload, Loader2, Trash2, RotateCcw, Lock, Sparkles, GraduationCap } from 'lucide-react';
 import Button from '../../ui/Button';
 import { FeatureGate } from '../../ui/FeatureGate';
+import { DebouncedTextarea } from '../../ui/DebouncedTextarea';
+import { DebouncedInput } from '../../ui/DebouncedInput';
 
 interface ShotDetailsFormProps {
     shot: Shot;
@@ -78,10 +80,10 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                     <div className="p-6 space-y-6 animate-in fade-in slide-in-from-left-2 duration-200">
                         <div>
                             <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Description</label>
-                            <textarea
-                                ref={descriptionRef}
+                            <DebouncedTextarea
+                                textareaRef={descriptionRef}
                                 value={shot.description}
-                                onChange={e => setShot(prev => ({ ...prev, description: e.target.value }))}
+                                onChange={val => setShot(prev => ({ ...prev, description: val }))}
                                 className="w-full bg-surface-secondary border border-border rounded-lg px-3 py-3 text-sm outline-none focus:border-primary resize-none h-40 leading-relaxed text-text-primary placeholder:text-text-muted"
                                 placeholder="Describe the visual..."
                             />
@@ -104,9 +106,9 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
 
                         <div>
                             <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Negative Prompt</label>
-                            <input
+                            <DebouncedInput
                                 value={shot.negativePrompt || ''}
-                                onChange={e => setShot(prev => ({ ...prev, negativePrompt: e.target.value }))}
+                                onChange={val => setShot(prev => ({ ...prev, negativePrompt: val }))}
                                 className="studio-input"
                                 placeholder="What to avoid (e.g. text, blur)..."
                             />
@@ -124,9 +126,9 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Prompt / Description</label>
-                                    <textarea
+                                    <DebouncedTextarea
                                         value={shot.description}
-                                        onChange={e => setShot(prev => ({ ...prev, description: e.target.value }))}
+                                        onChange={val => setShot(prev => ({ ...prev, description: val }))}
                                         className="w-full bg-surface-secondary border border-border rounded-lg px-3 py-3 text-sm outline-none focus:border-primary resize-none h-32 leading-relaxed text-text-primary placeholder:text-text-muted"
                                         placeholder="Describe the visual..."
                                     />
@@ -239,9 +241,9 @@ export const ShotDetailsForm: React.FC<ShotDetailsFormProps> = ({
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-text-secondary mb-2">Negative Prompt</label>
-                                    <input
+                                    <DebouncedInput
                                         value={shot.negativePrompt || ''}
-                                        onChange={e => setShot(prev => ({ ...prev, negativePrompt: e.target.value }))}
+                                        onChange={val => setShot(prev => ({ ...prev, negativePrompt: val }))}
                                         className="studio-input"
                                         placeholder="What to avoid (e.g. text, blur)..."
                                     />

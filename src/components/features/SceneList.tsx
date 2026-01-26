@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Scene, Shot, ScriptElement, Project, Location } from '../../types';
 import { SceneItem } from './SceneItem';
 
@@ -21,7 +21,7 @@ interface SceneListProps {
     onAddVisual: (shotId: string) => void;
 }
 
-export const SceneList: React.FC<SceneListProps> = ({
+export const SceneList: React.FC<SceneListProps> = memo(({
     scenes,
     shots,
     scriptElements,
@@ -39,12 +39,23 @@ export const SceneList: React.FC<SceneListProps> = ({
     onCreateAndLinkShot,
     onAddVisual
 }) => {
+    // Pre-group shots by sceneId to avoid O(N*M) filtering inside the map
+    const shotsByScene = React.useMemo(() => {
+        const map = new Map<string, Shot[]>();
+        shots.forEach(shot => {
+            const sid = shot.sceneId || 'unassigned';
+            if (!map.has(sid)) map.set(sid, []);
+            map.get(sid)!.push(shot);
+        });
+        // Sort shots within each scene group
+        map.forEach(list => list.sort((a, b) => a.sequence - b.sequence));
+        return map;
+    }, [shots]);
+
     return (
         <div className="space-y-8 px-8">
             {scenes.map((scene, index) => {
-                const sceneShots = shots
-                    .filter(shot => shot.sceneId === scene.id)
-                    .sort((a, b) => a.sequence - b.sequence);
+                const sceneShots = shotsByScene.get(scene.id) || [];
 
                 return (
                     <div key={scene.id} id={`scene-${scene.id}`}>
@@ -73,4 +84,4 @@ export const SceneList: React.FC<SceneListProps> = ({
             })}
         </div>
     );
-};
+});

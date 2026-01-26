@@ -51,19 +51,19 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
 
 
     // Helpers for Project Settings panel
-    const addCustomSetting = (field: any, value: string) => {
+    const addCustomSetting = useCallback((field: any, value: string) => {
         const currentList = (project.settings as any)[field] || [];
         if (!currentList.includes(value)) {
             const map: any = { 'customEras': 'era', 'customStyles': 'cinematicStyle', 'customTimes': 'timeOfDay', 'customLighting': 'lighting' };
             const updated = { ...project, settings: { ...project.settings, [field]: [...currentList, value], [map[field]]: value } };
             handleUpdateProject(updated);
         }
-    };
+    }, [project, handleUpdateProject]);
 
-    const removeCustomSetting = (field: any, value: string) => {
+    const removeCustomSetting = useCallback((field: any, value: string) => {
         const updated = { ...project, settings: { ...project.settings, [field]: (project.settings as any)[field].filter((i: string) => i !== value) } };
         handleUpdateProject(updated);
-    };
+    }, [project, handleUpdateProject]);
 
     // --- HELPER: Get Scene Info ---
     const getSceneInfo = useCallback((sceneId?: string) => {
@@ -129,7 +129,7 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
     }, [selectedIds, onDeleteShot, showToast]);
 
     // --- TOOL RAIL CONTENT ---
-    const tools: Tool[] = [
+    const tools: Tool[] = useMemo(() => [
         {
             id: 'filters',
             label: 'View Options',
@@ -169,7 +169,11 @@ export const ProductionSpreadsheet: React.FC<ProductionSpreadsheetProps> = ({
                 />
             )
         }
-    ];
+    ], [
+        filterText, filterType, filterScene, filterStatus, project,
+        handleUpdateProject, handleUpdateSettings, addCustomSetting,
+        removeCustomSetting, showToast
+    ]);
 
 
 

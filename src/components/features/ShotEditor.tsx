@@ -235,9 +235,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     showToast("Advanced settings reset to defaults", 'success');
   }, [showToast]);
 
-  const handleGenerate = async () => {
-
-
+  const handleGenerate = useCallback(async () => {
     if (!shot.description?.trim() && !shot.sketchImage) {
       showToast("Please add a scene description or upload a sketch before rendering.", 'warning');
       return;
@@ -265,7 +263,6 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
       const finalModelName = selectedModel;
 
-      const imageId = crypto.randomUUID();
       await addToImageLibrary(project.id, img, shot.description);
 
       const updated = {
@@ -293,9 +290,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [shot, project, activeChars, outfits, activeLocation, noCharacters, selectedModel, selectedAspectRatio, selectedResolution, onUpdateShot, showToast]);
 
-  const handleSelectVariation = async (image: string) => {
+  const handleSelectVariation = useCallback(async (image: string) => {
     const updated = { ...shot, generatedImage: image, generationCandidates: currentCandidates };
     setShot(updated);
     onUpdateShot(updated);
@@ -308,13 +305,13 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
 
     setShowVariationPicker(false);
     showToast("Variation selected", 'success');
-  };
+  }, [shot, currentCandidates, project.id, onUpdateShot, showToast]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     onUpdateShot(shot);
     onClose();
     showToast("Shot saved", 'success');
-  };
+  }, [shot, onUpdateShot, onClose, showToast]);
 
   const handleCopyPrompt = useCallback(() => {
     const txt = constructPrompt(shot, project, activeChars, outfits, activeLocation);
@@ -322,7 +319,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     showToast("Prompt copied to clipboard", 'success');
   }, [shot, project, activeChars, outfits, activeLocation, selectedAspectRatio, showToast]);
 
-  const handleAutoGeneratePrompt = async () => {
+  const handleAutoGeneratePrompt = useCallback(async () => {
     if (!shot.description) {
       showToast("Please add a description first.", 'warning');
       return;
@@ -338,7 +335,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     } finally {
       setIsGeneratingPrompt(false);
     }
-  };
+  }, [shot.description, showToast]);
 
   const getAspectRatioStyle = (ratio: string) => {
     if (ratio === 'Match Reference' && detectedReferenceRatio) {

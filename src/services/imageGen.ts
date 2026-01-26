@@ -26,9 +26,9 @@ export async function getUserGeminiApiKey(): Promise<string | null> {
             .single();
 
         if (error) {
-            console.error('Error fetching Gemini API key:', error);
+            console.error('[ImageGen Service] Error fetching Gemini API key:', error);
             if (error.code === '406') {
-                console.error('CRITICAL: 406 Warning - Schema Cache Deadlock. Please reload Dashboard.');
+                console.error('[ImageGen Service] CRITICAL: 406 Warning - Schema Cache Deadlock. Please reload Dashboard.');
             }
             return null;
         }
@@ -36,7 +36,7 @@ export async function getUserGeminiApiKey(): Promise<string | null> {
         if (!data?.gemini_api_key) return null;
         return data.gemini_api_key;
     } catch (error) {
-        console.error('Error fetching Gemini API key:', error);
+        console.error('[ImageGen Service] Failed to get API key:', error);
         return null;
     }
 }
@@ -44,9 +44,14 @@ export async function getUserGeminiApiKey(): Promise<string | null> {
 /**
  * Helper to check for API Key availability
  */
-export const hasApiKey = async () => {
-    const key = await getUserGeminiApiKey();
-    return !!key;
+export const hasApiKey = async (): Promise<boolean> => {
+    try {
+        const key = await getUserGeminiApiKey();
+        return !!key;
+    } catch (error) {
+        console.error('[ImageGen Service] Error checking API key availability:', error);
+        return false;
+    }
 };
 
 /**
@@ -214,79 +219,84 @@ export const generateShotImage = async (
     activeOutfits: Outfit[],
     activeLocation: Location | undefined,
     options: { model: string; aspectRatio: string; imageSize?: string }
-): Promise<string> => {
-    const ai = await getClientAsync();
-    let prompt = constructPrompt(shot, project, activeCharacters, activeOutfits, activeLocation);
+): Promise<string | null> => {
+    try {
+        const ai = await getClientAsync();
+        let prompt = constructPrompt(shot, project, activeCharacters, activeOutfits, activeLocation);
 
-    const apiCall = async () => {
-        try {
-            const contents: any = { parts: [] };
+        const apiCall = async () => {
+            try {
+                const contents: any = { parts: [] };
 
-            // Character References
-            activeCharacters.forEach(char => {
-                char.referencePhotos?.forEach(photo => {
+                // Character References
+                activeCharacters.forEach(char => {
+                    char.referencePhotos?.forEach(photo => {
+                        const match = photo.match(/^data:(.+);base64,(.+)$/);
+                        if (match) contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+                    });
+                });
+
+                // Outfit References
+                activeOutfits.forEach(outfit => {
+                    outfit.referencePhotos?.forEach(photo => {
+                        const match = photo.match(/^data:(.+);base64,(.+)$/);
+                        if (match) contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+                    });
+                });
+
+                // Location References
+                activeLocation?.referencePhotos?.forEach(photo => {
                     const match = photo.match(/^data:(.+);base64,(.+)$/);
                     if (match) contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
                 });
-            });
 
-            // Outfit References
-            activeOutfits.forEach(outfit => {
-                outfit.referencePhotos?.forEach(photo => {
-                    const match = photo.match(/^data:(.+);base64,(.+)$/);
-                    if (match) contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
-                });
-            });
-
-            // Location References
-            activeLocation?.referencePhotos?.forEach(photo => {
-                const match = photo.match(/^data:(.+);base64,(.+)$/);
-                if (match) contents.parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
-            });
-
-            // Sketch
-            if (shot.sketchImage) {
-                const base64Data = shot.sketchImage.split(',')[1] || shot.sketchImage;
-                const mimeMatch = shot.sketchImage.match(/^data:(.+);base64,/);
-                const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-                contents.parts.push({ inlineData: { mimeType, data: base64Data } });
-            }
-
-            // Depth Reference
-            if (shot.referenceImage) {
-                const refBase64 = shot.referenceImage.split(',')[1] || shot.referenceImage;
-                const mimeMatch = shot.referenceImage.match(/^data:(.+);base64,/);
-                const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-                contents.parts.push({ inlineData: { mimeType, data: refBase64 } });
-            }
-
-            contents.parts.push({ text: prompt });
-
-            const apiAspectRatio = options.aspectRatio === 'Match Reference' ? undefined : options.aspectRatio;
-            const imageConfig: any = apiAspectRatio ? { aspectRatio: apiAspectRatio } : {};
-
-            const response = await (ai as any).models.generateContent({
-                model: options.model,
-                contents: contents,
-                config: { imageConfig: imageConfig }
-            });
-
-            if (response.candidates?.[0]?.content?.parts) {
-                for (const part of response.candidates[0].content.parts) {
-                    if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+                // Sketch
+                if (shot.sketchImage) {
+                    const base64Data = shot.sketchImage.split(',')[1] || shot.sketchImage;
+                    const mimeMatch = shot.sketchImage.match(/^data:(.+);base64,/);
+                    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+                    contents.parts.push({ inlineData: { mimeType, data: base64Data } });
                 }
-            }
-            throw new Error("No image generated from Gemini.");
-        } catch (error: any) {
-            console.error("Gemini Image Gen Error:", error);
-            if (error.message?.includes('403') || error.status === 403) {
-                throw new Error(`Permission Denied. Please check your API Key permissions.`);
-            }
-            throw error;
-        }
-    };
 
-    return withRetry(apiCall);
+                // Depth Reference
+                if (shot.referenceImage) {
+                    const refBase64 = shot.referenceImage.split(',')[1] || shot.referenceImage;
+                    const mimeMatch = shot.referenceImage.match(/^data:(.+);base64,/);
+                    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+                    contents.parts.push({ inlineData: { mimeType, data: refBase64 } });
+                }
+
+                contents.parts.push({ text: prompt });
+
+                const apiAspectRatio = options.aspectRatio === 'Match Reference' ? undefined : options.aspectRatio;
+                const imageConfig: any = apiAspectRatio ? { aspectRatio: apiAspectRatio } : {};
+
+                const response = await (ai as any).models.generateContent({
+                    model: options.model,
+                    contents: contents,
+                    config: { imageConfig: imageConfig }
+                });
+
+                if (response.candidates?.[0]?.content?.parts) {
+                    for (const part of response.candidates[0].content.parts) {
+                        if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+                    }
+                }
+                throw new Error("No image generated from Gemini.");
+            } catch (error: any) {
+                console.error("[ImageGen Service] Internal API call error:", error);
+                if (error.message?.includes('403') || error.status === 403) {
+                    throw new Error(`Permission Denied. Please check your API Key permissions.`);
+                }
+                throw error;
+            }
+        };
+
+        return await withRetry(apiCall);
+    } catch (error: any) {
+        console.error('[ImageGen Service] Failed to generate shot image:', error);
+        return null;
+    }
 };
 
 /**
@@ -301,24 +311,29 @@ export const generateBatchShotImages = async (
     options: { model: string; aspectRatio: string; imageSize?: string },
     count: number = 1
 ): Promise<string[]> => {
-    const promises = Array.from({ length: count }, () =>
-        generateShotImage(shot, project, activeCharacters, activeOutfits, activeLocation, options)
-    );
+    try {
+        const promises = Array.from({ length: count }, () =>
+            generateShotImage(shot, project, activeCharacters, activeOutfits, activeLocation, options)
+        );
 
-    const outcomes = await Promise.allSettled(promises);
-    const results: string[] = [];
+        const outcomes = await Promise.allSettled(promises);
+        const results: string[] = [];
 
-    outcomes.forEach((outcome, index) => {
-        if (outcome.status === 'fulfilled') {
-            results.push(outcome.value);
-        } else {
-            console.error(`Batch item ${index} failed`, outcome.reason);
+        outcomes.forEach((outcome, index) => {
+            if (outcome.status === 'fulfilled' && outcome.value) {
+                results.push(outcome.value);
+            } else {
+                console.error(`[ImageGen Service] Batch item ${index} failed:`, outcome.status === 'rejected' ? outcome.reason : 'Returned null');
+            }
+        });
+
+        if (results.length === 0 && count > 0) {
+            console.error("[ImageGen Service] Batch generation failed. No images could be generated.");
         }
-    });
 
-    if (results.length === 0 && count > 0) {
-        throw new Error("Batch generation failed. No images could be generated.");
+        return results;
+    } catch (error) {
+        console.error('[ImageGen Service] Critical batch generation error:', error);
+        return [];
     }
-
-    return results;
 };

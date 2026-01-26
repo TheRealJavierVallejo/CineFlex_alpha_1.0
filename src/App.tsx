@@ -5,8 +5,14 @@
 
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+// - [x] Hardening types in `src/types.ts`
+// - [x] Refactoring `src/utils/debounce.ts` with Generics
+// - [x] Hardening `src/services/storage.ts` (Data Transformations)
+// - [/] Documenting and typed props for `src/App.tsx`
+// - [ ] Refactoring `src/layouts/WorkspaceLayout.tsx`
 import ErrorBoundary from './components/ErrorBoundary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
+import { WorldSettings } from './types';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { LocalLlmProvider } from './context/LocalLlmContext';
 import { SaveStatusProvider } from './context/SaveStatusContext';
@@ -31,6 +37,10 @@ import { getContrastColor, getGlowColor } from './utils/themeUtils';
 
 // --- ADAPTER COMPONENTS (Hoisted for cleaner Routes) ---
 
+/**
+ * DashboardPage: The primary visual overview of the project.
+ * Displays the production spreadsheet and welcome banner for new projects.
+ */
 const DashboardPage = () => {
     const {
         project,
@@ -106,6 +116,9 @@ const DashboardPage = () => {
     );
 };
 
+/**
+ * ScriptEditorPage: Dedicated view for writing and editing the screenplay.
+ */
 const ScriptEditorPage = () => {
     return (
         <ErrorBoundary>
@@ -116,6 +129,9 @@ const ScriptEditorPage = () => {
     );
 };
 
+/**
+ * StoryNotesPage: A space for freeform brainstorming and story development notes.
+ */
 const StoryNotesPage = () => {
     return (
         <ErrorBoundary>
@@ -126,6 +142,9 @@ const StoryNotesPage = () => {
     );
 };
 
+/**
+ * TimelinePage: Visualizes the project structure across a script timeline.
+ */
 const TimelinePage = () => {
     const { project, handleUpdateProject, handleEditShot, importScript, showToast } = useWorkspace();
     return (
@@ -143,6 +162,9 @@ const TimelinePage = () => {
     );
 };
 
+/**
+ * AssetsPage: Management interface for Characters, Outfits, and Locations.
+ */
 const AssetsPage = () => {
     const { project, showToast } = useWorkspace();
     return (
@@ -160,20 +182,44 @@ const AssetsPage = () => {
     );
 };
 
+/**
+ * SettingsPage: Project-level configuration view.
+ * Handles cinematic styles, eras, and custom generation parameters.
+ */
 const SettingsPage = () => {
     const { project, handleUpdateProject, handleUpdateSettings, showToast } = useWorkspace();
 
-    const addCustomSetting = (field: any, value: string) => {
-        const currentList = (project.settings as any)[field] || [];
+    const addCustomSetting = (field: keyof WorldSettings, value: string) => {
+        const currentList = (project.settings as unknown as Record<string, string[]>)[field as keyof Record<string, string[]>] || [];
         if (!currentList.includes(value)) {
-            const map: any = { 'customEras': 'era', 'customStyles': 'cinematicStyle', 'customTimes': 'timeOfDay', 'customLighting': 'lighting' };
-            const updated = { ...project, settings: { ...project.settings, [field]: [...currentList, value], [map[field]]: value } };
+            const map: Partial<Record<keyof WorldSettings, keyof WorldSettings>> = {
+                'customEras': 'era',
+                'customStyles': 'cinematicStyle',
+                'customTimes': 'timeOfDay',
+                'customLighting': 'lighting'
+            };
+            const targetField = map[field];
+            const updated = {
+                ...project,
+                settings: {
+                    ...project.settings,
+                    [field]: [...currentList, value],
+                    ...(targetField ? { [targetField]: value } : {})
+                }
+            };
             handleUpdateProject(updated);
         }
     };
 
-    const removeCustomSetting = (field: any, value: string) => {
-        const updated = { ...project, settings: { ...project.settings, [field]: (project.settings as any)[field].filter((i: string) => i !== value) } };
+    const removeCustomSetting = (field: keyof WorldSettings, value: string) => {
+        const currentList = (project.settings as unknown as Record<string, string[]>)[field as keyof Record<string, string[]>] || [];
+        const updated = {
+            ...project,
+            settings: {
+                ...project.settings,
+                [field]: currentList.filter((i: string) => i !== value)
+            }
+        };
         handleUpdateProject(updated);
     };
 
@@ -197,6 +243,11 @@ const SettingsPage = () => {
 
 // --- MAIN APP COMPONENT ---
 
+/**
+ * MAIN APP COMPONENT
+ * Handles global theme application, routing infrastructure, and 
+ * provider initialization for the entire application.
+ */
 const App: React.FC = () => {
     useEffect(() => {
         const savedColor = localStorage.getItem('cinesketch_theme_color');

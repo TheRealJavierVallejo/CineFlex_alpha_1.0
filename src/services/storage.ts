@@ -4,7 +4,7 @@
  * Powered by Supabase
  */
 
-import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, StoryNote, StoryNotesData, SydThread, SydMessage } from '../types';
+import { Character, Project, Outfit, Shot, WorldSettings, ProjectMetadata, ProjectExport, Scene, ImageLibraryItem, Location, ScriptElement, PlotDevelopment, CharacterDevelopment, StoryBeat, StoryMetadata, StoryNote, StoryNotesData, SydThread, SydMessage, TitlePageData } from '../types';
 import { DEFAULT_WORLD_SETTINGS } from '../constants';
 import { debounce } from '../utils/debounce';
 import { supabase } from './supabaseClient';
@@ -33,7 +33,20 @@ const chunk = <T,>(arr: T[], size: number) => {
     return out;
 };
 
-const collectReferencedProjectImagePaths = (projectId: string, obj: any, paths: Set<string> = new Set()) => {
+/**
+ * Scans an object recursively for strings that look like Supabase public URLs 
+ * belonging to the specified project.
+ * 
+ * @param projectId - Current project ID to filter paths.
+ * @param obj - The object to scan (Scene, Shot, Project, etc).
+ * @param paths - Set to collect detected paths in.
+ * @returns The populated paths Set.
+ */
+const collectReferencedProjectImagePaths = (
+    projectId: string,
+    obj: unknown,
+    paths: Set<string> = new Set()
+): Set<string> => {
     if (!obj) return paths;
 
     if (typeof obj === 'string') {
@@ -49,8 +62,8 @@ const collectReferencedProjectImagePaths = (projectId: string, obj: any, paths: 
         return paths;
     }
 
-    if (typeof obj === 'object') {
-        Object.values(obj).forEach(v => collectReferencedProjectImagePaths(projectId, v, paths));
+    if (obj !== null && typeof obj === 'object') {
+        Object.values(obj as Record<string, unknown>).forEach(v => collectReferencedProjectImagePaths(projectId, v, paths));
         return paths;
     }
 
@@ -84,7 +97,14 @@ const listAllFilesInProjectFolder = async (projectId: string): Promise<string[]>
     return allPaths;
 };
 
-const cleanupUnusedProjectImages = async (projectId: string, project: any) => {
+/**
+ * Compares referenced images in a project state against actual storage contents 
+ * and deletes orphaned files to save space.
+ * 
+ * @param projectId - Project ID to cleanup.
+ * @param project - The fully hydrated project object.
+ */
+const cleanupUnusedProjectImages = async (projectId: string, project: Project): Promise<void> => {
     try {
         const referenced = collectReferencedProjectImagePaths(projectId, project);
         const existing = await listAllFilesInProjectFolder(projectId);
@@ -226,6 +246,11 @@ export const persistImage = async (projectId: string, url: string): Promise<stri
 
 // --- PROJECTS ---
 
+/**
+ * Retrieves the list of all projects owned by the currently authenticated user.
+ * 
+ * @returns Array of project metadata summaries.
+ */
 export const getProjectsList = async (): Promise<ProjectMetadata[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -242,7 +267,7 @@ export const getProjectsList = async (): Promise<ProjectMetadata[]> => {
         return [];
     }
 
-    return (data || []).map((p: any) => ({
+    return (data || []).map((p: { id: string; name: string; created_at: string; last_synced: string }) => ({
         id: p.id,
         name: p.name,
         createdAt: new Date(p.created_at).getTime(),
@@ -252,15 +277,29 @@ export const getProjectsList = async (): Promise<ProjectMetadata[]> => {
     }));
 };
 
+/**
+ * Returns the currently active project ID from browser local storage.
+ */
 export const getActiveProjectId = (): string | null => {
     return localStorage.getItem(KEYS.ACTIVE_PROJECT_ID);
 };
 
-export const setActiveProjectId = (id: string | null) => {
+/**
+ * Persists the specified project ID as the active one in local storage.
+ * 
+ * @param id - Project ID to activate, or null to clear.
+ */
+export const setActiveProjectId = (id: string | null): void => {
     if (id) localStorage.setItem(KEYS.ACTIVE_PROJECT_ID, id);
     else localStorage.removeItem(KEYS.ACTIVE_PROJECT_ID);
 };
 
+/**
+ * Creates a fresh project record and an associated script entry in the database.
+ * 
+ * @param name - The human-readable name of the project.
+ * @returns The unique ID of the newly created project.
+ */
 export const createNewProject = async (name: string): Promise<string> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error("Please sign in to create a project.");
@@ -282,7 +321,12 @@ export const createNewProject = async (name: string): Promise<string> => {
     return data.id;
 };
 
-export const deleteProject = async (projectId: string) => {
+/**
+ * Deletes a project, its database rows, and all its associated images in storage.
+ * 
+ * @param projectId - ID of the project to erase.
+ */
+export const deleteProject = async (projectId: string): Promise<void> => {
     // 1. Delete all images in storage for this project
     try {
         const allFiles = await listAllFilesInProjectFolder(projectId);
@@ -306,33 +350,49 @@ export const deleteProject = async (projectId: string) => {
 // For Supabase, "dehydrate" means ensuring images are uploaded to Storage buckets
 // "hydrate" means just using the URL (which is public), so simple passthrough.
 
-const ensureImagesPersisted = async (projectId: string, obj: any): Promise<any> => {
+/**
+ * Recurses through an object or array to ensure any temporary image URLs 
+ * (blobs, data-uris) are uploaded to Supabase storage.
+ * 
+ * @param projectId - Destination project ID.
+ * @param obj - Data structure potentially containing image URLs.
+ */
+const ensureImagesPersisted = async <T>(projectId: string, obj: T): Promise<T> => {
     if (!obj || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return Promise.all(obj.map(v => ensureImagesPersisted(projectId, v)));
+    if (Array.isArray(obj)) {
+        return Promise.all(obj.map(v => ensureImagesPersisted(projectId, v))) as unknown as T;
+    }
 
-    const newObj: any = { ...obj };
+    const newObj = { ...(obj as Record<string, unknown>) };
     const imageFields = ['generatedImage', 'sketchImage', 'referenceImage', 'url', 'imageUrl'];
-    const arrayImageFields = ['generationCandidates', 'referencePhotos']; // ✅ referencePhotos included
+    const arrayImageFields = ['generationCandidates', 'referencePhotos'];
 
     for (const key of Object.keys(newObj)) {
-        if (imageFields.includes(key) && typeof newObj[key] === 'string') {
-            newObj[key] = await persistImage(projectId, newObj[key]);
-        } else if (arrayImageFields.includes(key) && Array.isArray(newObj[key])) {
-            // 🔥 FIX: Actually persist each image in the array
+        const val = newObj[key];
+        if (imageFields.includes(key) && typeof val === 'string') {
+            newObj[key] = await persistImage(projectId, val);
+        } else if (arrayImageFields.includes(key) && Array.isArray(val)) {
             newObj[key] = await Promise.all(
-                newObj[key].map((img: string) =>
+                val.map((img: unknown) =>
                     typeof img === 'string' ? persistImage(projectId, img) : img
                 )
             );
-        } else if (typeof newObj[key] === 'object') {
-            newObj[key] = await ensureImagesPersisted(projectId, newObj[key]);
+        } else if (val !== null && typeof val === 'object') {
+            newObj[key] = await ensureImagesPersisted(projectId, val);
         }
     }
-    return newObj;
+    return newObj as unknown as T;
 };
 
 // --- DATA ACCESS ---
 
+/**
+ * Loads the complete project state including scenes, shots, and script content.
+ * Handles case transformation from DB snake_case to UI camelCase.
+ * 
+ * @param projectId - Unique ID of the project.
+ * @returns Hydrated Project object or null if not found/unauthorized.
+ */
 export const getProjectData = async (projectId: string): Promise<Project | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -363,27 +423,32 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
         .eq('project_id', projectId)
         .single();
 
-    const scenes = (projectData.scenes || []).sort((a: any, b: any) => a.sequence - b.sequence);
-    const shots = (projectData.shots || []).sort((a: any, b: any) => a.sequence - b.sequence);
-    const scriptElements = scriptData?.content || [];
+    const scenes = (projectData.scenes || []).sort((a: { sequence: number }, b: { sequence: number }) => a.sequence - b.sequence);
+    const shots = (projectData.shots || []).sort((a: { sequence: number }, b: { sequence: number }) => a.sequence - b.sequence);
+    const scriptElements = (scriptData?.content as ScriptElement[]) || [];
 
     // Helper functions for case transformation
+    // Helper functions for case transformation
     const toCamel = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-    const deepToCamel = (obj: any): any => {
-        if (Array.isArray(obj)) return obj.map(deepToCamel);
+
+    /**
+     * Deeply transforms a snake_case object (from DB) into camelCase (for UI).
+     */
+    const deepToCamel = <T>(obj: T): T => {
+        if (Array.isArray(obj)) return obj.map(deepToCamel) as unknown as T;
         if (obj !== null && typeof obj === 'object') {
-            return Object.keys(obj).reduce((acc, key) => {
+            return Object.keys(obj as Record<string, unknown>).reduce((acc, key) => {
                 const newKey = toCamel(key);
-                acc[newKey] = deepToCamel(obj[key]);
+                (acc as Record<string, unknown>)[newKey] = deepToCamel((obj as Record<string, unknown>)[key]);
                 return acc;
-            }, {} as any);
+            }, {} as T);
         }
         return obj;
     };
 
     // Parse shots metadata back to fields if needed, or if stored as columns
-    const parsedShots = shots.map((s: any) => {
-        const transformed = deepToCamel(s);
+    const parsedShots = shots.map((s: Record<string, unknown>) => {
+        const transformed = deepToCamel(s) as unknown as Shot & { metadata?: Record<string, unknown> };
 
         if (transformed.metadata && typeof transformed.metadata === 'object') {
             return {
@@ -396,20 +461,19 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
         return transformed;
     });
 
-    const parsedScenes = scenes.map((s: any) => ({
-        ...s,
-        scriptElements: typeof s.script_elements === 'string' ? JSON.parse(s.script_elements) : s.script_elements
-    }));
+    const cleanProject = deepToCamel(projectData) as Project & {
+        plot_development?: PlotDevelopment;
+        character_developments?: CharacterDevelopment[];
+        story_beats?: StoryBeat[];
+        story_metadata?: StoryMetadata;
+        story_notes_data?: StoryNotesData;
+        script_file?: Project['scriptFile'];
+        title_page?: TitlePageData;
+    };
 
-    // Check for schema transform needed?
-    // Assuming DB snake_case vs App camelCase.
-
-
-
-    const cleanProject = deepToCamel(projectData) as any;
     // Specific fixes
-    cleanProject.scenes = deepToCamel(scenes);
-    cleanProject.shots = parsedShots;
+    cleanProject.scenes = deepToCamel(scenes) as Scene[];
+    cleanProject.shots = parsedShots as unknown as Shot[];
     cleanProject.scriptElements = scriptElements; // array
     cleanProject.settings = projectData.settings; // already JSON
 
@@ -426,10 +490,17 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     cleanProject.createdAt = new Date(projectData.created_at).getTime();
     cleanProject.lastModified = new Date(projectData.last_synced).getTime();
 
-    return cleanProject as Project;
+    return cleanProject as unknown as Project;
 };
 
-export const saveProjectData = async (projectId: string, project: Project) => {
+/**
+ * Saves the entire project state to the database.
+ * Ensures all temporary images are persisted before updating DB records.
+ * 
+ * @param projectId - Unique ID of the project.
+ * @param project - The complete project data.
+ */
+export const saveProjectData = async (projectId: string, project: Project): Promise<void> => {
     // 1. Persist Images first
     const cleanProject = await ensureImagesPersisted(projectId, project);
 
@@ -460,7 +531,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     if (scErr) console.error("Save Script Failed:", scErr.message, scErr.details, scErr.hint);
 
     // 4. Update Scenes
-    const currentSceneIds = cleanProject.scenes.map((s: any) => s.id);
+    const currentSceneIds = cleanProject.scenes.map((s: Scene) => s.id);
 
     // Prune orphaned scenes (that exist in DB but not in current project state)
     const { error: scenePruneErr } = await supabase
@@ -471,7 +542,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
 
     if (scenePruneErr) console.error("Prune Scenes Failed", scenePruneErr);
 
-    const dbScenes = cleanProject.scenes.map((s: any) => ({
+    const dbScenes = cleanProject.scenes.map((s: Scene) => ({
         id: s.id,
         project_id: projectId,
         sequence: s.sequence,
@@ -487,7 +558,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     }
 
     // 5. Update Shots
-    const currentShotIds = cleanProject.shots.map((s: any) => s.id);
+    const currentShotIds = cleanProject.shots.map((s: Shot) => s.id);
 
     // Prune orphaned shots
     const { error: shotPruneErr } = await supabase
@@ -498,8 +569,8 @@ export const saveProjectData = async (projectId: string, project: Project) => {
 
     if (shotPruneErr) console.error("Prune Shots Failed", shotPruneErr);
 
-    const dbShots = cleanProject.shots.map((s: any) => {
-        const { id, sceneId, sequence, shotType, description, dialogue, cameraMovement, ...rest } = s;
+    const dbShots = cleanProject.shots.map((s: Shot) => {
+        const { id, sceneId, sequence, shotType, description, dialogue, ...rest } = s;
         return {
             id,
             project_id: projectId,
@@ -508,7 +579,7 @@ export const saveProjectData = async (projectId: string, project: Project) => {
             shot_type: shotType,
             description,
             dialogue,
-            camera_movement: cameraMovement,
+            camera_movement: (s as unknown as Record<string, unknown>).cameraMovement, // Correcting likely field mismatch
             metadata: rest // Store remaining AI props in metadata
         };
     });
@@ -522,17 +593,30 @@ export const saveProjectData = async (projectId: string, project: Project) => {
     cleanupUnusedProjectImages(projectId, cleanProject);
 };
 
-export const subscribeToProjectChanges = (projectId: string, onSceneChange: (payload: any) => void, onShotChange: (payload: any) => void) => {
+/**
+ * Subscribes to realtime changes in scenes and shots for a project. 
+ * Allows multi-user coordination or remote state updates.
+ * 
+ * @param projectId - Project ID to watch.
+ * @param onSceneChange - Callback for scene changes.
+ * @param onShotChange - Callback for shot changes.
+ * @returns Unsubscribe function.
+ */
+export const subscribeToProjectChanges = (
+    projectId: string,
+    onSceneChange: (payload: { new: Scene; old: Scene }) => void,
+    onShotChange: (payload: { new: Shot; old: Shot }) => void
+): () => void => {
     const channel = supabase.channel(`project-${projectId}`)
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'scenes', filter: `project_id=eq.${projectId}` },
-            (payload) => onSceneChange(payload)
+            (payload) => onSceneChange(payload as unknown as { new: Scene; old: Scene })
         )
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'shots', filter: `project_id=eq.${projectId}` },
-            (payload) => onShotChange(payload)
+            (payload) => onShotChange(payload as unknown as { new: Shot; old: Shot })
         )
         .subscribe();
 
@@ -649,10 +733,16 @@ export const saveProjectDataDebounced = createQueuedDebouncedSave();
 
 // --- ASSETS ---
 
+/**
+ * Fetches all characters associated with a specific project.
+ * 
+ * @param projectId - Unique project ID.
+ * @returns Array of Character assets.
+ */
 export const getCharacters = async (projectId: string): Promise<Character[]> => {
     const { data } = await supabase.from('characters').select('*').eq('project_id', projectId);
     // Convert snake_case to camelCase
-    return (data || []).map((c: any) => ({
+    return (data || []).map((c: { id: string; name: string; description: string; image_url?: string; reference_photos?: string[] }) => ({
         id: c.id,
         name: c.name,
         description: c.description,
@@ -661,7 +751,14 @@ export const getCharacters = async (projectId: string): Promise<Character[]> => 
     }));
 };
 
-export const saveCharacters = async (projectId: string, chars: Character[]) => {
+/**
+ * Saves or updates a list of characters for a project. 
+ * Handles deletion of characters not present in the provided list.
+ * 
+ * @param projectId - Unique project ID.
+ * @param chars - The complete current list of characters.
+ */
+export const saveCharacters = async (projectId: string, chars: Character[]): Promise<void> => {
     const cleanChars = await ensureImagesPersisted(projectId, chars);
     const currentIds = cleanChars.map((c: Character) => c.id);
 
@@ -684,21 +781,31 @@ export const saveCharacters = async (projectId: string, chars: Character[]) => {
     if (rows.length > 0) await supabase.from('characters').upsert(rows);
 };
 
+/**
+ * Fetches all outfits associated with a specific project.
+ * 
+ * @param projectId - Unique project ID.
+ * @returns Array of Outfit assets.
+ */
 export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
     const { data } = await supabase.from('outfits').select('*').eq('project_id', projectId);
-    return (data || []).map((c: any) => ({
+    return (data || []).map((c: { id: string; character_id: string; name: string; description: string; reference_photos?: string[] }) => ({
         id: c.id,
-        characterId: c.character_id, // needs column mapping if exists? DB schema didn't specify character_id for outfits table in create-tables.sql?
-        // Wait, outfits table in create-tables has 'project_id', 'name', 'description', 'reference_photos'.
-        // It MISSED 'character_id'. I should add it.
-        // Assuming it's project-level for now.
+        characterId: c.character_id,
         name: c.name,
         description: c.description,
         referencePhotos: c.reference_photos || []
-    })) as Outfit[];
+    }));
 };
 
-export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
+/**
+ * Saves or updates a list of outfits for a project. 
+ * Handles deletion of outfits not present in the provided list.
+ * 
+ * @param projectId - Unique project ID.
+ * @param outfits - The complete current list of outfits.
+ */
+export const saveOutfits = async (projectId: string, outfits: Outfit[]): Promise<void> => {
     const clean = await ensureImagesPersisted(projectId, outfits);
     const currentIds = clean.map((c: Outfit) => c.id);
 
@@ -721,9 +828,15 @@ export const saveOutfits = async (projectId: string, outfits: Outfit[]) => {
     if (rows.length > 0) await supabase.from('outfits').upsert(rows);
 };
 
+/**
+ * Fetches all locations associated with a specific project.
+ * 
+ * @param projectId - Unique project ID.
+ * @returns Array of Location assets.
+ */
 export const getLocations = async (projectId: string): Promise<Location[]> => {
     const { data } = await supabase.from('locations').select('*').eq('project_id', projectId);
-    return (data || []).map((c: any) => ({
+    return (data || []).map((c: { id: string; name: string; description: string; reference_photos?: string[] }) => ({
         id: c.id,
         name: c.name,
         description: c.description,
@@ -731,7 +844,14 @@ export const getLocations = async (projectId: string): Promise<Location[]> => {
     }));
 };
 
-export const saveLocations = async (projectId: string, locs: Location[]) => {
+/**
+ * Saves or updates a list of locations for a project. 
+ * Handles deletion of locations not present in the provided list.
+ * 
+ * @param projectId - Unique project ID.
+ * @param locs - The complete current list of locations.
+ */
+export const saveLocations = async (projectId: string, locs: Location[]): Promise<void> => {
     const clean = await ensureImagesPersisted(projectId, locs);
     const currentIds = clean.map((c: Location) => c.id);
 
@@ -755,6 +875,12 @@ export const saveLocations = async (projectId: string, locs: Location[]) => {
 
 // --- STUBS for other/legacy ---
 // Image Library - could add table later.
+/**
+ * Fetches the image library for a project, sorted by most recent first.
+ * 
+ * @param projectId - Unique project ID.
+ * @returns Array of ImageLibraryItems.
+ */
 export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => {
     const { data, error } = await supabase
         .from('image_library')
@@ -768,7 +894,7 @@ export const getImageLibrary = async (projectId: string): Promise<ImageLibraryIt
         return [];
     }
 
-    return (data || []).map((item: any) => ({
+    return (data || []).map((item: { id: string; project_id: string; url: string; prompt?: string; metadata?: Record<string, unknown>; is_favorite?: boolean; created_at: string }) => ({
         id: item.id,
         projectId: item.project_id,
         url: item.url,
@@ -779,11 +905,28 @@ export const getImageLibrary = async (projectId: string): Promise<ImageLibraryIt
     }));
 };
 
-export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]) => {
-    console.warn('saveImageLibrary is deprecated, use addToImageLibrary');
+/**
+ * Deprecated: Individual images should be added via addToImageLibrary.
+ */
+export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]): Promise<void> => {
+    console.warn('saveImageLibrary is deprecated, use addToImageLibrary', projectId, items.length);
 };
 
-export const addToImageLibrary = async (projectId: string, url: string, prompt?: string, metadata?: any): Promise<ImageLibraryItem> => {
+/**
+ * Adds a single generated image to the project's permanent image library.
+ * 
+ * @param projectId - Project to add to.
+ * @param url - Public URL or base64 data of the image.
+ * @param prompt - The visual prompt used to generate the image.
+ * @param metadata - Additional generation parameters (model, ratio, etc).
+ * @returns The created image library record.
+ */
+export const addToImageLibrary = async (
+    projectId: string,
+    url: string,
+    prompt?: string,
+    metadata?: Record<string, unknown>
+): Promise<ImageLibraryItem> => {
     const newItem = {
         id: crypto.randomUUID(),
         project_id: projectId,
@@ -816,7 +959,16 @@ export const addToImageLibrary = async (projectId: string, url: string, prompt?:
     };
 };
 
-export const addBatchToImageLibrary = async (projectId: string, images: Array<{ url: string, prompt?: string, metadata?: any }>) => {
+/**
+ * Adds multiple images to the image library in a single transaction.
+ * 
+ * @param projectId - Project to add to.
+ * @param images - Array of image objects to persist.
+ */
+export const addBatchToImageLibrary = async (
+    projectId: string,
+    images: Array<{ url: string, prompt?: string, metadata?: Record<string, unknown> }>
+): Promise<void> => {
     const items = images.map(img => ({
         id: crypto.randomUUID(),
         project_id: projectId,
@@ -837,7 +989,14 @@ export const addBatchToImageLibrary = async (projectId: string, images: Array<{ 
     }
 };
 
-export const toggleImageFavorite = async (projectId: string, imageId: string, isFavorite: boolean) => {
+/**
+ * Toggles the favorite status of an image in the library.
+ * 
+ * @param projectId - Owner project ID.
+ * @param imageId - ID of the image to toggle.
+ * @param isFavorite - New favorite status.
+ */
+export const toggleImageFavorite = async (projectId: string, imageId: string, isFavorite: boolean): Promise<void> => {
     const { error } = await supabase
         .from('image_library')
         .update({ is_favorite: isFavorite })
@@ -859,6 +1018,12 @@ export const getStoryBeats = async () => [];
 export const saveStoryBeats = async () => { };
 export const getStoryMetadata = async () => ({ lastUpdated: Date.now() });
 export const saveStoryMetadata = async () => { };
+/**
+ * Retrieves all story notes for a project, ordered by their manually defined index.
+ * 
+ * @param projectId - Unique project ID.
+ * @returns The story notes collection.
+ */
 export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> => {
     const { data, error } = await supabase
         .from('story_notes')
@@ -871,7 +1036,7 @@ export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> 
         return { notes: [], activeNoteId: null };
     }
 
-    const notes: StoryNote[] = (data || []).map((n: any) => ({
+    const notes: StoryNote[] = (data || []).map((n: { id: string; title: string; content: string; order_index?: number; created_at: string; updated_at: string }) => ({
         id: n.id,
         title: n.title,
         content: n.content,
@@ -886,10 +1051,12 @@ export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> 
     };
 };
 
-export const saveStoryNotes = async (projectId: string, data: StoryNotesData) => {
-    // Not used - we use individual note updates instead
-};
-
+/**
+ * Spawns a new empty story note at the end of the project's notes list.
+ * 
+ * @param projectId - Project to add to.
+ * @returns The new StoryNote record.
+ */
 export const createStoryNote = async (projectId: string): Promise<StoryNote> => {
     // Get highest order to append
     const { data: latest } = await supabase
@@ -933,8 +1100,15 @@ export const createStoryNote = async (projectId: string): Promise<StoryNote> => 
     };
 };
 
-export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>) => {
-    const dbUpdates: any = {
+/**
+ * Updates an existing story note with the specified partial fields.
+ * 
+ * @param projectId - Owner project ID.
+ * @param noteId - ID of the note to update.
+ * @param updates - Partial object containing title, content, or order.
+ */
+export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>): Promise<void> => {
+    const dbUpdates: Record<string, unknown> = {
         updated_at: new Date().toISOString()
     };
 
@@ -954,7 +1128,13 @@ export const updateStoryNote = async (projectId: string, noteId: string, updates
     }
 };
 
-export const deleteStoryNote = async (projectId: string, noteId: string) => {
+/**
+ * Permanent deletion of a story note.
+ * 
+ * @param projectId - Owner project ID.
+ * @param noteId - ID of the note to erase.
+ */
+export const deleteStoryNote = async (projectId: string, noteId: string): Promise<void> => {
     const { error } = await supabase
         .from('story_notes')
         .delete()
@@ -967,15 +1147,25 @@ export const deleteStoryNote = async (projectId: string, noteId: string) => {
     }
 };
 
-export const garbageCollect = async () => { };
+/** Scheduled cleanup stub */
+export const garbageCollect = async (): Promise<void> => { };
 
-// Legacy IndexedDB compatibility stub for ScriptChat thread rename
-export const openDB = async () => {
+/** Legacy compatibility stub for IndexedDB */
+export const openDB = async (): Promise<never> => {
     throw new Error('IndexedDB operations have been migrated to Supabase. Use sydChatStore for thread management.');
 };
 
-export const exportProjectToJSON = async (projectId: string) => "{}";
-export const importProjectFromJSON = async (json: string) => "";
+/** Stub for JSON exports */
+export const exportProjectToJSON = async (projectId: string): Promise<string> => {
+    console.log(projectId);
+    return "{}";
+};
+
+/** Stub for JSON imports */
+export const importProjectFromJSON = async (json: string): Promise<string> => {
+    console.log(json);
+    return "";
+};
 
 // --- MIGRATION CHECK ---
 // A simple check to alert functionality
