@@ -20,6 +20,7 @@ export interface SlateScriptEditorProps {
     projectId: string;
     onUndoRedoChange?: (canUndo: boolean, canRedo: boolean) => void;
     onPageChange?: (currentPage: number, totalPages: number) => void;
+    readOnly?: boolean;
 }
 
 export interface SlateScriptEditorRef {
@@ -101,7 +102,8 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     isLightMode,
     projectId,
     onUndoRedoChange,
-    onPageChange
+    onPageChange,
+    readOnly = false
 }, ref) => {
     const editor = useMemo(
         () => withScriptEditor(withHistory(withReact(createEditor() as CustomEditor))),
@@ -171,7 +173,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     } = useSlateSmartType({
         editor,
         projectId,
-        isActive: true
+        isActive: !readOnly // Disable smart type in read-only mode
     });
 
     // Pagination Calculation
@@ -246,6 +248,8 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     }, [editor, debouncedOnChange]);
 
     const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+        if (readOnly) return; // Ignore keys in read-only mode
+
         const smartTypeHandled = handleSmartTypeKeyDown(event);
         if (smartTypeHandled) return;
 
@@ -277,7 +281,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             if (handled) event.preventDefault();
             return;
         }
-    }, [editor, handleSmartTypeKeyDown, state.status]);
+    }, [editor, handleSmartTypeKeyDown, state.status, readOnly]);
 
     const renderElement = useCallback((props: RenderElementProps) => {
         const { element } = props;
@@ -407,19 +411,20 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                 >
                     <div style={{ maxWidth: 'min(6.0in, 100%)', margin: '0 auto', padding: '0 1rem' }}>
                         <Editable
+                            readOnly={readOnly}
                             renderElement={renderElement}
                             renderLeaf={renderLeaf}
                             decorate={decorateWithPlaceholders(editor)}
                             onKeyDown={handleKeyDown}
-                            onBlur={forceSave} // 🔥 NEW: Save on blur
-                            placeholder="Start writing your screenplay..."
+                            onBlur={readOnly ? undefined : forceSave} // No save on blur for read-only
+                            placeholder={readOnly ? undefined : "Start writing your screenplay..."}
                             spellCheck={false}
                             className="outline-none"
                         />
                     </div>
                 </div>
             </Slate>
-            {state.status === 'showing' && menuPosition && createPortal(
+            {state.status === 'showing' && menuPosition && !readOnly && createPortal(
                 <AutocompleteMenu
                     suggestions={state.suggestions}
                     selectedIndex={state.selectedIndex}
