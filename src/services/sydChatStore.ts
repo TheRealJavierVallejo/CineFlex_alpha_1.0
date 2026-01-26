@@ -373,3 +373,21 @@ export const updateThreadTitle = async (threadId: string, newTitle: string): Pro
         console.warn('[BACKUP] IndexedDB title update failed:', e);
     }
 };
+
+/**
+ * 🧹 CLEANUP: Removes old threads beyond the keepCount limit.
+ */
+export const deleteOldThreads = async (projectId: string, keepCount: number = 10): Promise<void> => {
+    const threads = await listThreadsForProject(projectId);
+    if (threads.length <= keepCount) return;
+
+    const threadsToDelete = threads.slice(keepCount); // Oldest threads are at the end if sorted desc
+
+    console.log(`[CLEANUP] Pruning ${threadsToDelete.length} old threads for project ${projectId}`);
+
+    for (const thread of threadsToDelete) {
+        await deleteThread(thread.id);
+    }
+
+    console.log(`[CLEANUP] Done.`);
+};

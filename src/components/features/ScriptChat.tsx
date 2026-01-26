@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Cpu, Cloud, Trash2, MessageSquare, X, Copy, Check, Clock, ChevronLeft, ChevronRight, Eraser, Plus, Pencil } from 'lucide-react';
 import { useWorkspace } from '../../layouts/WorkspaceLayout';
-import { chatWithScriptClaude } from '../../services/scriptClaude';
+import { streamSydResponse } from '../../services/syd/chatEngine';
 import { getCharacters, getStoryNotes } from '../../services/storage';
 import { createNewThreadForProject, listThreadsForProject, listMessagesForThread, appendMessage, deleteThread, updateThreadTitle } from '../../services/sydChatStore';
 import { Character, StoryNote, SydMessage, SydThread } from '../../types';
@@ -341,13 +341,16 @@ export const ScriptChat: React.FC<ScriptChatProps> = ({ onClose }) => {
 
         let fullResponse = "";
         try {
-          await chatWithScriptClaude(
-            project.id,
-            userMsg.content,
-            elements,
-            characters,
-            storyNotes,
-            threadId,
+          await streamSydResponse(
+            'claude',
+            {
+              projectId: project.id,
+              userMessage: userMsg.content,
+              scriptElements: elements,
+              characters,
+              storyNotes,
+              threadId
+            },
             (chunk) => {
               fullResponse += chunk;
               setMessages(prev => prev.map(m =>

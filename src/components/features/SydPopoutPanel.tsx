@@ -3,7 +3,7 @@ import { Sparkles, X, Send, Loader2, Cpu, Zap, AlertCircle, Download, BrainCircu
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SydContext } from '../../services/sydContext';
-import { classifyGeminiError, estimateConversationTokens } from '../../services/gemini';
+import { classifyGeminiError } from '../../services/imageGen';
 import { chatWithClaudeStreaming, classifyClaudeError, estimateClaudeConversationTokens } from '../../services/claude';
 import { detectFrustrationPatterns, buildEnhancedSystemPrompt } from '../../services/sydCommunicationProtocol';
 import { useSubscription } from '../../context/SubscriptionContext';

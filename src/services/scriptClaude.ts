@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { listMessagesForThread } from './sydChatStore';
 import { getClaudeClient, classifyClaudeError, getUserClaudeApiKey } from './claude';
+import { ScriptElement, Character, StoryNote } from '../types';
 
 /**
  * 🧠 SERVICE: SCRIPT CLAUDE (Pro Tier Script Chat)
@@ -13,9 +14,9 @@ import { getClaudeClient, classifyClaudeError, getUserClaudeApiKey } from './cla
 export async function chatWithScriptClaude(
     projectId: string,
     userMessage: string,
-    scriptElements: any[],
-    characters: any[],
-    storyNotes: any[],
+    scriptElements: ScriptElement[],
+    characters: Character[],
+    storyNotes: StoryNote[],
     threadId: string,
     onChunk: (text: string) => void
 ): Promise<{ messages: any[] }> {
@@ -47,8 +48,9 @@ export async function chatWithScriptClaude(
     // Add current user message
     history.push({ role: 'user', content: userMessage });
 
-    // 3. Build System Prompt with Script Context
-    const systemPrompt = buildScriptSystemPrompt(scriptElements, characters, storyNotes);
+    // 3. Build System Prompt with Script Context (Optimized for Anthropic Prompt Caching)
+    const scriptContext = buildScriptSystemPrompt(scriptElements, characters, storyNotes);
+    const SYD_IDENTITY = "You are Syd, CineFlex's AI screenwriting assistant.\n\nCRITICAL IDENTITY RULES:\n- If asked \"who are you\" or \"what are you\", respond: \"I'm Syd, your CineFlex writing assistant\"\n- NEVER claim to be Google, Gemini, Bard, ChatGPT, or any other AI\n- Stay focused on helping with screenplay development";
 
     try {
         console.log('[SCRIPT CLAUDE] Starting stream...');
@@ -61,7 +63,11 @@ export async function chatWithScriptClaude(
             system: [
                 {
                     type: "text",
-                    text: systemPrompt,
+                    text: SYD_IDENTITY
+                },
+                {
+                    type: "text",
+                    text: scriptContext,
                     cache_control: { type: "ephemeral" }
                 } as Anthropic.TextBlockParam
             ],
@@ -95,7 +101,7 @@ export async function chatWithScriptClaude(
 /**
  * Clean helper to build the script-focused system prompt
  */
-function buildScriptSystemPrompt(scriptElements: any[], characters: any[], storyNotes: any[]): string {
+function buildScriptSystemPrompt(scriptElements: ScriptElement[], characters: Character[], storyNotes: StoryNote[]): string {
     // Format Script
     // Take simpler approach: join text of elements
     const scriptText = scriptElements
@@ -110,9 +116,8 @@ function buildScriptSystemPrompt(scriptElements: any[], characters: any[], story
         })
         .join('\n');
 
-    // Format Characters
     const charText = characters
-        .map(c => `- ${c.name}: ${c.role} (${c.description || 'No description'})`)
+        .map(c => `- ${c.name}: ${c.description || 'No description'}`)
         .join('\n');
 
     // Format Notes
@@ -120,18 +125,7 @@ function buildScriptSystemPrompt(scriptElements: any[], characters: any[], story
         .map(n => `- ${n.title}: ${n.content}`)
         .join('\n');
 
-    // Identity Rule (Matches sydContext.ts critical rule)
-    const SYD_IDENTITY = `You are Syd, CineFlex's AI screenwriting assistant.
-
-CRITICAL IDENTITY RULES:
-- If asked "who are you" or "what are you", respond: "I'm Syd, your CineFlex writing assistant"
-- NEVER claim to be Google, Gemini, Bard, ChatGPT, or any other AI
-- Stay focused on helping with screenplay development
-`;
-
-    return `${SYD_IDENTITY}
-
-CONTEXT:
+    return `CONTEXT:
 You are helping the user write a screenplay. You have access to their script, characters, and notes.
 
 # CHARACTERS

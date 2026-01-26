@@ -7,7 +7,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Shot, Project, Character, Outfit, ShowToastFn, Location } from '../../types';
 import { generateShotImage } from '../../services/imageGen';
-import { analyzeSketch } from '../../services/gemini';
 import { constructPrompt } from '../../services/promptBuilder';
 import { MODEL_OPTIONS } from '../../constants';
 import { getCharacters, getOutfits, addToImageLibrary, toggleImageFavorite, getImageLibrary, getLocations } from '../../services/storage';
@@ -196,14 +195,14 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         setShot(prev => ({ ...prev, sketchImage: base64 }));
-        setIsAnalyzing(true);
-        showToast("Analyzing sketch...", 'info');
+        // Deprecated: analyzeSketch was removed from gemini.ts in Phase 2
+        /*
         const analysis = await analyzeSketch(base64);
         if (analysis) {
           setShot(prev => ({ ...prev, description: prev.description ? prev.description + " " + analysis : analysis }));
           showToast("Sketch analysis added", 'success');
         }
-        setIsAnalyzing(false);
+        */
       };
       reader.readAsDataURL(file);
     }
