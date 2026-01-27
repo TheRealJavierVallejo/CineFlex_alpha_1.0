@@ -36,7 +36,7 @@ type TemplateKey = keyof typeof TEMPLATES;
 export const TitlePageEditor: React.FC = () => {
   const { project, handleUpdateProject, saveNow } = useWorkspace();
   const [data, setData] = useState<TitlePageData>({
-    title: project.name,
+    title: '',
     credit: 'Written by',
     authors: [''],
     draftDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
