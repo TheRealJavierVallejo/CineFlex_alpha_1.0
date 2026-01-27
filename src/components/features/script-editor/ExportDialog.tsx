@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { FileText, Download, X, Check, FileCode, Type } from 'lucide-react';
 import { Project } from '../../../types';
 import { ExportOptions, exportScript } from '../../../services/exportService';
+import { ScriptModel } from '../../../services/scriptModel';
+import { ExportValidationModal } from '../ExportValidationModal';
+import { autoFixElements } from '../../../services/validation/autoFix';
 import Button from '../../ui/Button';
 import Modal from '../../ui/Modal';
 import { ExportPreviewRenderer } from './ExportPreviewRenderer';
@@ -26,6 +29,11 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
     const [pageCount, setPageCount] = useState(1);
     const [isExporting, setIsExporting] = useState(false);
     const [exportProgress, setExportProgress] = useState(0);
+    
+    // Phase 4: Export Validation Modal State
+    const [showValidationModal, setShowValidationModal] = useState(false);
+    const [validationReport, setValidationReport] = useState<any>(null);
+    const [isFixing, setIsFixing] = useState(false);
 
     const formats = [
         { id: 'pdf', name: 'PDF', desc: 'Standard Screenplay', icon: <FileText className="w-5 h-5" /> },
@@ -34,8 +42,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
         { id: 'txt', name: 'Plain Text', desc: 'Simple .txt file', icon: <FileText className="w-5 h-5" /> }
     ];
 
-    // Validation before export
-    const validateExport = (): { valid: boolean; error?: string } => {
+    // Basic validation before export
+    const validateBasics = (): { valid: boolean; error?: string } => {
         // Check if script has content
         if (!project.scriptElements || project.scriptElements.length === 0) {
             return { valid: false, error: 'Your script is empty. Add some content before exporting.' };
@@ -54,7 +62,19 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
             }
         }
 
-        // Warn about large scripts (performance)
+        return { valid: true };
+    };
+
+    // Phase 4: Validation check before export
+    const checkValidationBeforeExport = async () => {
+        // Basic validation first
+        const basics = validateBasics();
+        if (!basics.valid) {
+            toast.error('Export Failed', basics.error);
+            return;
+        }
+
+        // Warn about large scripts
         if (project.scriptElements.length > 1000) {
             toast.warning(
                 'Large Script Detected',
@@ -62,17 +82,66 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
             );
         }
 
-        return { valid: true };
+        // Phase 4: Run validation check
+        try {
+            const model = ScriptModel.create(
+                project.scriptElements,
+                project.titlePage,
+                { strict: false }
+            );
+            const report = model.getValidationReport();
+
+            // Check if script quality is good enough (90%+ confidence)
+            if (report.confidence >= 0.9 && report.summary.errors === 0) {
+                // Export immediately - script is clean
+                console.log('[Phase 4] Script clean (Confidence: ' + (report.confidence * 100).toFixed(1) + '%), exporting immediately');
+                await performExport();
+            } else {
+                // Show validation modal
+                console.log('[Phase 4] Script has issues (Confidence: ' + (report.confidence * 100).toFixed(1) + '%), showing validation modal');
+                setValidationReport(report);
+                setShowValidationModal(true);
+            }
+        } catch (error) {
+            console.error('[Phase 4] Validation check failed:', error);
+            // If validation fails, still allow export but warn user
+            toast.warning('Validation Check Failed', 'Proceeding with export anyway.');
+            await performExport();
+        }
     };
 
-    const handleExport = async () => {
-        // Validate before starting
-        const validation = validateExport();
-        if (!validation.valid) {
-            toast.error('Export Failed', validation.error);
-            return;
-        }
+    // Phase 4: Auto-fix and export
+    const handleAutoFixAndExport = async () => {
+        setIsFixing(true);
 
+        try {
+            // Run auto-fix on elements
+            const fixResult = autoFixElements(project.scriptElements);
+            
+            console.log(`[Phase 4] Auto-fixed ${fixResult.totalFixed} issues before export`);
+
+            // Update project with fixed elements
+            const fixedProject = {
+                ...project,
+                scriptElements: fixResult.fixed
+            };
+
+            // Close validation modal
+            setShowValidationModal(false);
+
+            // Export with fixed elements
+            await performExport(fixedProject);
+
+        } catch (error) {
+            console.error('[Phase 4] Auto-fix failed:', error);
+            toast.error('Auto-Fix Failed', 'Could not fix script errors. Please review manually.');
+        } finally {
+            setIsFixing(false);
+        }
+    };
+
+    // Actual export execution
+    const performExport = async (projectToExport: Project = project) => {
         setIsExporting(true);
         setExportProgress(0);
 
@@ -82,7 +151,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                 setExportProgress(50);
             }
 
-            await exportScript(project, options, (progress) => {
+            await exportScript(projectToExport, options, (progress) => {
                 setExportProgress(progress);
             });
 
@@ -99,6 +168,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
             setTimeout(() => {
                 onClose();
                 setExportProgress(0);
+                setIsExporting(false);
             }, 500);
 
         } catch (error) {
@@ -126,181 +196,195 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
     };
 
     return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title="Export Script"
-            size="full"
-        >
-            <div className="flex flex-col h-full min-h-0">
-                <div className="flex-1 min-h-0 flex gap-6 p-6">
-                    {/* Left Pane - Format selection + options */}
-                    <div className="flex-shrink-0 w-[380px] space-y-8 pr-6 border-r border-border">
-                        {/* Format Selection */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Select Format</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {formats.map((f) => (
-                                    <button
-                                        key={f.id}
-                                        onClick={() => setOptions({ ...options, format: f.id as any })}
-                                        disabled={isExporting}
-                                        className={`
-                                        flex items-start gap-3 p-3 rounded-xl border text-left transition-all duration-200 bg-surface
-                                        ${options.format === f.id
-                                                ? 'border border-primary ring-1 ring-primary/20'
-                                                : 'border-border hover:border-text-muted'}
-                                        ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}
-                                    `}
-                                    >
-                                        <div className={`p-2 rounded-lg border ${options.format === f.id ? 'border-primary bg-surface' : 'border-border bg-surface'}`}>
-                                            {f.icon}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="text-sm font-bold text-text-primary mb-0.5">{f.name}</div>
-                                            <div className="text-[10px] text-text-muted leading-tight">{f.desc}</div>
-                                        </div>
-                                        {options.format === f.id && (
-                                            <div className="shrink-0 pt-1">
-                                                <Check className="w-4 h-4 text-primary" />
+        <>
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                title="Export Script"
+                size="full"
+            >
+                <div className="flex flex-col h-full min-h-0">
+                    <div className="flex-1 min-h-0 flex gap-6 p-6">
+                        {/* Left Pane - Format selection + options */}
+                        <div className="flex-shrink-0 w-[380px] space-y-8 pr-6 border-r border-border">
+                            {/* Format Selection */}
+                            <div className="space-y-3">
+                                <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Select Format</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {formats.map((f) => (
+                                        <button
+                                            key={f.id}
+                                            onClick={() => setOptions({ ...options, format: f.id as any })}
+                                            disabled={isExporting}
+                                            className={`
+                                            flex items-start gap-3 p-3 rounded-xl border text-left transition-all duration-200 bg-surface
+                                            ${options.format === f.id
+                                                    ? 'border border-primary ring-1 ring-primary/20'
+                                                    : 'border-border hover:border-text-muted'}
+                                            ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}
+                                        `}
+                                        >
+                                            <div className={`p-2 rounded-lg border ${options.format === f.id ? 'border-primary bg-surface' : 'border-border bg-surface'}`}>
+                                                {f.icon}
                                             </div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Configuration Options */}
-                        <div className="space-y-6">
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Script Options</label>
-
-                                <div className="space-y-3">
-                                    <label className="flex items-center gap-3 cursor-pointer group">
-                                        <div className="relative">
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only"
-                                                checked={options.includeTitlePage}
-                                                onChange={(e) => setOptions({ ...options, includeTitlePage: e.target.checked })}
-                                                disabled={isExporting}
-                                            />
-                                            <div className={`w-9 h-5 rounded-full transition-colors ${options.includeTitlePage ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
-                                            <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.includeTitlePage ? 'translate-x-4' : ''}`} />
-                                        </div>
-                                        <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Include Title Page</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-3 cursor-pointer group">
-                                        <div className="relative">
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only"
-                                                checked={options.includeSceneNumbers}
-                                                onChange={(e) => setOptions({ ...options, includeSceneNumbers: e.target.checked })}
-                                                disabled={isExporting}
-                                            />
-                                            <div className={`w-9 h-5 rounded-full transition-colors ${options.includeSceneNumbers ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
-                                            <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.includeSceneNumbers ? 'translate-x-4' : ''}`} />
-                                        </div>
-                                        <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Include Scene Numbers</span>
-                                    </label>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-sm font-bold text-text-primary mb-0.5">{f.name}</div>
+                                                <div className="text-[10px] text-text-muted leading-tight">{f.desc}</div>
+                                            </div>
+                                            {options.format === f.id && (
+                                                <div className="shrink-0 pt-1">
+                                                    <Check className="w-4 h-4 text-primary" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Advanced</label>
-
+                            {/* Configuration Options */}
+                            <div className="space-y-6">
                                 <div className="space-y-4">
-                                    {options.format === 'pdf' && (
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Script Options</label>
+
+                                    <div className="space-y-3">
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <div className="relative">
                                                 <input
                                                     type="checkbox"
                                                     className="sr-only"
-                                                    checked={options.openInNewTab}
-                                                    onChange={(e) => setOptions({ ...options, openInNewTab: e.target.checked })}
+                                                    checked={options.includeTitlePage}
+                                                    onChange={(e) => setOptions({ ...options, includeTitlePage: e.target.checked })}
                                                     disabled={isExporting}
                                                 />
-                                                <div className={`w-9 h-5 rounded-full transition-colors ${options.openInNewTab ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
-                                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.openInNewTab ? 'translate-x-4' : ''}`} />
+                                                <div className={`w-9 h-5 rounded-full transition-colors ${options.includeTitlePage ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
+                                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.includeTitlePage ? 'translate-x-4' : ''}`} />
                                             </div>
-                                            <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Open in New Tab</span>
+                                            <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Include Title Page</span>
                                         </label>
-                                    )}
 
-                                    <div className="space-y-1.5">
-                                        <span className="text-xs text-text-secondary">Watermark (Optional)</span>
-                                        <input
-                                            type="text"
-                                            value={options.watermark}
-                                            onChange={(e) => setOptions({ ...options, watermark: e.target.value })}
-                                            placeholder="DRAFT, CONFIDENTIAL..."
-                                            disabled={isExporting}
-                                            className="w-full bg-surface-secondary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:border-primary outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        />
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className="relative">
+                                                <input
+                                                    type="checkbox"
+                                                    className="sr-only"
+                                                    checked={options.includeSceneNumbers}
+                                                    onChange={(e) => setOptions({ ...options, includeSceneNumbers: e.target.checked })}
+                                                    disabled={isExporting}
+                                                />
+                                                <div className={`w-9 h-5 rounded-full transition-colors ${options.includeSceneNumbers ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
+                                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.includeSceneNumbers ? 'translate-x-4' : ''}`} />
+                                            </div>
+                                            <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Include Scene Numbers</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Advanced</label>
+
+                                    <div className="space-y-4">
+                                        {options.format === 'pdf' && (
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <div className="relative">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="sr-only"
+                                                        checked={options.openInNewTab}
+                                                        onChange={(e) => setOptions({ ...options, openInNewTab: e.target.checked })}
+                                                        disabled={isExporting}
+                                                    />
+                                                    <div className={`w-9 h-5 rounded-full transition-colors ${options.openInNewTab ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
+                                                    <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.openInNewTab ? 'translate-x-4' : ''}`} />
+                                                </div>
+                                                <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Open in New Tab</span>
+                                            </label>
+                                        )}
+
+                                        <div className="space-y-1.5">
+                                            <span className="text-xs text-text-secondary">Watermark (Optional)</span>
+                                            <input
+                                                type="text"
+                                                value={options.watermark}
+                                                onChange={(e) => setOptions({ ...options, watermark: e.target.value })}
+                                                placeholder="DRAFT, CONFIDENTIAL..."
+                                                disabled={isExporting}
+                                                className="w-full bg-surface-secondary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:border-primary outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Right Pane - Preview Pane */}
-                    <div className="flex-1 min-h-0 flex flex-col pl-6">
-                        {/* Preview Header */}
-                        <div className="flex-shrink-0 flex items-center justify-between mb-4">
-                            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-                                Preview
-                            </label>
-                            <div className="text-xs text-text-muted">
-                                {pageCount > 0 ? `${pageCount} page${pageCount !== 1 ? 's' : ''}` : 'Calculating...'}
+                        {/* Right Pane - Preview Pane */}
+                        <div className="flex-1 min-h-0 flex flex-col pl-6">
+                            {/* Preview Header */}
+                            <div className="flex-shrink-0 flex items-center justify-between mb-4">
+                                <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+                                    Preview
+                                </label>
+                                <div className="text-xs text-text-muted">
+                                    {pageCount > 0 ? `${pageCount} page${pageCount !== 1 ? 's' : ''}` : 'Calculating...'}
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Scrollable Preview Container */}
-                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-hidden">
-                            <ExportPreviewRenderer
-                                project={project}
-                                options={options}
-                                onPageCountChange={setPageCount}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Actions Footer - Fixed */}
-                <div className="flex-shrink-0 border-t border-border bg-surface px-6 py-4">
-                    {/* Progress Bar */}
-                    {isExporting && exportProgress > 0 && (
-                        <div className="mb-3">
-                            <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs text-text-muted">Exporting...</span>
-                                <span className="text-xs text-text-muted">{Math.round(exportProgress)}%</span>
-                            </div>
-                            <div className="h-1.5 bg-surface-secondary rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-primary transition-all duration-300 ease-out"
-                                    style={{ width: `${exportProgress}%` }}
+                            {/* Scrollable Preview Container */}
+                            <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-hidden">
+                                <ExportPreviewRenderer
+                                    project={project}
+                                    options={options}
+                                    onPageCountChange={setPageCount}
                                 />
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    <div className="flex items-center justify-end gap-3">
-                        <Button variant="ghost" onClick={onClose} disabled={isExporting}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="primary"
-                            icon={isExporting ? undefined : <Download className="w-4 h-4" />}
-                            onClick={handleExport}
-                            disabled={isExporting}
-                        >
-                            {isExporting ? `Exporting...` : 'Export Script'}
-                        </Button>
+                    {/* Actions Footer - Fixed */}
+                    <div className="flex-shrink-0 border-t border-border bg-surface px-6 py-4">
+                        {/* Progress Bar */}
+                        {isExporting && exportProgress > 0 && (
+                            <div className="mb-3">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-xs text-text-muted">Exporting...</span>
+                                    <span className="text-xs text-text-muted">{Math.round(exportProgress)}%</span>
+                                </div>
+                                <div className="h-1.5 bg-surface-secondary rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary transition-all duration-300 ease-out"
+                                        style={{ width: `${exportProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-end gap-3">
+                            <Button variant="ghost" onClick={onClose} disabled={isExporting}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="primary"
+                                icon={isExporting ? undefined : <Download className="w-4 h-4" />}
+                                onClick={checkValidationBeforeExport}
+                                disabled={isExporting}
+                            >
+                                {isExporting ? `Exporting...` : 'Export Script'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </Modal>
+            </Modal>
+
+            {/* Phase 4: Export Validation Modal */}
+            {validationReport && (
+                <ExportValidationModal
+                    isOpen={showValidationModal}
+                    onClose={() => setShowValidationModal(false)}
+                    report={validationReport}
+                    onAutoFixAndExport={handleAutoFixAndExport}
+                    isFixing={isFixing}
+                    exportFormat={options.format === 'pdf' ? 'PDF' : options.format === 'fdx' ? 'FDX' : 'Fountain'}
+                />
+            )}
+        </>
     );
 };
