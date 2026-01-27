@@ -119,22 +119,49 @@ export const customValidationRules = {
   },
 
   /**
-   * Dual dialogue should come in pairs (left then right)
+   * Dual dialogue should come in pairs (left block then right block)
+   * A block is CHARACTER + DIALOGUE (+ optional PARENTHETICAL)
    */
   dualDialoguePairs: (elements: ValidScriptElement[]): boolean => {
     const dualElements = elements.filter(el => el.dual);
     if (dualElements.length === 0) return true;
     
-    // Check alternating left/right pattern
-    for (let i = 0; i < dualElements.length - 1; i += 2) {
-      const current = dualElements[i];
-      const next = dualElements[i + 1];
-      
-      if (!next) return false; // Odd number, unpaired
-      if (current.dual !== 'left' || next.dual !== 'right') return false;
+    // Group by dual position to find blocks
+    const leftBlocks: ValidScriptElement[][] = [];
+    const rightBlocks: ValidScriptElement[][] = [];
+    
+    let currentBlock: ValidScriptElement[] = [];
+    let currentPosition: 'left' | 'right' | null = null;
+    
+    for (const element of dualElements) {
+      if (element.dual !== currentPosition) {
+        // New block starting
+        if (currentBlock.length > 0) {
+          if (currentPosition === 'left') {
+            leftBlocks.push(currentBlock);
+          } else if (currentPosition === 'right') {
+            rightBlocks.push(currentBlock);
+          }
+        }
+        currentBlock = [element];
+        currentPosition = element.dual!;
+      } else {
+        // Continue current block
+        currentBlock.push(element);
+      }
     }
     
-    return true;
+    // Push last block
+    if (currentBlock.length > 0) {
+      if (currentPosition === 'left') {
+        leftBlocks.push(currentBlock);
+      } else if (currentPosition === 'right') {
+        rightBlocks.push(currentBlock);
+      }
+    }
+    
+    // Must have equal numbers of left and right blocks
+    return leftBlocks.length === rightBlocks.length && leftBlocks.length > 0;
   },
 
   /**
