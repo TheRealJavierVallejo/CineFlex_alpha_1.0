@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
-import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced } from '../services/storage';
+import { getProjectData, saveProjectData, setActiveProjectId, saveProjectDataDebounced, updateDraftMetadata } from '../services/storage';
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
@@ -363,12 +363,19 @@ export const WorkspaceLayout: React.FC = () => {
         const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
             d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
         );
-        const updatedProject = { ...project, drafts: updatedDrafts, lastModified: Date.now() };
+        const updatedProject = { ...project, drafts: updatedDrafts }; // Don't update lastModified to avoid triggering full save logic elsewhere unnecessarily
 
         setProject(updatedProject);
-        // Save immediately for metadata updates
-        await saveProjectData(updatedProject.id, updatedProject);
-    }, [project]);
+        
+        // Use the new lightweight metadata update
+        try {
+            await updateDraftMetadata(project.id, updatedDrafts);
+            // Optional: Success toast or silent
+        } catch (e) {
+            showToast("Failed to save rename", 'error');
+            // Revert state if needed, but for now we trust optimistic UI
+        }
+    }, [project, showToast]);
 
     // 🔥 CRITICAL FIX: Functional update to prevent "Zombie Closure" race conditions
     // This ensures we always merge new script elements into the LATEST project state,
