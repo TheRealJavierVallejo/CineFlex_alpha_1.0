@@ -3,6 +3,24 @@ import { Project, ScriptElement } from '../../../types';
 import { ExportOptions } from '../../../services/exportService';
 import { calculatePagination } from '../../../services/pagination';
 import { FileText } from 'lucide-react';
+import {
+    PAGE_WIDTH_IN,
+    PAGE_HEIGHT_IN,
+    MARGIN_TOP_IN,
+    MARGIN_BOTTOM_IN,
+    MARGIN_LEFT_IN,
+    MARGIN_RIGHT_IN,
+    FONT_FAMILY,
+    FONT_SIZE_PT,
+    LINE_HEIGHT_IN,
+    PREVIEW_SCALE,
+    INDENT_CHARACTER_IN,
+    INDENT_DIALOGUE_IN,
+    INDENT_DIALOGUE_RIGHT_IN,
+    INDENT_PAREN_IN,
+    PAGE_NUM_TOP_IN,
+    PAGE_NUM_RIGHT_IN
+} from '../../../services/screenplayLayout';
 
 interface ExportPreviewRendererProps {
     project: Project;
@@ -10,23 +28,24 @@ interface ExportPreviewRendererProps {
     onPageCountChange?: (pageCount: number) => void;
 }
 
+// Typography-only styles (no margins - those come from elementMargins)
 const elementStyles: Record<string, string> = {
-    'scene_heading': 'font-bold uppercase mb-4',
-    'action': 'mb-4',
-    'character': 'uppercase ml-[35%] mb-1 font-bold',
-    'dialogue': 'ml-[15%] mr-[15%] mb-4',
-    'parenthetical': 'ml-[25%] mb-1 italic',
-    'transition': 'uppercase text-right mb-4 font-bold',
-    'shot': 'uppercase mb-4 font-bold'
+    'scene_heading': 'font-bold uppercase',
+    'action': '',
+    'character': 'uppercase font-bold',
+    'dialogue': '',
+    'parenthetical': 'italic',
+    'transition': 'uppercase font-bold',
+    'shot': 'uppercase font-bold'
 };
 
-// Scaled margins (60% of actual size for preview)
+// Element margins using real inch values (relative to content area)
 const elementMargins: Record<string, React.CSSProperties> = {
     'scene_heading': { marginLeft: '0', width: '100%' },
     'action': { marginLeft: '0', width: '100%' },
-    'character': { marginLeft: '120px', width: 'auto' },  // 60% of 2in (192px * 0.6)
-    'dialogue': { marginLeft: '60px', marginRight: '60px', width: 'auto' },  // 60% of 1in
-    'parenthetical': { marginLeft: '90px', width: 'auto' },  // 60% of 1.5in
+    'character': { marginLeft: `${INDENT_CHARACTER_IN}in`, width: 'auto' },
+    'dialogue': { marginLeft: `${INDENT_DIALOGUE_IN}in`, marginRight: `${INDENT_DIALOGUE_RIGHT_IN}in`, width: 'auto' },
+    'parenthetical': { marginLeft: `${INDENT_PAREN_IN}in`, width: 'auto' },
     'transition': { textAlign: 'right', width: '100%', marginRight: '0' }
 };
 
@@ -66,13 +85,13 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         const margins = elementMargins[element.type] || {};
         const text = element.content || '';
 
-        // Industry standard spacing (scaled to 60%)
+        // Industry standard spacing (in line heights)
         let spacingStyle: React.CSSProperties = {};
         if (!isFirstOnPage) {
             if (element.type === 'scene_heading') {
-                spacingStyle = { marginTop: '2em' };
+                spacingStyle = { marginTop: `${LINE_HEIGHT_IN * 2}in` };
             } else if (element.type !== 'dialogue' && element.type !== 'parenthetical') {
-                spacingStyle = { marginTop: '1em' };
+                spacingStyle = { marginTop: `${LINE_HEIGHT_IN}in` };
             }
         }
 
@@ -80,9 +99,9 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
             const sceneNumber = element.sceneNumber || '';
             return (
                 <div key={element.id} className={`${styleClass} relative`} style={{ ...margins, ...spacingStyle }}>
-                    <span className="absolute -left-12 opacity-50">{sceneNumber}</span>
+                    <span className="absolute" style={{ left: '-0.6in', opacity: 0.5 }}>{sceneNumber}</span>
                     {text}
-                    <span className="absolute -right-12 opacity-50">{sceneNumber}</span>
+                    <span className="absolute" style={{ right: '-0.6in', opacity: 0.5 }}>{sceneNumber}</span>
                 </div>
             );
         }
@@ -92,6 +111,26 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
                 {text}
             </div>
         );
+    };
+
+    // Page styles using real inch dimensions
+    const pageStyle: React.CSSProperties = {
+        width: `${PAGE_WIDTH_IN}in`,
+        minHeight: `${PAGE_HEIGHT_IN}in`,
+        paddingTop: `${MARGIN_TOP_IN}in`,
+        paddingBottom: `${MARGIN_BOTTOM_IN}in`,
+        paddingLeft: `${MARGIN_LEFT_IN}in`,
+        paddingRight: `${MARGIN_RIGHT_IN}in`,
+        boxSizing: 'border-box',
+        fontFamily: FONT_FAMILY,
+        fontSize: `${FONT_SIZE_PT}pt`,
+        lineHeight: `${LINE_HEIGHT_IN}in`
+    };
+
+    // Scale wrapper to shrink pages for preview
+    const scaleWrapperStyle: React.CSSProperties = {
+        transform: `scale(${PREVIEW_SCALE})`,
+        transformOrigin: 'top center'
     };
 
     if (!elements.length) {
@@ -107,89 +146,86 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     }
 
     return (
-        <div className="w-full h-full flex items-start justify-center overflow-y-auto bg-zinc-900 p-8">
+        <div className="w-full h-full flex justify-center overflow-y-auto overflow-x-hidden bg-zinc-900 p-8">
             <div className="flex flex-col items-center gap-8">
                 {/* Title Page */}
                 {options.includeTitlePage && project.titlePage && (
-                    <div
-                        className="preview-page bg-white text-black shadow-2xl relative shrink-0 rounded-sm"
-                        style={{
-                            width: '510px',  // 60% of 8.5in (816px * 0.6)
-                            height: '660px', // 60% of 11in (1056px * 0.6)
-                            padding: '60px', // 60% of 1in margins
-                            boxSizing: 'border-box',
-                            transform: 'scale(1)',
-                            transformOrigin: 'top center'
-                        }}
-                    >
-                        <div className="flex flex-col h-full justify-center items-center text-center font-mono">
-                            <h1 className="text-xl font-bold mb-4 uppercase">
-                                {project.titlePage.title || project.name || 'Untitled'}
-                            </h1>
-                            {project.titlePage.authors && project.titlePage.authors.length > 0 && (
-                                <div className="mt-12">
-                                    <p className="text-xs mb-4">{project.titlePage.credit || 'Written by'}</p>
-                                    {project.titlePage.authors.map((author, i) => (
-                                        <p key={i} className="text-xs font-bold">{author}</p>
-                                    ))}
+                    <div style={scaleWrapperStyle}>
+                        <div
+                            className="bg-white text-black shadow-2xl relative rounded-sm"
+                            style={{ ...pageStyle, height: `${PAGE_HEIGHT_IN}in` }}
+                        >
+                            <div className="flex flex-col h-full justify-center items-center text-center">
+                                <h1 className="text-2xl font-bold mb-4 uppercase">
+                                    {project.titlePage.title || project.name || 'Untitled'}
+                                </h1>
+                                {project.titlePage.authors && project.titlePage.authors.length > 0 && (
+                                    <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>
+                                        <p className="mb-4">{project.titlePage.credit || 'Written by'}</p>
+                                        {project.titlePage.authors.map((author, i) => (
+                                            <p key={i} className="font-bold">{author}</p>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div
+                                    className="absolute text-left"
+                                    style={{
+                                        bottom: `${MARGIN_BOTTOM_IN}in`,
+                                        left: `${MARGIN_LEFT_IN}in`
+                                    }}
+                                >
+                                    {project.titlePage.contact && (
+                                        <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
+                                    )}
+                                </div>
+                            </div>
+                            {/* Watermark */}
+                            {options.watermark && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                    <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                        {options.watermark}
+                                    </div>
                                 </div>
                             )}
-
-                            <div className="absolute bottom-[60px] left-[60px] text-left" style={{ fontSize: '7.2pt' }}>
-                                {project.titlePage.contact && (
-                                    <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
-                                )}
-                            </div>
                         </div>
-                        {/* Watermark */}
-                        {options.watermark && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                                <div className="text-5xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
-                                    {options.watermark}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
 
                 {/* Script Pages */}
                 {pages.map((page, pageIndex) => (
-                    <div
-                        key={pageIndex}
-                        className="preview-page bg-white text-black shadow-2xl relative shrink-0 rounded-sm"
-                        style={{
-                            width: '510px',  // 60% of 8.5in
-                            minHeight: '660px', // 60% of 11in
-                            padding: '60px', // 60% of 1in margins
-                            boxSizing: 'border-box'
-                        }}
-                    >
-                        {/* Page number */}
-                        <div className="absolute top-[30px] right-[60px] font-mono" style={{ fontSize: '7.2pt' }}>
-                            {pageIndex + 1}.
-                        </div>
-
-                        {/* Page content */}
+                    <div key={pageIndex} style={scaleWrapperStyle}>
                         <div
-                            className="font-mono"
-                            style={{
-                                fontFamily: 'Courier, "Courier New", monospace',
-                                fontSize: '7.2pt',  // 60% of 12pt
-                                lineHeight: '14.4pt', // 60% of 24pt
-                                width: '390px'  // 60% of 6.5in (650px * 0.6)
-                            }}
+                            className="bg-white text-black shadow-2xl relative rounded-sm"
+                            style={pageStyle}
                         >
-                            {page.map((element, idx) => renderElement(element, idx, idx === 0))}
-                        </div>
-
-                        {/* Watermark */}
-                        {options.watermark && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                                <div className="text-5xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
-                                    {options.watermark}
-                                </div>
+                            {/* Page number */}
+                            <div
+                                className="absolute"
+                                style={{
+                                    top: `${PAGE_NUM_TOP_IN}in`,
+                                    right: `${PAGE_NUM_RIGHT_IN}in`,
+                                    fontFamily: FONT_FAMILY,
+                                    fontSize: `${FONT_SIZE_PT}pt`
+                                }}
+                            >
+                                {pageIndex + 1}.
                             </div>
-                        )}
+
+                            {/* Page content */}
+                            <div>
+                                {page.map((element, idx) => renderElement(element, idx, idx === 0))}
+                            </div>
+
+                            {/* Watermark */}
+                            {options.watermark && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                    <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                        {options.watermark}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ))}
             </div>

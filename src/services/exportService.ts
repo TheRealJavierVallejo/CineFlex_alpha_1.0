@@ -2,6 +2,26 @@ import { Project, ScriptElement } from '../types';
 import jsPDF from 'jspdf';
 import { generateFountainText } from './scriptUtils';
 import { calculatePagination } from './pagination';
+import {
+    PAGE_WIDTH_IN,
+    PAGE_HEIGHT_IN,
+    MARGIN_TOP_IN,
+    MARGIN_LEFT_IN,
+    FONT_SIZE_PT,
+    LINE_HEIGHT_IN,
+    WIDTH_SCENE_HEADING,
+    WIDTH_ACTION,
+    WIDTH_CHARACTER,
+    WIDTH_DIALOGUE,
+    WIDTH_PAREN,
+    WIDTH_TRANSITION,
+    INDENT_CHARACTER_IN,
+    INDENT_DIALOGUE_IN,
+    INDENT_PAREN_IN,
+    INDENT_TRANSITION_IN,
+    PAGE_NUM_TOP_IN,
+    PAGE_NUM_RIGHT_IN
+} from './screenplayLayout';
 
 /**
  * EXPORT SERVICE
@@ -115,11 +135,11 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
     });
 
     const fontName = 'Courier';
-    const fontSize = 12;
-    const lineHeight = 0.166;
-    const marginTop = 1.0;
-    const marginLeft = 1.5;
-    const pageWidth = 8.5;
+    const fontSize = FONT_SIZE_PT;
+    const lineHeight = LINE_HEIGHT_IN;
+    const marginTop = MARGIN_TOP_IN;
+    const marginLeft = MARGIN_LEFT_IN;
+    const pageWidth = PAGE_WIDTH_IN;
 
     // Helper for Watermark
     const renderWatermark = () => {
@@ -141,7 +161,7 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         doc.setFont(fontName, 'normal');
         let cursorY = 3.5;
         if (tp.title) {
-            const titleLines = doc.splitTextToSize(tp.title.toUpperCase(), 6.0);
+            const titleLines = doc.splitTextToSize(tp.title.toUpperCase(), WIDTH_SCENE_HEADING);
             titleLines.forEach((line: string) => {
                 doc.text(line, pageWidth / 2, cursorY, { align: 'center' });
                 cursorY += 0.3;
@@ -177,12 +197,12 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         currentPdfPage = pageNum;
         renderWatermark();
         doc.setFontSize(12);
-        doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+        doc.text(`${pageNum}.`, pageWidth - PAGE_NUM_RIGHT_IN, PAGE_NUM_TOP_IN, { align: 'right' });
     };
 
     renderWatermark();
     doc.setFontSize(12);
-    doc.text(`${currentPdfPage}.`, 7.5, 0.5, { align: 'right' });
+    doc.text(`${currentPdfPage}.`, pageWidth - PAGE_NUM_RIGHT_IN, PAGE_NUM_TOP_IN, { align: 'right' });
 
     const elements = project.scriptElements || [];
     const pageMap = calculatePagination(elements);
@@ -210,34 +230,34 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
             case 'scene_heading':
                 if (options.includeSceneNumbers && el.sceneNumber) {
                     doc.text(el.sceneNumber, marginLeft - 0.4, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0));
-                    doc.text(el.sceneNumber, 7.5, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0), { align: 'right' });
+                    doc.text(el.sceneNumber, pageWidth - PAGE_NUM_RIGHT_IN, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0), { align: 'right' });
                 }
-                maxWidth = 6.0; isUppercase = true;
+                maxWidth = WIDTH_SCENE_HEADING; isUppercase = true;
                 if (cursorY > marginTop) cursorY += lineHeight * 2;
                 break;
             case 'action':
-                maxWidth = 6.0;
+                maxWidth = WIDTH_ACTION;
                 if (cursorY > marginTop) cursorY += lineHeight;
                 break;
             case 'character':
                 if (el.dual) { cursorY = dualBufferY; xOffset = marginLeft + 3.5; maxWidth = 2.8; }
                 else if (nextIsDual) { dualBufferY = cursorY + (cursorY > marginTop ? lineHeight : 0); xOffset = marginLeft + 0.5; maxWidth = 2.8; if (cursorY > marginTop) cursorY += lineHeight; }
-                else { xOffset = marginLeft + 2.0; maxWidth = 3.5; if (cursorY > marginTop) cursorY += lineHeight; }
+                else { xOffset = marginLeft + INDENT_CHARACTER_IN; maxWidth = WIDTH_CHARACTER; if (cursorY > marginTop) cursorY += lineHeight; }
                 isUppercase = true;
                 if (el.isContinued) text += " (CONT'D)";
                 break;
             case 'dialogue':
                 if (el.dual) { xOffset = marginLeft + 3.0; maxWidth = 2.8; }
                 else if (dualBufferY > 0) { xOffset = marginLeft; maxWidth = 2.8; }
-                else { xOffset = marginLeft + 1.0; maxWidth = 3.5; }
+                else { xOffset = marginLeft + INDENT_DIALOGUE_IN; maxWidth = WIDTH_DIALOGUE; }
                 break;
             case 'parenthetical':
                 if (el.dual) { xOffset = marginLeft + 3.3; maxWidth = 2.2; }
                 else if (dualBufferY > 0) { xOffset = marginLeft + 0.3; maxWidth = 2.2; }
-                else { xOffset = marginLeft + 1.5; maxWidth = 3.0; }
+                else { xOffset = marginLeft + INDENT_PAREN_IN; maxWidth = WIDTH_PAREN; }
                 break;
             case 'transition':
-                xOffset = marginLeft + 4.0; maxWidth = 2.0; isUppercase = true;
+                xOffset = marginLeft + INDENT_TRANSITION_IN; maxWidth = WIDTH_TRANSITION; isUppercase = true;
                 if (cursorY > marginTop) cursorY += lineHeight;
                 break;
         }
