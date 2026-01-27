@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useWorkspace } from '../../../layouts/WorkspaceLayout';
 import { SlateScriptEditor } from './SlateScriptEditor';
 import { ScriptDraft } from '../../../types';
 import Button from '../../ui/Button';
-import { Plus, Download, CheckCircle, Eye, Trash2 } from 'lucide-react';
+import { Plus, Download, CheckCircle, Eye, Trash2, Edit2, Check, X } from 'lucide-react';
 
 export const DraftsManager: React.FC = () => {
-    const { project, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, importScript } = useWorkspace();
+    const { project, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft, importScript } = useWorkspace();
     
     // State for which draft is currently being VIEWED (previewed) on the right
     // Default to the active draft initially
     const [selectedPreviewId, setSelectedPreviewId] = useState<string>(project.activeDraftId || '');
+    
+    // Rename state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
+    const editInputRef = useRef<HTMLInputElement>(null);
 
     // Ensure we have a valid selection if the active draft changes externally
     // OR if the currently selected preview draft was deleted
@@ -24,6 +29,14 @@ export const DraftsManager: React.FC = () => {
             setSelectedPreviewId(project.drafts[0].id);
         }
     }, [project.drafts, project.activeDraftId, selectedPreviewId]);
+
+    // Focus input when editing starts
+    useEffect(() => {
+        if (editingId && editInputRef.current) {
+            editInputRef.current.focus();
+            editInputRef.current.select();
+        }
+    }, [editingId]);
 
     // Find the actual draft objects
     const previewDraft = project.drafts.find(d => d.id === selectedPreviewId) || project.drafts[0];
@@ -44,6 +57,36 @@ export const DraftsManager: React.FC = () => {
         }
     };
 
+    const startEditing = (e: React.MouseEvent, draft: ScriptDraft) => {
+        e.stopPropagation();
+        setEditingId(draft.id);
+        setEditName(draft.name);
+    };
+
+    const cancelEditing = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        setEditingId(null);
+        setEditName('');
+    };
+
+    const saveEditing = async (e?: React.MouseEvent | React.FormEvent) => {
+        e?.stopPropagation();
+        e?.preventDefault(); // Prevent form submission if wrapped
+        if (editingId && editName.trim()) {
+            await handleRenameDraft(editingId, editName.trim());
+            setEditingId(null);
+            setEditName('');
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            saveEditing();
+        } else if (e.key === 'Escape') {
+            cancelEditing();
+        }
+    };
+
     return (
         <div className="flex flex-row h-full w-full bg-background overflow-hidden">
             {/* LEFT SIDEBAR: Draft List */}
@@ -52,7 +95,7 @@ export const DraftsManager: React.FC = () => {
                 {/* Header Section */}
                 <div className="p-6 border-b border-border space-y-4">
                     <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                        Drafts Editor
+                        Drafts
                     </h2>
                     
                     <div className="flex gap-3">
@@ -87,11 +130,12 @@ export const DraftsManager: React.FC = () => {
                     {sortedDrafts.map((draft) => {
                         const isCurrent = draft.id === project.activeDraftId;
                         const isSelected = draft.id === selectedPreviewId;
+                        const isEditing = editingId === draft.id;
 
                         return (
                             <div 
                                 key={draft.id}
-                                onClick={() => setSelectedPreviewId(draft.id)}
+                                onClick={() => !isEditing && setSelectedPreviewId(draft.id)}
                                 className={`
                                     relative p-4 rounded-xl border transition-all cursor-pointer group
                                     ${isSelected 
@@ -100,36 +144,64 @@ export const DraftsManager: React.FC = () => {
                                 `}
                             >
                                 {/* Header Row: Name + Badges/Actions */}
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3 className={`font-bold text-base ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
-                                        {draft.name}
-                                    </h3>
-                                    
-                                    <div className="flex items-center gap-2">
-                                        {isCurrent ? (
-                                            <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                                Current
-                                            </span>
-                                        ) : (
-                                            // Delete Button (Only for non-current drafts)
-                                            <button
-                                                onClick={(e) => onDeleteClick(e, draft.id, draft.name)}
-                                                className="text-text-muted hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                                title="Delete Version"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </div>
+                                <div className="flex justify-between items-start mb-2 min-h-[28px]">
+                                    {isEditing ? (
+                                        <div className="flex items-center gap-2 w-full mr-2" onClick={e => e.stopPropagation()}>
+                                            <input
+                                                ref={editInputRef}
+                                                type="text"
+                                                value={editName}
+                                                onChange={(e) => setEditName(e.target.value)}
+                                                onKeyDown={handleKeyDown}
+                                                onBlur={() => saveEditing()} // Save on blur
+                                                className="flex-1 bg-background border border-primary rounded px-2 py-1 text-sm font-bold text-text-primary outline-none focus:ring-1 focus:ring-primary"
+                                            />
+                                            <button onClick={saveEditing} className="text-emerald-500 hover:text-emerald-400 p-1"><Check className="w-4 h-4" /></button>
+                                            <button onClick={cancelEditing} className="text-red-500 hover:text-red-400 p-1"><X className="w-4 h-4" /></button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center gap-2 group/title">
+                                                <h3 className={`font-bold text-base ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
+                                                    {draft.name}
+                                                </h3>
+                                                <button 
+                                                    onClick={(e) => startEditing(e, draft)}
+                                                    className="opacity-0 group-hover/title:opacity-100 text-text-muted hover:text-primary transition-opacity p-1"
+                                                >
+                                                    <Edit2 className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2">
+                                                {isCurrent ? (
+                                                    <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                        Current
+                                                    </span>
+                                                ) : (
+                                                    // Delete Button (Only for non-current drafts)
+                                                    <button
+                                                        onClick={(e) => onDeleteClick(e, draft.id, draft.name)}
+                                                        className="text-text-muted hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                        title="Delete Version"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Description / Date */}
-                                <p className="text-xs text-text-secondary mb-4 line-clamp-2">
-                                    Last edited: {new Date(draft.updatedAt).toLocaleString()}
-                                </p>
+                                {!isEditing && (
+                                    <p className="text-xs text-text-secondary mb-4 line-clamp-2">
+                                        Last edited: {new Date(draft.updatedAt).toLocaleString()}
+                                    </p>
+                                )}
 
                                 {/* Action Button */}
-                                {!isCurrent && (
+                                {!isCurrent && !isEditing && (
                                     <div className="flex justify-end">
                                         <button
                                             onClick={(e) => {
