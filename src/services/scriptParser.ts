@@ -340,6 +340,60 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
   }
   if (baseX < 50) baseX = 72;
 
+  // --- NEW: TITLE PAGE DETECTION ---
+  const titlePage: TitlePageData = {};
+  let startPage = 1;
+  let detectedTitle = 'Imported PDF Script';
+
+  const page1Lines = allLines.filter(l => l.page === 1);
+  const hasSceneHeadingOnPage1 = page1Lines.some(l => 
+    /^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(l.text.trim())
+  );
+
+  // If Page 1 has NO scene headings, assume it is a Title Page
+  if (page1Lines.length > 0 && !hasSceneHeadingOnPage1) {
+    console.log('[PDF Parser] Detected potential Title Page on Page 1');
+    startPage = 2; // Skip page 1 for script elements
+    
+    // Simple heuristic extraction
+    // Sort by Y (top to bottom) is already done
+    
+    // Title is usually central and large, but here we just look for patterns
+    for (let i = 0; i < page1Lines.length; i++) {
+        const text = page1Lines[i].text.trim();
+        const lower = text.toLowerCase();
+        
+        if (lower.includes('written by')) {
+            titlePage.credit = 'Written by';
+            // Next line often author
+            if (page1Lines[i+1]) titlePage.authors = [page1Lines[i+1].text.trim()];
+        }
+        else if (lower.includes('story by')) {
+             // Append to authors if multiple
+             if (page1Lines[i+1]) {
+                 titlePage.authors = [...(titlePage.authors || []), page1Lines[i+1].text.trim()];
+             }
+        }
+        else if (lower.includes('draft') || /\d{4}/.test(text)) {
+            titlePage.draftDate = text;
+        }
+        else if (lower.includes('contact') || lower.includes('@') || /\d{3}-\d{3}/.test(text)) {
+            titlePage.contact = text;
+        }
+    }
+    
+    // Assume the first few non-empty lines might be the title if not "written by"
+    const firstLines = page1Lines.slice(0, 5).map(l => l.text.trim()).filter(t => t.length > 0);
+    if (firstLines.length > 0 && !titlePage.title) {
+        // Just take the first significant line as title if we didn't find specific markers
+        // But exclude if it looks like "Written by"
+        if (!/written by|screenplay by/i.test(firstLines[0])) {
+            titlePage.title = firstLines[0];
+            detectedTitle = firstLines[0];
+        }
+    }
+  }
+
   // 3. CLASSIFY & MERGE ELEMENTS
   const elements: ScriptElement[] = [];
   let sequence = 1;
@@ -347,6 +401,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
   let lastPage = 0;
 
   allLines.forEach(line => {
+    // SKIP PAGE 1 if we detected a title page
+    if (line.page < startPage) return;
+
     let text = line.text.trim();
     if (!text) return;
     
@@ -360,8 +417,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
       return;
     }
 
-    // NEW: Filter page break artifacts like (MORE) and (CONT'D)
-    // These confuse the parser and break the script flow
+    // Filter page break artifacts like (MORE) and (CONT'D)
     if (/^\(MORE\)$/i.test(text)) return;
     if (/^\(CONT['’]?D\)$/i.test(text)) return;
     
@@ -445,5 +501,5 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     lastPage = page;
   });
 
-  return createValidatedResult(elements, undefined, 'Imported PDF Script', options);
+  return createValidatedResult(elements, titlePage, detectedTitle, options);
 }
