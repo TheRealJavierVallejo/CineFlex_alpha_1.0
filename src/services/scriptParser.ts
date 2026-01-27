@@ -81,6 +81,17 @@ function createValidatedResult(
   
   let finalElements = elements;
   let autoFixedElements: ScriptElement[] | undefined;
+  let hadFixableIssues = false;
+  
+  // First validate WITHOUT auto-fix to check if issues exist
+  const preFixModel = ScriptModel.create(elements, titlePage, { strict: false });
+  const preFixReport = preFixModel.getValidationReport();
+  
+  // Check if there are fixable issues
+  hadFixableIssues = preFixReport.issues.some(
+    issue => ['CHARACTER_NOT_UPPERCASE', 'PARENTHETICAL_FORMAT', 'EMPTY_CONTENT', 
+               'DUAL_DIALOGUE_UNPAIRED', 'SEQUENCE_GAPS'].includes(issue.code)
+  );
   
   // Auto-fix by default (silent)
   if (shouldAutoFix) {
@@ -98,11 +109,8 @@ function createValidatedResult(
   const scriptModel = ScriptModel.create(finalElements, titlePage, { strict });
   const validationReport = scriptModel.getValidationReport();
   
-  // Check if auto-fix is available for remaining issues
-  const autoFixAvailable = validationReport.issues.some(
-    issue => ['CHARACTER_NOT_UPPERCASE', 'PARENTHETICAL_FORMAT', 'EMPTY_CONTENT', 
-               'DUAL_DIALOGUE_UNPAIRED', 'SEQUENCE_GAPS'].includes(issue.code)
-  );
+  // Auto-fix is available if we didn't auto-fix AND there are fixable issues
+  const autoFixAvailable = !shouldAutoFix && hadFixableIssues;
   
   // Silent validation (no console spam unless errors)
   if (validationReport.summary.errors > 0) {
@@ -111,6 +119,7 @@ function createValidatedResult(
     console.log(`[Phase 3] ✅ Script validated and cleaned (Confidence: ${(validationReport.confidence * 100).toFixed(1)}%)`);
   }
   
+  // STRICT MODE: Throw if validation fails
   if (!validationReport.valid && strict) {
     throw new Error(`Script validation failed: ${validationReport.summary.errors} errors found`);
   }
@@ -165,7 +174,7 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
   const doc = parser.parseFromString(xmlText, "text/xml");
   
   // Parse Script Elements
-  const paragraphs = Array.from(doc.querySelectorAll('Paragraph'));
+  const paragraphs = Array.from(doc.querySelectorAll('Content > Paragraph'));
   const elements: ScriptElement[] = [];
   let sequence = 1;
   
@@ -220,36 +229,47 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
     elements.push(element);
   });
 
-  // Parse Title Page
+  // Parse Title Page - FIXED selector to get directly from TitlePage
   const titlePage: TitlePageData = {};
-  const titlePageNode = doc.querySelector('TitlePage');
+  const titlePageContent = doc.querySelector('TitlePage > Content');
   
-  if (titlePageNode) {
-    const getText = (tag: string) => {
-      const nodes = titlePageNode.querySelectorAll(tag + ' Paragraph Text');
-      return Array.from(nodes).map(n => n.textContent).join('\n').trim();
-    };
-
-    const title = getText('Title');
-    if (title) titlePage.title = title;
-
-    const credit = getText('Credit');
-    if (credit) titlePage.credit = credit;
-
-    const author = getText('Author');
-    if (author) titlePage.authors = [author];
-
-    const source = getText('Source');
-    if (source) titlePage.source = source;
-
-    const date = getText('Date');
-    if (date) titlePage.draftDate = date;
+  if (titlePageContent) {
+    const titlePageParagraphs = Array.from(titlePageContent.querySelectorAll('Paragraph'));
     
-    const contact = getText('Contact');
-    if (contact) titlePage.contact = contact;
-    
-    const copyright = getText('Copyright');
-    if (copyright) titlePage.copyright = copyright;
+    titlePageParagraphs.forEach(p => {
+      const type = p.getAttribute('Type');
+      const textNodes = p.querySelectorAll('Text');
+      const text = Array.from(textNodes).map(n => n.textContent).join('').trim();
+      
+      if (!text) return;
+      
+      switch (type) {
+        case 'Title':
+          titlePage.title = text;
+          break;
+        case 'Credit':
+          titlePage.credit = text;
+          break;
+        case 'Author':
+        case 'Authors':
+          if (!titlePage.authors) titlePage.authors = [];
+          titlePage.authors.push(text);
+          break;
+        case 'Source':
+          titlePage.source = text;
+          break;
+        case 'Draft Date':
+        case 'Date':
+          titlePage.draftDate = text;
+          break;
+        case 'Contact':
+          titlePage.contact = text;
+          break;
+        case 'Copyright':
+          titlePage.copyright = text;
+          break;
+      }
+    });
   }
   
   const title = titlePage.title || 'Imported FDX Script';
