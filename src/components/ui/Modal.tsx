@@ -40,7 +40,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       {/* Modal Content */}
       <div
         className={`
-          relative bg-[#09090b] border border-zinc-800 shadow-2xl w-full flex flex-col rounded-sm overflow-hidden
+          relative bg-[#09090b] border border-zinc-800 shadow-2xl w-full flex flex-col rounded-sm overflow-hidden max-h-[90vh]
           animate-in zoom-in-95 duration-200
           ${sizeClasses[size]}
         `}
