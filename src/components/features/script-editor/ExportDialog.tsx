@@ -170,8 +170,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                             </div>
                         </div>
 
-                        {/* Scrollable Preview Container */}
-                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-y-auto overflow-x-hidden p-6 custom-scrollbar">
+                        {/* Scrollable Preview Container - Reduced padding */}
+                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-y-auto overflow-x-hidden py-6 px-4 custom-scrollbar">
                             <ExportPreviewRenderer
                                 project={project}
                                 options={options}
@@ -181,7 +181,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                     </div>
                 </div>
 
-                {/* Actions Footer - Sticky */}
+                {/* Actions Footer - Fixed */}
                 <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
                     <Button variant="ghost" onClick={onClose}>
                         Cancel
