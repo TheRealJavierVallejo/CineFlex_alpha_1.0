@@ -23,16 +23,6 @@ import {
     PAGE_NUM_RIGHT_IN
 } from './screenplayLayout';
 
-/**
- * EXPORT SERVICE
- * Handles conversion of script data to various industry formats.
- */
-
-/**
- * EXPORT SERVICE
- * Handles conversion of script data to various industry formats.
- */
-
 export interface ExportOptions {
     format: 'pdf' | 'fdx' | 'fountain' | 'txt';
     includeTitlePage: boolean;
@@ -40,6 +30,8 @@ export interface ExportOptions {
     watermark?: string;
     openInNewTab?: boolean;
 }
+
+export type ProgressCallback = (progress: number) => void;
 
 // --- 1. FOUNTAIN (TXT) EXPORT ---
 export const exportToFountain = (project: Project, options?: Partial<ExportOptions>): string => {
@@ -127,8 +119,12 @@ export const exportToFDX = (project: Project, options?: Partial<ExportOptions>):
     return xml;
 };
 
-// --- 3. PDF EXPORT (Industry Standard) ---
-export const exportToPDF = (project: Project, options: ExportOptions) => {
+// --- 3. PDF EXPORT (Industry Standard) with Progress Tracking ---
+export const exportToPDF = async (
+    project: Project,
+    options: ExportOptions,
+    onProgress?: ProgressCallback
+): Promise<void> => {
     const doc = new jsPDF({
         unit: 'in',
         format: 'letter',
@@ -155,9 +151,12 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
         doc.text(options.watermark, pageWidth / 2, 5.5, { align: 'center', angle: 45 });
         doc.restoreGraphicsState();
-        doc.setTextColor(savedColor); // Restore
+        doc.setTextColor(savedColor);
         doc.setFontSize(fontSize);
     };
+
+    // Report initial progress
+    onProgress?.(5);
 
     // --- TITLE PAGE ---
     const tp = project.titlePage;
@@ -194,7 +193,12 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         doc.addPage();
     }
 
-    // --- SCRIPT CONTENT ---
+    onProgress?.(15);
+
+    // --- SCRIPT CONTENT with Chunked Processing ---
+    const elements = project.scriptElements || [];
+    const pageMap = calculatePagination(elements);
+    
     let currentPdfPage = 1;
     const addPage = (pageNum: number) => {
         doc.addPage();
@@ -208,77 +212,99 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
     doc.setFontSize(12);
     doc.text(`${currentPdfPage}.`, pageWidth - PAGE_NUM_RIGHT_IN, PAGE_NUM_TOP_IN, { align: 'right' });
 
-    const elements = project.scriptElements || [];
-    const pageMap = calculatePagination(elements);
     let cursorY = marginTop;
     let dualBufferY = 0;
 
-    for (let i = 0; i < elements.length; i++) {
-        const el = elements[i];
-        const elementPage = pageMap[el.id] || 1;
+    // Process elements in chunks to allow UI updates
+    const CHUNK_SIZE = 50; // Process 50 elements at a time
+    const totalChunks = Math.ceil(elements.length / CHUNK_SIZE);
 
-        if (elementPage > currentPdfPage) {
-            addPage(elementPage);
-            cursorY = marginTop;
-            dualBufferY = 0;
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, elements.length);
+        const chunk = elements.slice(start, end);
+
+        // Process this chunk
+        for (let localIdx = 0; localIdx < chunk.length; localIdx++) {
+            const i = start + localIdx;
+            const el = elements[i];
+            const elementPage = pageMap[el.id] || 1;
+
+            if (elementPage > currentPdfPage) {
+                addPage(elementPage);
+                cursorY = marginTop;
+                dualBufferY = 0;
+            }
+
+            let xOffset = marginLeft;
+            let maxWidth = 6.0;
+            let text = el.content;
+            let isUppercase = false;
+
+            const nextIsDual = i + 1 < elements.length && elements[i + 1].dual && elements[i + 1].type === 'character';
+
+            switch (el.type) {
+                case 'scene_heading':
+                    if (options.includeSceneNumbers && el.sceneNumber) {
+                        doc.text(el.sceneNumber, marginLeft - 0.4, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0));
+                        doc.text(el.sceneNumber, pageWidth - PAGE_NUM_RIGHT_IN, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0), { align: 'right' });
+                    }
+                    maxWidth = WIDTH_SCENE_HEADING; isUppercase = true;
+                    if (cursorY > marginTop) cursorY += lineHeight * 2;
+                    break;
+                case 'action':
+                    maxWidth = WIDTH_ACTION;
+                    if (cursorY > marginTop) cursorY += lineHeight;
+                    break;
+                case 'character':
+                    if (el.dual) { cursorY = dualBufferY; xOffset = marginLeft + 3.5; maxWidth = 2.8; }
+                    else if (nextIsDual) { dualBufferY = cursorY + (cursorY > marginTop ? lineHeight : 0); xOffset = marginLeft + 0.5; maxWidth = 2.8; if (cursorY > marginTop) cursorY += lineHeight; }
+                    else { xOffset = marginLeft + INDENT_CHARACTER_IN; maxWidth = WIDTH_CHARACTER; if (cursorY > marginTop) cursorY += lineHeight; }
+                    isUppercase = true;
+                    if (el.isContinued) text += " (CONT'D)";
+                    break;
+                case 'dialogue':
+                    if (el.dual) { xOffset = marginLeft + 3.0; maxWidth = 2.8; }
+                    else if (dualBufferY > 0) { xOffset = marginLeft; maxWidth = 2.8; }
+                    else { xOffset = marginLeft + INDENT_DIALOGUE_IN; maxWidth = WIDTH_DIALOGUE; }
+                    break;
+                case 'parenthetical':
+                    if (el.dual) { xOffset = marginLeft + 3.3; maxWidth = 2.2; }
+                    else if (dualBufferY > 0) { xOffset = marginLeft + 0.3; maxWidth = 2.2; }
+                    else { xOffset = marginLeft + INDENT_PAREN_IN; maxWidth = WIDTH_PAREN; }
+                    break;
+                case 'transition':
+                    xOffset = marginLeft + INDENT_TRANSITION_IN; maxWidth = WIDTH_TRANSITION; isUppercase = true;
+                    if (cursorY > marginTop) cursorY += lineHeight;
+                    break;
+            }
+
+            if (isUppercase) text = text.toUpperCase();
+            const lines = doc.splitTextToSize(text, maxWidth);
+            doc.text(lines, xOffset, cursorY);
+            cursorY += lines.length * lineHeight;
+
+            if (el.continuesNext && (el.type === 'dialogue' || el.type === 'character')) {
+                cursorY += lineHeight * 0.5;
+                doc.text('(MORE)', marginLeft + 3.0, cursorY);
+                cursorY += lineHeight * 0.5;
+            }
+            if (el.dual) dualBufferY = 0;
         }
 
-        let xOffset = marginLeft;
-        let maxWidth = 6.0;
-        let text = el.content;
-        let isUppercase = false;
+        // Update progress after each chunk
+        const progress = 15 + Math.round((chunkIndex + 1) / totalChunks * 75); // 15-90%
+        onProgress?.(progress);
 
-        const nextIsDual = i + 1 < elements.length && elements[i + 1].dual && elements[i + 1].type === 'character';
-
-        switch (el.type) {
-            case 'scene_heading':
-                if (options.includeSceneNumbers && el.sceneNumber) {
-                    doc.text(el.sceneNumber, marginLeft - 0.4, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0));
-                    doc.text(el.sceneNumber, pageWidth - PAGE_NUM_RIGHT_IN, cursorY + (cursorY > marginTop ? lineHeight * 2 : 0), { align: 'right' });
-                }
-                maxWidth = WIDTH_SCENE_HEADING; isUppercase = true;
-                if (cursorY > marginTop) cursorY += lineHeight * 2;
-                break;
-            case 'action':
-                maxWidth = WIDTH_ACTION;
-                if (cursorY > marginTop) cursorY += lineHeight;
-                break;
-            case 'character':
-                if (el.dual) { cursorY = dualBufferY; xOffset = marginLeft + 3.5; maxWidth = 2.8; }
-                else if (nextIsDual) { dualBufferY = cursorY + (cursorY > marginTop ? lineHeight : 0); xOffset = marginLeft + 0.5; maxWidth = 2.8; if (cursorY > marginTop) cursorY += lineHeight; }
-                else { xOffset = marginLeft + INDENT_CHARACTER_IN; maxWidth = WIDTH_CHARACTER; if (cursorY > marginTop) cursorY += lineHeight; }
-                isUppercase = true;
-                if (el.isContinued) text += " (CONT'D)";
-                break;
-            case 'dialogue':
-                if (el.dual) { xOffset = marginLeft + 3.0; maxWidth = 2.8; }
-                else if (dualBufferY > 0) { xOffset = marginLeft; maxWidth = 2.8; }
-                else { xOffset = marginLeft + INDENT_DIALOGUE_IN; maxWidth = WIDTH_DIALOGUE; }
-                break;
-            case 'parenthetical':
-                if (el.dual) { xOffset = marginLeft + 3.3; maxWidth = 2.2; }
-                else if (dualBufferY > 0) { xOffset = marginLeft + 0.3; maxWidth = 2.2; }
-                else { xOffset = marginLeft + INDENT_PAREN_IN; maxWidth = WIDTH_PAREN; }
-                break;
-            case 'transition':
-                xOffset = marginLeft + INDENT_TRANSITION_IN; maxWidth = WIDTH_TRANSITION; isUppercase = true;
-                if (cursorY > marginTop) cursorY += lineHeight;
-                break;
+        // Yield to UI thread between chunks
+        if (chunkIndex < totalChunks - 1) {
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
-
-        if (isUppercase) text = text.toUpperCase();
-        const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, xOffset, cursorY);
-        cursorY += lines.length * lineHeight;
-
-        if (el.continuesNext && (el.type === 'dialogue' || el.type === 'character')) {
-            cursorY += lineHeight * 0.5;
-            doc.text('(MORE)', marginLeft + 3.0, cursorY);
-            cursorY += lineHeight * 0.5;
-        }
-        if (el.dual) dualBufferY = 0;
     }
 
+    onProgress?.(95);
+
+    // Generate and download/open PDF
     const filename = `${safeName}_script.pdf`;
 
     if (options.openInNewTab) {
@@ -286,43 +312,53 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         const url = URL.createObjectURL(blob);
         const newTab = window.open(url, '_blank');
 
-        // Popup blocker fallback
         if (!newTab) {
+            // Popup blocker - fall back to download
             doc.save(filename);
             URL.revokeObjectURL(url);
-            return;
+            throw new Error('Popup blocked. Please allow popups for this site or the file will be downloaded instead.');
         }
 
-        // Cleanup object URL after delay
         setTimeout(() => URL.revokeObjectURL(url), 30000);
     } else {
         doc.save(filename);
     }
+
+    onProgress?.(100);
 };
 
-// Legacy support (defaults to PDF standard)
-export const exportScript = async (project: Project, options: ExportOptions) => {
-    // Generate safe name for all formats
+// Main export function with progress support
+export const exportScript = async (
+    project: Project,
+    options: ExportOptions,
+    onProgress?: ProgressCallback
+): Promise<void> => {
     const baseName = (project.name || project.titlePage?.title || 'Untitled').trim();
     const safeName = baseName.replace(/\s+/g, '_');
 
     switch (options.format) {
         case 'pdf':
-            exportToPDF(project, options);
+            await exportToPDF(project, options, onProgress);
             break;
         case 'fdx': {
+            onProgress?.(50);
             const xml = exportToFDX(project, options);
             downloadFile(xml, `${safeName}.fdx`, 'text/xml');
+            onProgress?.(100);
             break;
         }
         case 'fountain': {
+            onProgress?.(50);
             const text = exportToFountain(project, options);
             downloadFile(text, `${safeName}.fountain`, 'text/plain');
+            onProgress?.(100);
             break;
         }
         case 'txt': {
+            onProgress?.(50);
             const text = exportToFountain(project, options);
             downloadFile(text, `${safeName}.txt`, 'text/plain');
+            onProgress?.(100);
             break;
         }
     }
