@@ -1,320 +1,293 @@
 /**
  * SCRIPT MODEL
- * Safe wrapper for script data with validation and immutability
- * Single source of truth for script manipulation
+ * 
+ * The "Safe Container" - wraps script data and enforces validation.
+ * All script modifications should go through this class.
+ * 
+ * Think of this like a vault:
+ * - Data goes in through validation
+ * - Data comes out validated
+ * - Mutations are controlled and tracked
+ * - Format consistency is guaranteed
+ * 
+ * Usage:
+ *   const model = ScriptModel.create(elements, titlePage);
+ *   model.insertElement(5, newElement); // Validated insertion
+ *   const validated = model.getElements(); // Always valid
  */
 
 import { ScriptElement, TitlePageData } from '../types';
 import {
-  validateScript,
-  ValidationResult,
-  quickValidate,
+  validateScriptElements,
+  validateScriptElement,
+  validateTitlePage,
+  ValidScriptElement,
+  ValidationReport,
+  formatReportForConsole
 } from './validation/scriptValidator';
-import {
-  ValidatedScriptElement,
-  ValidatedTitlePage,
-  ValidationOptions,
-} from './validation/schemas';
-import { ValidationReport } from './validation/validationReport';
-
-export interface ScriptModelOptions {
-  validateOnCreate?: boolean;
-  validateOnMutate?: boolean;
-  autoFix?: boolean;
-  context?: string;
-}
-
-const DEFAULT_OPTIONS: ScriptModelOptions = {
-  validateOnCreate: true,
-  validateOnMutate: true,
-  autoFix: true,
-  context: 'ScriptModel',
-};
 
 /**
- * ScriptModel: Immutable container for script data
- * All mutations return new instances
+ * Options for creating a ScriptModel
+ */
+export interface ScriptModelOptions {
+  strict?: boolean; // If true, throws on validation errors. If false, filters invalid elements.
+  logValidation?: boolean; // If true, logs validation report to console
+}
+
+/**
+ * Immutable script data model with validation
  */
 export class ScriptModel {
-  private readonly _elements: ReadonlyArray<ValidatedScriptElement>;
-  private readonly _titlePage: Readonly<ValidatedTitlePage> | undefined;
-  private readonly _validationReport: ValidationReport;
-  private readonly _version: string = '1.0';
-  private readonly _options: ScriptModelOptions;
+  private readonly elements: ReadonlyArray<ValidScriptElement>;
+  private readonly titlePage: Readonly<TitlePageData>;
+  private readonly validationReport: ValidationReport;
+  private readonly version: string = '1.0';
 
-  constructor(
+  private constructor(
+    elements: ValidScriptElement[],
+    titlePage: TitlePageData,
+    validationReport: ValidationReport
+  ) {
+    this.elements = Object.freeze([...elements]);
+    this.titlePage = Object.freeze({ ...titlePage });
+    this.validationReport = validationReport;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // FACTORY METHODS
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Create a ScriptModel from raw script elements
+   * Validates and sanitizes input
+   */
+  static create(
     elements: ScriptElement[],
     titlePage?: TitlePageData,
     options: ScriptModelOptions = {}
-  ) {
-    this._options = { ...DEFAULT_OPTIONS, ...options };
+  ): ScriptModel {
+    const { strict = false, logValidation = false } = options;
 
-    if (this._options.validateOnCreate) {
-      // Validate and store
-      const result = validateScript(
-        elements,
-        titlePage,
-        {
-          mode: 'lenient',
-          autoFix: this._options.autoFix ?? true,
-          context: this._options.context,
-        }
-      );
+    // Validate elements
+    const report = validateScriptElements(elements);
 
-      this._elements = Object.freeze(result.elements);
-      this._titlePage = result.titlePage ? Object.freeze(result.titlePage) : undefined;
-      this._validationReport = result.report;
-
-      // Log validation issues if any
-      if (result.report.issues.length > 0) {
-        console.warn(
-          `[ScriptModel] Validation issues found:`,
-          result.report.issues
-        );
-      }
-    } else {
-      // Skip validation (for performance in trusted contexts)
-      this._elements = Object.freeze(elements as ValidatedScriptElement[]);
-      this._titlePage = titlePage ? Object.freeze(titlePage as ValidatedTitlePage) : undefined;
-      this._validationReport = {
-        valid: true,
-        confidence: 1.0,
-        totalElements: elements.length,
-        validElements: elements.length,
-        issues: [],
-        context: 'Unvalidated',
-        timestamp: Date.now(),
-      };
+    if (logValidation) {
+      console.log(formatReportForConsole(report));
     }
+
+    if (strict && !report.valid) {
+      throw new Error(
+        `Script validation failed: ${report.summary.errors} errors found. ` +
+        `Set strict: false to filter invalid elements instead.`
+      );
+    }
+
+    // Filter out only valid elements
+    const validElements: ValidScriptElement[] = [];
+    for (const element of elements) {
+      const result = validateScriptElement(element);
+      if (result.valid && result.element) {
+        validElements.push(result.element);
+      }
+    }
+
+    // Validate title page
+    const titlePageResult = validateTitlePage(titlePage);
+    const validTitlePage: TitlePageData = titlePage || {};
+
+    return new ScriptModel(validElements, validTitlePage, report);
   }
 
-  // --- GETTERS (Immutable) ---
-
-  getElements(): ReadonlyArray<ValidatedScriptElement> {
-    return this._elements;
+  /**
+   * Create an empty ScriptModel
+   */
+  static createEmpty(): ScriptModel {
+    return ScriptModel.create([], {});
   }
 
-  getTitlePage(): Readonly<ValidatedTitlePage> | undefined {
-    return this._titlePage;
+  // ═══════════════════════════════════════════════════════════
+  // IMMUTABLE GETTERS
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get all elements (immutable)
+   */
+  getElements(): ReadonlyArray<ValidScriptElement> {
+    return this.elements;
   }
 
+  /**
+   * Get title page (immutable)
+   */
+  getTitlePage(): Readonly<TitlePageData> {
+    return this.titlePage;
+  }
+
+  /**
+   * Get validation report
+   */
   getValidationReport(): ValidationReport {
-    return this._validationReport;
+    return this.validationReport;
   }
 
-  getVersion(): string {
-    return this._version;
+  /**
+   * Get element by ID
+   */
+  getElementById(id: string): ValidScriptElement | undefined {
+    return this.elements.find(el => el.id === id);
   }
 
-  isValid(): boolean {
-    return this._validationReport.valid;
+  /**
+   * Get element by sequence number
+   */
+  getElementBySequence(sequence: number): ValidScriptElement | undefined {
+    return this.elements.find(el => el.sequence === sequence);
   }
 
-  getConfidence(): number {
-    return this._validationReport.confidence;
+  /**
+   * Get elements by type
+   */
+  getElementsByType(type: ValidScriptElement['type']): ValidScriptElement[] {
+    return this.elements.filter(el => el.type === type);
   }
 
+  /**
+   * Get total element count
+   */
   getElementCount(): number {
-    return this._elements.length;
+    return this.elements.length;
   }
 
-  getElementById(id: string): ValidatedScriptElement | undefined {
-    return this._elements.find(el => el.id === id);
+  /**
+   * Check if model is valid (no errors)
+   */
+  isValid(): boolean {
+    return this.validationReport.valid;
   }
 
-  getElementByIndex(index: number): ValidatedScriptElement | undefined {
-    return this._elements[index];
+  /**
+   * Get confidence score (0.0 to 1.0)
+   */
+  getConfidence(): number {
+    return this.validationReport.confidence;
   }
 
-  getElementsByType(type: ScriptElement['type']): ValidatedScriptElement[] {
-    return this._elements.filter(el => el.type === type);
-  }
-
-  getSceneHeadings(): ValidatedScriptElement[] {
-    return this.getElementsByType('scene_heading');
-  }
-
-  // --- MUTATIONS (Return new instances) ---
+  // ═══════════════════════════════════════════════════════════
+  // MUTATIONS (return new ScriptModel)
+  // ═══════════════════════════════════════════════════════════
 
   /**
    * Insert element at specific index
+   * Returns new ScriptModel (immutable)
    */
-  insertElement(index: number, element: ScriptElement): ScriptModel {
-    const newElements = [...this._elements];
-    newElements.splice(index, 0, element as ValidatedScriptElement);
+  insertElement(
+    index: number,
+    element: ScriptElement,
+    options?: ScriptModelOptions
+  ): ScriptModel {
+    const newElements = [...this.elements];
+    newElements.splice(index, 0, element as ValidScriptElement);
     
     // Re-sequence
-    this.resequence(newElements);
+    this.resequenceElements(newElements);
     
-    return new ScriptModel(newElements, this._titlePage, this._options);
+    return ScriptModel.create(newElements as ScriptElement[], this.titlePage as TitlePageData, options);
   }
 
   /**
    * Update element by ID
+   * Returns new ScriptModel (immutable)
    */
-  updateElement(id: string, changes: Partial<ScriptElement>): ScriptModel {
-    const newElements = this._elements.map(el => {
+  updateElement(
+    id: string,
+    changes: Partial<ScriptElement>,
+    options?: ScriptModelOptions
+  ): ScriptModel {
+    const newElements = this.elements.map(el => {
       if (el.id === id) {
         return { ...el, ...changes };
       }
       return el;
     });
-
-    return new ScriptModel(newElements, this._titlePage, this._options);
-  }
-
-  /**
-   * Update element by index
-   */
-  updateElementByIndex(index: number, changes: Partial<ScriptElement>): ScriptModel {
-    const newElements = [...this._elements];
-    if (index >= 0 && index < newElements.length) {
-      newElements[index] = { ...newElements[index], ...changes };
-    }
-
-    return new ScriptModel(newElements, this._titlePage, this._options);
+    
+    return ScriptModel.create(newElements as ScriptElement[], this.titlePage as TitlePageData, options);
   }
 
   /**
    * Delete element by ID
+   * Returns new ScriptModel (immutable)
    */
-  deleteElement(id: string): ScriptModel {
-    const newElements = this._elements.filter(el => el.id !== id);
-    this.resequence(newElements);
-
-    return new ScriptModel(newElements, this._titlePage, this._options);
-  }
-
-  /**
-   * Delete element by index
-   */
-  deleteElementByIndex(index: number): ScriptModel {
-    const newElements = this._elements.filter((_, i) => i !== index);
-    this.resequence(newElements);
-
-    return new ScriptModel(newElements, this._titlePage, this._options);
-  }
-
-  /**
-   * Append element to end
-   */
-  appendChild(element: ScriptElement): ScriptModel {
-    const newElements = [...this._elements, element as ValidatedScriptElement];
-    this.resequence(newElements);
-
-    return new ScriptModel(newElements, this._titlePage, this._options);
+  deleteElement(id: string, options?: ScriptModelOptions): ScriptModel {
+    const newElements = this.elements.filter(el => el.id !== id);
+    
+    // Re-sequence
+    this.resequenceElements(newElements as ValidScriptElement[]);
+    
+    return ScriptModel.create(newElements as ScriptElement[], this.titlePage as TitlePageData, options);
   }
 
   /**
    * Replace all elements
+   * Returns new ScriptModel (immutable)
    */
-  replaceElements(elements: ScriptElement[]): ScriptModel {
-    return new ScriptModel(elements, this._titlePage, this._options);
+  replaceElements(
+    elements: ScriptElement[],
+    options?: ScriptModelOptions
+  ): ScriptModel {
+    return ScriptModel.create(elements, this.titlePage as TitlePageData, options);
   }
 
   /**
    * Update title page
+   * Returns new ScriptModel (immutable)
    */
-  updateTitlePage(titlePage: Partial<TitlePageData>): ScriptModel {
-    const merged = { ...this._titlePage, ...titlePage };
-    return new ScriptModel(this._elements as ScriptElement[], merged, this._options);
-  }
-
-  /**
-   * Move element from one index to another
-   */
-  moveElement(fromIndex: number, toIndex: number): ScriptModel {
-    const newElements = [...this._elements];
-    const [removed] = newElements.splice(fromIndex, 1);
-    newElements.splice(toIndex, 0, removed);
-    this.resequence(newElements);
-
-    return new ScriptModel(newElements, this._titlePage, this._options);
-  }
-
-  // --- HELPERS ---
-
-  private resequence(elements: any[]): void {
-    elements.forEach((el, index) => {
-      el.sequence = index + 1;
-    });
-  }
-
-  /**
-   * Convert back to plain objects (for storage/export)
-   */
-  toJSON(): { elements: ScriptElement[]; titlePage?: TitlePageData } {
-    return {
-      elements: this._elements.map(el => ({ ...el })),
-      titlePage: this._titlePage ? { ...this._titlePage } : undefined,
-    };
-  }
-
-  /**
-   * Create from JSON (for loading)
-   */
-  static fromJSON(
-    data: { elements: ScriptElement[]; titlePage?: TitlePageData },
+  updateTitlePage(
+    changes: Partial<TitlePageData>,
     options?: ScriptModelOptions
   ): ScriptModel {
-    return new ScriptModel(data.elements, data.titlePage, options);
+    const newTitlePage = { ...this.titlePage, ...changes };
+    return ScriptModel.create(this.elements as ScriptElement[], newTitlePage, options);
   }
 
-  /**
-   * Clone with same validation settings
-   */
-  clone(): ScriptModel {
-    return new ScriptModel(
-      this._elements as ScriptElement[],
-      this._titlePage,
-      this._options
-    );
-  }
+  // ═══════════════════════════════════════════════════════════
+  // SERIALIZATION
+  // ═══════════════════════════════════════════════════════════
 
   /**
-   * Get summary stats
+   * Convert to plain object for storage
    */
-  getStats(): {
-    totalElements: number;
-    sceneHeadings: number;
-    dialogue: number;
-    action: number;
-    characters: number;
-    pages: number; // Estimate
+  toJSON(): {
+    elements: ScriptElement[];
+    titlePage: TitlePageData;
+    version: string;
+    validationReport: ValidationReport;
   } {
-    const sceneHeadings = this._elements.filter(el => el.type === 'scene_heading').length;
-    const dialogue = this._elements.filter(el => el.type === 'dialogue').length;
-    const action = this._elements.filter(el => el.type === 'action').length;
-    const characters = this._elements.filter(el => el.type === 'character').length;
-    
-    // Rough estimate: 54 lines per page, avg 2 lines per element
-    const estimatedPages = Math.ceil((this._elements.length * 2) / 54);
-
     return {
-      totalElements: this._elements.length,
-      sceneHeadings,
-      dialogue,
-      action,
-      characters,
-      pages: estimatedPages,
+      elements: [...this.elements] as ScriptElement[],
+      titlePage: { ...this.titlePage },
+      version: this.version,
+      validationReport: this.validationReport
     };
   }
-}
 
-/**
- * Factory function for common use cases
- */
-export function createScriptModel(
-  elements: ScriptElement[],
-  titlePage?: TitlePageData,
-  options?: ScriptModelOptions
-): ScriptModel {
-  return new ScriptModel(elements, titlePage, options);
-}
+  /**
+   * Create from stored JSON
+   */
+  static fromJSON(json: ReturnType<ScriptModel['toJSON']>, options?: ScriptModelOptions): ScriptModel {
+    return ScriptModel.create(json.elements, json.titlePage, options);
+  }
 
-/**
- * Create empty script
- */
-export function createEmptyScript(): ScriptModel {
-  return new ScriptModel([], undefined, { validateOnCreate: false });
+  // ═══════════════════════════════════════════════════════════
+  // PRIVATE HELPERS
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Re-sequence elements to be sequential starting from 1
+   * Mutates array in place for performance
+   */
+  private resequenceElements(elements: ValidScriptElement[]): void {
+    elements.forEach((el, index) => {
+      (el as any).sequence = index + 1;
+    });
+  }
 }
