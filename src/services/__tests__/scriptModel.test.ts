@@ -1,281 +1,271 @@
 /**
  * SCRIPT MODEL TESTS
- * Tests for ScriptModel class functionality
+ * 
+ * Tests for the ScriptModel class to ensure:
+ * - Validation works correctly
+ * - Immutability is enforced
+ * - Mutations return new instances
+ * - Invalid data is caught
  */
 
 import { describe, it, expect } from 'vitest';
-import { ScriptModel, createScriptModel, createEmptyScript } from '../scriptModel';
+import { ScriptModel } from '../scriptModel';
 import { ScriptElement } from '../../types';
 
 describe('ScriptModel', () => {
-  const sampleElements: ScriptElement[] = [
-    {
-      id: '00000000-0000-0000-0000-000000000001',
-      type: 'scene_heading',
-      content: 'INT. COFFEE SHOP - DAY',
-      sequence: 1,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000002',
-      type: 'action',
-      content: 'John enters the coffee shop.',
-      sequence: 2,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000003',
-      type: 'character',
-      content: 'JOHN',
-      sequence: 3,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000004',
-      type: 'dialogue',
-      content: 'One coffee, please.',
-      sequence: 4,
-      character: 'JOHN',
-    },
-  ];
+  // Sample valid element
+  const validElement: ScriptElement = {
+    id: crypto.randomUUID(),
+    type: 'action',
+    content: 'INT. COFFEE SHOP - DAY',
+    sequence: 1
+  };
 
-  describe('Construction', () => {
-    it('should create a valid ScriptModel', () => {
-      const model = new ScriptModel(sampleElements);
-      expect(model.isValid()).toBe(true);
-      expect(model.getElementCount()).toBe(4);
-    });
+  const validElement2: ScriptElement = {
+    id: crypto.randomUUID(),
+    type: 'dialogue',
+    content: 'This is some dialogue.',
+    sequence: 2,
+    character: 'JOHN'
+  };
 
-    it('should create empty script', () => {
-      const model = createEmptyScript();
+  describe('Factory Methods', () => {
+    it('should create empty model', () => {
+      const model = ScriptModel.createEmpty();
       expect(model.getElementCount()).toBe(0);
       expect(model.isValid()).toBe(true);
     });
 
-    it('should validate on creation by default', () => {
-      const invalidElement = {
-        id: 'invalid-uuid',
-        type: 'action',
-        content: 'Test',
-        sequence: 1,
-      };
-
-      // Should not throw, but should have validation issues
-      const model = new ScriptModel([invalidElement] as any);
-      expect(model.getValidationReport().issues.length).toBeGreaterThan(0);
+    it('should create model from valid elements', () => {
+      const model = ScriptModel.create([validElement, validElement2]);
+      expect(model.getElementCount()).toBe(2);
+      expect(model.isValid()).toBe(true);
     });
 
-    it('should support skipping validation for performance', () => {
-      const model = new ScriptModel(sampleElements, undefined, {
-        validateOnCreate: false,
-      });
-      expect(model.getElementCount()).toBe(4);
+    it('should filter invalid elements in non-strict mode', () => {
+      const invalidElement = {
+        // Missing required fields
+        type: 'action',
+        content: 'Test'
+      } as any;
+
+      const model = ScriptModel.create([validElement, invalidElement], undefined, { strict: false });
+      expect(model.getElementCount()).toBe(1); // Only valid element
+    });
+
+    it('should throw in strict mode with invalid elements', () => {
+      const invalidElement = {
+        type: 'action',
+        content: 'Test'
+      } as any;
+
+      expect(() => {
+        ScriptModel.create([validElement, invalidElement], undefined, { strict: true });
+      }).toThrow();
     });
   });
 
   describe('Immutability', () => {
-    it('should return new instance on mutation', () => {
-      const model1 = createScriptModel(sampleElements);
-      const model2 = model1.appendChild({
-        id: crypto.randomUUID(),
-        type: 'action',
-        content: 'New action',
-        sequence: 5,
-      });
-
-      expect(model1.getElementCount()).toBe(4);
-      expect(model2.getElementCount()).toBe(5);
-      expect(model1).not.toBe(model2);
+    it('should return frozen elements array', () => {
+      const model = ScriptModel.create([validElement]);
+      const elements = model.getElements();
+      
+      expect(Object.isFrozen(elements)).toBe(true);
     });
 
-    it('should not allow direct modification of elements', () => {
-      const model = createScriptModel(sampleElements);
-      const elements = model.getElements();
+    it('should return frozen title page', () => {
+      const titlePage = { title: 'Test Script' };
+      const model = ScriptModel.create([], titlePage);
+      const tp = model.getTitlePage();
+      
+      expect(Object.isFrozen(tp)).toBe(true);
+    });
 
-      // This should not compile in TypeScript
-      // @ts-expect-error
-      expect(() => { elements[0] = {} as any; }).toThrow();
+    it('should not allow direct mutation of elements', () => {
+      const model = ScriptModel.create([validElement]);
+      const elements = model.getElements() as any;
+      
+      // Should not be able to push
+      expect(() => {
+        elements.push(validElement2);
+      }).toThrow();
     });
   });
 
   describe('Getters', () => {
     it('should get element by ID', () => {
-      const model = createScriptModel(sampleElements);
-      const element = model.getElementById('00000000-0000-0000-0000-000000000001');
-      expect(element?.type).toBe('scene_heading');
+      const model = ScriptModel.create([validElement]);
+      const found = model.getElementById(validElement.id);
+      
+      expect(found).toBeDefined();
+      expect(found?.id).toBe(validElement.id);
     });
 
-    it('should get element by index', () => {
-      const model = createScriptModel(sampleElements);
-      const element = model.getElementByIndex(0);
-      expect(element?.type).toBe('scene_heading');
+    it('should get element by sequence', () => {
+      const model = ScriptModel.create([validElement]);
+      const found = model.getElementBySequence(1);
+      
+      expect(found).toBeDefined();
+      expect(found?.sequence).toBe(1);
     });
 
     it('should get elements by type', () => {
-      const model = createScriptModel(sampleElements);
+      const model = ScriptModel.create([validElement, validElement2]);
+      const actions = model.getElementsByType('action');
       const dialogues = model.getElementsByType('dialogue');
+      
+      expect(actions.length).toBe(1);
       expect(dialogues.length).toBe(1);
-      expect(dialogues[0].content).toBe('One coffee, please.');
     });
 
-    it('should get scene headings', () => {
-      const model = createScriptModel(sampleElements);
-      const headings = model.getSceneHeadings();
-      expect(headings.length).toBe(1);
-      expect(headings[0].content).toBe('INT. COFFEE SHOP - DAY');
+    it('should return validation report', () => {
+      const model = ScriptModel.create([validElement]);
+      const report = model.getValidationReport();
+      
+      expect(report).toBeDefined();
+      expect(report.totalElements).toBe(1);
+      expect(report.valid).toBe(true);
     });
   });
 
   describe('Mutations', () => {
-    it('should insert element at index', () => {
-      const model = createScriptModel(sampleElements);
-      const newElement: ScriptElement = {
-        id: crypto.randomUUID(),
-        type: 'action',
-        content: 'Inserted action',
-        sequence: 2,
-      };
-
-      const newModel = model.insertElement(1, newElement);
-      expect(newModel.getElementCount()).toBe(5);
-      expect(newModel.getElementByIndex(1)?.content).toBe('Inserted action');
+    it('should insert element and return new model', () => {
+      const model1 = ScriptModel.create([validElement]);
+      const model2 = model1.insertElement(1, validElement2);
+      
+      expect(model1.getElementCount()).toBe(1); // Original unchanged
+      expect(model2.getElementCount()).toBe(2); // New model updated
+      expect(model1).not.toBe(model2); // Different instances
     });
 
-    it('should update element by ID', () => {
-      const model = createScriptModel(sampleElements);
-      const newModel = model.updateElement(
-        '00000000-0000-0000-0000-000000000004',
-        { content: 'Two coffees, please.' }
-      );
-
-      expect(newModel.getElementById('00000000-0000-0000-0000-000000000004')?.content)
-        .toBe('Two coffees, please.');
-      expect(model.getElementById('00000000-0000-0000-0000-000000000004')?.content)
-        .toBe('One coffee, please.');
+    it('should update element and return new model', () => {
+      const model1 = ScriptModel.create([validElement]);
+      const model2 = model1.updateElement(validElement.id, { content: 'Updated content' });
+      
+      const original = model1.getElementById(validElement.id);
+      const updated = model2.getElementById(validElement.id);
+      
+      expect(original?.content).toBe('INT. COFFEE SHOP - DAY');
+      expect(updated?.content).toBe('Updated content');
     });
 
-    it('should delete element by ID', () => {
-      const model = createScriptModel(sampleElements);
-      const newModel = model.deleteElement('00000000-0000-0000-0000-000000000002');
-
-      expect(newModel.getElementCount()).toBe(3);
-      expect(newModel.getElementById('00000000-0000-0000-0000-000000000002')).toBeUndefined();
+    it('should delete element and return new model', () => {
+      const model1 = ScriptModel.create([validElement, validElement2]);
+      const model2 = model1.deleteElement(validElement.id);
+      
+      expect(model1.getElementCount()).toBe(2);
+      expect(model2.getElementCount()).toBe(1);
+      expect(model2.getElementById(validElement.id)).toBeUndefined();
     });
 
-    it('should append element', () => {
-      const model = createScriptModel(sampleElements);
-      const newElement: ScriptElement = {
-        id: crypto.randomUUID(),
-        type: 'action',
-        content: 'The end.',
-        sequence: 5,
-      };
-
-      const newModel = model.appendChild(newElement);
-      expect(newModel.getElementCount()).toBe(5);
-      expect(newModel.getElementByIndex(4)?.content).toBe('The end.');
+    it('should replace all elements', () => {
+      const model1 = ScriptModel.create([validElement]);
+      const model2 = model1.replaceElements([validElement2]);
+      
+      expect(model1.getElementCount()).toBe(1);
+      expect(model2.getElementCount()).toBe(1);
+      expect(model2.getElementById(validElement.id)).toBeUndefined();
+      expect(model2.getElementById(validElement2.id)).toBeDefined();
     });
 
-    it('should move element', () => {
-      const model = createScriptModel(sampleElements);
-      const newModel = model.moveElement(1, 3);
-
-      expect(newModel.getElementByIndex(3)?.type).toBe('action');
-      expect(newModel.getElementByIndex(3)?.content).toBe('John enters the coffee shop.');
+    it('should update title page and return new model', () => {
+      const model1 = ScriptModel.create([], { title: 'Original' });
+      const model2 = model1.updateTitlePage({ title: 'Updated' });
+      
+      expect(model1.getTitlePage().title).toBe('Original');
+      expect(model2.getTitlePage().title).toBe('Updated');
     });
 
-    it('should re-sequence after mutations', () => {
-      const model = createScriptModel(sampleElements);
-      const newModel = model.deleteElement('00000000-0000-0000-0000-000000000002');
-
-      const elements = newModel.getElements();
-      elements.forEach((el, index) => {
-        expect(el.sequence).toBe(index + 1);
-      });
-    });
-  });
-
-  describe('Title Page', () => {
-    it('should handle title page', () => {
-      const model = createScriptModel(sampleElements, {
-        title: 'Test Script',
-        authors: ['John Doe'],
-      });
-
-      const titlePage = model.getTitlePage();
-      expect(titlePage?.title).toBe('Test Script');
-      expect(titlePage?.authors).toEqual(['John Doe']);
+    it('should re-sequence elements after insertion', () => {
+      const model1 = ScriptModel.create([validElement]);
+      const model2 = model1.insertElement(0, validElement2);
+      
+      const elements = model2.getElements();
+      expect(elements[0].sequence).toBe(1);
+      expect(elements[1].sequence).toBe(2);
     });
 
-    it('should update title page', () => {
-      const model = createScriptModel(sampleElements, {
-        title: 'Original Title',
-      });
-
-      const newModel = model.updateTitlePage({
-        title: 'Updated Title',
-        authors: ['Jane Smith'],
-      });
-
-      expect(newModel.getTitlePage()?.title).toBe('Updated Title');
-      expect(newModel.getTitlePage()?.authors).toEqual(['Jane Smith']);
-      expect(model.getTitlePage()?.title).toBe('Original Title');
+    it('should re-sequence elements after deletion', () => {
+      const el1 = { ...validElement, sequence: 1 };
+      const el2 = { ...validElement2, sequence: 2 };
+      const el3 = { ...validElement, id: crypto.randomUUID(), sequence: 3 };
+      
+      const model1 = ScriptModel.create([el1, el2, el3]);
+      const model2 = model1.deleteElement(el2.id);
+      
+      const elements = model2.getElements();
+      expect(elements[0].sequence).toBe(1);
+      expect(elements[1].sequence).toBe(2);
     });
   });
 
   describe('Serialization', () => {
     it('should convert to JSON', () => {
-      const model = createScriptModel(sampleElements, {
-        title: 'Test Script',
-      });
-
+      const titlePage = { title: 'Test' };
+      const model = ScriptModel.create([validElement], titlePage);
       const json = model.toJSON();
-      expect(json.elements.length).toBe(4);
-      expect(json.titlePage?.title).toBe('Test Script');
+      
+      expect(json.elements).toHaveLength(1);
+      expect(json.titlePage.title).toBe('Test');
+      expect(json.version).toBeDefined();
+      expect(json.validationReport).toBeDefined();
     });
 
     it('should create from JSON', () => {
-      const json = {
-        elements: sampleElements,
-        titlePage: { title: 'Test Script' },
-      };
-
-      const model = ScriptModel.fromJSON(json);
-      expect(model.getElementCount()).toBe(4);
-      expect(model.getTitlePage()?.title).toBe('Test Script');
+      const model1 = ScriptModel.create([validElement], { title: 'Test' });
+      const json = model1.toJSON();
+      const model2 = ScriptModel.fromJSON(json);
+      
+      expect(model2.getElementCount()).toBe(1);
+      expect(model2.getTitlePage().title).toBe('Test');
     });
 
     it('should round-trip through JSON', () => {
-      const model1 = createScriptModel(sampleElements, {
-        title: 'Test Script',
-      });
-
-      const json = model1.toJSON();
-      const model2 = ScriptModel.fromJSON(json);
-
-      expect(model2.getElementCount()).toBe(model1.getElementCount());
-      expect(model2.getTitlePage()?.title).toBe(model1.getTitlePage()?.title);
+      const original = ScriptModel.create([validElement, validElement2], { title: 'Original' });
+      const json = original.toJSON();
+      const restored = ScriptModel.fromJSON(json);
+      
+      expect(restored.getElementCount()).toBe(original.getElementCount());
+      expect(restored.getTitlePage().title).toBe(original.getTitlePage().title);
     });
   });
 
-  describe('Stats', () => {
-    it('should calculate stats', () => {
-      const model = createScriptModel(sampleElements);
-      const stats = model.getStats();
-
-      expect(stats.totalElements).toBe(4);
-      expect(stats.sceneHeadings).toBe(1);
-      expect(stats.dialogue).toBe(1);
-      expect(stats.action).toBe(1);
-      expect(stats.characters).toBe(1);
-      expect(stats.pages).toBeGreaterThan(0);
+  describe('Validation Detection', () => {
+    it('should detect uppercase character warning', () => {
+      const lowercaseChar: ScriptElement = {
+        id: crypto.randomUUID(),
+        type: 'character',
+        content: 'john', // Should be JOHN
+        sequence: 1
+      };
+      
+      const model = ScriptModel.create([lowercaseChar]);
+      const report = model.getValidationReport();
+      
+      expect(report.summary.warnings).toBeGreaterThan(0);
+      expect(report.issues.some(i => i.code === 'CHARACTER_NOT_UPPERCASE')).toBe(true);
     });
-  });
 
-  describe('Clone', () => {
-    it('should clone model', () => {
-      const model1 = createScriptModel(sampleElements);
-      const model2 = model1.clone();
+    it('should detect empty content warning', () => {
+      const emptyElement: ScriptElement = {
+        id: crypto.randomUUID(),
+        type: 'action',
+        content: '', // Empty
+        sequence: 1
+      };
+      
+      const model = ScriptModel.create([emptyElement]);
+      const report = model.getValidationReport();
+      
+      expect(report.summary.warnings).toBeGreaterThan(0);
+    });
 
-      expect(model2.getElementCount()).toBe(model1.getElementCount());
-      expect(model2).not.toBe(model1);
+    it('should calculate confidence score', () => {
+      const model = ScriptModel.create([validElement]);
+      const confidence = model.getConfidence();
+      
+      expect(confidence).toBeGreaterThan(0);
+      expect(confidence).toBeLessThanOrEqual(1);
     });
   });
 });
