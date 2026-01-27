@@ -87,12 +87,11 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     }, [elements, project.id]);
 
     // Calculate responsive scale based on container width
-    // Using useCallback to maintain stable reference for cleanup
     const calculateScale = useCallback(() => {
         if (!containerRef.current) return;
         
         const containerWidth = containerRef.current.clientWidth;
-        const padding = 16; // Account for minimal padding
+        const padding = 32; // Account for padding on both sides
         const availableWidth = containerWidth - padding;
         
         // Calculate scale to fit page width
@@ -119,25 +118,24 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         // Calculate visible range
         const startIndex = Math.max(0, Math.floor(scrollTop / totalPageHeight) - OVERSCAN_COUNT);
         const endIndex = Math.min(
-            pages.length,
+            pages.length + (options.includeTitlePage ? 1 : 0),
             Math.ceil((scrollTop + containerHeight) / totalPageHeight) + OVERSCAN_COUNT
         );
 
         setVisibleRange({ start: startIndex, end: endIndex });
-    }, [scale, pages.length]);
+    }, [scale, pages.length, options.includeTitlePage]);
 
     // Setup scale calculation with proper cleanup
     useEffect(() => {
         const timer = setTimeout(calculateScale, 50);
         
-        // Use the stable calculateScale reference
         window.addEventListener('resize', calculateScale);
         
         return () => {
             clearTimeout(timer);
             window.removeEventListener('resize', calculateScale);
         };
-    }, [calculateScale]); // Now depends on stable callback
+    }, [calculateScale]);
 
     // Setup scroll listener for virtualization
     useEffect(() => {
@@ -217,7 +215,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     // Page styles using real inch dimensions with aspect ratio
     const pageStyle: React.CSSProperties = {
         width: `${PAGE_WIDTH_IN}in`,
-        aspectRatio: `${PAGE_WIDTH_IN} / ${PAGE_HEIGHT_IN}`, // Maintains 8.5:11 ratio
+        aspectRatio: `${PAGE_WIDTH_IN} / ${PAGE_HEIGHT_IN}`,
         paddingTop: `${MARGIN_TOP_IN}in`,
         paddingBottom: `${MARGIN_BOTTOM_IN}in`,
         paddingLeft: `${MARGIN_LEFT_IN}in`,
@@ -226,19 +224,6 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         fontFamily: FONT_FAMILY,
         fontSize: `${FONT_SIZE_PT}pt`,
         lineHeight: `${LINE_HEIGHT_IN}in`
-    };
-
-    // Scale wrapper with proper layout compensation
-    const getScaleWrapperStyle = (): React.CSSProperties => {
-        if (scale === null) return {}; // Loading state
-        
-        return {
-            transform: `scale(${scale})`,
-            transformOrigin: 'top center',
-            willChange: 'transform',
-            // Compensate for the space taken by transform
-            marginBottom: scale < 1 ? `${-(PAGE_HEIGHT_PX * (1 - scale))}px` : '0px'
-        };
     };
 
     // Empty state
@@ -266,7 +251,6 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         );
     }
 
-    const scaleWrapperStyle = getScaleWrapperStyle();
     const totalPages = pages.length + (options.includeTitlePage ? 1 : 0);
     const scaledPageHeight = PAGE_HEIGHT_PX * scale;
     const gap = 16;
@@ -274,55 +258,113 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     // Calculate total height for virtualization
     const totalHeight = totalPages * (scaledPageHeight + gap);
 
-    // Determine which pages to render
-    const titlePageIndex = options.includeTitlePage ? 0 : -1;
-    const shouldRenderTitlePage = options.includeTitlePage && project.titlePage && 
-                                   visibleRange.start <= 0 && visibleRange.end >= 0;
-
     return (
         <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div ref={containerRef} style={{ height: `${totalHeight}px`, position: 'relative' }}>
-                <div className="flex flex-col items-center gap-4">
-                    {/* Title Page - Virtualized */}
-                    {shouldRenderTitlePage && (
+            <div 
+                ref={containerRef} 
+                className="relative mx-auto"
+                style={{ 
+                    height: `${totalHeight}px`,
+                    width: `${PAGE_WIDTH_PX * scale}px`,
+                    paddingTop: '16px',
+                    paddingBottom: '16px'
+                }}
+            >
+                {/* Title Page - Virtualized */}
+                {options.includeTitlePage && project.titlePage && 
+                 visibleRange.start <= 0 && visibleRange.end > 0 && (
+                    <div 
+                        className="absolute"
+                        style={{
+                            top: '16px',
+                            left: '0',
+                            transform: `scale(${scale})`,
+                            transformOrigin: 'top left'
+                        }}
+                    >
+                        <div
+                            className="bg-white text-black shadow-2xl relative rounded-sm"
+                            style={pageStyle}
+                        >
+                            <div className="flex flex-col h-full justify-center items-center text-center">
+                                <h1 className="text-2xl font-bold mb-4 uppercase">
+                                    {project.titlePage.title || project.name || 'Untitled'}
+                                </h1>
+                                {project.titlePage.authors && project.titlePage.authors.length > 0 && (
+                                    <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>
+                                        <p className="mb-4">{project.titlePage.credit || 'Written by'}</p>
+                                        {project.titlePage.authors.map((author, i) => (
+                                            <p key={i} className="font-bold">{author}</p>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div
+                                    className="absolute text-left"
+                                    style={{
+                                        bottom: `${MARGIN_BOTTOM_IN}in`,
+                                        left: `${MARGIN_LEFT_IN}in`
+                                    }}
+                                >
+                                    {project.titlePage.contact && (
+                                        <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
+                                    )}
+                                </div>
+                            </div>
+                            {options.watermark && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                    <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                        {options.watermark}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Script Pages - Virtualized */}
+                {pages.map((page, pageIndex) => {
+                    const adjustedIndex = options.includeTitlePage ? pageIndex + 1 : pageIndex;
+                    const isVisible = adjustedIndex >= visibleRange.start && adjustedIndex < visibleRange.end;
+                    
+                    if (!isVisible) return null;
+
+                    const topPosition = 16 + (adjustedIndex * (scaledPageHeight + gap));
+
+                    return (
                         <div 
+                            key={pageIndex}
+                            className="absolute"
                             style={{
-                                position: 'absolute',
-                                top: '0px',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                ...scaleWrapperStyle
+                                top: `${topPosition}px`,
+                                left: '0',
+                                transform: `scale(${scale})`,
+                                transformOrigin: 'top left'
                             }}
                         >
                             <div
                                 className="bg-white text-black shadow-2xl relative rounded-sm"
                                 style={pageStyle}
                             >
-                                <div className="flex flex-col h-full justify-center items-center text-center">
-                                    <h1 className="text-2xl font-bold mb-4 uppercase">
-                                        {project.titlePage.title || project.name || 'Untitled'}
-                                    </h1>
-                                    {project.titlePage.authors && project.titlePage.authors.length > 0 && (
-                                        <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>
-                                            <p className="mb-4">{project.titlePage.credit || 'Written by'}</p>
-                                            {project.titlePage.authors.map((author, i) => (
-                                                <p key={i} className="font-bold">{author}</p>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div
-                                        className="absolute text-left"
-                                        style={{
-                                            bottom: `${MARGIN_BOTTOM_IN}in`,
-                                            left: `${MARGIN_LEFT_IN}in`
-                                        }}
-                                    >
-                                        {project.titlePage.contact && (
-                                            <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
-                                        )}
-                                    </div>
+                                {/* Page number */}
+                                <div
+                                    className="absolute"
+                                    style={{
+                                        top: `${PAGE_NUM_TOP_IN}in`,
+                                        right: `${PAGE_NUM_RIGHT_IN}in`,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: `${FONT_SIZE_PT}pt`
+                                    }}
+                                >
+                                    {pageIndex + 1}.
                                 </div>
+
+                                {/* Page content */}
+                                <div>
+                                    {page.map((element, idx) => renderElement(element, idx, idx === 0))}
+                                </div>
+
+                                {/* Watermark */}
                                 {options.watermark && (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
                                         <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
@@ -332,63 +374,8 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
                                 )}
                             </div>
                         </div>
-                    )}
-
-                    {/* Script Pages - Virtualized */}
-                    {pages.map((page, pageIndex) => {
-                        const adjustedIndex = titlePageIndex >= 0 ? pageIndex + 1 : pageIndex;
-                        const isVisible = adjustedIndex >= visibleRange.start && adjustedIndex < visibleRange.end;
-                        
-                        if (!isVisible) return null;
-
-                        const topPosition = adjustedIndex * (scaledPageHeight + gap);
-
-                        return (
-                            <div 
-                                key={pageIndex}
-                                style={{
-                                    position: 'absolute',
-                                    top: `${topPosition}px`,
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    ...scaleWrapperStyle
-                                }}
-                            >
-                                <div
-                                    className="bg-white text-black shadow-2xl relative rounded-sm"
-                                    style={pageStyle}
-                                >
-                                    {/* Page number */}
-                                    <div
-                                        className="absolute"
-                                        style={{
-                                            top: `${PAGE_NUM_TOP_IN}in`,
-                                            right: `${PAGE_NUM_RIGHT_IN}in`,
-                                            fontFamily: FONT_FAMILY,
-                                            fontSize: `${FONT_SIZE_PT}pt`
-                                        }}
-                                    >
-                                        {pageIndex + 1}.
-                                    </div>
-
-                                    {/* Page content */}
-                                    <div>
-                                        {page.map((element, idx) => renderElement(element, idx, idx === 0))}
-                                    </div>
-
-                                    {/* Watermark */}
-                                    {options.watermark && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                                            <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
-                                                {options.watermark}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                    );
+                })}
             </div>
         </div>
     );
