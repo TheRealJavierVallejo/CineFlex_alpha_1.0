@@ -23,8 +23,7 @@ export interface AutoFixResult {
 }
 
 /**
- * Auto-fix a single element
- * Returns the fixed element and list of changes made
+ * Auto-fix a single element (Isolated checks)
  */
 export function autoFixElement(element: ScriptElement): AutoFixResult {
   const fixed = { ...element };
@@ -74,6 +73,7 @@ export function autoFixElement(element: ScriptElement): AutoFixResult {
     heading = heading.replace(/^EXTERIOR\./i, 'EXT.');
     heading = heading.replace(/^INTERIOR /i, 'INT. ');
     heading = heading.replace(/^EXTERIOR /i, 'EXT. ');
+    heading = heading.toUpperCase();
     
     if (heading !== fixed.content) {
       fixed.content = heading;
@@ -107,7 +107,7 @@ export function autoFixElement(element: ScriptElement): AutoFixResult {
 }
 
 /**
- * Auto-fix an array of elements
+ * Auto-fix an array of elements (Context-aware checks)
  * Returns fixed elements and summary report
  */
 export function autoFixElements(elements: ScriptElement[]): {
@@ -121,31 +121,97 @@ export function autoFixElements(elements: ScriptElement[]): {
   const removed: string[] = [];
   let totalFixed = 0;
 
+  // Phase 1: Individual Fixes
+  const tempElements: ScriptElement[] = [];
   for (const element of elements) {
     const result = autoFixElement(element);
     
-    // Check if marked for removal
     if (result.fixed.content === '[EMPTY - REMOVE]') {
       removed.push(element.id);
-      continue; // Don't include in fixed array
+      continue;
     }
     
-    fixed.push(result.fixed);
-    
+    tempElements.push(result.fixed);
     if (result.changed) {
       totalFixed++;
       changes[element.id] = result.changes;
     }
   }
 
-  // Fix dual dialogue pairing
+  // Phase 2: Context-Aware Fixes (The "Correctness Gate")
+  for (let i = 0; i < tempElements.length; i++) {
+    const current = { ...tempElements[i] };
+    const prev = i > 0 ? fixed[fixed.length - 1] : null; // Look at confirmed fixed list
+    const next = i < tempElements.length - 1 ? tempElements[i + 1] : null;
+
+    let heuristicChanged = false;
+    const heuristicChanges: string[] = [];
+
+    // HEURISTIC 1: Floating Dialogue -> Action
+    // Dialogue must follow Character or Parenthetical.
+    if (current.type === 'dialogue') {
+      const validPredecessor = prev && (prev.type === 'character' || prev.type === 'parenthetical');
+      if (!validPredecessor) {
+        current.type = 'action';
+        heuristicChanges.push('Converted floating dialogue to action');
+        heuristicChanged = true;
+      }
+    }
+
+    // HEURISTIC 2: Short Uppercase Action followed by Dialogue -> Character
+    if (current.type === 'action') {
+      const isUppercase = current.content === current.content.toUpperCase() && /[A-Z]/.test(current.content);
+      const isShort = current.content.split(' ').length < 6;
+      const followedByDialogue = next && (next.type === 'dialogue' || next.type === 'parenthetical');
+
+      if (isUppercase && isShort && followedByDialogue) {
+        current.type = 'character';
+        heuristicChanges.push('Converted uppercase action (followed by dialogue) to character');
+        heuristicChanged = true;
+      }
+    }
+
+    // HEURISTIC 3: Action starts with INT./EXT. -> Scene Heading
+    if (current.type === 'action') {
+      if (/^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(current.content)) {
+        current.type = 'scene_heading';
+        current.content = current.content.toUpperCase(); // Ensure standard format
+        heuristicChanges.push('Converted action with scene prefix to scene heading');
+        heuristicChanged = true;
+      }
+    }
+
+    // HEURISTIC 4: Action wrapped in parens -> Parenthetical
+    if (current.type === 'action') {
+        const trimmed = current.content.trim();
+        if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+            // Only if it follows a character or dialogue (or another parenthetical)
+            // Parentheticals shouldn't be standalone
+            const validPredecessor = prev && (prev.type === 'character' || prev.type === 'dialogue' || prev.type === 'parenthetical');
+            if (validPredecessor) {
+                current.type = 'parenthetical';
+                heuristicChanges.push('Converted parenthesized action to parenthetical');
+                heuristicChanged = true;
+            }
+        }
+    }
+
+    if (heuristicChanged) {
+        totalFixed++;
+        changes[current.id] = [...(changes[current.id] || []), ...heuristicChanges];
+    }
+    
+    fixed.push(current);
+  }
+
+  // Phase 3: Dual Dialogue Pairing (Existing)
   const dualFixed = fixDualDialoguePairs(fixed);
   if (dualFixed.changed) {
     Object.assign(changes, dualFixed.changes);
     totalFixed += dualFixed.changedCount;
   }
 
-  // Re-sequence elements
+  // Phase 4: Re-sequence
   fixed.forEach((el, index) => {
     if (el.sequence !== index + 1) {
       el.sequence = index + 1;
