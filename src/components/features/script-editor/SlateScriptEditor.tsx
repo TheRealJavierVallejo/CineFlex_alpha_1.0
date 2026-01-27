@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { createEditor, Descendant, Editor, Element as SlateElement, Transforms, Node, Path } from 'slate';
+import { createEditor, Descendant, Editor, Element as SlateElement, Transforms, Node, Path, Range, NodeEntry, Text } from 'slate';
 import { Slate, Editable, withReact, ReactEditor, RenderElementProps, RenderLeafProps } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { ScriptElement } from '../../../types';
@@ -12,6 +12,10 @@ import { useSlateSmartType } from './useSlateSmartTypeStateMachine';
 import { AutocompleteMenu } from './AutocompleteMenu';
 import { decorateWithPlaceholders } from './slatePlaceholders';
 import { calculatePagination } from '../../../services/pagination';
+import { useRealtimeValidation } from '../../../hooks/useRealtimeValidation';
+import { ValidationStatus } from './ValidationMarker';
+import { LiveValidationMarker } from '../../../services/validation/realtimeValidator';
+import { AlertCircle, AlertTriangle, Info, Sparkles } from 'lucide-react';
 
 export interface SlateScriptEditorProps {
     initialElements: ScriptElement[];
@@ -21,6 +25,7 @@ export interface SlateScriptEditorProps {
     onUndoRedoChange?: (canUndo: boolean, canRedo: boolean) => void;
     onPageChange?: (currentPage: number, totalPages: number) => void;
     readOnly?: boolean;
+    enableValidation?: boolean; // NEW: Control real-time validation
 }
 
 export interface SlateScriptEditorRef {
@@ -96,14 +101,15 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     return editor;
 };
 
-export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>(({
+export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>({
     initialElements,
     onChange,
     isLightMode,
     projectId,
     onUndoRedoChange,
     onPageChange,
-    readOnly = false
+    readOnly = false,
+    enableValidation = true // NEW: Enable by default
 }, ref) => {
     const editor = useMemo(
         () => withScriptEditor(withHistory(withReact(createEditor() as CustomEditor))),
@@ -122,6 +128,20 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     // Track previous projectId to detect project changes
     const prevProjectIdRef = useRef(projectId);
 
+    // PHASE 5: Real-time Validation
+    const scriptElements = useMemo(() => slateToScriptElements(value), [value]);
+    const {
+        getMarkersForElement,
+        applyFix,
+        stats,
+        isValidating
+    } = useRealtimeValidation(scriptElements, {
+        enabled: enableValidation && !readOnly,
+        debounceMs: 300
+    });
+
+    // Store validation markers for tooltip display
+    const [activeMarker, setActiveMarker] = useState<{ marker: LiveValidationMarker; element: ScriptElement; position: { x: number; y: number } } | null>(null);
 
     useImperativeHandle(ref, () => ({
         undo: () => editor.undo(),
@@ -156,7 +176,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor.operations, onUndoRedoChange, editor]);
 
-    // 🔥 FIXED: Empty dependencies to prevent infinite loops. Save happens via onBlur instead.
     useEffect(() => {
         return () => {
             // No unmount save here to avoid loops
@@ -225,11 +244,11 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         () => debounce((nodes: Descendant[]) => {
             const elements = slateToScriptElements(nodes);
             onChange(elements);
-        }, 300), // 🔥 CHANGED: 500ms -> 300ms
+        }, 300),
         [onChange]
     );
 
-    // 🔥 NEW: Force immediate save without debounce
+    // Force immediate save without debounce
     const forceSave = useCallback(() => {
         const elements = slateToScriptElements(value);
         onChange(elements);
@@ -282,6 +301,73 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             return;
         }
     }, [editor, handleSmartTypeKeyDown, state.status, readOnly]);
+
+    // PHASE 5: Apply quick fix
+    const handleApplyFix = useCallback((elementId: string, marker: LiveValidationMarker) => {
+        const element = scriptElements.find(el => el.id === elementId);
+        if (!element) return;
+
+        const fixed = applyFix(element, marker);
+        if (!fixed) return;
+
+        // Update the element in Slate
+        const newElements = scriptElements.map(el => el.id === elementId ? fixed : el);
+        const newValue = scriptElementsToSlate(newElements);
+        
+        // Update editor
+        editor.children = newValue;
+        setValue(newValue);
+        editor.onChange();
+        
+        // Save immediately
+        onChange(newElements);
+        
+        // Close tooltip
+        setActiveMarker(null);
+    }, [scriptElements, applyFix, editor, onChange]);
+
+    // PHASE 5: Decorate with validation markers
+    const decorateValidation = useCallback((entry: NodeEntry): Range[] => {
+        const [node, path] = entry;
+        
+        // Only decorate text nodes
+        if (!Text.isText(node) || path.length !== 2) {
+            return [];
+        }
+
+        // Get parent element
+        const elementPath = path.slice(0, 1);
+        const element = Node.get(editor, elementPath) as CustomElement;
+        const elementId = element.id;
+
+        if (!elementId) return [];
+
+        // Get validation markers for this element
+        const markers = getMarkersForElement(elementId);
+        if (markers.length === 0) return [];
+
+        // Convert markers to Slate ranges
+        const ranges: Range[] = [];
+        
+        for (const marker of markers) {
+            const range = {
+                anchor: { path, offset: marker.startOffset },
+                focus: { path, offset: marker.endOffset },
+                validation: marker.severity,
+                marker: marker
+            } as any;
+            ranges.push(range);
+        }
+
+        return ranges;
+    }, [editor, getMarkersForElement]);
+
+    // Combine decorators
+    const decorate = useCallback((entry: NodeEntry): Range[] => {
+        const placeholders = decorateWithPlaceholders(editor)(entry);
+        const validation = enableValidation ? decorateValidation(entry) : [];
+        return [...placeholders, ...validation];
+    }, [editor, decorateValidation, enableValidation]);
 
     const renderElement = useCallback((props: RenderElementProps) => {
         const { element } = props;
@@ -353,7 +439,62 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const renderLeaf = useCallback((props: RenderLeafProps) => {
         const { attributes, children, leaf } = props;
         const leafWithPlaceholder = leaf as any;
+        const leafWithValidation = leaf as any;
 
+        let renderedChildren = children;
+
+        // PHASE 5: Render validation underlines
+        if (leafWithValidation.validation) {
+            const underlineClass = 
+                leafWithValidation.validation === 'error' ? 'border-b-2 border-red-500' :
+                leafWithValidation.validation === 'warning' ? 'border-b-2 border-yellow-500' :
+                'border-b-2 border-blue-400';
+            
+            const marker: LiveValidationMarker = leafWithValidation.marker;
+            
+            renderedChildren = (
+                <span
+                    className={`${underlineClass} cursor-pointer hover:bg-opacity-10 ${
+                        leafWithValidation.validation === 'error' ? 'hover:bg-red-500' :
+                        leafWithValidation.validation === 'warning' ? 'hover:bg-yellow-500' :
+                        'hover:bg-blue-400'
+                    } transition-all duration-100`}
+                    onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const element = scriptElements.find(el => {
+                            try {
+                                const path = ReactEditor.findPath(editor, leaf as any);
+                                if (path.length >= 2) {
+                                    const elementPath = path.slice(0, 1);
+                                    const slateElement = Node.get(editor, elementPath) as CustomElement;
+                                    return slateElement.id === el.id;
+                                }
+                            } catch (e) {}
+                            return false;
+                        });
+                        
+                        if (element) {
+                            setActiveMarker({
+                                marker,
+                                element,
+                                position: { x: rect.left, y: rect.top }
+                            });
+                        }
+                    }}
+                    onMouseLeave={() => setActiveMarker(null)}
+                    onClick={() => {
+                        if (marker.suggestedFix && activeMarker) {
+                            handleApplyFix(activeMarker.element.id, marker);
+                        }
+                    }}
+                    title={marker.message}
+                >
+                    {children}
+                </span>
+            );
+        }
+
+        // Render placeholders
         if (leafWithPlaceholder.placeholder && leaf.text === '') {
             const { selection } = editor;
             let isTransition = false;
@@ -385,17 +526,31 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     >
                         {leafWithPlaceholder.placeholder}
                     </span>
-                    {children}
+                    {renderedChildren}
                 </span>
             );
         }
 
-        return <span {...attributes}>{children}</span>;
-    }, [isLightMode, editor]);
+        return <span {...attributes}>{renderedChildren}</span>;
+    }, [isLightMode, editor, activeMarker, handleApplyFix, scriptElements]);
 
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
+                {/* Validation Status Bar */}
+                {enableValidation && !readOnly && (stats.errors > 0 || stats.warnings > 0 || stats.infos > 0) && (
+                    <div className="sticky top-0 z-10 bg-surface border-b border-border px-4 py-2 flex items-center justify-between">
+                        <ValidationStatus
+                            errorCount={stats.errors}
+                            warningCount={stats.warnings}
+                            infoCount={stats.infos}
+                        />
+                        {isValidating && (
+                            <span className="text-xs text-text-muted">Validating...</span>
+                        )}
+                    </div>
+                )}
+
                 {/* Single continuous page - no scroll container here */}
                 <div
                     className={`w-full ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}`}
@@ -414,7 +569,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             readOnly={readOnly}
                             renderElement={renderElement}
                             renderLeaf={renderLeaf}
-                            decorate={decorateWithPlaceholders(editor)}
+                            decorate={decorate}
                             onKeyDown={handleKeyDown}
                             onBlur={readOnly ? undefined : forceSave} // No save on blur for read-only
                             placeholder={readOnly ? undefined : "Start writing your screenplay..."}
@@ -432,6 +587,72 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     getMenuProps={getMenuProps}
                     getItemProps={getItemProps}
                 />,
+                document.body
+            )}
+            {/* PHASE 5: Validation Tooltip */}
+            {activeMarker && createPortal(
+                <div
+                    className="fixed z-50"
+                    style={{
+                        left: activeMarker.position.x,
+                        top: activeMarker.position.y - 10,
+                        transform: 'translate(-50%, -100%)'
+                    }}
+                >
+                    <div className="bg-surface border border-border rounded-lg shadow-lg p-3 max-w-xs">
+                        {/* Header */}
+                        <div className="flex items-start gap-2 mb-2">
+                            {activeMarker.marker.severity === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
+                            {activeMarker.marker.severity === 'warning' && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
+                            {activeMarker.marker.severity === 'info' && <Info className="w-3 h-3 text-blue-400" />}
+                            <div className="flex-1">
+                                <p className="text-xs font-medium text-text-primary">
+                                    {activeMarker.marker.message}
+                                </p>
+                                <p className="text-[10px] text-text-muted mt-0.5">
+                                    {activeMarker.marker.code}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Quick Fix Button */}
+                        {activeMarker.marker.suggestedFix && (
+                            <>
+                                <button
+                                    onClick={() => handleApplyFix(activeMarker.element.id, activeMarker.marker)}
+                                    className="
+                                        w-full mt-2 px-2 py-1.5
+                                        bg-primary hover:bg-primary-hover
+                                        text-white text-xs font-medium
+                                        rounded flex items-center justify-center gap-1.5
+                                        transition-colors duration-100
+                                    "
+                                >
+                                    <Sparkles className="w-3 h-3" />
+                                    Apply Quick Fix
+                                </button>
+
+                                {/* Preview of fix */}
+                                <div className="mt-2 pt-2 border-t border-border">
+                                    <p className="text-[10px] text-text-muted mb-1">Will change to:</p>
+                                    <p className="text-xs text-text-secondary font-mono bg-surface-secondary px-2 py-1 rounded">
+                                        {activeMarker.marker.suggestedFix.length > 50 
+                                            ? activeMarker.marker.suggestedFix.substring(0, 50) + '...'
+                                            : activeMarker.marker.suggestedFix
+                                        }
+                                    </p>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    {/* Arrow */}
+                    <div 
+                        className="absolute left-1/2 -translate-x-1/2"
+                        style={{ top: '100%' }}
+                    >
+                        <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border" />
+                    </div>
+                </div>,
                 document.body
             )}
         </>
