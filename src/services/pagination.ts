@@ -8,263 +8,258 @@ import { ScriptElement } from '../types';
  * - Font: 12pt Courier
  * - Line Height: ~1 (Strict grid)
  * - Page Height: ~54 lines of printable content (6 lines/inch * 9 inches)
- * 
- * ELEMENT SPACING RULES:
- * - Scene Heading: 2 lines before, 1 line text.
- * - Action: 1 line before, N lines text.
- * - Character: 1 line before, 1 line text.
- * - Dialogue: 0 lines before, N lines text.
- * - Parenthetical: 0 lines before, 1 line text.
- * - Transition: 1 line before, 1 line text.
- * 
- * KEEP-TOGETHER RULES (FinalDraft Standard):
- * - Character + minimum 2 lines of dialogue
- * - Scene Heading + minimum 2 lines of content
- * - Action blocks < 4 lines try to stay together
- * - Transitions prefer bottom of page
  */
 
-const PAGE_LINES = 54; // Safe printable area for 8.5x11
+const PAGE_LINES = 54;
 
 // Actual widths in characters (Courier is monospaced at ~10 chars/inch)
 const LINE_WIDTHS = {
-    scene_heading: 60,   // 6.0 inches
-    action: 60,          // 6.0 inches
-    character: 35,       // 3.5 inches (centered, but width limited)
-    dialogue: 35,        // 3.5 inches
-    parenthetical: 25,   // 2.5 inches
-    transition: 20       // 2.0 inches (right-aligned)
+    scene_heading: 60,
+    action: 60,
+    character: 35,
+    dialogue: 35,
+    parenthetical: 25,
+    transition: 20
 };
 
-interface PageBreakMap {
-    [elementId: string]: number; // Maps element ID to the Page Number it STARTS on
+export interface PaginatedPage {
+    pageNumber: number;
+    elements: ScriptElement[];
 }
 
 /**
- * Calculate how many lines an element will occupy, accounting for word wrapping
+ * Helper: Splits text into lines based on max width
  */
-const calculateElementLines = (el: ScriptElement): number => {
-    const content = el.content || '';
-    if (content.length === 0) return 1;
+const splitTextIntoLines = (text: string, maxWidth: number): string[] => {
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return [];
 
-    const maxChars = LINE_WIDTHS[el.type] || LINE_WIDTHS.action;
-
-    // Word-wrap aware calculation
-    const words = content.split(/\s+/).filter(w => w.length > 0);
-    if (words.length === 0) return 1;
-
-    let lines = 1;
-    let currentLineLength = 0;
+    const lines: string[] = [];
+    let currentLine = "";
 
     for (const word of words) {
-        const wordLength = word.length;
-
-        // If word itself is longer than line, it will wrap mid-word
-        if (wordLength > maxChars) {
-            const additionalLines = Math.floor(wordLength / maxChars);
-            lines += additionalLines;
-            currentLineLength = wordLength % maxChars;
+        if (word.length > maxWidth) {
+            // Hard wrap for super long words
+            if (currentLine) {
+                lines.push(currentLine);
+                currentLine = "";
+            }
+            const chunks = word.match(new RegExp(`.{1,${maxWidth}}`, 'g')) || [];
+            if (chunks.length > 0) {
+                // Add all but last chunk as lines
+                lines.push(...chunks.slice(0, -1));
+                // Last chunk becomes start of new line
+                currentLine = chunks[chunks.length - 1];
+            }
             continue;
         }
 
-        // Calculate space needed (add 1 for space before word, except first word on line)
-        const spaceNeeded = currentLineLength === 0 ? wordLength : currentLineLength + 1 + wordLength;
-
-        // If adding this word would overflow, wrap to next line
-        if (spaceNeeded > maxChars) {
-            lines++;
-            currentLineLength = wordLength;
-        }
-        // Word fits on current line
-        else {
-            currentLineLength = spaceNeeded;
+        if (currentLine.length + 1 + word.length > maxWidth) {
+            lines.push(currentLine);
+            currentLine = word;
+        } else {
+            currentLine = currentLine ? `${currentLine} ${word}` : word;
         }
     }
+    if (currentLine) lines.push(currentLine);
 
     return lines;
 };
 
 /**
- * Calculate the total height of an element including spacing
+ * Calculates how many lines an element occupies
+ */
+const calculateElementLines = (el: ScriptElement): number => {
+    const content = el.content || '';
+    if (content.length === 0) return 1;
+    const maxChars = LINE_WIDTHS[el.type] || LINE_WIDTHS.action;
+    const lines = splitTextIntoLines(content, maxChars);
+    return Math.max(1, lines.length);
+};
+
+/**
+ * Calculates height including spacing before
  */
 const calculateElementHeight = (el: ScriptElement, isFirstOnPage: boolean): number => {
     const textLines = calculateElementLines(el);
     let spacingBefore = 0;
 
-    // Spacing rules (collapse to 0 if first on page)
     if (!isFirstOnPage) {
         switch (el.type) {
-            case 'scene_heading':
-                spacingBefore = 2;
-                break;
+            case 'scene_heading': spacingBefore = 2; break;
             case 'action':
             case 'character':
-            case 'transition':
-                spacingBefore = 1;
-                break;
+            case 'transition': spacingBefore = 1; break;
             case 'dialogue':
-            case 'parenthetical':
-                spacingBefore = 0;
-                break;
+            case 'parenthetical': spacingBefore = 0; break;
         }
     }
-
     return spacingBefore + textLines;
 };
 
 /**
- * Main pagination calculation function
- * Returns a map of element IDs to page numbers
+ * P0: The Dialogue Continuation Engine
+ * Takes a raw list of elements and returns a list of elements 
+ * with visual splits (MORE/CONT'D) applied.
  */
-export const calculatePagination = (elements: ScriptElement[], projectId?: string): PageBreakMap => {
-    const map: PageBreakMap = {};
+export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
+    const pages: PaginatedPage[] = [];
+    let currentPageElements: ScriptElement[] = [];
     let currentLine = 1;
-    let currentPage = 1;
+    let pageNumber = 1;
 
-    // console.log(`[Pagination] Starting calculation for ${elements.length} elements`);
+    // Helper to flush current page
+    const flushPage = () => {
+        pages.push({ pageNumber, elements: [...currentPageElements] });
+        pageNumber++;
+        currentPageElements = [];
+        currentLine = 1;
+    };
 
-    // Only filter out completely invalid elements (missing type or ID)
-    // Keep empty elements as they may represent intentional spacing
-    const validElements = elements.filter(el => {
-        // Must have valid type
-        if (!el.type) return false;
-        // Must have ID
-        if (!el.id) return false;
-        return true;
-    });
+    // Filter valid elements
+    const queue = elements.filter(el => el.type && el.id);
 
-    const elementsToProcess = validElements;
-
-    // Clear previous pagination metadata (on the original objects, though note this mutates refs)
-    elements.forEach(el => {
-        delete el.isContinued;
-        delete el.continuesNext;
-        delete el.keptTogether;
-    });
-
-    for (let i = 0; i < elementsToProcess.length; i++) {
-        const el = elementsToProcess[i];
+    for (let i = 0; i < queue.length; i++) {
+        const el = { ...queue[i] }; // Clone to avoid mutation
         const isFirstOnPage = currentLine === 1;
+        const elHeight = calculateElementHeight(el, isFirstOnPage);
+        const spacingBefore = calculateElementHeight(el, isFirstOnPage) - calculateElementLines(el);
 
-        let forceBreak = false;
-        let keepTogetherReason = '';
+        // 1. Check if it fits
+        if (currentLine + elHeight <= PAGE_LINES) {
+            currentPageElements.push(el);
+            currentLine += elHeight;
+            continue;
+        }
 
-        // ═══════════════════════════════════════════════════════════
-        // KEEP-TOGETHER RULES (FinalDraft Standards)
-        // ═══════════════════════════════════════════════════════════
+        // 2. It doesn't fit. Can we split it?
+        // Only Dialogue (and Action, rarely) splits.
+        // We prioritize splitting Dialogue.
+        
+        if (el.type !== 'dialogue') {
+            // Force Page Break
+            flushPage();
+            // Re-evaluate on new page (spacing collapses)
+            currentPageElements.push(el);
+            currentLine += calculateElementHeight(el, true);
+            continue;
+        }
 
-        // Rule 1: CHARACTER + minimum 2 lines of DIALOGUE must stay together
-        if (el.type === 'character' && i + 1 < elementsToProcess.length) {
-            const dialogueBlock: ScriptElement[] = [];
-            let j = i + 1;
+        // 3. Dialogue Split Logic
+        // We have `currentLine` usage. Max is `PAGE_LINES`.
+        // Available lines for text = PAGE_LINES - currentLine - spacingBefore
+        const availableLines = PAGE_LINES - currentLine - spacingBefore;
 
-            // Gather the full dialogue block (parenthetical + dialogue)
-            while (j < elementsToProcess.length &&
-                (elementsToProcess[j].type === 'parenthetical' || elementsToProcess[j].type === 'dialogue')) {
-                dialogueBlock.push(elementsToProcess[j]);
-                j++;
-            }
+        // Rules:
+        // - Need at least 2 lines of dialogue to start on bottom of page
+        // - Need at least 2 lines of dialogue to carry over to next page
+        
+        // Get text lines
+        const allLines = splitTextIntoLines(el.content, LINE_WIDTHS.dialogue);
+        
+        // Check "Widow/Orphan" protection for dialogue
+        if (availableLines < 2 || (allLines.length - availableLines) < 2) {
+             // Push entire block to next page
+             flushPage();
+             currentPageElements.push(el);
+             currentLine += calculateElementHeight(el, true);
+             continue;
+        }
 
-            if (dialogueBlock.length > 0) {
-                // Calculate total height if starting on current page
-                let blockHeight = calculateElementHeight(el, isFirstOnPage);
-                let dialogueLines = 0;
+        // PERFORM SPLIT
+        // Part 1: Fits on current page
+        // We need room for (MORE) line? 
+        // Standard: (MORE) takes 1 line. So availableLines - 1.
+        const splitIndex = availableLines - 1; 
+        
+        if (splitIndex < 1) {
+            // Not enough room for text + (MORE)
+            flushPage();
+            currentPageElements.push(el);
+            currentLine += calculateElementHeight(el, true);
+            continue;
+        }
 
-                for (const dialogueEl of dialogueBlock) {
-                    const elHeight = calculateElementHeight(dialogueEl, false);
-                    blockHeight += elHeight;
-                    dialogueLines += elHeight;
+        const part1Lines = allLines.slice(0, splitIndex);
+        const part2Lines = allLines.slice(splitIndex);
 
-                    // Need at least 2 lines of dialogue content
-                    if (dialogueLines >= 2) break;
-                }
+        // Create Element Part 1
+        const part1: ScriptElement = {
+            ...el,
+            id: `${el.id}-part1`,
+            content: part1Lines.join(' '),
+            notes: '(MORE)' // Render this via CSS/Decorator or explicit node
+        };
 
-                // If character + 2 dialogue lines won't fit, break to next page
-                if (currentLine + blockHeight > PAGE_LINES) {
-                    forceBreak = true;
-                    keepTogetherReason = 'character-dialogue';
-                }
+        currentPageElements.push(part1);
+        flushPage(); // BREAK PAGE
+
+        // Create Link (Character CONT'D)
+        // Find most recent character
+        let characterName = "CHARACTER";
+        for (let k = currentPageElements.length - 1; k >= 0; k--) {
+             // Look back in previous page? No, we just flushed it.
+             // Look back in original queue?
+             // Actually, we usually iterate `queue` linearly.
+             // Find previous character in `queue`
+             // Simple hack: Look at `queue[i-1]`. If parenthetical, look at `queue[i-2]`.
+        }
+        
+        // Robust way: Scan backwards in original list
+        for (let k = i - 1; k >= 0; k--) {
+            if (queue[k].type === 'character') {
+                characterName = queue[k].content;
+                break;
             }
         }
 
-        // Rule 2: SCENE HEADING + minimum 2 lines of following content
-        if (el.type === 'scene_heading' && i + 1 < elementsToProcess.length) {
-            const nextEl = elementsToProcess[i + 1];
+        const contdChar: ScriptElement = {
+            id: `${el.id}-contd`,
+            type: 'character',
+            content: `${characterName} (CONT'D)`
+        };
 
-            // Exception: Multiple scene headings in a row are okay to split
-            const isMultipleHeadings = nextEl.type === 'scene_heading';
+        const part2: ScriptElement = {
+            ...el, // Keep original ID for the main part? Or new ID?
+            // Ideally we want the second part to be editable if possible, but virtual is safer.
+            // Let's give it a deterministic ID based on split.
+            id: el.id, // Keep original ID on the dominant part if we want editable? 
+            // Actually, for a pure "Preview", unique IDs are fine.
+            content: part2Lines.join(' ')
+        };
 
-            if (!isMultipleHeadings) {
-                // Calculate heading + minimum 2 lines of next content
-                const headingHeight = calculateElementHeight(el, isFirstOnPage);
-                const nextHeight = calculateElementHeight(nextEl, false);
-                const minFollowingLines = Math.min(nextHeight, 2);
+        // Add (CONT'D) and Part 2 to new page
+        currentPageElements.push(contdChar);
+        currentLine += calculateElementHeight(contdChar, true);
 
-                if (currentLine + headingHeight + minFollowingLines > PAGE_LINES) {
-                    forceBreak = true;
-                    keepTogetherReason = 'scene-heading-content';
-                }
-            }
-        }
-
-        // Rule 3: Short ACTION blocks (2-3 lines) try to stay together to avoid orphans
-        if (el.type === 'action') {
-            const actionLines = calculateElementLines(el);
-            const actionHeight = calculateElementHeight(el, isFirstOnPage);
-
-            // If action is short and would create orphan, keep it together
-            if (actionLines >= 2 && actionLines <= 3) {
-                // Would this split across pages with only 1 line at bottom?
-                const remainingLines = PAGE_LINES - currentLine + 1;
-                if (actionHeight > remainingLines && remainingLines <= 1) {
-                    forceBreak = true;
-                    keepTogetherReason = 'action-orphan';
-                }
-            }
-        }
-
-        // Rule 4: TRANSITIONS - Simple overflow check (no special positioning)
-        if (el.type === 'transition') {
-            const transitionHeight = calculateElementHeight(el, isFirstOnPage);
-            if (currentLine + transitionHeight > PAGE_LINES) {
-                forceBreak = true;
-                keepTogetherReason = 'transition-overflow';
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // PAGE BREAK LOGIC
-        // ═══════════════════════════════════════════════════════════
-
-        // Basic overflow check for all other cases
-        if (!forceBreak) {
-            const elementHeight = calculateElementHeight(el, isFirstOnPage);
-            if (currentLine + elementHeight > PAGE_LINES) {
-                forceBreak = true;
-            }
-        }
-
-        // Apply page break if needed
-        if (forceBreak) {
-            currentPage++;
-            currentLine = 1;
-
-            // console.log(`[Pagination] Page Break at Element ${i} (${el.type}). Reason: ${keepTogetherReason || 'Overflow'}. New Page: ${currentPage}`);
-
-            // Mark elements as kept together for visual feedback
-            if (keepTogetherReason) {
-                el.keptTogether = true;
-            }
-        }
-
-        // Map this element to its page
-        map[el.id] = currentPage;
-
-        // Advance the line counter (calculate height with UPDATED isFirstOnPage)
-        const actualHeight = calculateElementHeight(el, currentLine === 1);
-        currentLine += actualHeight;
+        currentPageElements.push(part2);
+        currentLine += calculateElementHeight(part2, false);
+    }
+    
+    // Push final page
+    if (currentPageElements.length > 0) {
+        pages.push({ pageNumber, elements: currentPageElements });
     }
 
-    // console.log(`[Pagination] Finished. Total Pages: ${currentPage}`);
+    return pages;
+};
+
+/**
+ * Legacy support for simple map (used by editor decorations maybe)
+ */
+export const calculatePagination = (elements: ScriptElement[]): Record<string, number> => {
+    // This is an approximation since we don't return the split elements map
+    // Just run the detailed one and map original IDs to pages.
+    const pages = paginateScript(elements);
+    const map: Record<string, number> = {};
+    
+    pages.forEach(p => {
+        p.elements.forEach(el => {
+            // formatting: id-part1 is still associated with id?
+            const originalId = el.id.split('-part1')[0]; 
+            if (!map[originalId]) map[originalId] = p.pageNumber;
+        });
+    });
+    
     return map;
 };
