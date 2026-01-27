@@ -302,8 +302,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
       const y = item.transform[5];
       const x = item.transform[4];
 
-      // Ignore Headers/Footers
-      if (y > pageHeight - 60 || y < 60) return;
+      // Ignore Headers/Footers (Expanded margin to 1 inch / 72pt to catch more artifacts)
+      if (y > pageHeight - 72 || y < 72) return;
 
       const line = pageLines.find(l => Math.abs(l.y - y) < 4);
       if (line) {
@@ -347,7 +347,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
   let lastPage = 0;
 
   allLines.forEach(line => {
-    const text = line.text.trim();
+    let text = line.text.trim();
     if (!text) return;
     
     const x = line.x;
@@ -355,14 +355,19 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     const page = line.page;
     const offset = x - baseX;
     
-    let type: ScriptElement['type'] = 'action';
-    const upper = text.toUpperCase();
-    const isUppercase = text === upper && /[A-Z]/.test(text);
-
-    // Filter artifacts
+    // Filter artifacts (page numbers)
     if (offset > 200 && /^[\d.]+$/.test(text)) {
       return;
     }
+
+    // NEW: Filter page break artifacts like (MORE) and (CONT'D)
+    // These confuse the parser and break the script flow
+    if (/^\(MORE\)$/i.test(text)) return;
+    if (/^\(CONT['’]?D\)$/i.test(text)) return;
+    
+    let type: ScriptElement['type'] = 'action';
+    const upper = text.toUpperCase();
+    const isUppercase = text === upper && /[A-Z]/.test(text);
 
     // Classification logic
     if (offset < 36) {
@@ -393,6 +398,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     else if (offset >= 136 && offset < 220) {
       if (isUppercase) {
         type = 'character';
+        // Remove (CONT'D) from character names to keep it clean
+        // The editor will re-add it if needed during export/display
+        text = text.replace(/\s*\(CONT['’]?D\)\s*$/i, '');
       } else {
         type = 'dialogue';
       }
