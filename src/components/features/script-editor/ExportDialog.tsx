@@ -5,6 +5,7 @@ import { ExportOptions, exportScript } from '../../../services/exportService';
 import Button from '../../ui/Button';
 import Modal from '../../ui/Modal';
 import { ExportPreviewRenderer } from './ExportPreviewRenderer';
+import { useToast } from '../../ui/ToastContainer';
 
 interface ExportDialogProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ interface ExportDialogProps {
 }
 
 export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, project }: ExportDialogProps) => {
+    const toast = useToast();
     const [options, setOptions] = useState<ExportOptions>({
         format: 'pdf',
         includeTitlePage: true,
@@ -23,6 +25,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
 
     const [pageCount, setPageCount] = useState(1);
     const [isExporting, setIsExporting] = useState(false);
+    const [exportProgress, setExportProgress] = useState(0);
 
     const formats = [
         { id: 'pdf', name: 'PDF', desc: 'Standard Screenplay', icon: <FileText className="w-5 h-5" /> },
@@ -31,14 +34,94 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
         { id: 'txt', name: 'Plain Text', desc: 'Simple .txt file', icon: <FileText className="w-5 h-5" /> }
     ];
 
+    // Validation before export
+    const validateExport = (): { valid: boolean; error?: string } => {
+        // Check if script has content
+        if (!project.scriptElements || project.scriptElements.length === 0) {
+            return { valid: false, error: 'Your script is empty. Add some content before exporting.' };
+        }
+
+        // Check if at least one element has actual content
+        const hasContent = project.scriptElements.some(el => el.content && el.content.trim().length > 0);
+        if (!hasContent) {
+            return { valid: false, error: 'Your script has no text content. Add dialogue or action before exporting.' };
+        }
+
+        // Check title page if included
+        if (options.includeTitlePage) {
+            if (!project.titlePage || (!project.titlePage.title && !project.name)) {
+                return { valid: false, error: 'Please add a title to your script before exporting with a title page.' };
+            }
+        }
+
+        // Warn about large scripts (performance)
+        if (project.scriptElements.length > 1000) {
+            toast.warning(
+                'Large Script Detected',
+                `This script has ${project.scriptElements.length} elements. Export may take 30-60 seconds.`
+            );
+        }
+
+        return { valid: true };
+    };
+
     const handleExport = async () => {
+        // Validate before starting
+        const validation = validateExport();
+        if (!validation.valid) {
+            toast.error('Export Failed', validation.error);
+            return;
+        }
+
         setIsExporting(true);
+        setExportProgress(0);
+
         try {
-            await exportScript(project, options);
-            onClose();
+            // Simulate progress for non-PDF formats (they're instant)
+            if (options.format !== 'pdf') {
+                setExportProgress(50);
+            }
+
+            await exportScript(project, options, (progress) => {
+                setExportProgress(progress);
+            });
+
+            setExportProgress(100);
+            
+            // Success notification
+            const formatName = formats.find(f => f.id === options.format)?.name || options.format.toUpperCase();
+            toast.success(
+                'Export Successful',
+                `Your script has been exported as ${formatName}.`
+            );
+
+            // Small delay to show 100% before closing
+            setTimeout(() => {
+                onClose();
+                setExportProgress(0);
+            }, 500);
+
         } catch (error) {
             console.error('Export failed:', error);
+            
+            // User-friendly error messages
+            let errorMessage = 'An unexpected error occurred during export.';
+            
+            if (error instanceof Error) {
+                if (error.message.includes('memory')) {
+                    errorMessage = 'Script is too large. Try exporting in smaller sections.';
+                } else if (error.message.includes('permission')) {
+                    errorMessage = 'Browser blocked the download. Please check your popup settings.';
+                } else if (error.message.includes('network')) {
+                    errorMessage = 'Network error. Please check your connection and try again.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+
+            toast.error('Export Failed', errorMessage);
             setIsExporting(false);
+            setExportProgress(0);
         }
     };
 
@@ -61,11 +144,13 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                                     <button
                                         key={f.id}
                                         onClick={() => setOptions({ ...options, format: f.id as any })}
+                                        disabled={isExporting}
                                         className={`
                                         flex items-start gap-3 p-3 rounded-xl border text-left transition-all duration-200 bg-surface
                                         ${options.format === f.id
                                                 ? 'border border-primary ring-1 ring-primary/20'
                                                 : 'border-border hover:border-text-muted'}
+                                        ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}
                                     `}
                                     >
                                         <div className={`p-2 rounded-lg border ${options.format === f.id ? 'border-primary bg-surface' : 'border-border bg-surface'}`}>
@@ -98,8 +183,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                                                 className="sr-only"
                                                 checked={options.includeTitlePage}
                                                 onChange={(e) => setOptions({ ...options, includeTitlePage: e.target.checked })}
+                                                disabled={isExporting}
                                             />
-                                            <div className={`w-9 h-5 rounded-full transition-colors ${options.includeTitlePage ? 'bg-primary' : 'bg-zinc-700'}`} />
+                                            <div className={`w-9 h-5 rounded-full transition-colors ${options.includeTitlePage ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
                                             <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.includeTitlePage ? 'translate-x-4' : ''}`} />
                                         </div>
                                         <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Include Title Page</span>
@@ -112,8 +198,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                                                 className="sr-only"
                                                 checked={options.includeSceneNumbers}
                                                 onChange={(e) => setOptions({ ...options, includeSceneNumbers: e.target.checked })}
+                                                disabled={isExporting}
                                             />
-                                            <div className={`w-9 h-5 rounded-full transition-colors ${options.includeSceneNumbers ? 'bg-primary' : 'bg-zinc-700'}`} />
+                                            <div className={`w-9 h-5 rounded-full transition-colors ${options.includeSceneNumbers ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
                                             <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.includeSceneNumbers ? 'translate-x-4' : ''}`} />
                                         </div>
                                         <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Include Scene Numbers</span>
@@ -133,8 +220,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                                                     className="sr-only"
                                                     checked={options.openInNewTab}
                                                     onChange={(e) => setOptions({ ...options, openInNewTab: e.target.checked })}
+                                                    disabled={isExporting}
                                                 />
-                                                <div className={`w-9 h-5 rounded-full transition-colors ${options.openInNewTab ? 'bg-primary' : 'bg-zinc-700'}`} />
+                                                <div className={`w-9 h-5 rounded-full transition-colors ${options.openInNewTab ? 'bg-primary' : 'bg-zinc-700'} ${isExporting ? 'opacity-50' : ''}`} />
                                                 <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${options.openInNewTab ? 'translate-x-4' : ''}`} />
                                             </div>
                                             <span className="text-sm font-medium text-text-primary group-hover:text-text-primary transition-colors">Open in New Tab</span>
@@ -148,7 +236,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                                             value={options.watermark}
                                             onChange={(e) => setOptions({ ...options, watermark: e.target.value })}
                                             placeholder="DRAFT, CONFIDENTIAL..."
-                                            className="w-full bg-surface-secondary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:border-primary outline-none transition-colors"
+                                            disabled={isExporting}
+                                            className="w-full bg-surface-secondary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:border-primary outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
@@ -168,8 +257,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                             </div>
                         </div>
 
-                        {/* Scrollable Preview Container - Minimal padding for maximum space */}
-                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-y-auto overflow-x-hidden p-2 custom-scrollbar">
+                        {/* Scrollable Preview Container */}
+                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-hidden">
                             <ExportPreviewRenderer
                                 project={project}
                                 options={options}
@@ -180,18 +269,36 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                 </div>
 
                 {/* Actions Footer - Fixed */}
-                <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
-                    <Button variant="ghost" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="primary"
-                        icon={isExporting ? undefined : <Download className="w-4 h-4" />}
-                        onClick={handleExport}
-                        disabled={isExporting}
-                    >
-                        {isExporting ? 'Exporting...' : 'Export Script'}
-                    </Button>
+                <div className="flex-shrink-0 border-t border-border bg-surface px-6 py-4">
+                    {/* Progress Bar */}
+                    {isExporting && exportProgress > 0 && (
+                        <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs text-text-muted">Exporting...</span>
+                                <span className="text-xs text-text-muted">{Math.round(exportProgress)}%</span>
+                            </div>
+                            <div className="h-1.5 bg-surface-secondary rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-primary transition-all duration-300 ease-out"
+                                    style={{ width: `${exportProgress}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-3">
+                        <Button variant="ghost" onClick={onClose} disabled={isExporting}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            icon={isExporting ? undefined : <Download className="w-4 h-4" />}
+                            onClick={handleExport}
+                            disabled={isExporting}
+                        >
+                            {isExporting ? `Exporting...` : 'Export Script'}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </Modal>
