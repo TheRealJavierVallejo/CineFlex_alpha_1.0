@@ -130,7 +130,8 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     // Scale wrapper to shrink pages for preview
     const scaleWrapperStyle: React.CSSProperties = {
         transform: `scale(${PREVIEW_SCALE})`,
-        transformOrigin: 'top center'
+        transformOrigin: 'top center',
+        willChange: 'transform'
     };
 
     if (!elements.length) {
@@ -145,19 +146,9 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         );
     }
 
-    const MAX_PREVIEW_PAGES = 10;
-    const renderedPages = pages.slice(0, MAX_PREVIEW_PAGES);
-    const hasMorePages = pages.length > MAX_PREVIEW_PAGES;
-
     return (
         <div className="w-full h-full flex justify-center overflow-x-hidden bg-zinc-900 p-8">
-            <div className="flex flex-col items-center gap-8">
-                {/* Performance Notice */}
-                {hasMorePages && (
-                    <div className="bg-primary/10 border border-primary/20 rounded-lg px-4 py-2 text-xs text-primary-light mb-4 text-center">
-                        Showing first {MAX_PREVIEW_PAGES} pages for performance. The full script ({pages.length} pages) will be included in the export.
-                    </div>
-                )}
+            <div className="flex flex-col items-center gap-4">
 
                 {/* Title Page */}
                 {options.includeTitlePage && project.titlePage && (
@@ -204,7 +195,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
                 )}
 
                 {/* Script Pages */}
-                {renderedPages.map((page, pageIndex) => (
+                {pages.map((page, pageIndex) => (
                     <div key={pageIndex} style={scaleWrapperStyle}>
                         <div
                             className="bg-white text-black shadow-2xl relative rounded-sm"

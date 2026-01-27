@@ -52,7 +52,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
             size="xl"
         >
             <div className="flex flex-col h-full min-h-0">
-                <div className="flex-1 min-h-0 flex gap-6 py-2">
+                <div className="flex-1 min-h-0 flex gap-6 p-6">
                     {/* Left Pane - Format selection + options */}
                     <div className="flex-shrink-0 w-[380px] space-y-8 pr-6 border-r border-border">
                         {/* Format Selection */}
@@ -185,7 +185,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                 </div>
 
                 {/* Actions Footer - Sticky */}
-                <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
+                <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
                     <Button variant="ghost" onClick={onClose}>
                         Cancel
                     </Button>

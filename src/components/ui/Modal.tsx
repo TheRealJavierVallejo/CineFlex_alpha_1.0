@@ -60,7 +60,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-surface">
+        <div className="flex-1 overflow-hidden bg-surface">
           {children}
         </div>
       </div>
