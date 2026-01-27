@@ -20,7 +20,7 @@ export enum ViewState {
 
 /**
  * A notification message system for the UI.
- * Supports stacking, different levels of severity, and optional action buttons.
+ * Supports stacking, different severity levels, and optional action buttons.
  */
 export interface ToastNotification {
   id: number;
@@ -118,6 +118,11 @@ export interface WorldSettings {
 /**
  * 📝 SCRIPT ELEMENT: A single logical unit of a screenplay.
  * Follows industry-standard formatting segments (headings, dialogue, action, etc.).
+ * 
+ * DUAL DIALOGUE FORMAT (Industry Standard):
+ * - undefined: Single-column dialogue (normal)
+ * - 'left': Left column of dual dialogue block
+ * - 'right': Right column of dual dialogue block
  */
 export interface ScriptElement {
   id: string;
@@ -127,7 +132,7 @@ export interface ScriptElement {
   sequence: number;        // Order in the script
   character?: string;      // Name of the character speaking (if dialogue)
   associatedShotIds?: string[]; // Shots generated from this specific line
-  dual?: boolean;          // Is this simultaneous dialogue?
+  dual?: 'left' | 'right'; // Dual dialogue column (left/right) - CHANGED FROM boolean
   sceneNumber?: string;    // "1", "2A", etc. (Only for scene_heading)
   isContinued?: boolean;   // This dialogue continues from previous page
   continuesNext?: boolean; // This dialogue continues to next page
