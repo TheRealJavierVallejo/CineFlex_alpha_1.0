@@ -157,7 +157,7 @@ export function autoFixElements(elements: ScriptElement[]): {
 
 /**
  * Fix dual dialogue pairing issues
- * Ensures left/right pairs are correct
+ * Ensures left/right blocks are correctly paired
  */
 function fixDualDialoguePairs(elements: ScriptElement[]): {
   changed: boolean;
@@ -168,37 +168,62 @@ function fixDualDialoguePairs(elements: ScriptElement[]): {
   let changedCount = 0;
   let changed = false;
 
+  // Find all dual dialogue elements
   const dualElements = elements.filter(el => el.dual);
+  if (dualElements.length === 0) return { changed: false, changedCount: 0, changes: {} };
   
-  // Process in pairs
-  for (let i = 0; i < dualElements.length - 1; i += 2) {
-    const left = dualElements[i];
-    const right = dualElements[i + 1];
-
-    // If unpaired (odd number), remove dual from last one
-    if (!right && left.dual) {
-      delete left.dual;
-      changes[left.id] = ['Removed unpaired dual dialogue marker'];
-      changedCount++;
-      changed = true;
-      continue;
+  // Group into blocks (consecutive elements with same dual position)
+  const blocks: { position: 'left' | 'right', elements: ScriptElement[] }[] = [];
+  let currentBlock: ScriptElement[] = [];
+  let currentPosition: 'left' | 'right' | null = null;
+  
+  for (const element of dualElements) {
+    if (element.dual !== currentPosition) {
+      // Starting new block
+      if (currentBlock.length > 0 && currentPosition) {
+        blocks.push({ position: currentPosition, elements: currentBlock });
+      }
+      currentBlock = [element];
+      currentPosition = element.dual!;
+    } else {
+      // Continue current block
+      currentBlock.push(element);
     }
-
-    // Ensure proper left/right order
-    if (left.dual !== 'left') {
-      left.dual = 'left';
-      changes[left.id] = changes[left.id] || [];
-      changes[left.id].push('Fixed dual dialogue position to left');
+  }
+  
+  // Push last block
+  if (currentBlock.length > 0 && currentPosition) {
+    blocks.push({ position: currentPosition, elements: currentBlock });
+  }
+  
+  // Check if blocks alternate left/right
+  // If odd number of blocks, remove dual from last block
+  if (blocks.length % 2 !== 0) {
+    const lastBlock = blocks[blocks.length - 1];
+    for (const element of lastBlock.elements) {
+      delete element.dual;
+      changes[element.id] = changes[element.id] || [];
+      changes[element.id].push('Removed unpaired dual dialogue marker');
       changedCount++;
       changed = true;
     }
-
-    if (right && right.dual !== 'right') {
-      right.dual = 'right';
-      changes[right.id] = changes[right.id] || [];
-      changes[right.id].push('Fixed dual dialogue position to right');
-      changedCount++;
-      changed = true;
+    blocks.pop(); // Remove from blocks array
+  }
+  
+  // Fix alternating pattern: should be left, right, left, right, ...
+  for (let i = 0; i < blocks.length; i++) {
+    const expectedPosition = i % 2 === 0 ? 'left' : 'right';
+    const block = blocks[i];
+    
+    if (block.position !== expectedPosition) {
+      // Fix the position
+      for (const element of block.elements) {
+        element.dual = expectedPosition;
+        changes[element.id] = changes[element.id] || [];
+        changes[element.id].push(`Fixed dual dialogue position to ${expectedPosition}`);
+        changedCount++;
+        changed = true;
+      }
     }
   }
 
