@@ -263,19 +263,7 @@ const validateAction = (
         });
     }
 
-    // Check for excessive capitalization (yelling)
-    const words = trimmedContent.split(/\s+/);
-    const capsWords = words.filter(w => /^[A-Z]{3,}$/.test(w));
-    if (capsWords.length > words.length * 0.5 && words.length > 3) {
-        markers.push({
-            elementId: element.id,
-            startOffset: 0,
-            endOffset: trimmedContent.length,
-            severity: 'info',
-            code: 'EXCESSIVE_CAPS',
-            message: 'Excessive capitalization. Reserve for emphasis and sounds.'
-        });
-    }
+    // REMOVED: Excessive capitalization check per user request (it's a stylistic choice)
 
     return markers;
 };
@@ -304,19 +292,7 @@ const validateSceneHeading = (
         });
     }
 
-    // Check for time of day
-    const hasTimeOfDay = /- (DAY|NIGHT|DAWN|DUSK|MORNING|AFTERNOON|EVENING|LATER|CONTINUOUS|SAME)/.test(trimmedContent);
-    if (!hasTimeOfDay && trimmedContent.length > 10) {
-        markers.push({
-            elementId: element.id,
-            startOffset: trimmedContent.length - 1,
-            endOffset: trimmedContent.length,
-            severity: 'warning',
-            code: 'MISSING_TIME_OF_DAY',
-            message: 'Scene headings should include time of day (DAY/NIGHT)',
-            suggestedFix: `${trimmedContent} - DAY`
-        });
-    }
+    // REMOVED: Time of day check per user request (not always necessary)
 
     // Check if not uppercase
     if (trimmedContent !== trimmedContent.toUpperCase()) {
