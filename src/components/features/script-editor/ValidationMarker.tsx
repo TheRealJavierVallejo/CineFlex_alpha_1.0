@@ -1,29 +1,26 @@
 /**
  * PHASE 5: VALIDATION MARKER COMPONENT
  * 
- * Displays real-time validation errors/warnings as underlines
- * with hover tooltips and click-to-fix functionality.
+ * Displays validation errors/warnings as underlines with tooltips.
+ * Clicking applies quick-fix if available.
  * 
- * Like Final Draft's live validation, but cleaner.
+ * Like Final Draft's inline validation, but cleaner.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LiveValidationMarker } from '../../../services/validation/realtimeValidator';
-import { AlertCircle, AlertTriangle, Info, Zap } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, Sparkles } from 'lucide-react';
 
 interface ValidationMarkerProps {
     marker: LiveValidationMarker;
+    onApplyFix?: () => void;
     children: React.ReactNode;
-    onQuickFix?: (marker: LiveValidationMarker) => void;
 }
 
-/**
- * Renders validation underline with tooltip
- */
 export const ValidationMarker: React.FC<ValidationMarkerProps> = ({
     marker,
-    children,
-    onQuickFix
+    onApplyFix,
+    children
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const markerRef = useRef<HTMLSpanElement>(null);
@@ -32,13 +29,13 @@ export const ValidationMarker: React.FC<ValidationMarkerProps> = ({
     const getUnderlineClass = () => {
         switch (marker.severity) {
             case 'error':
-                return 'border-b-2 border-red-500 decoration-wavy';
+                return 'border-b-2 border-red-500';
             case 'warning':
-                return 'border-b-2 border-yellow-500 decoration-wavy';
+                return 'border-b-2 border-yellow-500';
             case 'info':
-                return 'border-b-2 border-blue-400 decoration-dotted';
+                return 'border-b-2 border-blue-400';
             default:
-                return 'border-b-2 border-gray-400';
+                return '';
         }
     };
 
@@ -46,19 +43,17 @@ export const ValidationMarker: React.FC<ValidationMarkerProps> = ({
     const getIcon = () => {
         switch (marker.severity) {
             case 'error':
-                return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
+                return <AlertCircle className="w-3 h-3 text-red-500" />;
             case 'warning':
-                return <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />;
+                return <AlertTriangle className="w-3 h-3 text-yellow-500" />;
             case 'info':
-                return <Info className="w-3.5 h-3.5 text-blue-400" />;
+                return <Info className="w-3 h-3 text-blue-400" />;
         }
     };
 
-    const handleQuickFix = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onQuickFix && marker.suggestedFix) {
-            onQuickFix(marker);
-            setShowTooltip(false);
+    const handleClick = () => {
+        if (marker.suggestedFix && onApplyFix) {
+            onApplyFix();
         }
     };
 
@@ -66,90 +61,70 @@ export const ValidationMarker: React.FC<ValidationMarkerProps> = ({
         <span
             ref={markerRef}
             className={`
-                relative inline cursor-pointer
+                relative inline
                 ${getUnderlineClass()}
-                transition-all duration-150
-                hover:bg-opacity-10
-                ${
-                    marker.severity === 'error' ? 'hover:bg-red-500' :
-                    marker.severity === 'warning' ? 'hover:bg-yellow-500' :
-                    'hover:bg-blue-400'
-                }
+                ${marker.suggestedFix ? 'cursor-pointer hover:bg-opacity-10 hover:bg-yellow-500' : 'cursor-help'}
+                transition-all duration-100
             `}
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
-            onClick={marker.suggestedFix ? handleQuickFix : undefined}
+            onClick={handleClick}
+            title={marker.message}
         >
             {children}
-            
+
             {/* Tooltip */}
             {showTooltip && (
-                <div
-                    className="
-                        absolute left-0 top-full mt-2 z-50
-                        min-w-[240px] max-w-[360px]
-                        bg-surface border border-border rounded-lg shadow-lg
-                        p-3
-                        pointer-events-none
-                    "
-                    style={{
-                        transform: 'translateX(-10px)'
-                    }}
-                >
-                    {/* Arrow */}
-                    <div className="
-                        absolute -top-1.5 left-4
-                        w-3 h-3 bg-surface border-l border-t border-border
-                        transform rotate-45
-                    " />
-                    
-                    {/* Content */}
-                    <div className="relative space-y-2">
-                        {/* Header with icon */}
-                        <div className="flex items-start gap-2">
+                <div className="absolute z-50 bottom-full left-0 mb-2 w-max max-w-xs">
+                    <div className="bg-surface border border-border rounded-lg shadow-lg p-3">
+                        {/* Header */}
+                        <div className="flex items-start gap-2 mb-2">
                             {getIcon()}
-                            <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-text-primary">
+                            <div className="flex-1">
+                                <p className="text-xs font-medium text-text-primary">
                                     {marker.message}
-                                </div>
-                                <div className="text-[10px] text-text-muted mt-0.5">
-                                    Code: {marker.code}
-                                </div>
+                                </p>
+                                <p className="text-[10px] text-text-muted mt-0.5">
+                                    {marker.code}
+                                </p>
                             </div>
                         </div>
 
                         {/* Quick Fix Button */}
-                        {marker.suggestedFix && onQuickFix && (
+                        {marker.suggestedFix && onApplyFix && (
                             <button
-                                onClick={handleQuickFix}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onApplyFix();
+                                }}
                                 className="
-                                    w-full flex items-center gap-2
-                                    px-2.5 py-1.5 rounded-md
-                                    bg-primary text-white
-                                    text-xs font-medium
-                                    hover:bg-primary-hover
-                                    transition-colors
-                                    pointer-events-auto
+                                    w-full mt-2 px-2 py-1.5
+                                    bg-primary hover:bg-primary-hover
+                                    text-white text-xs font-medium
+                                    rounded flex items-center justify-center gap-1.5
+                                    transition-colors duration-100
                                 "
                             >
-                                <Zap className="w-3.5 h-3.5" />
-                                Quick Fix
+                                <Sparkles className="w-3 h-3" />
+                                Apply Quick Fix
                             </button>
                         )}
 
                         {/* Preview of fix */}
                         {marker.suggestedFix && (
-                            <div className="pt-2 border-t border-border">
-                                <div className="text-[10px] text-text-muted mb-1">Will change to:</div>
-                                <div className="text-xs font-mono bg-surface-secondary px-2 py-1 rounded text-text-primary">
-                                    {marker.suggestedFix.length > 60 
-                                        ? marker.suggestedFix.substring(0, 60) + '...'
+                            <div className="mt-2 pt-2 border-t border-border">
+                                <p className="text-[10px] text-text-muted mb-1">Will change to:</p>
+                                <p className="text-xs text-text-secondary font-mono bg-surface-secondary px-2 py-1 rounded">
+                                    {marker.suggestedFix.length > 50 
+                                        ? marker.suggestedFix.substring(0, 50) + '...'
                                         : marker.suggestedFix
                                     }
-                                </div>
+                                </p>
                             </div>
                         )}
                     </div>
+                    {/* Arrow */}
+                    <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border" />
                 </div>
             )}
         </span>
@@ -157,7 +132,70 @@ export const ValidationMarker: React.FC<ValidationMarkerProps> = ({
 };
 
 /**
- * Validation status indicator (for editor toolbar)
+ * Wrapper for element content with validation markers
+ */
+interface ValidationMarkedContentProps {
+    content: string;
+    markers: LiveValidationMarker[];
+    onApplyFix: (marker: LiveValidationMarker) => void;
+}
+
+export const ValidationMarkedContent: React.FC<ValidationMarkedContentProps> = ({
+    content,
+    markers,
+    onApplyFix
+}) => {
+    // If no markers, render plain content
+    if (markers.length === 0) {
+        return <>{content}</>;
+    }
+
+    // Sort markers by start offset
+    const sortedMarkers = [...markers].sort((a, b) => a.startOffset - b.startOffset);
+
+    // Build segments
+    const segments: React.ReactNode[] = [];
+    let lastOffset = 0;
+
+    sortedMarkers.forEach((marker, index) => {
+        // Add text before marker
+        if (marker.startOffset > lastOffset) {
+            segments.push(
+                <span key={`text-${index}`}>
+                    {content.substring(lastOffset, marker.startOffset)}
+                </span>
+            );
+        }
+
+        // Add marked text
+        const markedText = content.substring(marker.startOffset, marker.endOffset);
+        segments.push(
+            <ValidationMarker
+                key={`marker-${index}`}
+                marker={marker}
+                onApplyFix={() => onApplyFix(marker)}
+            >
+                {markedText}
+            </ValidationMarker>
+        );
+
+        lastOffset = marker.endOffset;
+    });
+
+    // Add remaining text
+    if (lastOffset < content.length) {
+        segments.push(
+            <span key="text-end">
+                {content.substring(lastOffset)}
+            </span>
+        );
+    }
+
+    return <>{segments}</>;
+};
+
+/**
+ * Validation status indicator
  */
 interface ValidationStatusProps {
     errorCount: number;
@@ -171,34 +209,27 @@ export const ValidationStatus: React.FC<ValidationStatusProps> = ({
     infoCount
 }) => {
     if (errorCount === 0 && warningCount === 0 && infoCount === 0) {
-        return (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 text-green-500">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-xs font-medium">No Issues</span>
-            </div>
-        );
+        return null;
     }
 
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 text-xs">
             {errorCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-500">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">{errorCount}</span>
+                <div className="flex items-center gap-1 text-red-500">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{errorCount} error{errorCount !== 1 ? 's' : ''}</span>
                 </div>
             )}
-            
             {warningCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-500">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">{warningCount}</span>
+                <div className="flex items-center gap-1 text-yellow-500">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>{warningCount} warning{warningCount !== 1 ? 's' : ''}</span>
                 </div>
             )}
-            
             {infoCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-400/10 text-blue-400">
-                    <Info className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">{infoCount}</span>
+                <div className="flex items-center gap-1 text-blue-400">
+                    <Info className="w-3 h-3" />
+                    <span>{infoCount} suggestion{infoCount !== 1 ? 's' : ''}</span>
                 </div>
             )}
         </div>
