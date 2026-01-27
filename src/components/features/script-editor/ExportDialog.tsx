@@ -22,6 +22,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
     });
 
     const [pageCount, setPageCount] = useState(1);
+    const [isExporting, setIsExporting] = useState(false);
 
     const formats = [
         { id: 'pdf', name: 'PDF', desc: 'Standard Screenplay', icon: <FileText className="w-5 h-5" /> },
@@ -30,9 +31,17 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
         { id: 'txt', name: 'Plain Text', desc: 'Simple .txt file', icon: <FileText className="w-5 h-5" /> }
     ];
 
-    const handleExport = () => {
-        exportScript(project, options);
-        onClose();
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await exportScript(project, options);
+            onClose();
+        } catch (error) {
+            console.error('Export failed:', error);
+            // Keep modal open to show error if we had an error UI, 
+            // but for now just reset the exporting state
+            setIsExporting(false);
+        }
     };
 
     return (
@@ -182,10 +191,11 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                     </Button>
                     <Button
                         variant="primary"
-                        icon={<Download className="w-4 h-4" />}
+                        icon={isExporting ? undefined : <Download className="w-4 h-4" />}
                         onClick={handleExport}
+                        disabled={isExporting}
                     >
-                        Export Script
+                        {isExporting ? 'Exporting...' : 'Export Script'}
                     </Button>
                 </div>
             </div>

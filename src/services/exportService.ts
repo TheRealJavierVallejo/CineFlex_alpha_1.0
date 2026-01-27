@@ -141,6 +141,10 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
     const marginLeft = MARGIN_LEFT_IN;
     const pageWidth = PAGE_WIDTH_IN;
 
+    // Safe Filename Generation
+    const baseName = (project.name || project.titlePage?.title || 'Untitled').trim();
+    const safeName = baseName.replace(/\s+/g, '_');
+
     // Helper for Watermark
     const renderWatermark = () => {
         if (!options.watermark) return;
@@ -275,34 +279,50 @@ export const exportToPDF = (project: Project, options: ExportOptions) => {
         if (el.dual) dualBufferY = 0;
     }
 
-    const filename = `${project.name.replace(/\s+/g, '_')}_script.pdf`;
+    const filename = `${safeName}_script.pdf`;
 
     if (options.openInNewTab) {
         const blob = doc.output('blob');
         const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const newTab = window.open(url, '_blank');
+
+        // Popup blocker fallback
+        if (!newTab) {
+            doc.save(filename);
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        // Cleanup object URL after delay
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
     } else {
         doc.save(filename);
     }
 };
 
 // Legacy support (defaults to PDF standard)
-export const exportScript = (project: Project, options: ExportOptions) => {
+export const exportScript = async (project: Project, options: ExportOptions) => {
+    // Generate safe name for all formats
+    const baseName = (project.name || project.titlePage?.title || 'Untitled').trim();
+    const safeName = baseName.replace(/\s+/g, '_');
+
     switch (options.format) {
-        case 'pdf': exportToPDF(project, options); break;
+        case 'pdf':
+            exportToPDF(project, options);
+            break;
         case 'fdx': {
             const xml = exportToFDX(project, options);
-            downloadFile(xml, `${project.name}.fdx`, 'text/xml');
+            downloadFile(xml, `${safeName}.fdx`, 'text/xml');
             break;
         }
         case 'fountain': {
             const text = exportToFountain(project, options);
-            downloadFile(text, `${project.name}.fountain`, 'text/plain');
+            downloadFile(text, `${safeName}.fountain`, 'text/plain');
             break;
         }
         case 'txt': {
             const text = exportToFountain(project, options);
-            downloadFile(text, `${project.name}.txt`, 'text/plain');
+            downloadFile(text, `${safeName}.txt`, 'text/plain');
             break;
         }
     }
