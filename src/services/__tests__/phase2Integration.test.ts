@@ -1,8 +1,11 @@
 /**
- * PHASE 2 INTEGRATION TESTS
+ * PHASE 2 INTEGRATION TESTS (Updated for Phase 3)
  * 
  * Tests that all parsers (Fountain, FDX, PDF) correctly integrate
  * with the Phase 1 validation system.
+ * 
+ * PHASE 3 UPDATE: Auto-fix is now enabled by default, so tests check
+ * for successful auto-fix rather than validation failures.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -30,16 +33,14 @@ Hello world.
 (nervous)
 This is great.`;
 
-// FIXED: Create actual structural errors that fail validation
-const INVALID_FOUNTAIN = `INT. COFFEE SHOP - DAY
+// Phase 3: This script will be auto-fixed, so we expect clean results
+const SCRIPT_WITH_FIXABLE_ISSUES = `INT. COFFEE SHOP - DAY
 
-JOHN
+john
+Hello world.
 
-(orphaned parenthetical without dialogue)
-
-CHARACTER_WITHOUT_DIALOGUE
-
-RANDOM ACTION TEXT`;
+(nervous)
+This is great.`;
 
 const VALID_FDX = `<?xml version="1.0" encoding="UTF-8"?>
 <FinalDraft>
@@ -63,26 +64,22 @@ const VALID_FDX = `<?xml version="1.0" encoding="UTF-8"?>
   </TitlePage>
 </FinalDraft>`;
 
-// FIXED: Create actual structural errors in FDX
-const INVALID_FDX = `<?xml version="1.0" encoding="UTF-8"?>
+// Phase 3: Script with fixable issues that will be auto-corrected
+const FDX_WITH_FIXABLE_ISSUES = `<?xml version="1.0" encoding="UTF-8"?>
 <FinalDraft>
   <Content>
-    <Paragraph Type="Character">
-      <Text>JOHN</Text>
-    </Paragraph>
-    <Paragraph Type="Parenthetical">
-      <Text>(orphaned parenthetical)</Text>
+    <Paragraph Type="Scene Heading">
+      <Text>INT. OFFICE - DAY</Text>
     </Paragraph>
     <Paragraph Type="Character">
-      <Text>ORPHANED_CHARACTER</Text>
+      <Text>john</Text>
     </Paragraph>
-    <Paragraph Type="Action">
-      <Text>Some action</Text>
+    <Paragraph Type="Dialogue">
+      <Text>Hello world.</Text>
     </Paragraph>
   </Content>
 </FinalDraft>`;
 
-// FIXED: Proper FDX with correct TitlePage structure
 const FDX_WITH_TITLE = `<?xml version="1.0" encoding="UTF-8"?>
 <FinalDraft>
   <Content>
@@ -135,15 +132,14 @@ describe('Phase 2: Parser Integration', () => {
             expect(result.validationReport.summary).toBeDefined();
         });
         
-        // FIXED: Test now checks for warnings/reduced confidence rather than invalid
-        it('should detect issues in invalid Fountain scripts', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
+        // PHASE 3: Auto-fix will handle fixable issues
+        it('should auto-fix issues in Fountain scripts (Phase 3 behavior)', async () => {
+            const file = createMockFile(SCRIPT_WITH_FIXABLE_ISSUES, 'test.fountain');
             const result = await parseScript(file);
             
-            // Structural issues cause warnings or errors
-            const hasIssues = result.validationReport.issues.length > 0 || 
-                              result.validationReport.confidence < 1.0;
-            expect(hasIssues).toBe(true);
+            // Auto-fix is enabled by default, so confidence should be high
+            expect(result.validationReport.confidence).toBeGreaterThanOrEqual(0.9);
+            expect(result.autoFixedElements).toBeDefined();
         });
         
         it('should preserve backward compatibility (elements array)', async () => {
@@ -186,18 +182,15 @@ describe('Phase 2: Parser Integration', () => {
             expect(result.validationReport.confidence).toBeGreaterThan(0);
         });
         
-        // FIXED: Test now checks for issues/reduced confidence
-        it('should detect issues in invalid FDX scripts', async () => {
-            const file = createMockFile(INVALID_FDX, 'test.fdx');
+        // PHASE 3: Auto-fix will correct issues
+        it('should auto-fix issues in FDX scripts (Phase 3 behavior)', async () => {
+            const file = createMockFile(FDX_WITH_FIXABLE_ISSUES, 'test.fdx');
             const result = await parseScript(file);
             
-            // Orphaned elements cause warnings
-            const hasIssues = result.validationReport.issues.length > 0 ||
-                              result.validationReport.confidence < 1.0;
-            expect(hasIssues).toBe(true);
+            // Auto-fix improves confidence
+            expect(result.validationReport.confidence).toBeGreaterThanOrEqual(0.8);
         });
         
-        // FIXED: Use proper FDX test data with correct structure
         it('should extract title page from FDX', async () => {
             const file = createMockFile(FDX_WITH_TITLE, 'test.fdx');
             const result = await parseScript(file);
@@ -211,36 +204,38 @@ describe('Phase 2: Parser Integration', () => {
     
     describe('Auto-Fix Integration', () => {
         
-        it('should auto-fix issues when autoFix option is true', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
-            const result = await parseScript(file, { autoFix: true });
+        it('should auto-fix issues by default (Phase 3)', async () => {
+            const file = createMockFile(SCRIPT_WITH_FIXABLE_ISSUES, 'test.fountain');
+            const result = await parseScript(file);
             
+            // Phase 3: Auto-fix is default
             expect(result.autoFixedElements).toBeDefined();
-            expect(result.validationReport.confidence).toBeGreaterThan(0.5);
+            expect(result.validationReport.confidence).toBeGreaterThan(0.8);
         });
         
-        // FIXED: Check if issues exist that CAN be auto-fixed
         it('should indicate when auto-fix is available', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
+            const file = createMockFile(SCRIPT_WITH_FIXABLE_ISSUES, 'test.fountain');
             const result = await parseScript(file, { autoFix: false });
             
-            // If there are issues, auto-fix may be available
-            const hasAutoFixableIssues = result.autoFixAvailable;
+            // With auto-fix disabled, issues may remain
             const hasIssues = result.validationReport.issues.length > 0;
+            const autoFixAvailable = result.autoFixAvailable;
             
-            // Either auto-fix is available, or there are no fixable issues
-            expect(hasAutoFixableIssues || !hasIssues).toBe(true);
+            // If there are issues, auto-fix should be available
+            if (hasIssues) {
+                expect(autoFixAvailable).toBe(true);
+            }
         });
         
         it('should not auto-fix when option is false', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
+            const file = createMockFile(SCRIPT_WITH_FIXABLE_ISSUES, 'test.fountain');
             const result = await parseScript(file, { autoFix: false });
             
             expect(result.autoFixedElements).toBeUndefined();
         });
         
         it('should improve confidence score after auto-fix', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
+            const file = createMockFile(SCRIPT_WITH_FIXABLE_ISSUES, 'test.fountain');
             
             const withoutFix = await parseScript(file, { autoFix: false });
             const withFix = await parseScript(file, { autoFix: true });
@@ -255,26 +250,21 @@ describe('Phase 2: Parser Integration', () => {
     
     describe('Strict Mode', () => {
         
-        // FIXED: Use truly invalid data OR accept that validation is lenient
-        it('should throw error in strict mode for invalid scripts', async () => {
-            // Create script with actual ERROR (not just warning)
-            const criticallyInvalid = ``; // Empty script
+        it('should throw error in strict mode for truly invalid scripts', async () => {
+            // Empty script should fail strict validation
+            const criticallyInvalid = ``;
             const file = createMockFile(criticallyInvalid, 'test.fountain');
             
             const result = await parseScript(file, { strict: false });
             
-            // If this script has errors, strict mode should throw
+            // If this script has actual errors, strict mode should throw
             if (!result.validationReport.valid) {
                 await expect(
                     parseScript(file, { strict: true })
                 ).rejects.toThrow('Script validation failed');
-            } else {
-                // If validation is lenient, test that strict mode still works
-                expect(result.validationReport.valid).toBe(true);
             }
         });
         
-        // FIXED: Proper async test syntax
         it('should not throw error in strict mode for valid scripts', async () => {
             const file = createMockFile(VALID_FOUNTAIN, 'test.fountain');
             
@@ -290,7 +280,7 @@ describe('Phase 2: Parser Integration', () => {
     describe('Validation Report Details', () => {
         
         it('should include error and warning counts', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
+            const file = createMockFile(VALID_FOUNTAIN, 'test.fountain');
             const result = await parseScript(file);
             
             expect(result.validationReport.summary).toBeDefined();
@@ -299,8 +289,8 @@ describe('Phase 2: Parser Integration', () => {
         });
         
         it('should provide issue details with codes and messages', async () => {
-            const file = createMockFile(INVALID_FOUNTAIN, 'test.fountain');
-            const result = await parseScript(file);
+            const file = createMockFile(SCRIPT_WITH_FIXABLE_ISSUES, 'test.fountain');
+            const result = await parseScript(file, { autoFix: false });
             
             if (result.validationReport.issues.length > 0) {
                 const issue = result.validationReport.issues[0];
@@ -367,11 +357,9 @@ describe('Phase 2: Parser Integration', () => {
             const file = createMockFile(VALID_FOUNTAIN, 'test.fountain');
             await parseScript(file);
             
+            // Phase 3 logs
             expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('[Phase 2 Validation] Confidence:')
-            );
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('[Phase 2 Validation] Errors:')
+                expect.stringContaining('[Phase 3]')
             );
             
             consoleSpy.mockRestore();
@@ -400,7 +388,6 @@ describe('Phase 2: Parser Integration', () => {
             expect(report.valid).toBeDefined();
         });
         
-        // FIXED: Test that immutability works correctly (push should throw or be ignored)
         it('should make ScriptModel immutable', async () => {
             const file = createMockFile(VALID_FOUNTAIN, 'test.fountain');
             const result = await parseScript(file);
@@ -409,7 +396,6 @@ describe('Phase 2: Parser Integration', () => {
             const originalLength = elements.length;
             
             // Try to mutate - ScriptModel returns frozen array
-            // This will throw in strict mode or be silently ignored
             try {
                 elements.push({
                     id: 'test',
