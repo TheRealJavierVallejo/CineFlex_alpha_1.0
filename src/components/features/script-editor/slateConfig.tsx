@@ -113,6 +113,8 @@ export function getElementStyles(
  * @param isLastOnPage - Whether this element ends a page
  * @param pageNumber - The page number this element is on
  * @param shouldShowPageBreak - Whether to render the "Page X" visual separator
+ * @param virtualHeader - Optional virtual character header (e.g., "JASON (CONT'D)") for page splits
+ * @param showMore - Optional (MORE) indicator at bottom of element
  */
 export function renderScriptElement(
     props: any,
@@ -120,10 +122,17 @@ export function renderScriptElement(
     isFirstOnPage: boolean,
     isLastOnPage: boolean,
     pageNumber: number = 1,
-    shouldShowPageBreak: boolean = false
+    shouldShowPageBreak: boolean = false,
+    virtualHeader?: string,
+    showMore?: boolean
 ) {
     const { attributes, children, element } = props;
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
+
+    // Get styles for character (to style virtual header)
+    const charStyles = getElementStyles('character', false, isLightMode);
+    // Get styles for dialogue (to style MORE, aligned with dialogue)
+    const dialogueStyles = getElementStyles('dialogue', false, isLightMode);
 
     return (
         <>
@@ -150,6 +159,17 @@ export function renderScriptElement(
                 </div>
             )}
             
+            {/* Virtual Character Header (for CONT'D at top of page) */}
+            {virtualHeader && (
+                <div
+                    contentEditable={false}
+                    className={`select-none ${charStyles.className}`}
+                    style={{ ...charStyles.style, paddingTop: '1rem', paddingBottom: 0, opacity: 0.8 }}
+                >
+                    {virtualHeader}
+                </div>
+            )}
+
             {/* Element Content */}
             <div
                 {...attributes}
@@ -159,6 +179,23 @@ export function renderScriptElement(
             >
                 {children}
             </div>
+
+            {/* (MORE) indicator at bottom of page */}
+            {showMore && (
+                <div
+                    contentEditable={false}
+                    className={`select-none uppercase text-center ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                    style={{ 
+                        marginLeft: dialogueStyles.style.marginLeft,
+                        width: dialogueStyles.style.width,
+                        marginTop: 0,
+                        fontSize: '12pt',
+                        lineHeight: '1.0'
+                     }}
+                >
+                    (MORE)
+                </div>
+            )}
         </>
     );
 }
