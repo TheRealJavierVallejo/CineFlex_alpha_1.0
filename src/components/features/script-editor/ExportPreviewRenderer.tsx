@@ -20,13 +20,13 @@ const elementStyles: Record<string, string> = {
     'shot': 'uppercase mb-4 font-bold'
 };
 
-// Industry standard margins for 8.5x11 paper
+// Scaled margins (60% of actual size for preview)
 const elementMargins: Record<string, React.CSSProperties> = {
     'scene_heading': { marginLeft: '0', width: '100%' },
     'action': { marginLeft: '0', width: '100%' },
-    'character': { marginLeft: '2.0in', width: 'auto' },
-    'dialogue': { marginLeft: '1.0in', marginRight: '1.0in', width: 'auto' },
-    'parenthetical': { marginLeft: '1.5in', width: 'auto' },
+    'character': { marginLeft: '120px', width: 'auto' },  // 60% of 2in (192px * 0.6)
+    'dialogue': { marginLeft: '60px', marginRight: '60px', width: 'auto' },  // 60% of 1in
+    'parenthetical': { marginLeft: '90px', width: 'auto' },  // 60% of 1.5in
     'transition': { textAlign: 'right', width: '100%', marginRight: '0' }
 };
 
@@ -66,7 +66,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         const margins = elementMargins[element.type] || {};
         const text = element.content || '';
 
-        // Industry standard spacing
+        // Industry standard spacing (scaled to 60%)
         let spacingStyle: React.CSSProperties = {};
         if (!isFirstOnPage) {
             if (element.type === 'scene_heading') {
@@ -107,28 +107,35 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     }
 
     return (
-        <div className="w-full">
-            <div className="flex flex-col items-center gap-12 py-4">
+        <div className="w-full h-full flex items-start justify-center overflow-y-auto bg-zinc-900 p-8">
+            <div className="flex flex-col items-center gap-8">
                 {/* Title Page */}
                 {options.includeTitlePage && project.titlePage && (
                     <div
-                        className="preview-page bg-white text-black p-[1in] shadow-xl relative shrink-0"
-                        style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}
+                        className="preview-page bg-white text-black shadow-2xl relative shrink-0 rounded-sm"
+                        style={{
+                            width: '510px',  // 60% of 8.5in (816px * 0.6)
+                            height: '660px', // 60% of 11in (1056px * 0.6)
+                            padding: '60px', // 60% of 1in margins
+                            boxSizing: 'border-box',
+                            transform: 'scale(1)',
+                            transformOrigin: 'top center'
+                        }}
                     >
                         <div className="flex flex-col h-full justify-center items-center text-center font-mono">
-                            <h1 className="text-2xl font-bold mb-4 uppercase">
+                            <h1 className="text-xl font-bold mb-4 uppercase">
                                 {project.titlePage.title || project.name || 'Untitled'}
                             </h1>
                             {project.titlePage.authors && project.titlePage.authors.length > 0 && (
                                 <div className="mt-12">
-                                    <p className="text-sm mb-4">{project.titlePage.credit || 'Written by'}</p>
+                                    <p className="text-xs mb-4">{project.titlePage.credit || 'Written by'}</p>
                                     {project.titlePage.authors.map((author, i) => (
-                                        <p key={i} className="text-sm font-bold">{author}</p>
+                                        <p key={i} className="text-xs font-bold">{author}</p>
                                     ))}
                                 </div>
                             )}
 
-                            <div className="absolute bottom-[1in] left-[1in] text-left text-xs">
+                            <div className="absolute bottom-[60px] left-[60px] text-left" style={{ fontSize: '7.2pt' }}>
                                 {project.titlePage.contact && (
                                     <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
                                 )}
@@ -137,7 +144,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
                         {/* Watermark */}
                         {options.watermark && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                                <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                <div className="text-5xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
                                     {options.watermark}
                                 </div>
                             </div>
@@ -149,21 +156,27 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
                 {pages.map((page, pageIndex) => (
                     <div
                         key={pageIndex}
-                        className="preview-page bg-white text-black p-[1in] shadow-xl relative shrink-0"
-                        style={{ width: '8.5in', minHeight: '11in', boxSizing: 'border-box' }}
+                        className="preview-page bg-white text-black shadow-2xl relative shrink-0 rounded-sm"
+                        style={{
+                            width: '510px',  // 60% of 8.5in
+                            minHeight: '660px', // 60% of 11in
+                            padding: '60px', // 60% of 1in margins
+                            boxSizing: 'border-box'
+                        }}
                     >
                         {/* Page number */}
-                        <div className="absolute top-[0.5in] right-[1in] font-mono" style={{ fontSize: '12pt' }}>
+                        <div className="absolute top-[30px] right-[60px] font-mono" style={{ fontSize: '7.2pt' }}>
                             {pageIndex + 1}.
                         </div>
 
                         {/* Page content */}
                         <div
-                            className="font-mono leading-[24pt]"
+                            className="font-mono"
                             style={{
                                 fontFamily: 'Courier, "Courier New", monospace',
-                                fontSize: '12pt',
-                                width: '6.5in'
+                                fontSize: '7.2pt',  // 60% of 12pt
+                                lineHeight: '14.4pt', // 60% of 24pt
+                                width: '390px'  // 60% of 6.5in (650px * 0.6)
                             }}
                         >
                             {page.map((element, idx) => renderElement(element, idx, idx === 0))}
@@ -172,7 +185,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
                         {/* Watermark */}
                         {options.watermark && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                                <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                <div className="text-5xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
                                     {options.watermark}
                                 </div>
                             </div>
