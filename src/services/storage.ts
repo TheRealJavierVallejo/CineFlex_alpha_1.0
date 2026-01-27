@@ -1,4 +1,3 @@
-
 /*
  * ☁️ SERVICE: STORAGE (Cloud Edition)
  * Powered by Supabase
@@ -597,6 +596,30 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
 
     // 6. Cleanup Unused Images (Fire & Forget)
     cleanupUnusedProjectImages(projectId, cleanProject);
+};
+
+// --- NEW: DRAFT METADATA UPDATE ---
+/**
+ * Updates draft metadata (like name) directly in the projects table without sending the full object.
+ * This is a lightweight operation for renames.
+ * 
+ * @param projectId - Project ID
+ * @param drafts - The updated drafts array
+ */
+export const updateDraftMetadata = async (projectId: string, drafts: any[]): Promise<void> => {
+    // We only update the 'drafts' column and 'last_synced'
+    const { error } = await supabase
+        .from('projects')
+        .update({
+            drafts: drafts,
+            last_synced: new Date().toISOString()
+        })
+        .eq('id', projectId);
+    
+    if (error) {
+        console.error("Failed to update draft metadata:", error);
+        throw error;
+    }
 };
 
 /**
