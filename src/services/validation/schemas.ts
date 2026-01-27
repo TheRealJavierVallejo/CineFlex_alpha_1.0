@@ -1,139 +1,158 @@
 /**
  * VALIDATION SCHEMAS
- * Runtime validation for script data using Zod
- * Ensures data integrity at all system boundaries
+ * 
+ * Zod schemas that define what "valid" script data looks like.
+ * These enforce type safety at runtime and catch corrupted data before it enters the system.
+ * 
+ * Industry Standard Compliance:
+ * - Element types match screenplay format standards
+ * - Dual dialogue follows left/right convention
+ * - Required fields enforced
  */
 
 import { z } from 'zod';
 
-// --- SCRIPT ELEMENT SCHEMA ---
+// ═══════════════════════════════════════════════════════════
+// CORE ELEMENT SCHEMAS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Valid screenplay element types (industry standard)
+ */
+export const ElementTypeSchema = z.enum([
+  'scene_heading',
+  'action',
+  'character',
+  'dialogue',
+  'parenthetical',
+  'transition'
+]);
+
+/**
+ * Dual dialogue position (left or right column)
+ * Undefined means single-column dialogue
+ */
+export const DualPositionSchema = z.enum(['left', 'right']).optional();
+
+/**
+ * Single Script Element Schema
+ * Validates each line/block in a screenplay
+ */
 export const ScriptElementSchema = z.object({
   id: z.string().uuid('Element ID must be valid UUID'),
-  type: z.enum(
-    ['scene_heading', 'action', 'dialogue', 'character', 'parenthetical', 'transition'],
-    { errorMap: () => ({ message: 'Invalid element type' }) }
-  ),
-  content: z.string().min(0, 'Content cannot be null'),
+  type: ElementTypeSchema,
+  content: z.string(),
   sequence: z.number().int().positive('Sequence must be positive integer'),
+  
+  // Optional fields
   sceneId: z.string().uuid().optional(),
   character: z.string().optional(),
+  sceneNumber: z.string().optional(),
   associatedShotIds: z.array(z.string().uuid()).optional(),
   
-  // Dual dialogue: must be 'left' or 'right' if present
-  dual: z.enum(['left', 'right']).optional(),
+  // Dual dialogue (standardized as 'left' | 'right' | undefined)
+  dual: DualPositionSchema,
   
-  // Scene numbers
-  sceneNumber: z.string().optional(),
-  
-  // Pagination metadata (calculated, not user-provided)
+  // Pagination metadata (added by formatting engine, not user input)
   isContinued: z.boolean().optional(),
   continuesNext: z.boolean().optional(),
-  keptTogether: z.boolean().optional(),
+  keptTogether: z.boolean().optional()
 }).strict(); // Reject unknown fields
 
-export type ValidatedScriptElement = z.infer<typeof ScriptElementSchema>;
+/**
+ * Array of Script Elements
+ */
+export const ScriptElementsArraySchema = z.array(ScriptElementSchema);
 
-// --- TITLE PAGE SCHEMA ---
+// ═══════════════════════════════════════════════════════════
+// TITLE PAGE SCHEMAS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Title Page Schema (industry standard fields)
+ * Matches Final Draft and Fountain specifications
+ */
 export const TitlePageSchema = z.object({
   title: z.string().optional(),
-  authors: z.array(z.string()).optional(),
+  subtitle: z.string().optional(),
   credit: z.string().optional(),
+  authors: z.array(z.string()).optional(),
   source: z.string().optional(),
   draftDate: z.string().optional(),
   draftVersion: z.string().optional(),
   contact: z.string().optional(),
   copyright: z.string().optional(),
   wgaRegistration: z.string().optional(),
-  additionalInfo: z.string().optional(),
+  additionalInfo: z.string().optional()
 }).strict();
 
-export type ValidatedTitlePage = z.infer<typeof TitlePageSchema>;
+// ═══════════════════════════════════════════════════════════
+// VALIDATION HELPERS
+// ═══════════════════════════════════════════════════════════
 
-// --- VALIDATION OPTIONS ---
-export interface ValidationOptions {
-  // Strict mode throws on warnings, lenient mode only logs
-  mode: 'strict' | 'lenient';
-  
-  // Auto-fix common issues
-  autoFix: boolean;
-  
-  // Context for better error messages
-  context?: string; // e.g., "PDF Import", "Manual Edit"
-}
+/**
+ * Element Type Guards (for TypeScript type narrowing)
+ */
+export type ValidElementType = z.infer<typeof ElementTypeSchema>;
+export type ValidScriptElement = z.infer<typeof ScriptElementSchema>;
+export type ValidTitlePage = z.infer<typeof TitlePageSchema>;
 
-export const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
-  mode: 'lenient',
-  autoFix: false,
-  context: 'Unknown',
+/**
+ * Custom validation rules beyond Zod's capabilities
+ */
+export const customValidationRules = {
+  /**
+   * Character elements should be uppercase (industry standard)
+   */
+  characterShouldBeUppercase: (element: ValidScriptElement): boolean => {
+    if (element.type !== 'character') return true;
+    return element.content === element.content.toUpperCase();
+  },
+
+  /**
+   * Scene headings should start with INT/EXT/EST/I/E
+   */
+  sceneHeadingFormat: (element: ValidScriptElement): boolean => {
+    if (element.type !== 'scene_heading') return true;
+    const pattern = /^(INT\.|EXT\.|EST\.|I\/E|INT |EXT )/i;
+    return pattern.test(element.content);
+  },
+
+  /**
+   * Dual dialogue should come in pairs (left then right)
+   */
+  dualDialoguePairs: (elements: ValidScriptElement[]): boolean => {
+    const dualElements = elements.filter(el => el.dual);
+    if (dualElements.length === 0) return true;
+    
+    // Check alternating left/right pattern
+    for (let i = 0; i < dualElements.length - 1; i += 2) {
+      const current = dualElements[i];
+      const next = dualElements[i + 1];
+      
+      if (!next) return false; // Odd number, unpaired
+      if (current.dual !== 'left' || next.dual !== 'right') return false;
+    }
+    
+    return true;
+  },
+
+  /**
+   * Parentheticals should be wrapped in ()
+   */
+  parentheticalFormat: (element: ValidScriptElement): boolean => {
+    if (element.type !== 'parenthetical') return true;
+    return element.content.startsWith('(') && element.content.endsWith(')');
+  },
+
+  /**
+   * Sequence numbers should be sequential (no gaps)
+   */
+  sequentialOrdering: (elements: ValidScriptElement[]): boolean => {
+    const sequences = elements.map(el => el.sequence).sort((a, b) => a - b);
+    for (let i = 0; i < sequences.length - 1; i++) {
+      if (sequences[i + 1] - sequences[i] > 1) return false;
+    }
+    return true;
+  }
 };
-
-// --- VALIDATION HELPERS ---
-
-/**
- * Validates a single script element
- */
-export function validateScriptElement(
-  element: unknown,
-  options: ValidationOptions = DEFAULT_VALIDATION_OPTIONS
-): ValidatedScriptElement {
-  try {
-    return ScriptElementSchema.parse(element);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const context = options.context ? `[${options.context}] ` : '';
-      const details = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      throw new Error(`${context}Script element validation failed: ${details}`);
-    }
-    throw error;
-  }
-}
-
-/**
- * Validates an array of script elements
- */
-export function validateScriptElements(
-  elements: unknown[],
-  options: ValidationOptions = DEFAULT_VALIDATION_OPTIONS
-): ValidatedScriptElement[] {
-  const validated: ValidatedScriptElement[] = [];
-  const errors: Array<{ index: number; error: string }> = [];
-  
-  elements.forEach((el, index) => {
-    try {
-      validated.push(validateScriptElement(el, options));
-    } catch (error) {
-      errors.push({
-        index,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
-  
-  if (errors.length > 0 && options.mode === 'strict') {
-    throw new Error(
-      `Validation failed for ${errors.length} elements:\n` +
-      errors.map(e => `  Element ${e.index}: ${e.error}`).join('\n')
-    );
-  }
-  
-  return validated;
-}
-
-/**
- * Validates title page
- */
-export function validateTitlePage(
-  titlePage: unknown,
-  options: ValidationOptions = DEFAULT_VALIDATION_OPTIONS
-): ValidatedTitlePage {
-  try {
-    return TitlePageSchema.parse(titlePage || {});
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const context = options.context ? `[${options.context}] ` : '';
-      const details = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      throw new Error(`${context}Title page validation failed: ${details}`);
-    }
-    throw error;
-  }
-}
