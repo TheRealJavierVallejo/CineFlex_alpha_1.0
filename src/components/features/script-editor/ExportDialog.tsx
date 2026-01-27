@@ -159,27 +159,24 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                     </div>
 
                     {/* Right Pane - Preview Pane */}
-                    <div className="flex-1 min-h-0 flex flex-col min-w-0 pl-6">
-                        <div className="flex-1 min-h-0 flex flex-col">
-                            <div className="flex items-center justify-between mb-4">
-                                <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-                                    Preview
-                                </label>
-                                <div className="text-xs text-text-muted">
-                                    {pageCount > 0 ? `${pageCount} page${pageCount !== 1 ? 's' : ''}` : 'Calculating...'}
-                                </div>
+                    <div className="flex-1 min-h-0 flex flex-col pl-6">
+                        {/* Preview Header */}
+                        <div className="flex-shrink-0 flex items-center justify-between mb-4">
+                            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+                                Preview
+                            </label>
+                            <div className="text-xs text-text-muted">
+                                {pageCount > 0 ? `${pageCount} page${pageCount !== 1 ? 's' : ''}` : 'Calculating...'}
                             </div>
+                        </div>
 
-                            {/* Scrollable Preview Container */}
-                            <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-hidden">
-                                <div className="h-full overflow-y-auto overflow-x-hidden p-6">
-                                    <ExportPreviewRenderer
-                                        project={project}
-                                        options={options}
-                                        onPageCountChange={setPageCount}
-                                    />
-                                </div>
-                            </div>
+                        {/* Scrollable Preview Container */}
+                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-y-auto overflow-x-hidden p-6 custom-scrollbar">
+                            <ExportPreviewRenderer
+                                project={project}
+                                options={options}
+                                onPageCountChange={setPageCount}
+                            />
                         </div>
                     </div>
                 </div>
