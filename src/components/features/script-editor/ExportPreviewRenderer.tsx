@@ -147,7 +147,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     }
 
     return (
-        <div className="w-full h-full flex justify-center overflow-x-hidden bg-zinc-900 p-8">
+        <div className="w-full flex justify-center overflow-x-hidden bg-zinc-900 p-8">
             <div className="flex flex-col items-center gap-4">
 
                 {/* Title Page */}
