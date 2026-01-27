@@ -5,16 +5,12 @@
 
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-// - [x] Hardening types in `src/types.ts`
-// - [x] Refactoring `src/utils/debounce.ts` with Generics
-// - [x] Hardening `src/services/storage.ts` (Data Transformations)
-// - [/] Documenting and typed props for `src/App.tsx`
-// - [ ] Refactoring `src/layouts/WorkspaceLayout.tsx`
 import ErrorBoundary from './components/ErrorBoundary';
 import { WorkspaceLayout, useWorkspace } from './layouts/WorkspaceLayout';
 import { WorldSettings } from './types';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { SaveStatusProvider } from './context/SaveStatusContext';
+import { ToastProvider } from './components/ui/ToastContainer';
 import { UpgradeModal } from './components/ui/UpgradeModal';
 import {
     TimelineView,
@@ -29,7 +25,7 @@ import {
 import { ApiKeySettings } from './components/features/ApiKeySettings';
 import { SlateScriptEditorTest } from './components/features/SlateScriptEditorTest';
 import { AuthPage } from './components/features/AuthPage';
-import { ProtectedRoute } from './components/ProtectedRoute'; // IMPORTED
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { WelcomeBanner } from './components/ui/WelcomeBanner';
 
 import { getContrastColor, getGlowColor } from './utils/themeUtils';
@@ -52,7 +48,6 @@ const DashboardPage = () => {
     } = useWorkspace();
 
     const [showWelcome, setShowWelcome] = React.useState(() => {
-        // Check if project is truly empty AND user hasn't dismissed banner
         const dismissed = localStorage.getItem(`welcome_dismissed_${project.id}`);
         const isEmpty = project.scenes.length === 0 &&
             project.shots.length === 0 &&
@@ -75,7 +70,7 @@ const DashboardPage = () => {
                 try {
                     await importScript(file);
                     showToast('Script imported successfully', 'success');
-                    handleDismissWelcome(); // Dismiss banner after import
+                    handleDismissWelcome();
                 } catch (error) {
                     showToast('Failed to import script', 'error');
                 }
@@ -86,7 +81,6 @@ const DashboardPage = () => {
 
     return (
         <div className="absolute inset-0 overflow-hidden flex flex-col">
-            {/* Welcome banner - only shows when empty and not dismissed */}
             {showWelcome && (
                 <WelcomeBanner
                     projectId={project.id}
@@ -96,7 +90,6 @@ const DashboardPage = () => {
                 />
             )}
 
-            {/* Dashboard content - always visible */}
             <div className="flex-1 overflow-hidden relative">
                 <ErrorBoundary>
                     <LazyWrapper>
@@ -264,7 +257,6 @@ const App: React.FC = () => {
             }
         }
         const savedMode = localStorage.getItem('cinesketch_theme_mode');
-        // Default to DARK if null, or if 'dark'.
         if (savedMode === 'light') {
             document.documentElement.classList.remove('dark');
         } else {
@@ -274,29 +266,31 @@ const App: React.FC = () => {
 
     return (
         <SubscriptionProvider>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={<ProjectLibrary />} />
-                    <Route path="/auth" element={<AuthPage />} />
+            <ToastProvider>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/" element={<ProjectLibrary />} />
+                        <Route path="/auth" element={<AuthPage />} />
 
-                    {/* Protected Routes */}
-                    <Route element={<ProtectedRoute />}>
-                        <Route path="/settings/api-keys" element={<ApiKeySettings />} />
-                    </Route>
+                        {/* Protected Routes */}
+                        <Route element={<ProtectedRoute />}>
+                            <Route path="/settings/api-keys" element={<ApiKeySettings />} />
+                        </Route>
 
-                    <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
-                    <Route path="/project/:projectId" element={<WorkspaceLayout />}>
-                        <Route index element={<DashboardPage />} />
-                        <Route path="timeline" element={<TimelinePage />} />
-                        <Route path="script" element={<ScriptEditorPage />} />
-                        <Route path="story-notes" element={<StoryNotesPage />} />
-                        <Route path="assets" element={<AssetsPage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                    </Route>
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-                <UpgradeModal /> {/* Global Modal */}
-            </BrowserRouter>
+                        <Route path="/test-slate-editor" element={<SlateScriptEditorTest />} />
+                        <Route path="/project/:projectId" element={<WorkspaceLayout />}>
+                            <Route index element={<DashboardPage />} />
+                            <Route path="timeline" element={<TimelinePage />} />
+                            <Route path="script" element={<ScriptEditorPage />} />
+                            <Route path="story-notes" element={<StoryNotesPage />} />
+                            <Route path="assets" element={<AssetsPage />} />
+                            <Route path="settings" element={<SettingsPage />} />
+                        </Route>
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                    <UpgradeModal />
+                </BrowserRouter>
+            </ToastProvider>
         </SubscriptionProvider>
     );
 };
