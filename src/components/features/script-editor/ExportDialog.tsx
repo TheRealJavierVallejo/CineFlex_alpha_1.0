@@ -38,8 +38,6 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
             onClose();
         } catch (error) {
             console.error('Export failed:', error);
-            // Keep modal open to show error if we had an error UI, 
-            // but for now just reset the exporting state
             setIsExporting(false);
         }
     };
@@ -49,7 +47,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
             isOpen={isOpen}
             onClose={onClose}
             title="Export Script"
-            size="xl"
+            size="full"
         >
             <div className="flex flex-col h-full min-h-0">
                 <div className="flex-1 min-h-0 flex gap-6 p-6">
@@ -170,8 +168,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, pro
                             </div>
                         </div>
 
-                        {/* Scrollable Preview Container - Reduced padding */}
-                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-y-auto overflow-x-hidden py-6 px-4 custom-scrollbar">
+                        {/* Scrollable Preview Container - Minimal padding for maximum space */}
+                        <div className="flex-1 min-h-0 border border-border rounded-lg bg-surface-secondary overflow-y-auto overflow-x-hidden p-2 custom-scrollbar">
                             <ExportPreviewRenderer
                                 project={project}
                                 options={options}
