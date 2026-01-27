@@ -49,7 +49,7 @@ export interface WorkspaceContextType {
     /** Deletes a script version */
     handleDeleteDraft: (draftId: string) => void;
     /** Renames a script version */
-    handleRenameDraft: (draftId: string, name: string) => void;
+    handleRenameDraft: (draftId: string, name: string) => Promise<void>;
     /** Direct manual update of the script element array */
     updateScriptElements: (elements: ScriptElement[]) => void;
     /** Global toast trigger for the workspace */
@@ -159,7 +159,7 @@ export const WorkspaceLayout: React.FC = () => {
                 if (!data.drafts || data.drafts.length === 0) {
                     const initialDraft: ScriptDraft = {
                         id: 'initial-draft',
-                        name: 'Initial Script',
+                        name: 'Draft 1', // RENAMED FROM "Initial Script"
                         content: data.scriptElements || [],
                         updatedAt: data.lastModified || Date.now()
                     };
@@ -258,7 +258,10 @@ export const WorkspaceLayout: React.FC = () => {
         // Cancel any pending auto-saves to prevent overwrite
         saveProjectDataDebounced.cancel();
 
-        const draftName = name || `Snapshot ${project.drafts.length + 1}`;
+        // FIXED: Better naming convention (Draft 1, Draft 2, etc.)
+        const draftCount = project.drafts.length;
+        const draftName = name || `Draft ${draftCount + 1}`;
+        
         const newDraft: ScriptDraft = {
             id: crypto.randomUUID(),
             name: draftName,
@@ -331,7 +334,7 @@ export const WorkspaceLayout: React.FC = () => {
         if (updatedDrafts.length === 0) {
             const defaultDraft: ScriptDraft = {
                 id: crypto.randomUUID(),
-                name: 'Main Draft',
+                name: 'Draft 1',
                 content: [],
                 updatedAt: Date.now()
             };
@@ -350,18 +353,20 @@ export const WorkspaceLayout: React.FC = () => {
 
         setProject(updatedProject);
         await saveProjectData(updatedProject.id, updatedProject);
-        showToast("Version deleted", 'info');
+        showToast("Draft deleted", 'info');
     }, [project, showToast]);
 
     const handleRenameDraft = useCallback(async (draftId: string, name: string) => {
         if (!project) return;
 
+        // Optimistic update
         const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
             d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
         );
         const updatedProject = { ...project, drafts: updatedDrafts, lastModified: Date.now() };
 
         setProject(updatedProject);
+        // Save immediately for metadata updates
         await saveProjectData(updatedProject.id, updatedProject);
     }, [project]);
 
