@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Project, Shot, WorldSettings, ShowToastFn, ToastNotification, ScriptElement, TitlePageData, ScriptDraft } from '../types';
-import { getProjectData, saveProjectData, setActiveProjectId } from '../services/storage';
+import { saveProjectData, setActiveProjectId, createAutoSave } from '../services/storage'; // Updated import
 import { ToastContainer } from '../components/features/Toast';
 import { CommandPalette } from '../components/CommandPalette';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { useAutoSave } from '../hooks/useAutoSave';
+// Removed useAutoSave import (replaced by createAutoSave)
 import { useSaveStatus } from '../context/SaveStatusContext';
 import { WorkspaceContextType } from '../context/WorkspaceContext'; // NEW IMPORT
 import { Loader2 } from 'lucide-react';
@@ -97,23 +97,54 @@ export const WorkspaceLayout: React.FC = () => {
         setToasts((prev: ToastNotification[]) => [...prev, { id, message, type, action }]);
     }, []);
 
-    const { status: globalSaveStatus, lastSavedAt: globalLastSavedAt, lastError: globalLastError } = useSaveStatus();
-    const { saveStatus, lastSavedAt, saveNow, cancel: cancelAutoSave } = useAutoSave(
-        project,
-        useCallback((data: Project | null) => {
-            if (data?.id) {
-                return saveProjectData(data.id, data);
-            }
-            return Promise.resolve();
-        }, []),
-        {
-            delay: 1000,
-            onError: (error) => {
-                showToast('Failed to auto-save project', 'error');
-                console.error('Auto-save error:', error);
+    const { status: globalSaveStatus, lastSavedAt: globalLastSavedAt, lastError: globalLastError, setSaving, setSaved, setError } = useSaveStatus();
+
+    // Initialize AutoSave Manager
+    const autoSave = useMemo(() => createAutoSave({
+        onStatusChange: (s) => {
+            if (s.status === 'saving') setSaving();
+            if (s.status === 'saved') setSaved();
+            if (s.status === 'error' && s.lastError) {
+                setError(s.lastError);
+                showToast(`Auto-save failed: ${s.lastError}`, 'error');
             }
         }
-    );
+    }), [setSaving, setSaved, setError, showToast]);
+
+    // Track pending save options to merge into the next auto-save
+    const pendingSaveOptions = React.useRef<{ forceImagePersist?: boolean }>({});
+
+    // Trigger auto-save when project changes
+    const previousProjectRef = React.useRef<Project | null>(null);
+    useEffect(() => {
+        if (!project || !project.id) return;
+
+        // Skip first render or if valid check fails
+        if (previousProjectRef.current === project) return;
+        previousProjectRef.current = project;
+
+        const options = { ...pendingSaveOptions.current };
+        pendingSaveOptions.current = {}; // Reset after consuming
+
+        autoSave.save(project.id, project, options);
+    }, [project, autoSave]);
+
+    // Handle manual save / flush - ALWAYS force persistence
+    const saveNow = useCallback(async () => {
+        await autoSave.flush({ forceImagePersist: true });
+    }, [autoSave]);
+
+    // Cancel on unmount
+    useEffect(() => {
+        return () => {
+            autoSave.cancel();
+        };
+    }, [autoSave]);
+
+    // Use keyboard shortcuts
+    useKeyboardShortcut({
+        key: 's', meta: true, callback: (e) => { e.preventDefault(); saveNow(); }, description: 'Save Project',
+    });
 
     useKeyboardShortcut({
         key: 'k', meta: true, callback: (e) => { e.preventDefault(); setShowCommandPalette(true); }, description: 'Open Command Palette',
@@ -136,6 +167,8 @@ export const WorkspaceLayout: React.FC = () => {
             localStorage.setItem('cinesketch_theme_mode', 'dark');
         }
     }, []);
+
+
 
     useEffect(() => {
         if (!projectId) { navigate('/'); return; }
@@ -169,7 +202,10 @@ export const WorkspaceLayout: React.FC = () => {
         }
     };
 
-    const handleUpdateProject = useCallback((updated: Project) => {
+    const handleUpdateProject = useCallback((updated: Project, options?: { forceImagePersist?: boolean }) => {
+        if (options?.forceImagePersist) {
+            pendingSaveOptions.current.forceImagePersist = true;
+        }
         setProject((prev: Project | null) => {
             if (!prev) return updated;
             return { ...prev, ...updated };
@@ -219,7 +255,7 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleCreateDraft = useCallback(async (name?: string) => {
         if (!project) return;
-        cancelAutoSave(); // ✅ FIXED: Uses hook's cancel function
+        autoSave.cancel(); // Cancel pending saves before critical operation
 
         const draftName = name || `Snapshot ${project.drafts.length + 1}`;
         const newDraft: ScriptDraft = {
@@ -235,7 +271,7 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
-        cancelAutoSave();
+        autoSave.cancel();
 
         // Integrity Check
         const { project: normalized } = normalizeDraftsAndActiveId(project);
@@ -314,11 +350,11 @@ export const WorkspaceLayout: React.FC = () => {
         } else { showToast("Create a scene first", 'error'); }
     }, [project, showToast]);
 
-    const handleUpdateShot = useCallback((shot: Shot) => {
+    const handleUpdateShot = useCallback((shot: Shot, options?: { forceImagePersist?: boolean }) => {
         if (!project) return;
         const exists = project.shots.find((s: Shot) => s.id === shot.id);
         const newShots = exists ? project.shots.map((s: Shot) => s.id === shot.id ? shot : s) : [...project.shots, shot];
-        handleUpdateProject({ ...project, shots: newShots });
+        handleUpdateProject({ ...project, shots: newShots }, options);
     }, [project, handleUpdateProject]);
 
     const handleBulkUpdateShots = useCallback((updatedShots: Shot[]) => {

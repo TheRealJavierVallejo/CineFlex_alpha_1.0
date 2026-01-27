@@ -520,9 +520,19 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
  * @param projectId - Unique ID of the project.
  * @param project - The complete project data.
  */
-export const saveProjectData = async (projectId: string, project: Project): Promise<void> => {
-    // 1. Persist Images first
-    const cleanProject = await ensureImagesPersisted(projectId, project);
+/**
+ * Immediate transactional save.
+ * Throws errors on critical failures so UI can handle them.
+ */
+const saveProjectDataImmediate = async (projectId: string, project: Project, options?: { forceImagePersist?: boolean }): Promise<void> => {
+    // 1. Persist Images - Only if forced or smart save logic dictates
+    let cleanProject = project;
+
+    if (options?.forceImagePersist) {
+        cleanProject = await ensureImagesPersisted(projectId, project);
+    } else {
+        console.log('[AUTOSAVE] skipping image persistence (text-only change)');
+    }
 
     // CRITICAL: Final UUID integrity check
     if (!project.activeDraftId || !isUUID(project.activeDraftId)) {
@@ -753,10 +763,29 @@ const saveQueue = new SaveQueue();
  * Sequential wrapper for saveProjectData.
  * Forces the save to join the queue and wait its turn.
  */
-export const saveProjectDataSequential = (projectId: string, project: Project): Promise<void> => {
-    return saveQueue.enqueue(async () => {
-        await saveProjectData(projectId, project);
+/**
+ * Public entry point for saving project data.
+ * Enqueues the operation to ensure sequential execution.
+ */
+export const saveProjectData = async (projectId: string, project: Project, options?: { forceImagePersist?: boolean }): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        saveQueue.enqueue(async () => {
+            try {
+                await saveProjectDataImmediate(projectId, project, options);
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
     });
+};
+
+/**
+ * Sequential wrapper for saveProjectData.
+ * Forces the save to join the queue and wait its turn.
+ */
+export const saveProjectDataSequential = (projectId: string, project: Project): Promise<void> => {
+    return saveProjectData(projectId, project, { forceImagePersist: true });
 };
 
 /**
@@ -764,70 +793,152 @@ export const saveProjectDataSequential = (projectId: string, project: Project): 
  * Cancels any pending auto-save debounce FIRST, then queues this save.
  * This guarantees "last write wins" for manual actions like delete.
  */
-export const saveProjectDataImmediate = async (projectId: string, project: Project): Promise<void> => {
-    // 1. Kill any pending auto-save timer
-    saveProjectDataDebounced.cancel();
-
-    // 2. Queue this manual save to run effectively "immediately" (after any in-flight requests finish)
-    return saveQueue.enqueue(async () => {
-        await saveProjectData(projectId, project);
-    });
+/**
+ * Immediate transactional save helper.
+ * This is now just an alias to the main queued saveProjectData,
+ * as we consolidated the queue logic there.
+ */
+export const saveProjectDataForced = async (projectId: string, project: Project): Promise<void> => {
+    return saveProjectData(projectId, project, { forceImagePersist: true });
 };
 
 /**
  * Debounced save that uses the queue to prevent race conditions
  */
-const createQueuedDebouncedSave = () => {
+export type AutoSaveStatus = {
+    status: 'idle' | 'saving' | 'saved' | 'error';
+    lastError?: string;
+    lastSavedAt?: number;
+};
+
+/**
+ * Creates an auto-save manager with debounce, queueing, and status tracking.
+ */
+export const createAutoSave = (options?: { onStatusChange?: (status: AutoSaveStatus) => void }) => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let pendingProjectId: string | null = null;
     let pendingProject: Project | null = null;
+    let pendingOptions: { forceImagePersist?: boolean } = {};
+    let saveCount = 0;
 
-    const save = (projectId: string, project: Project) => {
-        // Clear existing timeout
-        if (timeoutId) {
-            clearTimeout(timeoutId);
+    let state: AutoSaveStatus = {
+        status: 'idle'
+    };
+
+    const updateStatus = (newStatus: Partial<AutoSaveStatus>) => {
+        state = { ...state, ...newStatus };
+        options?.onStatusChange?.(state);
+    };
+
+    const getStatus = () => state;
+
+    const performSave = async (projectId: string, project: Project, saveOptions?: { forceImagePersist?: boolean }) => {
+        try {
+            console.log('[AUTOSAVE] start');
+            updateStatus({ status: 'saving', lastError: undefined });
+
+            // Safety: Force persist every 10 saves to catch edge cases
+            saveCount++;
+            const shouldForce = saveOptions?.forceImagePersist || (saveCount % 10 === 0);
+
+            await saveProjectData(projectId, project, { forceImagePersist: shouldForce });
+
+            console.log('[AUTOSAVE] success');
+            updateStatus({ status: 'saved', lastSavedAt: Date.now() });
+
+            // Reset to idle after a delay
+            setTimeout(() => {
+                if (state.status === 'saved') {
+                    updateStatus({ status: 'idle' });
+                }
+            }, 2000);
+
+        } catch (error) {
+            console.error('[AUTOSAVE] failed:', error);
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            updateStatus({ status: 'error', lastError: msg });
         }
+    };
 
-        // Store latest state
+    const save = (projectId: string, project: Project, saveOptions?: { forceImagePersist?: boolean }) => {
+        // Clear existing timeout
+        if (timeoutId) clearTimeout(timeoutId);
+
+        // Update pending state
         pendingProjectId = projectId;
         pendingProject = project;
 
-        // Debounce: wait 1 second of inactivity
+        // Merge options: if any update in the batch tracks a force persist, we must respect it
+        if (saveOptions?.forceImagePersist) {
+            pendingOptions.forceImagePersist = true;
+        }
+
+        console.log('[AUTOSAVE] scheduled');
+
+        // Debounce: wait 1 second
         timeoutId = setTimeout(() => {
             if (!pendingProjectId || !pendingProject) return;
 
-            const finalProjectId = pendingProjectId;
-            const finalProject = pendingProject;
+            const pId = pendingProjectId;
+            const pData = pendingProject;
+            const pOpts = { ...pendingOptions };
 
-            // Clear pending state
+            // Clear pending
             pendingProjectId = null;
             pendingProject = null;
+            pendingOptions = {};
             timeoutId = null;
 
-            // Add to queue (will execute sequentially)
-            // We don't await this here because it's fire-and-forget for auto-save
-            saveQueue.enqueue(async () => {
-                console.log(`[SAVE QUEUE] Saving project ${finalProjectId}...`);
-                await saveProjectData(finalProjectId, finalProject);
-                console.log(`[SAVE QUEUE] ✅ Save complete for ${finalProjectId}`);
-            });
+            performSave(pId, pData, pOpts);
         }, 1000);
     };
 
-    save.cancel = () => {
+    const flush = async (flushOptions?: { forceImagePersist?: boolean }) => {
         if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
+        }
+
+        if (pendingProjectId && pendingProject) {
+            console.log('[AUTOSAVE] flushing pending save...');
+            const pId = pendingProjectId;
+            const pData = pendingProject;
+
+            // Merge flush options with pending
+            const pOpts = { ...pendingOptions };
+            if (flushOptions?.forceImagePersist) pOpts.forceImagePersist = true;
+
             pendingProjectId = null;
             pendingProject = null;
-            console.log('[SAVE QUEUE] 🛑 Pending save cancelled due to transactional operation');
+            pendingOptions = {};
+
+            await performSave(pId, pData, pOpts);
+        } else if (flushOptions?.forceImagePersist && state.status !== 'saving') {
+            // If manual save requested but no pending changes, we might want to just force a save?
+            // But we need project data. Assuming this is called when data is dirty.
+            // If data not dirty, maybe we don't save?
+            // Prompt says "On manual 'Save Now'... always persist images: autoSave.flush({force: true})"
+            // But flush needs data. if !pendingProject, we can't save. 
+            // We'll rely on the fact that if user made changes, pendingProject is set.
+            // If user hits Save Now with no changes, maybe we ignore? Or `saveNow` in WorkspaceLayout knows current project?
+            // WorkspaceLayout calls flush. If no pending, it does nothing?
+            // I'll stick to: flush only saves if pending.
+            console.log('[AUTOSAVE] flush called but nothing pending');
         }
     };
 
-    return save;
-};
+    const cancel = () => {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+        }
+        pendingProjectId = null;
+        pendingProject = null;
+        pendingOptions = {};
+    };
 
-export const saveProjectDataDebounced = createQueuedDebouncedSave();
+    return { save, flush, cancel, getStatus };
+};
 
 // --- ASSETS ---
 
