@@ -1,11 +1,16 @@
 /**
- * PHASE 5: REALTIME VALIDATION HOOK
+ * PHASE 5: REAL-TIME VALIDATION HOOK
  * 
- * React hook that integrates real-time validation into the script editor.
- * Handles debouncing, performance optimization, and quick fixes.
+ * React hook that provides real-time validation for script elements.
+ * Automatically validates on element changes with debouncing.
+ * 
+ * Usage:
+ * ```tsx
+ * const { markers, applyFix, stats } = useRealtimeValidation(scriptElements);
+ * ```
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ScriptElement } from '../types';
 import {
     validateAllElements,
@@ -23,21 +28,32 @@ interface UseRealtimeValidationOptions {
 }
 
 interface UseRealtimeValidationReturn {
-    validationResults: Map<string, RealtimeValidationResult>;
-    stats: { errors: number; warnings: number; infos: number };
-    isValidating: boolean;
+    // Validation results
+    markers: Map<string, RealtimeValidationResult>;
+    
+    // Get markers for specific element
     getMarkersForElement: (elementId: string) => LiveValidationMarker[];
-    applyQuickFixToElement: (elementId: string, marker: LiveValidationMarker) => void;
+    
+    // Apply quick fix
+    applyFix: (element: ScriptElement, marker: LiveValidationMarker) => ScriptElement | null;
+    
+    // Statistics
+    stats: {
+        errors: number;
+        warnings: number;
+        infos: number;
+    };
+    
+    // Control
+    isValidating: boolean;
     revalidate: () => void;
-    clearValidation: () => void;
 }
 
 /**
- * Hook for real-time validation in script editor
+ * Hook for real-time validation of script elements
  */
 export const useRealtimeValidation = (
     elements: ScriptElement[],
-    onElementUpdate?: (elementId: string, updatedElement: ScriptElement) => void,
     options: UseRealtimeValidationOptions = {}
 ): UseRealtimeValidationReturn => {
     const {
@@ -46,156 +62,121 @@ export const useRealtimeValidation = (
         validateOnMount = true
     } = options;
 
-    const [validationResults, setValidationResults] = useState<Map<string, RealtimeValidationResult>>(new Map());
+    const [markers, setMarkers] = useState<Map<string, RealtimeValidationResult>>(new Map());
     const [isValidating, setIsValidating] = useState(false);
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const previousElementsRef = useRef<ScriptElement[]>(elements);
 
-    // Validate all elements
-    const performValidation = useCallback(() => {
+    // Debounced validation
+    useEffect(() => {
         if (!enabled) {
-            setValidationResults(new Map());
+            setMarkers(new Map());
             return;
         }
 
         setIsValidating(true);
-        
-        // Run validation
-        const results = validateAllElements(elements);
-        
-        setValidationResults(results);
-        setIsValidating(false);
-        
-        const stats = getValidationStats(results);
-        console.log(
-            `[Phase 5] Validated ${elements.length} elements:`,
-            `${stats.errors} errors,`,
-            `${stats.warnings} warnings,`,
-            `${stats.infos} info`
-        );
-    }, [elements, enabled]);
 
-    // Debounced validation
-    useEffect(() => {
-        if (!enabled) return;
-
-        // Clear existing timer
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-
-        // Check if elements actually changed
-        const hasChanged = elements.length !== previousElementsRef.current.length ||
-            elements.some((el, idx) => {
-                const prevEl = previousElementsRef.current[idx];
-                return !prevEl || el.id !== prevEl.id || el.content !== prevEl.content || el.type !== prevEl.type;
-            });
-
-        if (!hasChanged) {
-            return;
-        }
-
-        // Set new timer
-        debounceTimerRef.current = setTimeout(() => {
-            performValidation();
-            previousElementsRef.current = elements;
+        const timer = setTimeout(() => {
+            try {
+                const results = validateAllElements(elements);
+                setMarkers(results);
+            } catch (error) {
+                console.error('[Phase 5] Validation error:', error);
+            } finally {
+                setIsValidating(false);
+            }
         }, debounceMs);
 
         return () => {
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
-            }
+            clearTimeout(timer);
+            setIsValidating(false);
         };
-    }, [elements, enabled, debounceMs, performValidation]);
-
-    // Initial validation on mount
-    useEffect(() => {
-        if (validateOnMount && enabled && elements.length > 0) {
-            performValidation();
-        }
-    }, []); // Only on mount
+    }, [elements, enabled, debounceMs]);
 
     // Get markers for specific element
     const getMarkersForElement = useCallback((elementId: string): LiveValidationMarker[] => {
-        const result = validationResults.get(elementId);
+        const result = markers.get(elementId);
         return result?.markers || [];
-    }, [validationResults]);
+    }, [markers]);
 
-    // Apply quick fix to element
-    const applyQuickFixToElement = useCallback((elementId: string, marker: LiveValidationMarker) => {
-        const element = elements.find(el => el.id === elementId);
-        if (!element || !onElementUpdate) {
-            console.warn('[Phase 5] Cannot apply quick fix: element not found or no update handler');
-            return;
-        }
+    // Apply quick fix
+    const applyFix = useCallback((element: ScriptElement, marker: LiveValidationMarker) => {
+        return applyQuickFix(element, marker);
+    }, []);
 
-        const fixedElement = applyQuickFix(element, marker);
-        if (fixedElement) {
-            console.log(`[Phase 5] Applied quick fix for ${marker.code} on element ${elementId}`);
-            onElementUpdate(elementId, fixedElement);
-        }
-    }, [elements, onElementUpdate]);
+    // Calculate statistics
+    const stats = useMemo(() => {
+        return getValidationStats(markers);
+    }, [markers]);
 
     // Manual revalidation
     const revalidate = useCallback(() => {
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-        performValidation();
-    }, [performValidation]);
+        if (!enabled) return;
 
-    // Clear all validation
-    const clearValidation = useCallback(() => {
-        setValidationResults(new Map());
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
+        setIsValidating(true);
+        try {
+            const results = validateAllElements(elements);
+            setMarkers(results);
+        } catch (error) {
+            console.error('[Phase 5] Revalidation error:', error);
+        } finally {
+            setIsValidating(false);
         }
-    }, []);
-
-    // Calculate stats
-    const stats = useMemo(() => {
-        return getValidationStats(validationResults);
-    }, [validationResults]);
+    }, [elements, enabled]);
 
     return {
-        validationResults,
+        markers,
+        getMarkersForElement,
+        applyFix,
         stats,
         isValidating,
-        getMarkersForElement,
-        applyQuickFixToElement,
-        revalidate,
-        clearValidation
+        revalidate
     };
 };
 
 /**
- * Hook for single element validation (for standalone element editors)
+ * Hook for validating a single element in real-time
+ * Useful for individual element editors
  */
-export const useElementValidation = (
+export const useSingleElementValidation = (
     element: ScriptElement,
-    enabled: boolean = true
+    enabled: boolean = true,
+    debounceMs: number = 300
 ) => {
     const [markers, setMarkers] = useState<LiveValidationMarker[]>([]);
-    const [isValid, setIsValid] = useState(true);
+    const [isValidating, setIsValidating] = useState(false);
 
     useEffect(() => {
         if (!enabled) {
             setMarkers([]);
-            setIsValid(true);
             return;
         }
 
-        const result = validateElementRealtime(element);
-        setMarkers(result.markers);
-        setIsValid(result.isValid);
-    }, [element, enabled]);
+        setIsValidating(true);
+
+        const timer = setTimeout(() => {
+            try {
+                const result = validateElementRealtime(element);
+                setMarkers(result.markers);
+            } catch (error) {
+                console.error('[Phase 5] Single element validation error:', error);
+            } finally {
+                setIsValidating(false);
+            }
+        }, debounceMs);
+
+        return () => {
+            clearTimeout(timer);
+            setIsValidating(false);
+        };
+    }, [element, enabled, debounceMs]);
+
+    const hasErrors = markers.some(m => m.severity === 'error');
+    const hasWarnings = markers.some(m => m.severity === 'warning');
 
     return {
         markers,
-        isValid,
-        hasErrors: markers.some(m => m.severity === 'error'),
-        hasWarnings: markers.some(m => m.severity === 'warning'),
-        errorCount: markers.filter(m => m.severity === 'error').length,
-        warningCount: markers.filter(m => m.severity === 'warning').length
+        isValidating,
+        hasErrors,
+        hasWarnings,
+        isValid: !hasErrors
     };
 };
