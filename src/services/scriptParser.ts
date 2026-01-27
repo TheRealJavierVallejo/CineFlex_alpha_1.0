@@ -1,14 +1,12 @@
 /*
- * 📜 SERVICE: SCRIPT PARSER (Phase 2 - Validation Integrated)
+ * 📋 SERVICE: SCRIPT PARSER (Phase 3 - Silent Auto-Fix)
  * 
  * Handles parsing of .fountain, .txt, .fdx (Final Draft), and .pdf files.
- * NOW INCLUDES: Automatic validation, confidence scoring, and auto-fix suggestions.
  * 
- * Phase 2 Changes:
- * - All parsers now return ScriptModel (validated wrapper)
- * - Validation reports included in response
- * - Auto-fix suggestions provided
- * - FDX dual dialogue type fixed (boolean → 'left' | 'right')
+ * Phase 3 Change:
+ * - Auto-fix is now ENABLED BY DEFAULT (silent cleanup)
+ * - No UI prompts, just clean scripts automatically
+ * - Validation still runs (for export checks later)
  */
 
 import { Scene, ScriptElement, TitlePageData } from '../types';
@@ -23,7 +21,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 /**
- * PHASE 2: Enhanced parsed script with validation
+ * PHASE 3: Enhanced parsed script with silent auto-fix
  */
 export interface ParsedScript {
   scenes: Scene[];
@@ -34,9 +32,9 @@ export interface ParsedScript {
   };
   titlePage?: TitlePageData;
   
-  // NEW Phase 2 fields:
+  // Phase 2/3 fields (kept for export validation):
   scriptModel: ScriptModel;           // Validated, immutable wrapper
-  validationReport: ValidationReport; // Quality assessment
+  validationReport: ValidationReport; // Quality assessment (for export)
   autoFixAvailable: boolean;          // Can issues be auto-fixed?
   autoFixedElements?: ScriptElement[]; // If auto-fix was applied
 }
@@ -44,7 +42,7 @@ export interface ParsedScript {
 // --- MAIN PARSER ENTRY ---
 
 export async function parseScript(file: File, options?: {
-  autoFix?: boolean; // Automatically fix common issues
+  autoFix?: boolean; // Default TRUE (Phase 3 change)
   strict?: boolean;  // Reject invalid scripts
 }): Promise<ParsedScript> {
   const filename = file.name.toLowerCase();
@@ -68,6 +66,7 @@ export async function parseScript(file: File, options?: {
 
 /**
  * HELPER: Wrap parsed elements with validation
+ * Phase 3: Auto-fix is now DEFAULT BEHAVIOR
  */
 function createValidatedResult(
   elements: ScriptElement[],
@@ -76,18 +75,23 @@ function createValidatedResult(
   options?: { autoFix?: boolean; strict?: boolean }
 ): ParsedScript {
   const strict = options?.strict ?? false;
-  const shouldAutoFix = options?.autoFix ?? false;
+  
+  // PHASE 3 CHANGE: Auto-fix is now TRUE by default
+  const shouldAutoFix = options?.autoFix ?? true;
   
   let finalElements = elements;
   let autoFixedElements: ScriptElement[] | undefined;
   
-  // Auto-fix if requested
+  // Auto-fix by default (silent)
   if (shouldAutoFix) {
     const fixResult = autoFixElements(elements);
     finalElements = fixResult.fixed;
     autoFixedElements = fixResult.fixed;
     
-    console.log(`[Phase 2] Auto-fixed ${fixResult.totalFixed} elements, removed ${fixResult.removed.length}`);
+    // Only log if fixes were made
+    if (fixResult.totalFixed > 0 || fixResult.removed.length > 0) {
+      console.log(`[Phase 3] Silently auto-fixed ${fixResult.totalFixed} issues, removed ${fixResult.removed.length} invalid elements`);
+    }
   }
   
   // Create validated model
@@ -100,9 +104,12 @@ function createValidatedResult(
                'DUAL_DIALOGUE_UNPAIRED', 'SEQUENCE_GAPS'].includes(issue.code)
   );
   
-  // Log validation results
-  console.log(`[Phase 2 Validation] Confidence: ${(validationReport.confidence * 100).toFixed(1)}%`);
-  console.log(`[Phase 2 Validation] Errors: ${validationReport.summary.errors}, Warnings: ${validationReport.summary.warnings}`);
+  // Silent validation (no console spam unless errors)
+  if (validationReport.summary.errors > 0) {
+    console.log(`[Phase 3] ⚠️ Validation: ${validationReport.summary.errors} errors, ${validationReport.summary.warnings} warnings (Confidence: ${(validationReport.confidence * 100).toFixed(1)}%)`);
+  } else {
+    console.log(`[Phase 3] ✅ Script validated and cleaned (Confidence: ${(validationReport.confidence * 100).toFixed(1)}%)`);
+  }
   
   if (!validationReport.valid && strict) {
     throw new Error(`Script validation failed: ${validationReport.summary.errors} errors found`);
@@ -195,25 +202,17 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
       sequence: sequence++
     };
     
-    // PHASE 2 FIX: Handle dual dialogue properly
-    // FDX marks dual dialogue with Dual="Yes" attribute
-    // We need to track blocks and assign left/right
+    // Handle dual dialogue
     if (isDual) {
       if (!inDualDialogue) {
-        // Starting first dual block (left)
         inDualDialogue = true;
         element.dual = 'left';
         dualDialogueBlock = [element];
       } else {
-        // Continuing dual block
         element.dual = 'left';
         dualDialogueBlock.push(element);
       }
     } else if (inDualDialogue) {
-      // End of dual dialogue, this is the right side
-      // Actually, FDX format is different - both sides have Dual="Yes"
-      // We need to detect the break between left and right
-      // For now, we'll let auto-fix handle dual dialogue pairing
       inDualDialogue = false;
       dualDialogueBlock = [];
     }
