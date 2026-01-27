@@ -21,7 +21,7 @@ import { FullscreenOverlay } from './shot-editor/FullscreenOverlay';
 
 interface ShotEditorProps {
   project: Project;
-  onUpdateShot: (shot: Shot) => void;
+  onUpdateShot: (shot: Shot, options?: { forceImagePersist?: boolean }) => void;
   onClose: () => void;
   activeShot: Shot | null;
   showToast: ShowToastFn;
@@ -194,7 +194,9 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = reader.result as string;
-        setShot(prev => ({ ...prev, sketchImage: base64 }));
+        const updated = { ...shot, sketchImage: base64 };
+        setShot(updated);
+        onUpdateShot(updated, { forceImagePersist: true });
         // Deprecated: analyzeSketch was removed from gemini.ts in Phase 2
         /*
         const analysis = await analyzeSketch(base64);
@@ -213,12 +215,14 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setShot(prev => ({
-          ...prev,
+        const updated = {
+          ...shot,
           referenceImage: reader.result as string,
-          controlType: prev.controlType || 'depth',
-          referenceStrength: prev.referenceStrength || 50
-        }));
+          controlType: shot.controlType || 'depth',
+          referenceStrength: shot.referenceStrength || 50
+        };
+        setShot(updated);
+        onUpdateShot(updated, { forceImagePersist: true });
         showToast("Reference image added", 'success');
       };
       reader.readAsDataURL(file);
@@ -278,7 +282,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
       };
 
       setShot(updated);
-      onUpdateShot(updated);
+      onUpdateShot(updated, { forceImagePersist: true });
       showToast("Render successful", 'success');
 
     } catch (error: any) {
@@ -300,7 +304,7 @@ export const ShotEditor: React.FC<ShotEditorProps> = ({ project, onUpdateShot, o
   const handleSelectVariation = useCallback(async (image: string) => {
     const updated = { ...shot, generatedImage: image, generationCandidates: currentCandidates };
     setShot(updated);
-    onUpdateShot(updated);
+    onUpdateShot(updated, { forceImagePersist: true });
 
     const library = await getImageLibrary(project.id);
     const selectedImageItem = library.find(item => item.url === image);

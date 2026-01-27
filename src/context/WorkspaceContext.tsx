@@ -3,11 +3,11 @@ import { Project, Shot, WorldSettings, ShowToastFn, ScriptElement, ScriptDraft }
 
 export interface WorkspaceContextType {
     project: Project;
-    handleUpdateProject: (updated: Project) => void;
+    handleUpdateProject: (updated: Project, options?: { forceImagePersist?: boolean }) => void;
     handleUpdateSettings: <K extends keyof WorldSettings>(key: K, value: WorldSettings[K]) => void;
     handleAddShot: () => void;
     handleEditShot: (shot: Shot) => void;
-    handleUpdateShot: (shot: Shot) => void;
+    handleUpdateShot: (shot: Shot, options?: { forceImagePersist?: boolean }) => void;
     handleBulkUpdateShots: (shots: Shot[]) => void;
     handleDeleteShot: (shotId: string) => void;
     handleDuplicateShot: (shotId: string) => void;
