@@ -107,8 +107,8 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     }
 
     return (
-        <div className="flex-1 p-8">
-            <div className="flex flex-col items-center gap-12">
+        <div className="w-full">
+            <div className="flex flex-col items-center gap-12 py-4">
                 {/* Title Page */}
                 {options.includeTitlePage && project.titlePage && (
                     <div
