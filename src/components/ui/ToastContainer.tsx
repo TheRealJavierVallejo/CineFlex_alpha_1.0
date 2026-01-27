@@ -1,24 +1,23 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { useState, useCallback, createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
-import Toast, { ToastType, ToastProps } from './Toast';
+import Toast, { ToastType } from './Toast';
 
 interface ToastData {
   id: string;
   type: ToastType;
-  title: string;
-  message?: string;
+  message: string;
   duration?: number;
 }
 
 interface ToastContextType {
-  showToast: (type: ToastType, title: string, message?: string, duration?: number) => void;
-  success: (title: string, message?: string) => void;
-  error: (title: string, message?: string) => void;
-  warning: (title: string, message?: string) => void;
-  info: (title: string, message?: string) => void;
+  showToast: (type: ToastType, message: string, duration?: number) => void;
+  success: (message: string, duration?: number) => void;
+  error: (message: string, duration?: number) => void;
+  warning: (message: string, duration?: number) => void;
+  info: (message: string, duration?: number) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+const ToastContext = createContext<ToastContextType | null>(null);
 
 export const useToast = () => {
   const context = useContext(ToastContext);
@@ -28,56 +27,49 @@ export const useToast = () => {
   return context;
 };
 
-interface ToastProviderProps {
-  children: ReactNode;
-}
-
-export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
+
+  const showToast = useCallback((type: ToastType, message: string, duration = 5000) => {
+    const id = `toast-${Date.now()}-${Math.random()}`;
+    setToasts(prev => [...prev, { id, type, message, duration }]);
+  }, []);
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  const showToast = useCallback(
-    (type: ToastType, title: string, message?: string, duration: number = 5000) => {
-      const id = `toast-${Date.now()}-${Math.random()}`;
-      setToasts(prev => [...prev, { id, type, title, message, duration }]);
-    },
-    []
-  );
-
-  const success = useCallback((title: string, message?: string) => {
-    showToast('success', title, message);
+  const success = useCallback((message: string, duration?: number) => {
+    showToast('success', message, duration);
   }, [showToast]);
 
-  const error = useCallback((title: string, message?: string) => {
-    showToast('error', title, message, 7000); // Errors stay longer
+  const error = useCallback((message: string, duration?: number) => {
+    showToast('error', message, duration);
   }, [showToast]);
 
-  const warning = useCallback((title: string, message?: string) => {
-    showToast('warning', title, message);
+  const warning = useCallback((message: string, duration?: number) => {
+    showToast('warning', message, duration);
   }, [showToast]);
 
-  const info = useCallback((title: string, message?: string) => {
-    showToast('info', title, message);
+  const info = useCallback((message: string, duration?: number) => {
+    showToast('info', message, duration);
   }, [showToast]);
 
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
       {createPortal(
-        <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2">
+        <div className="fixed top-4 right-4 z-[200] flex flex-col gap-3 pointer-events-none">
           {toasts.map(toast => (
-            <Toast
-              key={toast.id}
-              id={toast.id}
-              type={toast.type}
-              title={toast.title}
-              message={toast.message}
-              duration={toast.duration}
-              onClose={removeToast}
-            />
+            <div key={toast.id} className="pointer-events-auto">
+              <Toast
+                id={toast.id}
+                type={toast.type}
+                message={toast.message}
+                duration={toast.duration}
+                onClose={removeToast}
+              />
+            </div>
           ))}
         </div>,
         document.body
