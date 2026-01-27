@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Project, ScriptElement } from '../../../types';
 import { ExportOptions } from '../../../services/exportService';
 import { calculatePagination } from '../../../services/pagination';
@@ -27,6 +27,13 @@ interface ExportPreviewRendererProps {
     onPageCountChange?: (pageCount: number) => void;
 }
 
+// Convert inches to pixels at 96 DPI (browser standard)
+const INCH_TO_PX = 96;
+const PAGE_WIDTH_PX = PAGE_WIDTH_IN * INCH_TO_PX; // 816px
+const PAGE_HEIGHT_PX = PAGE_HEIGHT_IN * INCH_TO_PX; // 1056px
+const MIN_SCALE = 0.5; // Don't scale below 50%
+const MAX_SCALE = 1.0; // Don't scale above 100%
+
 // Typography-only styles (no margins - those come from elementMargins)
 const elementStyles: Record<string, string> = {
     'scene_heading': 'font-bold uppercase',
@@ -54,6 +61,8 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
     onPageCountChange
 }) => {
     const elements = project.scriptElements || [];
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState<number | null>(null); // null = loading
 
     const pages = useMemo(() => {
         if (!elements.length) return [];
@@ -71,6 +80,35 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
 
         return groupedPages;
     }, [elements, project.id]);
+
+    // Calculate responsive scale based on container width
+    useEffect(() => {
+        const calculateScale = () => {
+            if (!containerRef.current) return;
+            
+            const containerWidth = containerRef.current.clientWidth;
+            const padding = 16; // Account for minimal padding
+            const availableWidth = containerWidth - padding;
+            
+            // Calculate scale to fit page width
+            const calculatedScale = availableWidth / PAGE_WIDTH_PX;
+            
+            // Clamp between MIN_SCALE and MAX_SCALE
+            const clampedScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, calculatedScale));
+            
+            setScale(clampedScale);
+        };
+
+        // Small delay to ensure container is rendered
+        const timer = setTimeout(calculateScale, 50);
+        
+        // Recalculate on window resize
+        window.addEventListener('resize', calculateScale);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('resize', calculateScale);
+        };
+    }, []);
 
     useEffect(() => {
         if (onPageCountChange) {
@@ -112,11 +150,10 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         );
     };
 
-    // Page styles using real inch dimensions with max-width for responsive scaling
+    // Page styles using real inch dimensions with aspect ratio
     const pageStyle: React.CSSProperties = {
         width: `${PAGE_WIDTH_IN}in`,
-        maxWidth: '100%', // Allow shrinking to fit container
-        height: `${PAGE_HEIGHT_IN}in`,
+        aspectRatio: `${PAGE_WIDTH_IN} / ${PAGE_HEIGHT_IN}`, // Maintains 8.5:11 ratio
         paddingTop: `${MARGIN_TOP_IN}in`,
         paddingBottom: `${MARGIN_BOTTOM_IN}in`,
         paddingLeft: `${MARGIN_LEFT_IN}in`,
@@ -124,10 +161,23 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         boxSizing: 'border-box',
         fontFamily: FONT_FAMILY,
         fontSize: `${FONT_SIZE_PT}pt`,
-        lineHeight: `${LINE_HEIGHT_IN}in`,
-        margin: '0 auto' // Center horizontally
+        lineHeight: `${LINE_HEIGHT_IN}in`
     };
 
+    // Scale wrapper with proper layout compensation
+    const getScaleWrapperStyle = (): React.CSSProperties => {
+        if (scale === null) return {}; // Loading state
+        
+        return {
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+            willChange: 'transform',
+            // Compensate for the space taken by transform
+            marginBottom: scale < 1 ? `${-(PAGE_HEIGHT_PX * (1 - scale))}px` : '0px'
+        };
+    };
+
+    // Empty state
     if (!elements.length) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -140,83 +190,100 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
         );
     }
 
+    // Loading state while calculating scale
+    if (scale === null) {
+        return (
+            <div ref={containerRef} className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2">
+                    <div className="w-12 h-12 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-text-muted">Loading preview...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const scaleWrapperStyle = getScaleWrapperStyle();
+
     return (
-        <div className="w-full space-y-4">
+        <div ref={containerRef} className="w-full flex flex-col items-center gap-4">
             {/* Title Page */}
             {options.includeTitlePage && project.titlePage && (
-                <div
-                    className="bg-white text-black shadow-2xl relative rounded-sm"
-                    style={pageStyle}
-                >
-                    <div className="flex flex-col h-full justify-center items-center text-center">
-                        <h1 className="text-2xl font-bold mb-4 uppercase">
-                            {project.titlePage.title || project.name || 'Untitled'}
-                        </h1>
-                        {project.titlePage.authors && project.titlePage.authors.length > 0 && (
-                            <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>
-                                <p className="mb-4">{project.titlePage.credit || 'Written by'}</p>
-                                {project.titlePage.authors.map((author, i) => (
-                                    <p key={i} className="font-bold">{author}</p>
-                                ))}
+                <div style={scaleWrapperStyle}>
+                    <div
+                        className="bg-white text-black shadow-2xl relative rounded-sm"
+                        style={pageStyle}
+                    >
+                        <div className="flex flex-col h-full justify-center items-center text-center">
+                            <h1 className="text-2xl font-bold mb-4 uppercase">
+                                {project.titlePage.title || project.name || 'Untitled'}
+                            </h1>
+                            {project.titlePage.authors && project.titlePage.authors.length > 0 && (
+                                <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>
+                                    <p className="mb-4">{project.titlePage.credit || 'Written by'}</p>
+                                    {project.titlePage.authors.map((author, i) => (
+                                        <p key={i} className="font-bold">{author}</p>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div
+                                className="absolute text-left"
+                                style={{
+                                    bottom: `${MARGIN_BOTTOM_IN}in`,
+                                    left: `${MARGIN_LEFT_IN}in`
+                                }}
+                            >
+                                {project.titlePage.contact && (
+                                    <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
+                                )}
+                            </div>
+                        </div>
+                        {/* Watermark */}
+                        {options.watermark && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                    {options.watermark}
+                                </div>
                             </div>
                         )}
-
-                        <div
-                            className="absolute text-left"
-                            style={{
-                                bottom: `${MARGIN_BOTTOM_IN}in`,
-                                left: `${MARGIN_LEFT_IN}in`
-                            }}
-                        >
-                            {project.titlePage.contact && (
-                                <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
-                            )}
-                        </div>
                     </div>
-                    {/* Watermark */}
-                    {options.watermark && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                            <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
-                                {options.watermark}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 
             {/* Script Pages */}
             {pages.map((page, pageIndex) => (
-                <div
-                    key={pageIndex}
-                    className="bg-white text-black shadow-2xl relative rounded-sm"
-                    style={pageStyle}
-                >
-                    {/* Page number */}
+                <div key={pageIndex} style={scaleWrapperStyle}>
                     <div
-                        className="absolute"
-                        style={{
-                            top: `${PAGE_NUM_TOP_IN}in`,
-                            right: `${PAGE_NUM_RIGHT_IN}in`,
-                            fontFamily: FONT_FAMILY,
-                            fontSize: `${FONT_SIZE_PT}pt`
-                        }}
+                        className="bg-white text-black shadow-2xl relative rounded-sm"
+                        style={pageStyle}
                     >
-                        {pageIndex + 1}.
-                    </div>
-
-                    {/* Page content */}
-                    <div>
-                        {page.map((element, idx) => renderElement(element, idx, idx === 0))}
-                    </div>
-
-                    {/* Watermark */}
-                    {options.watermark && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
-                            <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
-                                {options.watermark}
-                            </div>
+                        {/* Page number */}
+                        <div
+                            className="absolute"
+                            style={{
+                                top: `${PAGE_NUM_TOP_IN}in`,
+                                right: `${PAGE_NUM_RIGHT_IN}in`,
+                                fontFamily: FONT_FAMILY,
+                                fontSize: `${FONT_SIZE_PT}pt`
+                            }}
+                        >
+                            {pageIndex + 1}.
                         </div>
-                    )}
+
+                        {/* Page content */}
+                        <div>
+                            {page.map((element, idx) => renderElement(element, idx, idx === 0))}
+                        </div>
+
+                        {/* Watermark */}
+                        {options.watermark && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                    {options.watermark}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             ))}
         </div>
