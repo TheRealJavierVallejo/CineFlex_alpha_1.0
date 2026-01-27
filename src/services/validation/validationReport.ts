@@ -1,211 +1,156 @@
 /**
  * VALIDATION REPORT
- * Structures validation results with detailed feedback
- * Used to communicate issues to users and developers
+ * 
+ * Structures for reporting validation results to users.
+ * Provides detailed feedback about what's wrong with script data.
  */
 
+import { ValidScriptElement } from './schemas';
+
+/**
+ * Severity levels for validation issues
+ */
 export type ValidationSeverity = 'error' | 'warning' | 'info';
 
+/**
+ * Individual validation issue
+ */
 export interface ValidationIssue {
   severity: ValidationSeverity;
-  message: string;
-  elementId?: string;
-  elementIndex?: number;
-  field?: string;
-  suggestedFix?: string;
+  code: string; // Machine-readable code (e.g., 'INVALID_UUID', 'MISSING_CONTENT')
+  message: string; // Human-readable message
+  elementId?: string; // Which element has the issue
+  elementSequence?: number; // Sequence number for easier location
+  elementType?: string; // Type of element
+  suggestion?: string; // How to fix it
+  context?: Record<string, unknown>; // Additional data for debugging
 }
 
+/**
+ * Overall validation result
+ */
 export interface ValidationReport {
-  valid: boolean;
-  confidence: number; // 0.0 to 1.0
+  valid: boolean; // True if no errors (warnings are ok)
+  confidence: number; // 0.0 to 1.0, based on severity and count of issues
   totalElements: number;
   validElements: number;
   issues: ValidationIssue[];
-  context: string;
-  timestamp: number;
+  summary: {
+    errors: number;
+    warnings: number;
+    info: number;
+  };
+  timestamp: number; // When validation ran
 }
 
-export class ValidationReportBuilder {
-  private issues: ValidationIssue[] = [];
-  private totalElements = 0;
-  private validElements = 0;
-  private context = 'Unknown';
+/**
+ * Validation status for UI display
+ */
+export type ValidationStatus = 'valid' | 'warnings' | 'errors' | 'unchecked';
 
-  constructor(context?: string) {
-    if (context) this.context = context;
+/**
+ * Helper to create a validation issue
+ */
+export function createIssue(
+  severity: ValidationSeverity,
+  code: string,
+  message: string,
+  element?: ValidScriptElement,
+  suggestion?: string
+): ValidationIssue {
+  return {
+    severity,
+    code,
+    message,
+    elementId: element?.id,
+    elementSequence: element?.sequence,
+    elementType: element?.type,
+    suggestion,
+    context: element ? { element } : undefined
+  };
+}
+
+/**
+ * Helper to create an empty report
+ */
+export function createEmptyReport(): ValidationReport {
+  return {
+    valid: true,
+    confidence: 1.0,
+    totalElements: 0,
+    validElements: 0,
+    issues: [],
+    summary: {
+      errors: 0,
+      warnings: 0,
+      info: 0
+    },
+    timestamp: Date.now()
+  };
+}
+
+/**
+ * Calculate confidence score based on issues
+ * Errors hurt confidence more than warnings
+ */
+export function calculateConfidence(issues: ValidationIssue[], totalElements: number): number {
+  if (issues.length === 0) return 1.0;
+  if (totalElements === 0) return 0.0;
+  
+  // Weight different severities
+  const weights = { error: 0.5, warning: 0.2, info: 0.05 };
+  
+  let penalty = 0;
+  for (const issue of issues) {
+    penalty += weights[issue.severity];
   }
+  
+  // Normalize by total elements (more elements = less impact per issue)
+  const normalizedPenalty = penalty / Math.max(totalElements, 1);
+  
+  // Confidence is 1.0 minus penalty, clamped to [0, 1]
+  return Math.max(0, Math.min(1, 1.0 - normalizedPenalty));
+}
 
-  setTotalElements(count: number): this {
-    this.totalElements = count;
-    return this;
-  }
+/**
+ * Determine overall status from report
+ */
+export function getValidationStatus(report: ValidationReport): ValidationStatus {
+  if (report.summary.errors > 0) return 'errors';
+  if (report.summary.warnings > 0) return 'warnings';
+  if (report.totalElements === 0) return 'unchecked';
+  return 'valid';
+}
 
-  setValidElements(count: number): this {
-    this.validElements = count;
-    return this;
-  }
-
-  addError(
-    message: string,
-    elementId?: string,
-    elementIndex?: number,
-    field?: string,
-    suggestedFix?: string
-  ): this {
-    this.issues.push({
-      severity: 'error',
-      message,
-      elementId,
-      elementIndex,
-      field,
-      suggestedFix,
-    });
-    return this;
-  }
-
-  addWarning(
-    message: string,
-    elementId?: string,
-    elementIndex?: number,
-    field?: string,
-    suggestedFix?: string
-  ): this {
-    this.issues.push({
-      severity: 'warning',
-      message,
-      elementId,
-      elementIndex,
-      field,
-      suggestedFix,
-    });
-    return this;
-  }
-
-  addInfo(
-    message: string,
-    elementId?: string,
-    elementIndex?: number
-  ): this {
-    this.issues.push({
-      severity: 'info',
-      message,
-      elementId,
-      elementIndex,
-    });
-    return this;
-  }
-
-  build(): ValidationReport {
-    const errors = this.issues.filter(i => i.severity === 'error').length;
-    const warnings = this.issues.filter(i => i.severity === 'warning').length;
-    
-    // Calculate confidence score
-    let confidence = 1.0;
-    
-    if (this.totalElements > 0) {
-      // Base confidence on valid elements
-      const validRatio = this.validElements / this.totalElements;
-      confidence = validRatio;
-      
-      // Penalize for errors (more severe than warnings)
-      const errorPenalty = (errors / this.totalElements) * 0.5;
-      const warningPenalty = (warnings / this.totalElements) * 0.2;
-      
-      confidence = Math.max(0, confidence - errorPenalty - warningPenalty);
-    }
-
-    return {
-      valid: errors === 0,
-      confidence: Math.round(confidence * 100) / 100,
-      totalElements: this.totalElements,
-      validElements: this.validElements,
-      issues: this.issues,
-      context: this.context,
-      timestamp: Date.now(),
-    };
-  }
-
-  /**
-   * Helper to get summary text
-   */
-  static getSummary(report: ValidationReport): string {
-    const errors = report.issues.filter(i => i.severity === 'error').length;
-    const warnings = report.issues.filter(i => i.severity === 'warning').length;
-    
-    if (report.valid && warnings === 0) {
-      return `✓ Valid (${report.confidence * 100}% confidence)`;
-    }
-    
-    const parts: string[] = [];
-    if (errors > 0) parts.push(`${errors} error${errors !== 1 ? 's' : ''}`);
-    if (warnings > 0) parts.push(`${warnings} warning${warnings !== 1 ? 's' : ''}`);
-    
-    return `${parts.join(', ')} (${Math.round(report.confidence * 100)}% confidence)`;
-  }
-
-  /**
-   * Helper to format report for console logging
-   */
-  static formatForConsole(report: ValidationReport): string {
-    const lines: string[] = [];
-    
-    lines.push(`\n${'='.repeat(60)}`);
-    lines.push(`VALIDATION REPORT: ${report.context}`);
-    lines.push(`${'='.repeat(60)}`);
-    lines.push(`Status: ${report.valid ? '✓ VALID' : '✗ INVALID'}`);
-    lines.push(`Confidence: ${Math.round(report.confidence * 100)}%`);
-    lines.push(`Elements: ${report.validElements}/${report.totalElements} valid`);
-    lines.push(`Timestamp: ${new Date(report.timestamp).toLocaleString()}`);
-    
-    if (report.issues.length > 0) {
-      lines.push(`\nIssues (${report.issues.length}):`);lines.push('-'.repeat(60));
-      
-      const errors = report.issues.filter(i => i.severity === 'error');
-      const warnings = report.issues.filter(i => i.severity === 'warning');
-      const infos = report.issues.filter(i => i.severity === 'info');
-      
-      if (errors.length > 0) {
-        lines.push(`\n❌ ERRORS (${errors.length}):`);
-        errors.forEach(issue => {
-          const location = issue.elementIndex !== undefined 
-            ? `[Element ${issue.elementIndex}]` 
-            : issue.elementId 
-            ? `[${issue.elementId}]` 
-            : '';
-          lines.push(`   ${location} ${issue.message}`);
-          if (issue.suggestedFix) {
-            lines.push(`      → Suggested fix: ${issue.suggestedFix}`);
-          }
-        });
+/**
+ * Format report for console logging (development)
+ */
+export function formatReportForConsole(report: ValidationReport): string {
+  const lines: string[] = [];
+  
+  lines.push('\n========================================');
+  lines.push('VALIDATION REPORT');
+  lines.push('========================================');
+  lines.push(`Status: ${report.valid ? '✓ VALID' : '✗ INVALID'}`);
+  lines.push(`Confidence: ${(report.confidence * 100).toFixed(1)}%`);
+  lines.push(`Elements: ${report.validElements}/${report.totalElements}`);
+  lines.push(`Issues: ${report.issues.length} (${report.summary.errors} errors, ${report.summary.warnings} warnings)`);
+  
+  if (report.issues.length > 0) {
+    lines.push('\n--- Issues ---');
+    for (const issue of report.issues) {
+      const prefix = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
+      lines.push(`${prefix} [${issue.code}] ${issue.message}`);
+      if (issue.elementSequence) {
+        lines.push(`   Element #${issue.elementSequence} (${issue.elementType})`);
       }
-      
-      if (warnings.length > 0) {
-        lines.push(`\n⚠️  WARNINGS (${warnings.length}):`);
-        warnings.forEach(issue => {
-          const location = issue.elementIndex !== undefined 
-            ? `[Element ${issue.elementIndex}]` 
-            : issue.elementId 
-            ? `[${issue.elementId}]` 
-            : '';
-          lines.push(`   ${location} ${issue.message}`);
-          if (issue.suggestedFix) {
-            lines.push(`      → Suggested fix: ${issue.suggestedFix}`);
-          }
-        });
+      if (issue.suggestion) {
+        lines.push(`   💡 ${issue.suggestion}`);
       }
-      
-      if (infos.length > 0) {
-        lines.push(`\nℹ️  INFO (${infos.length}):`);
-        infos.forEach(issue => {
-          lines.push(`   ${issue.message}`);
-        });
-      }
-    } else {
-      lines.push(`\n✓ No issues found`);
     }
-    
-    lines.push(`${'='.repeat(60)}\n`);
-    
-    return lines.join('\n');
   }
+  
+  lines.push('========================================\n');
+  
+  return lines.join('\n');
 }
