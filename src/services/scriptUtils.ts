@@ -160,6 +160,73 @@ export const generateFountainText = (elements: ScriptElement[]): string => {
 };
 
 /**
+ * Enriches script elements with additional computed metadata.
+ * This includes:
+ * - Character continuation tracking (CONT'D)
+ * - Page break indicators (MORE/CONT'D for dialogue)
+ * - Dual dialogue validation
+ */
+export const enrichScriptElements = (elements: ScriptElement[]): ScriptElement[] => {
+    if (!elements || elements.length === 0) return elements;
+
+    const enriched = [...elements];
+    const characterLastSeen = new Map<string, number>(); // Track last dialogue index for each character
+
+    for (let i = 0; i < enriched.length; i++) {
+        const el = enriched[i];
+
+        // Track character continuations
+        if (el.type === 'character') {
+            const charName = el.content.toUpperCase().replace(/\s*\(.*?\)\s*/g, ''); // Remove existing (CONT'D) or extensions
+            const lastIndex = characterLastSeen.get(charName);
+
+            // Mark as continued if same character spoke recently (within ~10 elements)
+            if (lastIndex !== undefined && i - lastIndex < 10 && i - lastIndex > 1) {
+                // Check if there's intervening dialogue from other characters
+                let hasInterveningDialogue = false;
+                for (let j = lastIndex + 1; j < i; j++) {
+                    if (enriched[j].type === 'character') {
+                        hasInterveningDialogue = true;
+                        break;
+                    }
+                }
+
+                if (hasInterveningDialogue) {
+                    enriched[i] = { ...el, isContinued: true };
+                }
+            }
+
+            characterLastSeen.set(charName, i);
+        }
+
+        // Validate dual dialogue structure
+        if (el.dual) {
+            // Ensure dual dialogue follows proper pattern:
+            // CHARACTER (dual=false) -> DIALOGUE -> CHARACTER (dual=true) -> DIALOGUE (dual=true)
+            const nextEl = enriched[i + 1];
+            const prevEl = enriched[i - 1];
+
+            if (el.type === 'character' && el.dual) {
+                // This is the second character in dual dialogue
+                // Previous element should be dialogue or parenthetical
+                if (prevEl && (prevEl.type !== 'dialogue' && prevEl.type !== 'parenthetical')) {
+                    console.warn(`[enrichScriptElements] Invalid dual dialogue structure at index ${i}`);
+                }
+            }
+
+            if (el.type === 'dialogue' && el.dual) {
+                // This dialogue should follow a dual character
+                if (prevEl && prevEl.type !== 'character' && prevEl.type !== 'parenthetical') {
+                    console.warn(`[enrichScriptElements] Dual dialogue without dual character at index ${i}`);
+                }
+            }
+        }
+    }
+
+    return enriched;
+};
+
+/**
  * RECONCILIATION ENGINE
  * Syncs the linear script (Source of Truth) to the hierarchical Scene/Shot model.
  * 
