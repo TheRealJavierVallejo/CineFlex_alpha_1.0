@@ -76,6 +76,90 @@ export const convertFountainToElements = (tokens: any[]): ScriptElement[] => {
 };
 
 /**
+ * Generates Fountain-formatted text from ScriptElements.
+ * This is the inverse of convertFountainToElements - converts back to Fountain format.
+ */
+export const generateFountainText = (elements: ScriptElement[]): string => {
+    let output = '';
+    let prevType: ScriptElement['type'] | null = null;
+
+    elements.forEach((el, index) => {
+        // Add spacing based on element type transitions
+        if (index > 0) {
+            // Add blank line before scene headings
+            if (el.type === 'scene_heading') {
+                output += '\n';
+            }
+            // Add blank line before character (unless prev was parenthetical or character)
+            else if (el.type === 'character' && prevType !== 'parenthetical' && prevType !== 'dialogue') {
+                output += '\n';
+            }
+            // Add blank line before action (unless prev was scene heading)
+            else if (el.type === 'action' && prevType !== 'scene_heading') {
+                output += '\n';
+            }
+            // Add blank line before transition
+            else if (el.type === 'transition') {
+                output += '\n';
+            }
+        }
+
+        let line = el.content;
+
+        // Format based on element type
+        switch (el.type) {
+            case 'scene_heading':
+                // Scene headings should be uppercase
+                line = line.toUpperCase();
+                if (el.sceneNumber) {
+                    line = `${line} #${el.sceneNumber}#`;
+                }
+                break;
+
+            case 'character':
+                // Characters should be uppercase
+                line = line.toUpperCase();
+                if (el.dual) {
+                    line += ' ^'; // Dual dialogue marker in Fountain
+                }
+                if (el.isContinued) {
+                    line += " (CONT'D)";
+                }
+                break;
+
+            case 'parenthetical':
+                // Ensure parentheses are present
+                if (!line.startsWith('(')) line = `(${line}`;
+                if (!line.endsWith(')')) line = `${line})`;
+                break;
+
+            case 'transition':
+                // Transitions should be uppercase and end with TO:
+                line = line.toUpperCase();
+                if (!line.endsWith(':')) {
+                    // Force transition with >
+                    line = `> ${line}`;
+                }
+                break;
+
+            case 'dialogue':
+                // Dialogue is plain text
+                break;
+
+            case 'action':
+            default:
+                // Action is plain text
+                break;
+        }
+
+        output += line + '\n';
+        prevType = el.type;
+    });
+
+    return output;
+};
+
+/**
  * RECONCILIATION ENGINE
  * Syncs the linear script (Source of Truth) to the hierarchical Scene/Shot model.
  * 
