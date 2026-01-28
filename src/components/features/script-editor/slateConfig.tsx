@@ -152,7 +152,7 @@ export function renderScriptElement(
                         position: 'relative'
                     }}
                 >
-                    <div className={`flex items-center gap-4 text-[10px] font-mono tracking-widest uppercase ${isLightMode ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                    <div className={`flex items-center gap-4 text-[10px] font-mono tracking-widest uppercase ${isLightMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
                         <div className={`w-8 border-t ${isLightMode ? 'border-zinc-200' : 'border-zinc-800'}`} />
                         <span>Page {pageNumber}</span>
                         <div className={`w-8 border-t ${isLightMode ? 'border-zinc-200' : 'border-zinc-800'}`} />
@@ -170,14 +170,14 @@ export function renderScriptElement(
                 {children}
                 
                 {/* CRITICAL FIX: Render (CONT'D) as non-editable metadata */}
+                {/* Improved color handling: consistent gray for dark mode */}
                 {element.type === 'character' && isContinued && (
                     <span 
                         contentEditable={false}
-                        className={`select-none ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                        className={`select-none ${isLightMode ? 'text-zinc-400' : 'text-[#6e6e6e]'}`}
                         style={{ 
                             userSelect: 'none',
                             pointerEvents: 'none',
-                            opacity: 0.7
                         }}
                     >
                         {' (CONT\'D)'}
@@ -189,7 +189,7 @@ export function renderScriptElement(
             {continuesNext && (
                 <div
                     contentEditable={false}
-                    className={`select-none uppercase text-center ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                    className={`select-none uppercase text-center ${isLightMode ? 'text-zinc-400' : 'text-[#6e6e6e]'}`}
                     style={{ 
                         marginLeft: dialogueStyles.style.marginLeft,
                         width: dialogueStyles.style.width,
