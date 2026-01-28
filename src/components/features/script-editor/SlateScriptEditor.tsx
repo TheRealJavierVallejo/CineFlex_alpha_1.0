@@ -15,7 +15,7 @@ import { calculatePagination } from '../../../services/pagination';
 import { useRealtimeValidation } from '../../../hooks/useRealtimeValidation';
 import { ValidationStatus } from './ValidationMarker';
 import { LiveValidationMarker } from '../../../services/validation/realtimeValidator';
-import { AlertCircle, AlertTriangle, Info, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, Sparkles } from 'lucide-react';
 
 export interface SlateScriptEditorProps {
     initialElements: ScriptElement[];
@@ -94,7 +94,7 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     return editor;
 };
 
-export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>(({
+export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>(({ 
     initialElements,
     onChange,
     isLightMode,
@@ -117,7 +117,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const [pageMap, setPageMap] = useState<Record<string, number>>({});
     const [totalPages, setTotalPages] = useState(1);
     const [currentPage, setCurrentPage] = useState(1);
-    const [showPageNumbers, setShowPageNumbers] = useState(true); // NEW: Toggle for page numbers
 
     const prevProjectIdRef = useRef(projectId);
 
@@ -333,7 +332,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     }, [editor, decorateValidation, enableValidation]);
 
     const renderElement = useCallback((props: RenderElementProps) => {
-        const { element, attributes, children } = props;
+        const { element } = props;
         const currentId = element.id;
 
         const pageNum = (currentId && pageMap[currentId]) ? pageMap[currentId] : 1;
@@ -378,35 +377,15 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             shouldShowPageBreak = false;
         }
 
-        // NEW: Add page number badge in left margin
-        const elementWithPageBadge = (
-            <div className="relative" data-element-id={currentId}>
-                {showPageNumbers && isFirstOnPage && shouldShowPageBreak && (
-                    <div 
-                        className="absolute -left-24 top-0 flex items-center gap-2 pointer-events-none"
-                        contentEditable={false}
-                    >
-                        <div className="bg-primary/20 border border-primary/40 rounded-full px-3 py-1 flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                            <span className="text-xs font-mono font-bold text-primary whitespace-nowrap">
-                                PAGE {pageNum}
-                            </span>
-                        </div>
-                    </div>
-                )}
-                {renderScriptElement(
-                    props,
-                    isLightMode,
-                    isFirstOnPage,
-                    isLastOnPage,
-                    pageNum,
-                    shouldShowPageBreak
-                )}
-            </div>
+        return renderScriptElement(
+            props,
+            isLightMode,
+            isFirstOnPage,
+            isLastOnPage,
+            pageNum,
+            shouldShowPageBreak
         );
-
-        return elementWithPageBadge;
-    }, [isLightMode, editor, pageMap, showPageNumbers]);
+    }, [isLightMode, editor, pageMap]);
 
     const renderLeaf = useCallback((props: RenderLeafProps) => {
         const { attributes, children, leaf } = props;
@@ -507,31 +486,19 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
-                {/* Validation Status Bar + Page Number Toggle */}
-                {!readOnly && (
-                    <div className="sticky top-0 z-10 bg-surface border-b border-border px-4 py-2 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            {enableValidation && (stats.errors > 0 || stats.warnings > 0 || stats.infos > 0) && (
-                                <ValidationStatus
-                                    errorCount={stats.errors}
-                                    warningCount={stats.warnings}
-                                    infoCount={stats.infos}
-                                />
-                            )}
-                            {isValidating && (
-                                <span className="text-xs text-text-muted">Validating...</span>
-                            )}
-                        </div>
-                        
-                        {/* Page Number Toggle Button */}
-                        <button
-                            onClick={() => setShowPageNumbers(!showPageNumbers)}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-primary border border-border hover:border-primary rounded-lg transition-colors"
-                            title={showPageNumbers ? "Hide page numbers" : "Show page numbers"}
-                        >
-                            {showPageNumbers ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            <span>{showPageNumbers ? 'Hide' : 'Show'} Pages</span>
-                        </button>
+                {/* Validation Status Bar */}
+                {!readOnly && enableValidation && (stats.errors > 0 || stats.warnings > 0 || stats.infos > 0 || isValidating) && (
+                    <div className="sticky top-0 z-10 bg-surface border-b border-border px-4 py-2 flex items-center gap-4">
+                        {(stats.errors > 0 || stats.warnings > 0 || stats.infos > 0) && (
+                            <ValidationStatus
+                                errorCount={stats.errors}
+                                warningCount={stats.warnings}
+                                infoCount={stats.infos}
+                            />
+                        )}
+                        {isValidating && (
+                            <span className="text-xs text-text-muted">Validating...</span>
+                        )}
                     </div>
                 )}
 
