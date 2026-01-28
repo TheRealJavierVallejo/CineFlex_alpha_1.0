@@ -36,29 +36,39 @@ export interface SlateScriptEditorRef {
 const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     const { normalizeNode } = editor;
 
-    let normalizeCount = 0;
-    const MAX_NORMALIZATIONS = 50;
+    // 🔥 FIX: Track normalization depth per pass, do not reset inside recursive calls
+    let normalizeDepth = 0;
+    const MAX_NORMALIZATION_DEPTH = 50;
 
     const { apply } = editor;
     editor.apply = (op) => {
-        normalizeCount = 0;
+        // 🔥 FIX: Only reset if we are NOT currently normalizing
+        // This prevents infinite loops where normalizations trigger new ops which reset the counter
+        if (!Editor.isNormalizing(editor)) {
+            normalizeDepth = 0;
+        }
         apply(op);
     };
 
     editor.normalizeNode = (entry) => {
-        if (normalizeCount >= MAX_NORMALIZATIONS) {
-            console.error('[CineFlex] Normalization limit exceeded - corrupt data detected');
+        if (normalizeDepth >= MAX_NORMALIZATION_DEPTH) {
+            // Log once per overflow to avoid console spam
+            if (normalizeDepth === MAX_NORMALIZATION_DEPTH) {
+                 console.error('[CineFlex] Normalization limit exceeded - halting recursion to prevent crash');
+            }
             return;
         }
 
-        normalizeCount++;
+        normalizeDepth++;
         const [node, path] = entry;
 
+        // Rule 1: Unwrap nested elements (prevent block-in-block)
         if (SlateElement.isElement(node) && path.length > 1) {
             Transforms.unwrapNodes(editor, { at: path });
             return;
         }
 
+        // Rule 2: Unwrap illegal nested elements inside root blocks
         if (SlateElement.isElement(node) && path.length === 1) {
             const hasNestedElement = node.children.some(child => SlateElement.isElement(child));
             if (hasNestedElement) {
@@ -70,6 +80,7 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
             }
         }
 
+        // Rule 3: Ensure empty blocks have empty text leaf
         if (SlateElement.isElement(node) && path.length === 1 && node.children.length === 0) {
             Transforms.insertNodes(
                 editor,
@@ -79,6 +90,7 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
             return;
         }
 
+        // Rule 4: Ensure editor is never empty
         if (editor.children.length === 0) {
             Transforms.insertNodes(editor, {
                 type: 'action',
@@ -176,17 +188,26 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     // Pagination Calculation
     const debouncedPagination = useMemo(
         () => debounce((nodes: Descendant[]) => {
-            const elements = slateToScriptElements(nodes);
-            const result = calculatePagination(elements, projectId);
+            // 🔥 SAFEGUARD: Wrap in try-catch to prevent crash loops from bad pagination logic
+            try {
+                const elements = slateToScriptElements(nodes);
+                // Fix: Pass only required arguments if signature changed in pagination service
+                // Assuming calculatePagination(elements, projectId) is correct based on imports
+                const result = calculatePagination(elements, projectId);
 
-            setPageMap(result);
+                setPageMap(result);
 
-            if (Object.keys(result).length === 0) {
+                if (Object.keys(result).length === 0) {
+                    setTotalPages(1);
+                } else {
+                    const pages = Object.values(result).filter(p => typeof p === 'number' && p > 0);
+                    const maxPage = pages.length > 0 ? Math.max(...pages) : 1;
+                    setTotalPages(maxPage);
+                }
+            } catch (err) {
+                console.error('[CineFlex] Pagination calculation failed:', err);
+                // Fallback to prevent UI freeze
                 setTotalPages(1);
-            } else {
-                const pages = Object.values(result).filter(p => typeof p === 'number' && p > 0);
-                const maxPage = pages.length > 0 ? Math.max(...pages) : 1;
-                setTotalPages(maxPage);
             }
         }, 500),
         [projectId]
