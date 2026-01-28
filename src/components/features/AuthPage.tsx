@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Film, Loader2, Mail, Lock } from 'lucide-react';
@@ -10,6 +10,33 @@ export const AuthPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+
+  // NEW: Auth state listener for reliable redirects
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/');
+      }
+    };
+    checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Small delay to ensure state is fully updated
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
+      }
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +50,7 @@ export const AuthPage: React.FC = () => {
           password,
         });
         if (error) throw error;
-        navigate('/'); // Redirect to dashboard on success
+        // Auth state listener will handle redirect
       } else {
         const { error } = await supabase.auth.signUp({
           email,
