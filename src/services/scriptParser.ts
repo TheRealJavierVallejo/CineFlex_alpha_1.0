@@ -1,12 +1,9 @@
 /*
- * 📋 SERVICE: SCRIPT PARSER (Phase 3 - Silent Auto-Fix)
+ * 📋 SERVICE: SCRIPT PARSER (Enhanced with Dual Dialogue Detection)
  * 
  * Handles parsing of .fountain, .txt, .fdx (Final Draft), and .pdf files.
  * 
- * Phase 3 Change:
- * - Auto-fix is now ENABLED BY DEFAULT (silent cleanup)
- * - No UI prompts, just clean scripts automatically
- * - Validation still runs (for export checks later)
+ * NEW: Dual dialogue detection for PDF imports using X-position clustering
  */
 
 import { Scene, ScriptElement, TitlePageData } from '../types';
@@ -229,7 +226,7 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
     elements.push(element);
   });
 
-  // Parse Title Page - FIXED selector to get directly from TitlePage
+  // Parse Title Page
   const titlePage: TitlePageData = {};
   const titlePageContent = doc.querySelector('TitlePage > Content');
   
@@ -277,7 +274,7 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
   return createValidatedResult(elements, titlePage, title, options);
 }
 
-// --- 3. PDF PARSER (Optimized Heuristic with Line Merging) ---
+// --- 3. PDF PARSER (Enhanced with Dual Dialogue Detection) ---
 
 async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean; strict?: boolean }): Promise<ParsedScript> {
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
@@ -302,7 +299,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
       const y = item.transform[5];
       const x = item.transform[4];
 
-      // Ignore Headers/Footers (Expanded margin to 1 inch / 72pt to catch more artifacts)
+      // Ignore Headers/Footers (Expanded margin to 1 inch / 72pt)
       if (y > pageHeight - 72 || y < 72) return;
 
       const line = pageLines.find(l => Math.abs(l.y - y) < 4);
@@ -340,7 +337,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
   }
   if (baseX < 50) baseX = 72;
 
-  // --- NEW: TITLE PAGE DETECTION ---
+  // --- TITLE PAGE DETECTION ---
   const titlePage: TitlePageData = {};
   let startPage = 1;
   let detectedTitle = 'Imported PDF Script';
@@ -350,26 +347,19 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     /^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(l.text.trim())
   );
 
-  // If Page 1 has NO scene headings, assume it is a Title Page
   if (page1Lines.length > 0 && !hasSceneHeadingOnPage1) {
     console.log('[PDF Parser] Detected potential Title Page on Page 1');
-    startPage = 2; // Skip page 1 for script elements
+    startPage = 2;
     
-    // Simple heuristic extraction
-    // Sort by Y (top to bottom) is already done
-    
-    // Title is usually central and large, but here we just look for patterns
     for (let i = 0; i < page1Lines.length; i++) {
         const text = page1Lines[i].text.trim();
         const lower = text.toLowerCase();
         
         if (lower.includes('written by')) {
             titlePage.credit = 'Written by';
-            // Next line often author
             if (page1Lines[i+1]) titlePage.authors = [page1Lines[i+1].text.trim()];
         }
         else if (lower.includes('story by')) {
-             // Append to authors if multiple
              if (page1Lines[i+1]) {
                  titlePage.authors = [...(titlePage.authors || []), page1Lines[i+1].text.trim()];
              }
@@ -382,11 +372,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
         }
     }
     
-    // Assume the first few non-empty lines might be the title if not "written by"
     const firstLines = page1Lines.slice(0, 5).map(l => l.text.trim()).filter(t => t.length > 0);
     if (firstLines.length > 0 && !titlePage.title) {
-        // Just take the first significant line as title if we didn't find specific markers
-        // But exclude if it looks like "Written by"
         if (!/written by|screenplay by/i.test(firstLines[0])) {
             titlePage.title = firstLines[0];
             detectedTitle = firstLines[0];
@@ -394,13 +381,39 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     }
   }
 
-  // 3. CLASSIFY & MERGE ELEMENTS
+  // 3. DETECT DUAL DIALOGUE COLUMNS
+  // Group consecutive lines with similar X-positions to find column patterns
+  const detectDualDialogueBlocks = (lines: typeof allLines): Set<number> => {
+    const dualLines = new Set<number>();
+    
+    for (let i = 0; i < lines.length - 1; i++) {
+      const curr = lines[i];
+      const next = lines[i + 1];
+      
+      // Same Y (or very close) = side-by-side
+      if (Math.abs(curr.y - next.y) < 4 && curr.page === next.page) {
+        // Check if X positions suggest two columns
+        const xDiff = Math.abs(curr.x - next.x);
+        if (xDiff > 150 && xDiff < 400) { // Typical dual dialogue spacing
+          dualLines.add(i);
+          dualLines.add(i + 1);
+        }
+      }
+    }
+    
+    return dualLines;
+  };
+  
+  const dualLineIndices = detectDualDialogueBlocks(allLines);
+
+  // 4. CLASSIFY & MERGE ELEMENTS
   const elements: ScriptElement[] = [];
   let sequence = 1;
   let lastY = 0;
   let lastPage = 0;
+  let dualColumn: 'left' | 'right' | undefined = undefined;
 
-  allLines.forEach(line => {
+  allLines.forEach((line, index) => {
     // SKIP PAGE 1 if we detected a title page
     if (line.page < startPage) return;
 
@@ -412,18 +425,33 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     const page = line.page;
     const offset = x - baseX;
     
-    // Filter artifacts (page numbers)
-    if (offset > 200 && /^[\d.]+$/.test(text)) {
-      return;
-    }
-
-    // Filter page break artifacts like (MORE) and (CONT'D)
+    // Filter artifacts
+    if (offset > 200 && /^[\d.]+$/.test(text)) return;
     if (/^\(MORE\)$/i.test(text)) return;
-    if (/^\(CONT['’]?D\)$/i.test(text)) return;
+    if (/^\(CONT['']?D\)$/i.test(text)) return;
     
     let type: ScriptElement['type'] = 'action';
     const upper = text.toUpperCase();
     const isUppercase = text === upper && /[A-Z]/.test(text);
+    
+    // Determine if this line is part of dual dialogue
+    const isDual = dualLineIndices.has(index);
+    if (isDual) {
+      // Determine which column based on X position
+      // Find if there's another element at similar Y on same page
+      const sibling = allLines.find((l, idx) => 
+        idx !== index && 
+        Math.abs(l.y - y) < 4 && 
+        l.page === page && 
+        dualLineIndices.has(idx)
+      );
+      
+      if (sibling) {
+        dualColumn = x < sibling.x ? 'left' : 'right';
+      }
+    } else {
+      dualColumn = undefined;
+    }
 
     // Classification logic
     if (offset < 36) {
@@ -454,9 +482,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     else if (offset >= 136 && offset < 220) {
       if (isUppercase) {
         type = 'character';
-        // Remove (CONT'D) from character names to keep it clean
-        // The editor will re-add it if needed during export/display
-        text = text.replace(/\s*\(CONT['’]?D\)\s*$/i, '');
+        text = text.replace(/\s*\(CONT['']?D\)\s*$/i, ''); // Strip CONT'D
+        // Preserve V.O. and O.S.
+        // Text is already cleaned above
       } else {
         type = 'dialogue';
       }
@@ -477,7 +505,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     const lastElement = elements[elements.length - 1];
     let merged = false;
 
-    if (lastElement && lastElement.type === type && page === lastPage) {
+    if (lastElement && lastElement.type === type && page === lastPage && !isDual) {
       const distance = lastY - y;
       const isConsecutive = distance > 0 && distance < 24;
 
@@ -489,12 +517,18 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     }
 
     if (!merged) {
-      elements.push({
+      const element: ScriptElement = {
         id: crypto.randomUUID(),
         type,
         content: text,
         sequence: sequence++
-      });
+      };
+      
+      if (dualColumn) {
+        element.dual = dualColumn;
+      }
+      
+      elements.push(element);
     }
 
     lastY = y;
