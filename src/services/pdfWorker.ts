@@ -2,6 +2,9 @@
  * PDF EXPORT WEB WORKER
  * Runs PDF generation off the main thread to prevent UI freezing
  * Communicates progress back to main thread
+ * 
+ * CRITICAL: (CONT'D) is stored as METADATA (isContinued: true), NOT text
+ * This ensures proper " (CONT'D)" spacing and prevents user editing
  */
 
 import jsPDF from 'jspdf';
@@ -206,9 +209,11 @@ export const generatePDFWithProgress = (
                     }
                     isUppercase = true;
                     
-                    // (CONT'D) is now handled by the pagination engine injecting explicit elements!
-                    // But we support the flag just in case legacy data is passed
-                    if (el.isContinued && !text.includes("(CONT'D)")) text += " (CONT'D)";
+                    // 🔥 CRITICAL FIX: Use metadata with PROPER SPACING
+                    // Content is CLEAN character name. Metadata flag indicates continuation.
+                    if (el.isContinued) {
+                        text = text.trim() + " (CONT'D)"; // EXPLICIT SPACE BEFORE PAREN
+                    }
                     break;
                     
                 case 'dialogue':
@@ -273,8 +278,8 @@ export const generatePDFWithProgress = (
                 maxDualBottom = 0; // Reset tracker
             }
             
-            // Render (MORE) if present in notes (injected by pagination)
-            if (el.notes === '(MORE)') {
+            // 🔥 UPDATED: Render (MORE) using continuesNext metadata
+            if (el.continuesNext) {
                 cursorY += lineHeight * 0.5; // half line spacing
                 doc.text('(MORE)', xOffset + (maxWidth / 2), cursorY, { align: 'center' });
                 cursorY += lineHeight;
