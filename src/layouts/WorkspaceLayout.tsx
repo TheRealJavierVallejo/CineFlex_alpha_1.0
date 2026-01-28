@@ -64,9 +64,6 @@ export const WorkspaceLayout: React.FC = () => {
     const [showValidationGate, setShowValidationGate] = useState(false);
     const [pendingExportCallback, setPendingExportCallback] = useState<(() => void) | null>(null);
 
-    // NEW: Export validation hook
-    const { shouldWarn, hasBlockingErrors } = useExportValidation(project?.scriptElements || []);
-
     useEffect(() => {
         localStorage.setItem('cinesketch_syd_width', sydWidth.toString());
     }, [sydWidth]);
@@ -370,24 +367,6 @@ export const WorkspaceLayout: React.FC = () => {
         });
     }, []);
 
-    // NEW: Export validation trigger
-    const triggerExportValidation = useCallback((onProceed: () => void) => {
-        if (shouldWarn) {
-            setPendingExportCallback(() => onProceed);
-            setShowValidationGate(true);
-        } else {
-            onProceed();
-        }
-    }, [shouldWarn]);
-
-    const handleExportProceed = useCallback(() => {
-        setShowValidationGate(false);
-        if (pendingExportCallback) {
-            pendingExportCallback();
-            setPendingExportCallback(null);
-        }
-    }, [pendingExportCallback]);
-
     const handleAddShot = useCallback(() => {
         if (project && project.scenes.length > 0) {
             const newShot: Shot = {
@@ -471,6 +450,34 @@ export const WorkspaceLayout: React.FC = () => {
         setIsEditorOpen(true);
     }, []);
 
+    // CRITICAL FIX: Memoize scriptElements to prevent infinite loops
+    // This creates a stable reference that only changes when the actual content changes
+    const memoizedScriptElements = useMemo(
+        () => project?.scriptElements || [],
+        [project?.scriptElements]
+    );
+
+    // NEW: Export validation hook - AFTER project is loaded and with memoized elements
+    const { shouldWarn, hasBlockingErrors } = useExportValidation(memoizedScriptElements);
+
+    // NEW: Export validation trigger
+    const triggerExportValidation = useCallback((onProceed: () => void) => {
+        if (shouldWarn) {
+            setPendingExportCallback(() => onProceed);
+            setShowValidationGate(true);
+        } else {
+            onProceed();
+        }
+    }, [shouldWarn]);
+
+    const handleExportProceed = useCallback(() => {
+        setShowValidationGate(false);
+        if (pendingExportCallback) {
+            pendingExportCallback();
+            setPendingExportCallback(null);
+        }
+    }, [pendingExportCallback]);
+
     const contextValue: WorkspaceContextType = useMemo(() => ({
         project: project!,
         handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
@@ -505,7 +512,7 @@ export const WorkspaceLayout: React.FC = () => {
             {/* NEW: Export Validation Gate */}
             {project && (
                 <ExportValidationGate
-                    elements={project.scriptElements || []}
+                    elements={memoizedScriptElements}
                     isOpen={showValidationGate}
                     onProceed={handleExportProceed}
                     onCancel={() => {
