@@ -16,54 +16,31 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { ScriptChat } from '../components/features/ScriptChat';
 import { ResizableDivider } from '../components/ui/ResizableDivider';
 import { Header } from '../components/layout/Header';
+import { ProgressToast, useProgressToast } from '../components/ui/ProgressToast'; // NEW
+import { ExportValidationGate, useExportValidation } from '../components/features/ExportValidationGate'; // NEW
 
-/**
- * Global workspace context provided to all project sub-routes.
- * Facilitates single-source-of-truth project state and standardized operations.
- */
 export interface WorkspaceContextType {
-    /** The current state of the active movie project */
     project: Project;
-    /** Updates the entire project object and triggers an auto-save */
     handleUpdateProject: (updated: Project) => void;
-    /** updates a single field in the world settings */
     handleUpdateSettings: <K extends keyof WorldSettings>(key: K, value: WorldSettings[K]) => void;
-    /** Adds a new shot to the first scene of the project */
     handleAddShot: () => void;
-    /** Opens the editor for a specific shot */
     handleEditShot: (shot: Shot) => void;
-    /** Updates or creates a shot in the project state */
     handleUpdateShot: (shot: Shot) => void;
-    /** Performs a high-performance update of multiple shots at once */
     handleBulkUpdateShots: (shots: Shot[]) => void;
-    /** Safely deletes a shot and its script associations with undo support */
     handleDeleteShot: (shotId: string) => void;
-    /** Clones a shot and inserts it immediately after the original */
     handleDuplicateShot: (shotId: string) => void;
-    /** Handles script file parsing and project synchronization */
     importScript: (file: File) => Promise<void>;
-    /** Creates a snapshot of the current script as a named draft */
     handleCreateDraft: (name?: string) => void;
-    /** Switches to a different script version */
     handleSwitchDraft: (draftId: string) => Promise<void>;
-    /** Deletes a script version */
     handleDeleteDraft: (draftId: string) => void;
-    /** Renames a script version */
     handleRenameDraft: (draftId: string, name: string) => Promise<void>;
-    /** Direct manual update of the script element array */
     updateScriptElements: (elements: ScriptElement[]) => void;
-    /** Global toast trigger for the workspace */
     showToast: ShowToastFn;
-    /** Force an immediate save to the database bypassing debounce */
     saveNow: () => Promise<void>;
+    // NEW: Export validation
+    triggerExportValidation: (onProceed: () => void) => void;
 }
 
-/**
- * WORKSPACE LAYOUT
- * The main controller for the project editing environment.
- * Manages project state hydration, auto-save infrastructure, routing,
- * and provides the context for all sub-pages (Dashboard, Timeline, etc).
- */
 export const WorkspaceLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
@@ -71,12 +48,9 @@ export const WorkspaceLayout: React.FC = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [editingShot, setEditingShot] = useState<Shot | null>(null);
-
-
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
-    // const { setSaving, setSaved, setError } = useSaveStatus(); // Handled by useAutoSave hook now
 
     // Split View State
     const [sydOpen, setSydOpen] = useState(false);
@@ -85,15 +59,20 @@ export const WorkspaceLayout: React.FC = () => {
         return saved ? parseInt(saved) : 50;
     });
 
-    // Save width to localStorage
+    // NEW: Progress Toast & Export Validation
+    const progressToast = useProgressToast();
+    const [showValidationGate, setShowValidationGate] = useState(false);
+    const [pendingExportCallback, setPendingExportCallback] = useState<(() => void) | null>(null);
+
+    // NEW: Export validation hook
+    const { shouldWarn, hasBlockingErrors } = useExportValidation(project?.scriptElements || []);
+
     useEffect(() => {
         localStorage.setItem('cinesketch_syd_width', sydWidth.toString());
     }, [sydWidth]);
 
-
-    // Move showToast definition BEFORE useAutoSave
     const showToast: ShowToastFn = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info', action?: { label: string, onClick: () => void }) => {
-        const id = Date.now() + Math.random(); // Unique even within same millisecond
+        const id = Date.now() + Math.random();
         setToasts((prev: ToastNotification[]) => [...prev, { id, message, type, action }]);
     }, []);
 
@@ -101,7 +80,6 @@ export const WorkspaceLayout: React.FC = () => {
         project,
         useCallback((data: Project | null) => {
             if (data?.id) {
-                // Remove double-debounce: call saveProjectData directly
                 saveProjectData(data.id, data);
             }
         }, []),
@@ -155,11 +133,10 @@ export const WorkspaceLayout: React.FC = () => {
         try {
             const data = await getProjectData(id);
             if (data) {
-                // Backward Compatibility: If drafts is missing or empty, treat current scriptElements as first draft
                 if (!data.drafts || data.drafts.length === 0) {
                     const initialDraft: ScriptDraft = {
                         id: 'initial-draft',
-                        name: 'Draft 1', // RENAMED FROM "Initial Script"
+                        name: 'Draft 1',
                         content: data.scriptElements || [],
                         updatedAt: data.lastModified || Date.now()
                     };
@@ -182,9 +159,7 @@ export const WorkspaceLayout: React.FC = () => {
     };
 
     const handleUpdateProject = useCallback((updated: Project) => {
-        // Use functional update to avoid stale closures
         setProject((prev: Project | null) => {
-            // Merge updates to handle partial updates
             if (!prev) return updated;
             return { ...prev, ...updated };
         });
@@ -197,12 +172,18 @@ export const WorkspaceLayout: React.FC = () => {
         });
     }, []);
 
+    // NEW: Enhanced importScript with progress indicators
     const importScript = useCallback(async (file: File) => {
         if (!project) return;
+        
+        progressToast.show('Importing script...', { progress: 0, status: 'loading' });
+        
         try {
+            progressToast.update({ progress: 20, message: 'Parsing file...' });
             const parsed = await parseScript(file);
 
-            // Extract Title Page from parsed metadata
+            progressToast.update({ progress: 50, message: 'Processing elements...' });
+
             const titlePage: TitlePageData = {
                 title: parsed.metadata.title || project.name,
                 authors: parsed.metadata.author ? [parsed.metadata.author] : [],
@@ -228,11 +209,13 @@ export const WorkspaceLayout: React.FC = () => {
                 updatedAt: Date.now()
             };
 
+            progressToast.update({ progress: 75, message: 'Syncing scenes...' });
+
             const updatedProject: Project = {
                 ...project,
                 drafts: [...(project.drafts || []), newDraft],
                 activeDraftId: newDraft.id,
-                scriptElements: newDraft.content, // Keep editor working
+                scriptElements: newDraft.content,
                 scriptFile: {
                     name: file.name,
                     uploadedAt: Date.now(),
@@ -242,23 +225,27 @@ export const WorkspaceLayout: React.FC = () => {
             };
 
             const syncedProject = syncScriptToScenes(updatedProject);
+            progressToast.update({ progress: 90, message: 'Saving...' });
+            
             setProject(syncedProject);
             await saveProjectData(syncedProject.id, syncedProject);
+            
+            progressToast.update({ progress: 100, status: 'success', message: 'Import complete!' });
+            setTimeout(() => progressToast.hide(), 2000);
+            
             showToast(`Script imported as draft: ${draftName}`, 'success');
         } catch (e: unknown) {
             console.error(e);
+            progressToast.update({ status: 'error', message: 'Import failed' });
+            setTimeout(() => progressToast.hide(), 3000);
             showToast((e as Error).message || "Failed to parse script", 'error');
         }
-    }, [project, showToast]);
-
+    }, [project, showToast, progressToast]);
 
     const handleCreateDraft = useCallback(async (name?: string) => {
         if (!project) return;
-
-        // Cancel any pending auto-saves to prevent overwrite
         saveProjectDataDebounced.cancel();
 
-        // FIXED: Better naming convention (Draft 1, Draft 2, etc.)
         const draftCount = project.drafts.length;
         const draftName = name || `Draft ${draftCount + 1}`;
         
@@ -282,8 +269,6 @@ export const WorkspaceLayout: React.FC = () => {
 
     const handleSwitchDraft = useCallback(async (draftId: string) => {
         if (!project) return;
-
-        // Cancel any pending auto-saves to prevent overwrite
         saveProjectDataDebounced.cancel();
 
         const draft = project.drafts.find((d: ScriptDraft) => d.id === draftId);
@@ -292,23 +277,20 @@ export const WorkspaceLayout: React.FC = () => {
             return;
         }
 
-        // 1. Sync current elements into the *currently active* draft first
         const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
             d.id === project.activeDraftId
                 ? { ...d, content: project.scriptElements || [], updatedAt: Date.now() }
                 : d
         );
 
-        // 2. Prepare the new project state
         const updatedProject: Project = {
             ...project,
             drafts: updatedDrafts,
             activeDraftId: draftId,
-            scriptElements: draft.content, // Load draft content into editor
+            scriptElements: draft.content,
             lastModified: Date.now()
         };
 
-        // 3. Sync & Store
         const syncedProject = syncScriptToScenes(updatedProject);
         setProject(syncedProject);
         await saveProjectData(syncedProject.id, syncedProject);
@@ -323,14 +305,12 @@ export const WorkspaceLayout: React.FC = () => {
             return;
         }
 
-        // Cancel any pending auto-saves to prevent overwrite
         saveProjectDataDebounced.cancel();
 
         let updatedDrafts = project.drafts.filter((d: ScriptDraft) => d.id !== draftId);
         let activeId = project.activeDraftId;
         let elements = project.scriptElements;
 
-        // Fallback if deleting last draft (shouldn't happen with UI checks, but safe to keep)
         if (updatedDrafts.length === 0) {
             const defaultDraft: ScriptDraft = {
                 id: crypto.randomUUID(),
@@ -359,39 +339,27 @@ export const WorkspaceLayout: React.FC = () => {
     const handleRenameDraft = useCallback(async (draftId: string, name: string) => {
         if (!project) return;
 
-        // Optimistic update
         const updatedDrafts = project.drafts.map((d: ScriptDraft) =>
             d.id === draftId ? { ...d, name, updatedAt: Date.now() } : d
         );
-        const updatedProject = { ...project, drafts: updatedDrafts }; // Don't update lastModified to avoid triggering full save logic elsewhere unnecessarily
+        const updatedProject = { ...project, drafts: updatedDrafts };
 
         setProject(updatedProject);
         
-        // Use the new lightweight metadata update
         try {
             await updateDraftMetadata(project.id, updatedDrafts);
-            // Optional: Success toast or silent
         } catch (e) {
             showToast("Failed to save rename", 'error');
-            // Revert state if needed, but for now we trust optimistic UI
         }
     }, [project, showToast]);
 
-    // 🔥 CRITICAL FIX: Functional update to prevent "Zombie Closure" race conditions
-    // This ensures we always merge new script elements into the LATEST project state,
-    // not the state captured when the debounce started.
     const updateScriptElements = useCallback((elements: ScriptElement[]) => {
         setProject(prev => {
             if (!prev) return null;
 
-            // 1. Update project state with new elements
             const tempProject = { ...prev, scriptElements: elements, lastModified: Date.now() };
-
-            // 2. Sync scenes
             const syncedProject = syncScriptToScenes(tempProject);
 
-            // 3. Persist elements INTO the active draft object inside project.drafts
-            // We use the *fresh* prev.drafts array, so if a draft was deleted, it's already gone here.
             const updatedDrafts = syncedProject.drafts.map((d: ScriptDraft) =>
                 d.id === syncedProject.activeDraftId
                     ? { ...d, content: elements, updatedAt: Date.now() }
@@ -400,7 +368,25 @@ export const WorkspaceLayout: React.FC = () => {
 
             return { ...syncedProject, drafts: updatedDrafts };
         });
-    }, []); // No dependencies means this function never recreates, preventing stale closures
+    }, []);
+
+    // NEW: Export validation trigger
+    const triggerExportValidation = useCallback((onProceed: () => void) => {
+        if (shouldWarn) {
+            setPendingExportCallback(() => onProceed);
+            setShowValidationGate(true);
+        } else {
+            onProceed();
+        }
+    }, [shouldWarn]);
+
+    const handleExportProceed = useCallback(() => {
+        setShowValidationGate(false);
+        if (pendingExportCallback) {
+            pendingExportCallback();
+            setPendingExportCallback(null);
+        }
+    }, [pendingExportCallback]);
 
     const handleAddShot = useCallback(() => {
         if (project && project.scenes.length > 0) {
@@ -490,11 +476,12 @@ export const WorkspaceLayout: React.FC = () => {
         handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
         importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft,
-        updateScriptElements, showToast, saveNow
+        updateScriptElements, showToast, saveNow,
+        triggerExportValidation // NEW
     }), [project, handleUpdateProject, handleUpdateSettings, handleAddShot, handleEditShot,
         handleUpdateShot, handleBulkUpdateShots, handleDeleteShot, handleDuplicateShot,
         importScript, handleCreateDraft, handleSwitchDraft, handleDeleteDraft, handleRenameDraft,
-        updateScriptElements, showToast, saveNow]);
+        updateScriptElements, showToast, saveNow, triggerExportValidation]);
 
     if (isLoading || !project) {
         return (
@@ -507,22 +494,33 @@ export const WorkspaceLayout: React.FC = () => {
         );
     }
 
-
     return (
         <div className="h-screen w-screen bg-background text-text-primary flex overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
             <ToastContainer toasts={toasts} onClose={closeToast} />
             <StorageWarning />
+            
+            {/* NEW: Progress Toast */}
+            <ProgressToast {...progressToast.toastProps} onClose={() => progressToast.hide()} />
+            
+            {/* NEW: Export Validation Gate */}
+            {project && (
+                <ExportValidationGate
+                    elements={project.scriptElements || []}
+                    isOpen={showValidationGate}
+                    onProceed={handleExportProceed}
+                    onCancel={() => {
+                        setShowValidationGate(false);
+                        setPendingExportCallback(null);
+                    }}
+                />
+            )}
 
-            {/* SIDEBAR */}
             <Sidebar
                 onSydClick={() => setSydOpen(!sydOpen)}
                 sydOpen={sydOpen}
             />
 
-            {/* SPLIT CONTAINER */}
             <div className="flex flex-row flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
-
-                {/* LEFT: Main Editor Area */}
                 <div
                     className="flex flex-col transition-all duration-300 overflow-hidden"
                     style={{
@@ -531,19 +529,15 @@ export const WorkspaceLayout: React.FC = () => {
                         order: 1
                     }}
                 >
-                    {/* Status Bar (Minimal Header) */}
                     <Header projectName={project.name} />
 
-                    {/* Content */}
                     <main className="flex-1 bg-background relative overflow-hidden">
-                        {/* Subtle gradient for depth */}
                         <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-transparent pointer-events-none z-10" />
                         <ErrorBoundary>
                             <Outlet context={contextValue} />
                         </ErrorBoundary>
                     </main>
 
-                    {/* Editor Overlay for Inspector */}
                     {isEditorOpen && project && (
                         <LazyWrapper fullHeight={false}>
                             <ShotEditor
@@ -557,7 +551,6 @@ export const WorkspaceLayout: React.FC = () => {
                     )}
                 </div>
 
-                {/* RESIZER - Only show when Syd is open */}
                 {sydOpen && (
                     <div style={{ order: 2, display: 'flex' }}>
                         <ResizableDivider
@@ -569,7 +562,6 @@ export const WorkspaceLayout: React.FC = () => {
                     </div>
                 )}
 
-                {/* RIGHT: Syd Panel - Only show when open */}
                 {sydOpen && (
                     <div
                         className="flex flex-col border-l border-border bg-surface overflow-hidden"
@@ -582,7 +574,6 @@ export const WorkspaceLayout: React.FC = () => {
                         <ScriptChat onClose={() => setSydOpen(false)} />
                     </div>
                 )}
-
             </div>
 
             <CommandPalette
@@ -597,9 +588,6 @@ export const WorkspaceLayout: React.FC = () => {
     );
 };
 
-/**
- * Custom hook to safely access the Workspace context.
- */
 export function useWorkspace(): WorkspaceContextType {
     const context = useOutletContext<WorkspaceContextType>();
     if (!context) {
