@@ -121,11 +121,32 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
 
     for (let i = 0; i < queue.length; i++) {
         const el = { ...queue[i] }; // Clone to avoid mutation
+        const nextEl = queue[i + 1]; // Look ahead for Keep-with-Next logic
         const isFirstOnPage = currentLine === 1;
         const elHeight = calculateElementHeight(el, isFirstOnPage);
         const spacingBefore = calculateElementHeight(el, isFirstOnPage) - calculateElementLines(el);
 
-        // 1. Check if it fits
+        // KEEP-WITH-NEXT LOGIC: Character must stay with dialogue
+        // If this is a CHARACTER element and the next is DIALOGUE or PARENTHETICAL,
+        // check if they fit together. If not, move CHARACTER to next page.
+        if (el.type === 'character' && nextEl && 
+            (nextEl.type === 'dialogue' || nextEl.type === 'parenthetical')) {
+            
+            // Calculate combined height of character + first dialogue element
+            const nextElHeight = calculateElementHeight(nextEl, false);
+            const combinedHeight = elHeight + nextElHeight;
+            
+            // If combined doesn't fit, force page break BEFORE character
+            if (currentLine + combinedHeight > PAGE_LINES) {
+                flushPage();
+                // Re-add character on new page
+                currentPageElements.push(el);
+                currentLine += calculateElementHeight(el, true);
+                continue;
+            }
+        }
+
+        // 1. Check if current element fits
         if (currentLine + elHeight <= PAGE_LINES) {
             currentPageElements.push(el);
             currentLine += elHeight;
