@@ -121,23 +121,28 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
 
     for (let i = 0; i < queue.length; i++) {
         const el = { ...queue[i] }; // Clone to avoid mutation
-        const nextEl = queue[i + 1]; // Look ahead for Keep-with-Next logic
         const isFirstOnPage = currentLine === 1;
         const elHeight = calculateElementHeight(el, isFirstOnPage);
-        const spacingBefore = calculateElementHeight(el, isFirstOnPage) - calculateElementLines(el);
 
-        // KEEP-WITH-NEXT LOGIC: Character must stay with dialogue
-        // If this is a CHARACTER element and the next is DIALOGUE or PARENTHETICAL,
-        // check if they fit together. If not, move CHARACTER to next page.
-        if (el.type === 'character' && nextEl && 
-            (nextEl.type === 'dialogue' || nextEl.type === 'parenthetical')) {
+        // ENHANCED KEEP-WITH-NEXT LOGIC: Character must stay with ALL related dialogue
+        // Scan ahead to calculate FULL dialogue block height (character + parenthetical(s) + dialogue(s))
+        if (el.type === 'character') {
+            let dialogueBlockHeight = elHeight; // Start with character height
+            let lookAheadIndex = i + 1;
             
-            // Calculate combined height of character + first dialogue element
-            const nextElHeight = calculateElementHeight(nextEl, false);
-            const combinedHeight = elHeight + nextElHeight;
+            // Scan ahead to find all related dialogue/parenthetical elements
+            while (lookAheadIndex < queue.length) {
+                const lookEl = queue[lookAheadIndex];
+                if (lookEl.type === 'dialogue' || lookEl.type === 'parenthetical') {
+                    dialogueBlockHeight += calculateElementHeight(lookEl, false);
+                    lookAheadIndex++;
+                } else {
+                    break; // Stop at non-dialogue element
+                }
+            }
             
-            // If combined doesn't fit, force page break BEFORE character
-            if (currentLine + combinedHeight > PAGE_LINES) {
+            // If FULL BLOCK doesn't fit on current page, move entire block to next page
+            if (currentLine + dialogueBlockHeight > PAGE_LINES) {
                 flushPage();
                 // Re-add character on new page
                 currentPageElements.push(el);
@@ -169,6 +174,7 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
         // 3. Dialogue Split Logic
         // We have `currentLine` usage. Max is `PAGE_LINES`.
         // Available lines for text = PAGE_LINES - currentLine - spacingBefore
+        const spacingBefore = calculateElementHeight(el, isFirstOnPage) - calculateElementLines(el);
         const availableLines = PAGE_LINES - currentLine - spacingBefore;
 
         // Rules:
@@ -220,7 +226,7 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
         let characterName = "CHARACTER";
         for (let k = i - 1; k >= 0; k--) {
             if (queue[k].type === 'character') {
-                // Trim whitespace to ensure clean character name
+                // CRITICAL FIX: Trim whitespace AND ensure space before (CONT'D)
                 characterName = (queue[k].content || '').trim();
                 break;
             }
@@ -229,7 +235,7 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
         const contdChar: ScriptElement = {
             id: `${el.id}-contd`,
             type: 'character',
-            // CRITICAL: Ensure space before (CONT'D)
+            // FIXED: Explicit trim + space before (CONT'D)
             content: `${characterName} (CONT'D)`
         };
 
