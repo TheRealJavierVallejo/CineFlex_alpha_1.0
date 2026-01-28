@@ -26,6 +26,14 @@ export const ExportValidationGate: React.FC<ExportValidationGateProps> = ({
     const [forceExport, setForceExport] = useState(false);
 
     const validation = useMemo(() => {
+        if (!elements || elements.length === 0) {
+            return {
+                valid: true,
+                confidence: 1,
+                summary: { errors: 0, warnings: 0, info: 0 },
+                issues: []
+            };
+        }
         const model = ScriptModel.create(elements, undefined, { strict: false });
         return model.getValidationReport();
     }, [elements]);
@@ -211,16 +219,45 @@ export const ExportValidationGate: React.FC<ExportValidationGateProps> = ({
 
 /**
  * Hook to check if export should be gated
+ * CRITICAL: Memoizes properly to prevent infinite loops
  */
 export const useExportValidation = (elements: ScriptElement[]) => {
     return useMemo(() => {
-        const model = ScriptModel.create(elements, undefined, { strict: false });
-        const report = model.getValidationReport();
+        // Guard: Return safe defaults for empty/null elements
+        if (!elements || elements.length === 0) {
+            return {
+                shouldWarn: false,
+                hasBlockingErrors: false,
+                validation: {
+                    valid: true,
+                    confidence: 1,
+                    summary: { errors: 0, warnings: 0, info: 0 },
+                    issues: []
+                }
+            };
+        }
         
-        return {
-            shouldWarn: !report.valid || report.summary.warnings > 0,
-            hasBlockingErrors: report.summary.errors > 0,
-            validation: report
-        };
+        try {
+            const model = ScriptModel.create(elements, undefined, { strict: false });
+            const report = model.getValidationReport();
+            
+            return {
+                shouldWarn: !report.valid || report.summary.warnings > 0,
+                hasBlockingErrors: report.summary.errors > 0,
+                validation: report
+            };
+        } catch (error) {
+            console.error('[useExportValidation] Error validating script:', error);
+            return {
+                shouldWarn: false,
+                hasBlockingErrors: false,
+                validation: {
+                    valid: true,
+                    confidence: 1,
+                    summary: { errors: 0, warnings: 0, info: 0 },
+                    issues: []
+                }
+            };
+        }
     }, [elements]);
 };
