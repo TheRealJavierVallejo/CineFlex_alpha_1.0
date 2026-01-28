@@ -11,6 +11,9 @@ export type CustomElement = {
     type: ScriptElementType;
     id: string; // Preserved from ScriptElement for tracking
     children: CustomText[];
+    // NEW: Continuation metadata
+    isContinued?: boolean;   // This character continues from previous page
+    continuesNext?: boolean; // This dialogue continues to next page
 };
 
 export type CustomText = {
@@ -113,8 +116,6 @@ export function getElementStyles(
  * @param isLastOnPage - Whether this element ends a page
  * @param pageNumber - The page number this element is on
  * @param shouldShowPageBreak - Whether to render the "Page X" visual separator
- * @param virtualHeader - Optional virtual character header (e.g., "JASON (CONT'D)") for page splits
- * @param showMore - Optional (MORE) indicator at bottom of element
  */
 export function renderScriptElement(
     props: any,
@@ -122,17 +123,17 @@ export function renderScriptElement(
     isFirstOnPage: boolean,
     isLastOnPage: boolean,
     pageNumber: number = 1,
-    shouldShowPageBreak: boolean = false,
-    virtualHeader?: string,
-    showMore?: boolean
+    shouldShowPageBreak: boolean = false
 ) {
     const { attributes, children, element } = props;
     const { className, style } = getElementStyles(element.type, isFirstOnPage, isLightMode);
 
-    // Get styles for character (to style virtual header)
-    const charStyles = getElementStyles('character', false, isLightMode);
     // Get styles for dialogue (to style MORE, aligned with dialogue)
     const dialogueStyles = getElementStyles('dialogue', false, isLightMode);
+
+    // CRITICAL: Check for continuation metadata
+    const isContinued = element.isContinued === true;
+    const continuesNext = element.continuesNext === true;
 
     return (
         <>
@@ -158,17 +159,6 @@ export function renderScriptElement(
                     </div>
                 </div>
             )}
-            
-            {/* Virtual Character Header (for CONT'D at top of page) */}
-            {virtualHeader && (
-                <div
-                    contentEditable={false}
-                    className={`select-none ${charStyles.className}`}
-                    style={{ ...charStyles.style, paddingTop: '1rem', paddingBottom: 0, opacity: 0.8 }}
-                >
-                    {virtualHeader}
-                </div>
-            )}
 
             {/* Element Content */}
             <div
@@ -178,10 +168,25 @@ export function renderScriptElement(
                 data-element-type={element.type}
             >
                 {children}
+                
+                {/* CRITICAL FIX: Render (CONT'D) as non-editable metadata */}
+                {element.type === 'character' && isContinued && (
+                    <span 
+                        contentEditable={false}
+                        className={`select-none ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                        style={{ 
+                            userSelect: 'none',
+                            pointerEvents: 'none',
+                            opacity: 0.7
+                        }}
+                    >
+                        {' (CONT\'D)'}
+                    </span>
+                )}
             </div>
 
-            {/* (MORE) indicator at bottom of page */}
-            {showMore && (
+            {/* (MORE) indicator at bottom of page - using continuesNext metadata */}
+            {continuesNext && (
                 <div
                     contentEditable={false}
                     className={`select-none uppercase text-center ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
@@ -190,7 +195,9 @@ export function renderScriptElement(
                         width: dialogueStyles.style.width,
                         marginTop: 0,
                         fontSize: '12pt',
-                        lineHeight: '1.0'
+                        lineHeight: '1.0',
+                        userSelect: 'none',
+                        pointerEvents: 'none'
                      }}
                 >
                     (MORE)
