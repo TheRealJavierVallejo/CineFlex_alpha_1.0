@@ -11,9 +11,8 @@ export const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
 
-  // NEW: Auth state listener for reliable redirects
+  // Check if already logged in on mount
   useEffect(() => {
-    // Check if user is already logged in
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -21,21 +20,6 @@ export const AuthPage: React.FC = () => {
       }
     };
     checkSession();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Small delay to ensure state is fully updated
-        setTimeout(() => {
-          navigate('/');
-        }, 100);
-      }
-    });
-
-    // Cleanup listener on unmount
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -45,12 +29,17 @@ export const AuthPage: React.FC = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        
         if (error) throw error;
-        // Auth state listener will handle redirect
+        
+        // Only navigate if we actually got a session
+        if (data.session) {
+          navigate('/');
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -60,7 +49,8 @@ export const AuthPage: React.FC = () => {
         setMessage({ type: 'success', text: 'Check your email for the confirmation link!' });
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      console.error('Auth error:', error);
+      setMessage({ type: 'error', text: error.message || 'Authentication failed' });
     } finally {
       setLoading(false);
     }
@@ -94,6 +84,7 @@ export const AuthPage: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-surface-secondary border border-border rounded-md py-2 pl-9 pr-4 text-sm text-text-primary focus:border-primary focus:outline-none transition-colors"
                 placeholder="director@studio.com"
+                disabled={loading}
               />
             </div>
           </div>
@@ -109,6 +100,7 @@ export const AuthPage: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-surface-secondary border border-border rounded-md py-2 pl-9 pr-4 text-sm text-text-primary focus:border-primary focus:outline-none transition-colors"
                 placeholder="••••••••"
+                disabled={loading}
               />
             </div>
           </div>
@@ -124,7 +116,14 @@ export const AuthPage: React.FC = () => {
             disabled={loading}
             className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded-md font-bold text-sm transition-all shadow-glow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isLogin ? 'Sign In' : 'Sign Up')}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              isLogin ? 'Sign In' : 'Sign Up'
+            )}
           </button>
         </form>
 
@@ -132,6 +131,7 @@ export const AuthPage: React.FC = () => {
           <button
             onClick={() => { setIsLogin(!isLogin); setMessage(null); }}
             className="text-xs text-text-secondary hover:text-primary transition-colors"
+            disabled={loading}
           >
             {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>
