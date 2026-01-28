@@ -11,7 +11,6 @@
 
 import { Project, Scene, ScriptElement, Shot } from '../types';
 import { ScriptModel } from './scriptModel';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Converts Fountain tokens to our internal ScriptElement format.
@@ -66,7 +65,7 @@ export const convertFountainToElements = (tokens: any[]): ScriptElement[] => {
             const dual = t.dual ? t.dual : undefined;
 
             return {
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 type,
                 content,
                 sequence: sequence++,
@@ -118,7 +117,7 @@ export const syncScriptToScenes = (project: Project): Project => {
             const existing = findExistingScene(el.content, project.scenes);
             
             currentScene = {
-                id: existing ? existing.id : uuidv4(),
+                id: existing ? existing.id : crypto.randomUUID(),
                 projectId: project.id,
                 sequence: sceneSequence++,
                 heading: el.content,
@@ -132,7 +131,7 @@ export const syncScriptToScenes = (project: Project): Project => {
             // Add to current scene (or create "orphan" scene if none exists)
             if (!currentScene) {
                 currentScene = {
-                    id: uuidv4(),
+                    id: crypto.randomUUID(),
                     projectId: project.id,
                     sequence: sceneSequence++,
                     heading: 'UNNAMED SCENE',
@@ -162,7 +161,7 @@ export const syncScriptToScenes = (project: Project): Project => {
         } else {
             // Create default Master Shot for new scene
             const masterShot: Shot = {
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 sceneId: scene.id,
                 sequence: 1,
                 shotType: 'Master Shot',
