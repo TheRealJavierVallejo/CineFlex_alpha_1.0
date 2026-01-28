@@ -4,6 +4,7 @@
  * Handles parsing of .fountain, .txt, .fdx (Final Draft), and .pdf files.
  * 
  * NEW: Dual dialogue detection for PDF imports using X-position clustering
+ * NEW: (CONT'D) detection and metadata storage (industry standard)
  */
 
 import { Scene, ScriptElement, TitlePageData } from '../types';
@@ -34,6 +35,28 @@ export interface ParsedScript {
   validationReport: ValidationReport; // Quality assessment (for export)
   autoFixAvailable: boolean;          // Can issues be auto-fixed?
   autoFixedElements?: ScriptElement[]; // If auto-fix was applied
+}
+
+/**
+ * CRITICAL HELPER: Detect and extract (CONT'D) from character names
+ * Returns clean character name + continuation flag
+ */
+function parseCharacterName(rawText: string): { character: string; isContinued: boolean } {
+  // Match various (CONT'D) patterns: (CONT'D), (CONT.), (CONTD), (cont'd), etc.
+  const contdPattern = /\s*\(CONT['']?D?\.?\)\s*$/i;
+  const match = rawText.match(contdPattern);
+  
+  if (match) {
+    return {
+      character: rawText.replace(contdPattern, '').trim(),
+      isContinued: true
+    };
+  }
+  
+  return {
+    character: rawText.trim(),
+    isContinued: false
+  };
 }
 
 // --- MAIN PARSER ENTRY ---
@@ -137,7 +160,20 @@ function createValidatedResult(
 
 function parseFountain(text: string, options?: { autoFix?: boolean; strict?: boolean }): ParsedScript {
   const output = parseFountainLib(text, true);
-  const elements = convertFountainToElements(output.tokens);
+  let elements = convertFountainToElements(output.tokens);
+  
+  // Post-process: Detect (CONT'D) in character names
+  elements = elements.map(el => {
+    if (el.type === 'character') {
+      const { character, isContinued } = parseCharacterName(el.content);
+      return {
+        ...el,
+        content: character,
+        isContinued: isContinued || undefined // Only set if true
+      };
+    }
+    return el;
+  });
   
   // Extract Title Page Data
   const titlePage: TitlePageData = {};
@@ -207,6 +243,13 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
       content,
       sequence: sequence++
     };
+    
+    // FDX SPECIFIC: Detect (CONT'D) in character names
+    if (type === 'character') {
+      const { character, isContinued } = parseCharacterName(content);
+      element.content = character;
+      if (isContinued) element.isContinued = true;
+    }
     
     // Handle dual dialogue
     if (isDual) {
@@ -382,7 +425,6 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
   }
 
   // 3. DETECT DUAL DIALOGUE COLUMNS
-  // Group consecutive lines with similar X-positions to find column patterns
   const detectDualDialogueBlocks = (lines: typeof allLines): Set<number> => {
     const dualLines = new Set<number>();
     
@@ -437,8 +479,6 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     // Determine if this line is part of dual dialogue
     const isDual = dualLineIndices.has(index);
     if (isDual) {
-      // Determine which column based on X position
-      // Find if there's another element at similar Y on same page
       const sibling = allLines.find((l, idx) => 
         idx !== index && 
         Math.abs(l.y - y) < 4 && 
@@ -482,9 +522,6 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     else if (offset >= 136 && offset < 220) {
       if (isUppercase) {
         type = 'character';
-        text = text.replace(/\s*\(CONT['']?D\)\s*$/i, ''); // Strip CONT'D
-        // Preserve V.O. and O.S.
-        // Text is already cleaned above
       } else {
         type = 'dialogue';
       }
@@ -523,6 +560,13 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
         content: text,
         sequence: sequence++
       };
+      
+      // PDF SPECIFIC: Detect and extract (CONT'D) from character names
+      if (type === 'character') {
+        const { character, isContinued } = parseCharacterName(text);
+        element.content = character;
+        if (isContinued) element.isContinued = true;
+      }
       
       if (dualColumn) {
         element.dual = dualColumn;
