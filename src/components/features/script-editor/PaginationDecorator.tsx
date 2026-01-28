@@ -110,16 +110,14 @@ const PageBreakMarker: React.FC<PageBreakMarkerProps> = ({ elementId, pageNumber
             className="absolute left-0 flex items-center gap-2 pointer-events-none z-10"
             style={{ top: `${position.top - 8}px` }}
         >
-            {/* Page Number Badge */}
-            <div className="bg-primary/20 border border-primary/40 rounded-full px-3 py-1 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-mono font-bold text-primary">
-                    PAGE {pageNumber}
+            {/* Dotted Line with Embedded Page Number */}
+            <div className="flex items-center gap-2">
+                <div className="border-t border-dashed border-primary/40 flex-1" style={{ width: '40px' }} />
+                <span className="text-xs font-mono font-bold text-primary/80 bg-background px-2">
+                    {pageNumber}
                 </span>
+                <div className="border-t border-dashed border-primary/40 flex-1" style={{ width: '20px' }} />
             </div>
-            
-            {/* Dotted Line Extending Right */}
-            <div className="flex-1 border-t border-dashed border-primary/30" style={{ width: '60px' }} />
         </div>
     );
 };
