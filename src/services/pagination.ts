@@ -195,20 +195,12 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
         flushPage(); // BREAK PAGE
 
         // Create Link (Character CONT'D)
-        // Find most recent character
+        // Find most recent character - scan backwards in original queue
         let characterName = "CHARACTER";
-        for (let k = currentPageElements.length - 1; k >= 0; k--) {
-             // Look back in previous page? No, we just flushed it.
-             // Look back in original queue?
-             // Actually, we usually iterate `queue` linearly.
-             // Find previous character in `queue`
-             // Simple hack: Look at `queue[i-1]`. If parenthetical, look at `queue[i-2]`.
-        }
-        
-        // Robust way: Scan backwards in original list
         for (let k = i - 1; k >= 0; k--) {
             if (queue[k].type === 'character') {
-                characterName = queue[k].content;
+                // Trim whitespace to ensure clean character name
+                characterName = (queue[k].content || '').trim();
                 break;
             }
         }
@@ -216,15 +208,13 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
         const contdChar: ScriptElement = {
             id: `${el.id}-contd`,
             type: 'character',
+            // CRITICAL: Ensure space before (CONT'D)
             content: `${characterName} (CONT'D)`
         };
 
         const part2: ScriptElement = {
-            ...el, // Keep original ID for the main part? Or new ID?
-            // Ideally we want the second part to be editable if possible, but virtual is safer.
-            // Let's give it a deterministic ID based on split.
-            id: el.id, // Keep original ID on the dominant part if we want editable? 
-            // Actually, for a pure "Preview", unique IDs are fine.
+            ...el,
+            id: el.id,
             content: part2Lines.join(' ')
         };
 
