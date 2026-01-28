@@ -8,6 +8,11 @@ import { ScriptElement } from '../types';
  * - Font: 12pt Courier
  * - Line Height: ~1 (Strict grid)
  * - Page Height: ~54 lines of printable content (6 lines/inch * 9 inches)
+ * 
+ * (CONT'D) LOGIC:
+ * - Stored as metadata (isContinued: true), NOT as text
+ * - Prevents user editing/deletion
+ * - Ensures proper " (CONT'D)" spacing in exports
  */
 
 const PAGE_LINES = 54;
@@ -100,7 +105,7 @@ const calculateElementHeight = (el: ScriptElement, isFirstOnPage: boolean): numb
 /**
  * P0: The Dialogue Continuation Engine
  * Takes a raw list of elements and returns a list of elements 
- * with visual splits (MORE/CONT'D) applied.
+ * with visual splits (MORE/CONT'D) applied AS METADATA.
  */
 export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
     const pages: PaginatedPage[] = [];
@@ -210,33 +215,32 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
         const part1Lines = allLines.slice(0, splitIndex);
         const part2Lines = allLines.slice(splitIndex);
 
-        // Create Element Part 1
+        // Create Element Part 1 with continuesNext metadata
         const part1: ScriptElement = {
             ...el,
             id: `${el.id}-part1`,
             content: part1Lines.join(' '),
-            notes: '(MORE)' // Render this via CSS/Decorator or explicit node
+            continuesNext: true // METADATA FLAG for (MORE)
         };
 
         currentPageElements.push(part1);
         flushPage(); // BREAK PAGE
 
-        // Create Link (Character CONT'D)
         // Find most recent character - scan backwards in original queue
         let characterName = "CHARACTER";
         for (let k = i - 1; k >= 0; k--) {
             if (queue[k].type === 'character') {
-                // CRITICAL FIX: Trim whitespace AND ensure space before (CONT'D)
-                characterName = (queue[k].content || '').trim();
+                characterName = queue[k].content.trim();
                 break;
             }
         }
 
+        // CRITICAL FIX: Create character element with isContinued METADATA (not text)
         const contdChar: ScriptElement = {
             id: `${el.id}-contd`,
             type: 'character',
-            // FIXED: Explicit trim + space before (CONT'D)
-            content: `${characterName} (CONT'D)`
+            content: characterName, // CLEAN NAME ONLY
+            isContinued: true // METADATA FLAG - will render as "NAME (CONT'D)"
         };
 
         const part2: ScriptElement = {
@@ -245,7 +249,7 @@ export const paginateScript = (elements: ScriptElement[]): PaginatedPage[] => {
             content: part2Lines.join(' ')
         };
 
-        // Add (CONT'D) and Part 2 to new page
+        // Add (CONT'D) character and Part 2 to new page
         currentPageElements.push(contdChar);
         currentLine += calculateElementHeight(contdChar, true);
 
