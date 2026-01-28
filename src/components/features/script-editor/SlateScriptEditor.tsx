@@ -15,7 +15,7 @@ import { calculatePagination } from '../../../services/pagination';
 import { useRealtimeValidation } from '../../../hooks/useRealtimeValidation';
 import { ValidationStatus } from './ValidationMarker';
 import { LiveValidationMarker } from '../../../services/validation/realtimeValidator';
-import { AlertCircle, AlertTriangle, Info, Sparkles } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 export interface SlateScriptEditorProps {
     initialElements: ScriptElement[];
@@ -25,7 +25,7 @@ export interface SlateScriptEditorProps {
     onUndoRedoChange?: (canUndo: boolean, canRedo: boolean) => void;
     onPageChange?: (currentPage: number, totalPages: number) => void;
     readOnly?: boolean;
-    enableValidation?: boolean; // NEW: Control real-time validation
+    enableValidation?: boolean;
 }
 
 export interface SlateScriptEditorRef {
@@ -36,30 +36,23 @@ export interface SlateScriptEditorRef {
 const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     const { normalizeNode } = editor;
 
-    // Circuit breaker variables
     let normalizeCount = 0;
-    const MAX_NORMALIZATIONS = 50; // Industry standard (Notion uses 42, Google Docs uses 50)
+    const MAX_NORMALIZATIONS = 50;
 
-    // Wrap editor.apply to reset counter on each operation
     const { apply } = editor;
     editor.apply = (op) => {
-        normalizeCount = 0; // Reset counter for each new operation
+        normalizeCount = 0;
         apply(op);
     };
 
     editor.normalizeNode = (entry) => {
-        // CIRCUIT BREAKER: Stop after MAX_NORMALIZATIONS attempts
         if (normalizeCount >= MAX_NORMALIZATIONS) {
             console.error('[CineFlex] Normalization limit exceeded - corrupt data detected');
-            console.error('[CineFlex] Problematic node:', JSON.stringify(entry, null, 2));
-            console.error('[CineFlex] This usually means corrupt data was loaded from Supabase');
-            return; // STOP - don't continue trying to fix
+            return;
         }
 
-        normalizeCount++; // Increment counter
+        normalizeCount++;
         const [node, path] = entry;
-
-        // KEEP ALL EXISTING NORMALIZATION RULES BELOW (don't change these)
 
         if (SlateElement.isElement(node) && path.length > 1) {
             Transforms.unwrapNodes(editor, { at: path });
@@ -101,7 +94,7 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     return editor;
 };
 
-export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>(({
+export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>({
     initialElements,
     onChange,
     isLightMode,
@@ -109,7 +102,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     onUndoRedoChange,
     onPageChange,
     readOnly = false,
-    enableValidation = true // NEW: Enable by default
+    enableValidation = true
 }, ref) => {
     const editor = useMemo(
         () => withScriptEditor(withHistory(withReact(createEditor() as CustomEditor))),
@@ -124,11 +117,11 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     const [pageMap, setPageMap] = useState<Record<string, number>>({});
     const [totalPages, setTotalPages] = useState(1);
     const [currentPage, setCurrentPage] = useState(1);
+    const [showPageNumbers, setShowPageNumbers] = useState(true); // NEW: Toggle for page numbers
 
-    // Track previous projectId to detect project changes
     const prevProjectIdRef = useRef(projectId);
 
-    // PHASE 5: Real-time Validation
+    // Validation
     const scriptElements = useMemo(() => slateToScriptElements(value), [value]);
     const {
         getMarkersForElement,
@@ -140,7 +133,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         debounceMs: 300
     });
 
-    // Store validation markers for tooltip display
     const [activeMarker, setActiveMarker] = useState<{ marker: LiveValidationMarker; element: ScriptElement; position: { x: number; y: number } } | null>(null);
 
     useImperativeHandle(ref, () => ({
@@ -148,21 +140,14 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         redo: () => editor.redo()
     }));
 
-    // Reset editor when project changes (handles project switch, import, etc.)
+    // Reset editor when project changes
     useEffect(() => {
         if (prevProjectIdRef.current !== projectId) {
             const newValue = scriptElementsToSlate(initialElements);
-
-            // Reset editor state
             editor.children = newValue;
             setValue(newValue);
-
-            // Clear undo/redo history for new project
             editor.history = { undos: [], redos: [] };
-
-            // Force a re-render of the editor
             editor.onChange();
-
             prevProjectIdRef.current = projectId;
         }
     }, [projectId, initialElements, editor]);
@@ -176,13 +161,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor.operations, onUndoRedoChange, editor]);
 
-    useEffect(() => {
-        return () => {
-            // No unmount save here to avoid loops
-        };
-    }, []);
-
-    // SmartType State Machine
+    // SmartType
     const {
         state,
         menuPosition,
@@ -192,7 +171,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     } = useSlateSmartType({
         editor,
         projectId,
-        isActive: !readOnly // Disable smart type in read-only mode
+        isActive: !readOnly
     });
 
     // Pagination Calculation
@@ -218,7 +197,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         debouncedPagination(value);
     }, [value, debouncedPagination]);
 
-    // Track Current Page based on Selection
+    // Track Current Page
     useEffect(() => {
         if (!editor.selection) return;
 
@@ -231,9 +210,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     setCurrentPage(page);
                 }
             }
-        } catch (e) {
-            // Selection might be invalid transiently
-        }
+        } catch (e) {}
     }, [editor.selection, pageMap, currentPage]);
 
     useEffect(() => {
@@ -248,7 +225,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         [onChange]
     );
 
-    // Force immediate save without debounce
     const forceSave = useCallback(() => {
         const elements = slateToScriptElements(value);
         onChange(elements);
@@ -267,7 +243,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     }, [editor, debouncedOnChange]);
 
     const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-        if (readOnly) return; // Ignore keys in read-only mode
+        if (readOnly) return;
 
         const smartTypeHandled = handleSmartTypeKeyDown(event);
         if (smartTypeHandled) return;
@@ -302,7 +278,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [editor, handleSmartTypeKeyDown, state.status, readOnly]);
 
-    // PHASE 5: Apply quick fix
     const handleApplyFix = useCallback((elementId: string, marker: LiveValidationMarker) => {
         const element = scriptElements.find(el => el.id === elementId);
         if (!element) return;
@@ -310,43 +285,32 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         const fixed = applyFix(element, marker);
         if (!fixed) return;
 
-        // Update the element in Slate
         const newElements = scriptElements.map(el => el.id === elementId ? fixed : el);
         const newValue = scriptElementsToSlate(newElements);
         
-        // Update editor
         editor.children = newValue;
         setValue(newValue);
         editor.onChange();
-        
-        // Save immediately
         onChange(newElements);
-        
-        // Close tooltip
         setActiveMarker(null);
     }, [scriptElements, applyFix, editor, onChange]);
 
-    // PHASE 5: Decorate with validation markers
     const decorateValidation = useCallback((entry: NodeEntry): Range[] => {
         const [node, path] = entry;
         
-        // Only decorate text nodes
         if (!Text.isText(node) || path.length !== 2) {
             return [];
         }
 
-        // Get parent element
         const elementPath = path.slice(0, 1);
         const element = Node.get(editor, elementPath) as CustomElement;
         const elementId = element.id;
 
         if (!elementId) return [];
 
-        // Get validation markers for this element
         const markers = getMarkersForElement(elementId);
         if (markers.length === 0) return [];
 
-        // Convert markers to Slate ranges
         const ranges: Range[] = [];
         
         for (const marker of markers) {
@@ -362,7 +326,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         return ranges;
     }, [editor, getMarkersForElement]);
 
-    // Combine decorators
     const decorate = useCallback((entry: NodeEntry): Range[] => {
         const placeholders = decorateWithPlaceholders(editor)(entry);
         const validation = enableValidation ? decorateValidation(entry) : [];
@@ -370,10 +333,9 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     }, [editor, decorateValidation, enableValidation]);
 
     const renderElement = useCallback((props: RenderElementProps) => {
-        const { element } = props;
+        const { element, attributes, children } = props;
         const currentId = element.id;
 
-        // Get page number for this element (default to 1 if not in map yet)
         const pageNum = (currentId && pageMap[currentId]) ? pageMap[currentId] : 1;
 
         let isFirstOnPage = false;
@@ -384,57 +346,67 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             const path = ReactEditor.findPath(editor, element);
             const elementIndex = path[0];
 
-            // Determine if this is the first element on its page
             if (elementIndex === 0) {
-                // Very first element in document - always first on page 1, never show page break
                 isFirstOnPage = true;
                 shouldShowPageBreak = false;
             } else {
-                // Get previous element to compare pages
                 const prevPath = Path.previous(path);
                 const prevNode = Node.get(editor, prevPath) as CustomElement;
                 const prevPage = (prevNode && prevNode.id && pageMap[prevNode.id]) ? pageMap[prevNode.id] : 1;
 
-                // If this element's page number is greater than previous, it's first on a new page
                 if (pageNum > prevPage) {
                     isFirstOnPage = true;
-                    // Show page break label for pages 2+
                     shouldShowPageBreak = (pageNum > 1);
                 }
             }
 
-            // Determine if this is the last element on its page
             const lastIndex = editor.children.length - 1;
             if (elementIndex === lastIndex) {
-                // Last element in document
                 isLastOnPage = true;
             } else {
-                // Get next element to compare pages
                 const nextPath = Path.next(path);
                 const nextNode = Node.get(editor, nextPath) as CustomElement;
                 const nextPage = (nextNode && nextNode.id && pageMap[nextNode.id]) ? pageMap[nextNode.id] : pageNum;
 
-                // If next element is on a higher page, this is last on current page
                 if (nextPage > pageNum) {
                     isLastOnPage = true;
                 }
             }
         } catch (e) {
-            // If any path operations fail, use safe defaults
             isFirstOnPage = false;
             isLastOnPage = false;
             shouldShowPageBreak = false;
         }
 
-        return renderScriptElement(
-            props,
-            isLightMode,
-            isFirstOnPage,
-            isLastOnPage,
-            pageNum,
-            shouldShowPageBreak
+        // NEW: Add page number badge in left margin
+        const elementWithPageBadge = (
+            <div className="relative" data-element-id={currentId}>
+                {showPageNumbers && isFirstOnPage && shouldShowPageBreak && (
+                    <div 
+                        className="absolute -left-24 top-0 flex items-center gap-2 pointer-events-none"
+                        contentEditable={false}
+                    >
+                        <div className="bg-primary/20 border border-primary/40 rounded-full px-3 py-1 flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className="text-xs font-mono font-bold text-primary whitespace-nowrap">
+                                PAGE {pageNum}
+                            </span>
+                        </div>
+                    </div>
+                )}
+                {renderScriptElement(
+                    props,
+                    isLightMode,
+                    isFirstOnPage,
+                    isLastOnPage,
+                    pageNum,
+                    shouldShowPageBreak
+                )}
+            </div>
         );
-    }, [isLightMode, editor, pageMap]);
+
+        return elementWithPageBadge;
+    }, [isLightMode, editor, pageMap, showPageNumbers]);
 
     const renderLeaf = useCallback((props: RenderLeafProps) => {
         const { attributes, children, leaf } = props;
@@ -443,7 +415,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
 
         let renderedChildren = children;
 
-        // PHASE 5: Render validation underlines
         if (leafWithValidation.validation) {
             const underlineClass = 
                 leafWithValidation.validation === 'error' ? 'border-b-2 border-red-500' :
@@ -494,7 +465,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
             );
         }
 
-        // Render placeholders
         if (leafWithPlaceholder.placeholder && leaf.text === '') {
             const { selection } = editor;
             let isTransition = false;
@@ -537,23 +507,36 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
     return (
         <>
             <Slate editor={editor} initialValue={value} onChange={handleChange}>
-                {/* Validation Status Bar */}
-                {enableValidation && !readOnly && (stats.errors > 0 || stats.warnings > 0 || stats.infos > 0) && (
+                {/* Validation Status Bar + Page Number Toggle */}
+                {!readOnly && (
                     <div className="sticky top-0 z-10 bg-surface border-b border-border px-4 py-2 flex items-center justify-between">
-                        <ValidationStatus
-                            errorCount={stats.errors}
-                            warningCount={stats.warnings}
-                            infoCount={stats.infos}
-                        />
-                        {isValidating && (
-                            <span className="text-xs text-text-muted">Validating...</span>
-                        )}
+                        <div className="flex items-center gap-4">
+                            {enableValidation && (stats.errors > 0 || stats.warnings > 0 || stats.infos > 0) && (
+                                <ValidationStatus
+                                    errorCount={stats.errors}
+                                    warningCount={stats.warnings}
+                                    infoCount={stats.infos}
+                                />
+                            )}
+                            {isValidating && (
+                                <span className="text-xs text-text-muted">Validating...</span>
+                            )}
+                        </div>
+                        
+                        {/* Page Number Toggle Button */}
+                        <button
+                            onClick={() => setShowPageNumbers(!showPageNumbers)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-primary border border-border hover:border-primary rounded-lg transition-colors"
+                            title={showPageNumbers ? "Hide page numbers" : "Show page numbers"}
+                        >
+                            {showPageNumbers ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showPageNumbers ? 'Hide' : 'Show'} Pages</span>
+                        </button>
                     </div>
                 )}
 
-                {/* Single continuous page - no scroll container here */}
                 <div
-                    className={`w-full ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}`}
+                    className={`w-full slate-editor-container ${isLightMode ? 'bg-white' : 'bg-[#1E1E1E]'}`}
                     style={{
                         paddingTop: '1in',
                         paddingBottom: '2in',
@@ -571,7 +554,7 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             renderLeaf={renderLeaf}
                             decorate={decorate}
                             onKeyDown={handleKeyDown}
-                            onBlur={readOnly ? undefined : forceSave} // No save on blur for read-only
+                            onBlur={readOnly ? undefined : forceSave}
                             placeholder={readOnly ? undefined : "Start writing your screenplay..."}
                             spellCheck={false}
                             className="outline-none"
@@ -589,7 +572,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                 />,
                 document.body
             )}
-            {/* PHASE 5: Validation Tooltip */}
             {activeMarker && createPortal(
                 <div
                     className="fixed z-50"
@@ -600,7 +582,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                     }}
                 >
                     <div className="bg-surface border border-border rounded-lg shadow-lg p-3 max-w-xs">
-                        {/* Header */}
                         <div className="flex items-start gap-2 mb-2">
                             {activeMarker.marker.severity === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
                             {activeMarker.marker.severity === 'warning' && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
@@ -615,24 +596,16 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             </div>
                         </div>
 
-                        {/* Quick Fix Button */}
                         {activeMarker.marker.suggestedFix && (
                             <>
                                 <button
                                     onClick={() => handleApplyFix(activeMarker.element.id, activeMarker.marker)}
-                                    className="
-                                        w-full mt-2 px-2 py-1.5
-                                        bg-primary hover:bg-primary-hover
-                                        text-white text-xs font-medium
-                                        rounded flex items-center justify-center gap-1.5
-                                        transition-colors duration-100
-                                    "
+                                    className="w-full mt-2 px-2 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-medium rounded flex items-center justify-center gap-1.5 transition-colors duration-100"
                                 >
                                     <Sparkles className="w-3 h-3" />
                                     Apply Quick Fix
                                 </button>
 
-                                {/* Preview of fix */}
                                 <div className="mt-2 pt-2 border-t border-border">
                                     <p className="text-[10px] text-text-muted mb-1">Will change to:</p>
                                     <p className="text-xs text-text-secondary font-mono bg-surface-secondary px-2 py-1 rounded">
@@ -645,7 +618,6 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
                             </>
                         )}
                     </div>
-                    {/* Arrow */}
                     <div 
                         className="absolute left-1/2 -translate-x-1/2"
                         style={{ top: '100%' }}
