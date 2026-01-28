@@ -94,7 +94,7 @@ const withScriptEditor = (editor: CustomEditor): CustomEditor => {
     return editor;
 };
 
-export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>({
+export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEditorProps>(({
     initialElements,
     onChange,
     isLightMode,
