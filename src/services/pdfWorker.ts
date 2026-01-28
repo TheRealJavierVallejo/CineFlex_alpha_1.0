@@ -124,11 +124,6 @@ export const generatePDFWithProgress = (
     // Stage 3: Render Script Content
     let currentPdfPage = 1;
     
-    // Add first page number (page 2 starts on index 1 if title page existed)
-    // Actually jsPDF keeps track of pages internally. We just render content.
-    // If title page was added, we are on page 2 (index 2).
-    // Reset page numbering? Screenplays usually start Page 1 after title page.
-    
     // Setup Page 1
     renderWatermark();
     doc.setFontSize(12);
@@ -154,7 +149,8 @@ export const generatePDFWithProgress = (
         }
 
         let cursorY = marginTop;
-        let dualBufferY = 0; // Track Y position for dual dialogue alignment
+        let dualLeftStart = 0; // Track start Y of left dual column
+        let maxDualBottom = 0; // Track max bottom Y across dual columns
 
         // Render elements for THIS page
         for (let i = 0; i < pageData.elements.length; i++) {
@@ -190,17 +186,17 @@ export const generatePDFWithProgress = (
                     
                 case 'character':
                     if (el.dual === 'right') { 
-                        // Right column of dual dialogue
-                        cursorY = dualBufferY; // Reset to top of dual block
+                        // Right column of dual dialogue - reset to top of dual block
+                        cursorY = dualLeftStart; 
                         xOffset = marginLeft + 3.5; 
                         maxWidth = 2.8; 
                     }
                     else if (el.dual === 'left' || nextIsDual) { 
                         // Left column OR start of dual block
-                        dualBufferY = cursorY + (cursorY > marginTop ? lineHeight : 0); 
+                        if (cursorY > marginTop) cursorY += lineHeight;
+                        dualLeftStart = cursorY; // Mark start of dual block
                         xOffset = marginLeft + 0.5; 
                         maxWidth = 2.8; 
-                        if (cursorY > marginTop) cursorY += lineHeight; 
                     }
                     else { 
                         // Standard character
@@ -220,10 +216,9 @@ export const generatePDFWithProgress = (
                         xOffset = marginLeft + 3.0; 
                         maxWidth = 2.8; 
                     }
-                    else if (el.dual === 'left') { // Left column uses dualBuffer logic implicitly? 
-                         // No, if character set it up, we just follow below character
-                         xOffset = marginLeft; 
-                         maxWidth = 2.8; 
+                    else if (el.dual === 'left') { 
+                        xOffset = marginLeft; 
+                        maxWidth = 2.8; 
                     }
                     else { 
                         xOffset = marginLeft + INDENT_DIALOGUE_IN; 
@@ -263,33 +258,26 @@ export const generatePDFWithProgress = (
             const blockHeight = lines.length * lineHeight;
             cursorY += blockHeight;
             
-            // If this was left dual column, update buffer so right column doesn't overwrite?
-            // Actually standard dual dialogue logic relies on resetting Y. 
-            // Since we process linearly, if we are 'left', we just advanced cursorY.
-            // If the next element is 'right', it will reset cursorY to dualBufferY.
-            // But we need to make sure cursorY ends at the bottom of the LONGER column.
-            
+            // Track dual dialogue column bottoms
             if (el.dual === 'left') {
-                 // Track max height for the block end
-                 // This simple implementation might be buggy for complex duals but works for simple pairing
+                maxDualBottom = Math.max(maxDualBottom, cursorY);
             }
-            if (el.dual === 'right') {
-                 // We finished a pair? Or part of a pair.
-                 // We need to ensure subsequent elements start below the lowest point.
-                 // This requires tracking max Y.
-                 // For now, let's assume simple pairing.
-                 dualBufferY = Math.max(dualBufferY, cursorY);
-                 // But wait, if we are right, we reset cursorY to buffer at start of character.
-                 // So cursorY is now bottom of right.
-                 // The next standard element should start at max(leftBottom, rightBottom).
-                 // We need a `maxBlockBottom` variable.
+            else if (el.dual === 'right') {
+                maxDualBottom = Math.max(maxDualBottom, cursorY);
+                // After right column, reset cursor to max of both columns
+                cursorY = maxDualBottom;
+            }
+            else if (maxDualBottom > 0) {
+                // First non-dual element after dual block - ensure we're below both columns
+                cursorY = Math.max(cursorY, maxDualBottom);
+                maxDualBottom = 0; // Reset tracker
             }
             
             // Render (MORE) if present in notes (injected by pagination)
             if (el.notes === '(MORE)') {
-                 cursorY += lineHeight * 0.5; // half line spacing
-                 doc.text('(MORE)', pageWidth / 2, cursorY, { align: 'center' }); // Centered
-                 cursorY += lineHeight;
+                cursorY += lineHeight * 0.5; // half line spacing
+                doc.text('(MORE)', xOffset + (maxWidth / 2), cursorY, { align: 'center' });
+                cursorY += lineHeight;
             }
         }
     }
