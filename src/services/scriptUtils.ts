@@ -7,6 +7,7 @@
  * - Removed manual auto-correction from import (moved to scriptParser)
  * - Added support for Title Page extraction integration
  * - Improved robustness of Scene/Shot reconciliation
+ * - FIX: Prevented duplicate Scene IDs by tracking usage (fixes Supabase 500)
  */
 
 import { Project, Scene, ScriptElement, Shot } from '../types';
@@ -254,11 +255,19 @@ export const syncScriptToScenes = (project: Project): Project => {
     let currentScene: Scene | null = null;
     let sceneSequence = 1;
 
+    // 🔥 FIX: Track used scene IDs to prevent duplicates
+    const usedSceneIds = new Set<string>();
+
     // Helper: Find existing scene by ID or Fuzzy Match
     // We prefer ID match (persistence), then Content match (if renamed/moved)
+    // 🔥 FIX: Ensure we don't reuse IDs that have already been assigned in this pass
     const findExistingScene = (heading: string, existingScenes: Scene[]) => {
         // Try exact content match first to preserve IDs across imports if possible
-        return existingScenes.find(s => s.heading === heading);
+        const match = existingScenes.find(s => s.heading === heading && !usedSceneIds.has(s.id));
+        if (match) {
+            usedSceneIds.add(match.id);
+        }
+        return match;
     };
 
     // 1. Group Elements into Scenes
@@ -299,16 +308,28 @@ export const syncScriptToScenes = (project: Project): Project => {
     // 2. Reconcile Shots for Each Scene
     const allShots: Shot[] = [];
     
+    // 🔥 FIX: Track used Shot IDs too just in case
+    const usedShotIds = new Set<string>();
+
     newScenes.forEach(scene => {
         // Find existing shots for this scene ID
+        // Since scene.id is unique (guaranteed above), these shots should be unique to this scene
         const existingShots = project.shots.filter(s => s.sceneId === scene.id);
         
         // If we have existing shots, keep them! 
-        // We only create new shots if the scene is BRAND NEW (no shots).
-        // Future: Smart diffing to add shots for new script chunks.
-        
         if (existingShots.length > 0) {
-            allShots.push(...existingShots);
+            existingShots.forEach(shot => {
+                // Safeguard against duplicate shot IDs (paranoid check)
+                if (!usedShotIds.has(shot.id)) {
+                    allShots.push(shot);
+                    usedShotIds.add(shot.id);
+                } else {
+                    // Clone if ID collision
+                    const newShot = { ...shot, id: crypto.randomUUID() };
+                    allShots.push(newShot);
+                    usedShotIds.add(newShot.id);
+                }
+            });
         } else {
             // Create default Master Shot for new scene
             const masterShot: Shot = {
@@ -323,6 +344,7 @@ export const syncScriptToScenes = (project: Project): Project => {
                 aspectRatio: project.settings.aspectRatio
             };
             allShots.push(masterShot);
+            usedShotIds.add(masterShot.id);
         }
     });
 
