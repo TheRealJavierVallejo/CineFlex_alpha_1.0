@@ -273,9 +273,9 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
             const sceneNumber = element.sceneNumber || '';
             return (
                 <div key={element.id} className={`${styleClass} relative`} style={{ ...positionStyle, ...spacingStyle }}>
-                    <span className=\"absolute\" style={{ left: '-0.6in', opacity: 0.5 }}>{sceneNumber}</span>
+                    <span className="absolute" style={{ left: '-0.6in', opacity: 0.5 }}>{sceneNumber}</span>
                     {text}
-                    <span className=\"absolute\" style={{ right: '-0.6in', opacity: 0.5 }}>{sceneNumber}</span>
+                    <span className="absolute" style={{ right: '-0.6in', opacity: 0.5 }}>{sceneNumber}</span>
                 </div>
             );
         }
@@ -285,7 +285,7 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
             return (
                 <div key={element.id} className={styleClass} style={{ ...positionStyle, ...spacingStyle }}>
                     {text}
-                    <div className=\"text-center w-full mt-2 font-mono\">(MORE)</div>
+                    <div className="text-center w-full mt-2 font-mono">(MORE)</div>
                 </div>
             );
         }
@@ -312,7 +312,141 @@ export const ExportPreviewRenderer: React.FC<ExportPreviewRendererProps> = ({
 
     if (!elements.length) {
         return (
-            <div className=\"flex items-center justify-center h-full\">
-                <div className=\"text-center space-y-2\">
-                    <FileText className=\"w-12 h-12 text-text-muted mx-auto opacity-50\" />
-                    <p className=\"text-sm text-text-muted\">Preview will appear here</p>\n                    <p className=\"text-xs text-text-muted/70\">Start writing to see preview</p>\n                </div>\n            </div>\n        );\n    }\n\n    if (scale === null) {\n        return (\n            <div ref={containerRef} className=\"flex items-center justify-center h-full\">\n                <div className=\"text-center space-y-2\">\n                    <div className=\"w-12 h-12 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin\" />\n                    <p className=\"text-sm text-text-muted\">Loading preview...</p>\n                </div>\n            </div>\n        );\n    }\n\n    const totalPages = pages.length + (options.includeTitlePage ? 1 : 0);\n    const scaledPageHeight = PAGE_HEIGHT_PX * scale;\n    const gap = 16;\n    const totalHeight = totalPages * (scaledPageHeight + gap);\n\n    return (\n        <div ref={scrollContainerRef} className=\"w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar\">\n            <div \n                ref={containerRef} \n                className=\"relative mx-auto\"\n                style={{ \n                    height: `${totalHeight}px`,\n                    width: `${PAGE_WIDTH_PX * scale}px`,\n                    paddingTop: '16px',\n                    paddingBottom: '16px'\n                }}\n            >\n                {/* Title Page */}\n                {options.includeTitlePage && project.titlePage && \n                 visibleRange.start <= 0 && visibleRange.end > 0 && (\n                    <div \n                        className=\"absolute\"\n                        style={{\n                            top: '16px',\n                            left: '0',\n                            transform: `scale(${scale})`,\n                            transformOrigin: 'top left'\n                        }}\n                    >\n                        <div className=\"bg-white text-black shadow-2xl relative rounded-sm\" style={pageStyle}>\n                            <div className=\"flex flex-col h-full justify-center items-center text-center\">\n                                <h1 className=\"text-2xl font-bold mb-4 uppercase\">\n                                    {project.titlePage.title || project.name || 'Untitled'}\n                                </h1>\n                                {project.titlePage.authors && project.titlePage.authors.length > 0 && (\n                                    <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>\n                                        <p className=\"mb-4\">{project.titlePage.credit || 'Written by'}</p>\n                                        {project.titlePage.authors.map((author, i) => (\n                                            <p key={i} className=\"font-bold\">{author}</p>\n                                        ))}\n                                    </div>\n                                )}\n                                <div\n                                    className=\"absolute text-left\"\n                                    style={{\n                                        bottom: `${MARGIN_BOTTOM_IN}in`,\n                                        left: `${MARGIN_LEFT_IN}in`\n                                    }}\n                                >\n                                    {project.titlePage.contact && (\n                                        <p className=\"whitespace-pre-wrap\">{project.titlePage.contact}</p>\n                                    )}\n                                </div>\n                            </div>\n                            {options.watermark && (\n                                <div className=\"absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden\">\n                                    <div className=\"text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap\">\n                                        {options.watermark}\n                                    </div>\n                                </div>\n                            )}\n                        </div>\n                    </div>\n                )}\n\n                {/* Script Pages */}\n                {pages.map((page, pageIndex) => {\n                    const adjustedIndex = options.includeTitlePage ? pageIndex + 1 : pageIndex;\n                    const isVisible = adjustedIndex >= visibleRange.start && adjustedIndex < visibleRange.end;\n                    \n                    if (!isVisible) return null;\n\n                    const topPosition = 16 + (adjustedIndex * (scaledPageHeight + gap));\n\n                    return (\n                        <div \n                            key={pageIndex}\n                            className=\"absolute\"\n                            style={{\n                                top: `${topPosition}px`,\n                                left: '0',\n                                transform: `scale(${scale})`,\n                                transformOrigin: 'top left'\n                            }}\n                        >\n                            <div className=\"bg-white text-black shadow-2xl relative rounded-sm\" style={pageStyle}>\n                                <div\n                                    className=\"absolute\"\n                                    style={{\n                                        top: `${PAGE_NUM_TOP_IN}in`,\n                                        right: `${PAGE_NUM_RIGHT_IN}in`,\n                                        fontFamily: FONT_FAMILY,\n                                        fontSize: `${FONT_SIZE_PT}pt`\n                                    }}\n                                >\n                                    {pageIndex + 1}.\n                                </div>\n\n                                <div>\n                                    {renderPageContent(page)}\n                                </div>\n\n                                {options.watermark && (\n                                    <div className=\"absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden\">\n                                        <div className=\"text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap\">\n                                            {options.watermark}\n                                        </div>\n                                    </div>\n                                )}\n                            </div>\n                        </div>\n                    );\n                })}\n            </div>\n        </div>\n    );\n};\n
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2">
+                    <FileText className="w-12 h-12 text-text-muted mx-auto opacity-50" />
+                    <p className="text-sm text-text-muted">Preview will appear here</p>
+                    <p className="text-xs text-text-muted/70">Start writing to see preview</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (scale === null) {
+        return (
+            <div ref={containerRef} className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2">
+                    <div className="w-12 h-12 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-text-muted">Loading preview...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const totalPages = pages.length + (options.includeTitlePage ? 1 : 0);
+    const scaledPageHeight = PAGE_HEIGHT_PX * scale;
+    const gap = 16;
+    const totalHeight = totalPages * (scaledPageHeight + gap);
+
+    return (
+        <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <div 
+                ref={containerRef} 
+                className="relative mx-auto"
+                style={{ 
+                    height: `${totalHeight}px`,
+                    width: `${PAGE_WIDTH_PX * scale}px`,
+                    paddingTop: '16px',
+                    paddingBottom: '16px'
+                }}
+            >
+                {/* Title Page */}
+                {options.includeTitlePage && project.titlePage && 
+                 visibleRange.start <= 0 && visibleRange.end > 0 && (
+                    <div 
+                        className="absolute"
+                        style={{
+                            top: '16px',
+                            left: '0',
+                            transform: `scale(${scale})`,
+                            transformOrigin: 'top left'
+                        }}
+                    >
+                        <div className="bg-white text-black shadow-2xl relative rounded-sm" style={pageStyle}>
+                            <div className="flex flex-col h-full justify-center items-center text-center">
+                                <h1 className="text-2xl font-bold mb-4 uppercase">
+                                    {project.titlePage.title || project.name || 'Untitled'}
+                                </h1>
+                                {project.titlePage.authors && project.titlePage.authors.length > 0 && (
+                                    <div style={{ marginTop: `${LINE_HEIGHT_IN * 4}in` }}>
+                                        <p className="mb-4">{project.titlePage.credit || 'Written by'}</p>
+                                        {project.titlePage.authors.map((author, i) => (
+                                            <p key={i} className="font-bold">{author}</p>
+                                        ))}
+                                    </div>
+                                )}
+                                <div
+                                    className="absolute text-left"
+                                    style={{
+                                        bottom: `${MARGIN_BOTTOM_IN}in`,
+                                        left: `${MARGIN_LEFT_IN}in`
+                                    }}
+                                >
+                                    {project.titlePage.contact && (
+                                        <p className="whitespace-pre-wrap">{project.titlePage.contact}</p>
+                                    )}
+                                </div>
+                            </div>
+                            {options.watermark && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                    <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                        {options.watermark}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Script Pages */}
+                {pages.map((page, pageIndex) => {
+                    const adjustedIndex = options.includeTitlePage ? pageIndex + 1 : pageIndex;
+                    const isVisible = adjustedIndex >= visibleRange.start && adjustedIndex < visibleRange.end;
+                    
+                    if (!isVisible) return null;
+
+                    const topPosition = 16 + (adjustedIndex * (scaledPageHeight + gap));
+
+                    return (
+                        <div 
+                            key={pageIndex}
+                            className="absolute"
+                            style={{
+                                top: `${topPosition}px`,
+                                left: '0',
+                                transform: `scale(${scale})`,
+                                transformOrigin: 'top left'
+                            }}
+                        >
+                            <div className="bg-white text-black shadow-2xl relative rounded-sm" style={pageStyle}>
+                                <div
+                                    className="absolute"
+                                    style={{
+                                        top: `${PAGE_NUM_TOP_IN}in`,
+                                        right: `${PAGE_NUM_RIGHT_IN}in`,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: `${FONT_SIZE_PT}pt`
+                                    }}
+                                >
+                                    {pageIndex + 1}.
+                                </div>
+
+                                <div>
+                                    {renderPageContent(page)}
+                                </div>
+
+                                {options.watermark && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 overflow-hidden">
+                                        <div className="text-8xl font-bold rotate-[-45deg] text-black whitespace-nowrap">
+                                            {options.watermark}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
