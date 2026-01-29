@@ -304,8 +304,7 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
         case 'Date':
           titlePage.draftDate = text;
           break;
-        case 'Contact':
-          titlePage.contact = text;
+        case 'Contact':\n          titlePage.contact = text;
           break;
         case 'Copyright':
           titlePage.copyright = text;
@@ -389,7 +388,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
 
   const page1Lines = allLines.filter(l => l.page === 1);
   const hasSceneHeadingOnPage1 = page1Lines.some(l => 
-    /^(INT\\.|EXT\\.|INT |EXT |I\\/E)/i.test(l.text.trim())
+    /^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(l.text.trim())
   );
 
   if (page1Lines.length > 0 && !hasSceneHeadingOnPage1) {
@@ -409,10 +408,10 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
                  titlePage.authors = [...(titlePage.authors || []), page1Lines[i+1].text.trim()];
              }
         }
-        else if (lower.includes('draft') || /\\d{4}/.test(text)) {
+        else if (lower.includes('draft') || /\d{4}/.test(text)) {
             titlePage.draftDate = text;
         }
-        else if (lower.includes('contact') || lower.includes('@') || /\\d{3}-\\d{3}/.test(text)) {
+        else if (lower.includes('contact') || lower.includes('@') || /\d{3}-\d{3}/.test(text)) {
             titlePage.contact = text;
         }
     }
@@ -470,9 +469,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     const offset = x - baseX;
     
     // Filter artifacts
-    if (offset > 200 && /^[\\d.]+$/.test(text)) return;
-    if (/^\\(MORE\\)$/i.test(text)) return;
-    if (/^\\(CONT['']?D\\)$/i.test(text)) return;
+    if (offset > 200 && /^[\d.]+$/.test(text)) return;
+    if (/^\(MORE\)$/i.test(text)) return;
+    if (/^\(CONT['']?D\)$/i.test(text)) return;
     
     let type: ScriptElement['type'] = 'action';
     const upper = text.toUpperCase();
@@ -497,7 +496,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
 
     // Classification logic
     if (offset < 36) {
-      if (/^(INT\\.|EXT\\.|INT |EXT |I\\/E)/i.test(text)) {
+      if (/^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(text)) {
         type = 'scene_heading';
       } else if (isUppercase && !text.endsWith('.')) {
         if (text.includes(' - ')) {
@@ -523,8 +522,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     }
     else if (offset >= 136 && offset < 220) {
       if (isUppercase) {
-        type = 'character';
-      } else {
+        type = 'character';\n      } else {
         type = 'dialogue';
       }
     }
@@ -549,7 +547,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
       const isConsecutive = distance > 0 && distance < 24;
 
       if (isConsecutive && type !== 'scene_heading' && type !== 'character') {
-        const separator = (/[a-zA-Z0-9.,?!\"]$/.test(lastElement.content) && /^[a-zA-Z0-9]/.test(text)) ? ' ' : ' ';
+        const separator = (/[a-zA-Z0-9.,?!"]$/.test(lastElement.content) && /^[a-zA-Z0-9]/.test(text)) ? ' ' : ' ';
         lastElement.content += separator + text;
         merged = true;
       }
