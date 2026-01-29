@@ -58,8 +58,7 @@ export function getElementStyles(
         action: 'text-[#D4D4D4]',
         character: 'text-[#E0E0E0]',
         dialogue: 'text-[#D4D4D4]',
-        parenthetical: 'text-[#A3A3A3]',
-        transition: 'text-[#E0E0E0]',
+        parenthetical: 'text-[#A3A3A3]',\n        transition: 'text-[#E0E0E0]',
     };
 
     switch (type) {
@@ -170,11 +169,12 @@ export function renderScriptElement(
                 {children}
                 
                 {/* CRITICAL FIX: Render (CONT'D) as non-editable metadata */}
-                {/* Improved color handling: consistent gray for dark mode */}
+                {/* CHANGED: Removed custom color classes to inherit parent color (text-black or text-[#E0E0E0]) */}
+                {/* It now looks exactly like the rest of the character name */}
                 {element.type === 'character' && isContinued && (
                     <span 
                         contentEditable={false}
-                        className={`select-none ${isLightMode ? 'text-zinc-400' : 'text-[#6e6e6e]'}`}
+                        className="select-none"
                         style={{ 
                             userSelect: 'none',
                             pointerEvents: 'none',
