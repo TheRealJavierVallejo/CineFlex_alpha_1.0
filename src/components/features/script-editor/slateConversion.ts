@@ -110,8 +110,9 @@ export function scriptElementsToSlate(elements: ScriptElement[]): Descendant[] {
             // CRITICAL FIX: Strip existing (CONT'D) from the text content
             // The renderer will re-add it visually if isContinued is true
             // This prevents "PARKER (CONT'D) (CONT'D)"
+            // Updated regex to handle smart quotes and variations
             if (el.type === 'character') {
-                content = content.replace(/\s*\(CONT['']?D\.?\)\s*$/i, '').trim();
+                content = content.replace(/\s*\(CONT['’]?[ED]?\.?\)\s*$/i, '').trim();
             }
 
             const node: any = {
