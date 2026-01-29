@@ -87,6 +87,7 @@ function computeContinuedFlags(elements: ScriptElement[]): ScriptElement[] {
  * Converts ScriptElement[] from app format to Slate nodes
  * Preserves IDs for element tracking and SmartType learning
  * NEW: Computes continuation metadata (isContinued) BEFORE rendering
+ * NEW: STRIPS (CONT'D) text from content to prevent duplicates (since renderer adds it)
  * Called once on initial load and when script changes externally
  */
 export function scriptElementsToSlate(elements: ScriptElement[]): Descendant[] {
@@ -104,10 +105,19 @@ export function scriptElementsToSlate(elements: ScriptElement[]): Descendant[] {
         const enriched = computeContinuedFlags(elements);
 
         return enriched.map(el => {
+            let content = el.content || '';
+            
+            // CRITICAL FIX: Strip existing (CONT'D) from the text content
+            // The renderer will re-add it visually if isContinued is true
+            // This prevents "PARKER (CONT'D) (CONT'D)"
+            if (el.type === 'character') {
+                content = content.replace(/\s*\(CONT['']?D\.?\)\s*$/i, '').trim();
+            }
+
             const node: any = {
                 type: el.type,
                 id: el.id, // Preserve original ID
-                children: [{ text: el.content || '' }]
+                children: [{ text: content }]
             };
             
             // Preserve metadata
