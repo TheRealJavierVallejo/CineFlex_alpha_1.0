@@ -12,7 +12,7 @@ import { ScriptElement } from '../../../types';
  * 
  * Logic:
  * 1. Track last occurrence of each character name (cleaned, uppercase)
- * 2. If same character appears within 10 elements AND has intervening dialogue from others → mark continued
+ * 2. If same character appears within 10 elements AND has intervening dialogue from DIFFERENT characters → mark continued
  * 3. Preserve any `isContinued: true` flags from import (parser detected (CONT'D) in original script)
  */
 function computeContinuedFlags(elements: ScriptElement[]): ScriptElement[] {
@@ -38,13 +38,19 @@ function computeContinuedFlags(elements: ScriptElement[]): ScriptElement[] {
         
         // Check if same character spoke recently (within 10 elements, not consecutive)
         if (lastIndex !== undefined && i - lastIndex < 10 && i - lastIndex > 1) {
-            // Verify there's intervening dialogue from OTHER characters
-            // This prevents marking as continued if it's just action/parenthetical between
+            // Verify there's intervening dialogue from OTHER DIFFERENT characters
+            // This prevents marking as continued if it's just the same character repeating
             let hasInterveningDialogue = false;
             for (let j = lastIndex + 1; j < i; j++) {
                 if (elements[j].type === 'character') {
-                    hasInterveningDialogue = true;
-                    break;
+                    // Clean the intervening character name
+                    const interveningCleanName = elements[j].content.toUpperCase().replace(/\s*\(.*?\)\s*/g, '').trim();
+                    
+                    // Only mark as intervening if it's a DIFFERENT character
+                    if (interveningCleanName !== cleanName) {
+                        hasInterveningDialogue = true;
+                        break;
+                    }
                 }
             }
             
