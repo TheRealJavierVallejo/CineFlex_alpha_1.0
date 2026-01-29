@@ -1,10 +1,9 @@
 import { Project, ScriptElement } from '../types';
 import jsPDF from 'jspdf';
 import { generateFountainText } from './scriptUtils';
-import { calculatePagination } from './pagination';
+import { paginateScript } from './pagination';
 import {
     PAGE_WIDTH_IN,
-    PAGE_HEIGHT_IN,
     MARGIN_TOP_IN,
     MARGIN_LEFT_IN,
     FONT_SIZE_PT,
@@ -184,11 +183,6 @@ export const exportToFDX = (project: Project, options?: Partial<ExportOptions>):
             attrs.push(`Number="${escapeXML(el.sceneNumber)}"`);
         }
 
-        // Continued character
-        if (el.type === 'character' && el.isContinued) {
-            // Character name with (CONT'D) is handled in text content
-        }
-
         xml += `    <Paragraph ${attrs.join(' ')}>\n`;
         
         // Text content with unicode support
@@ -255,7 +249,10 @@ export const exportToPDF = async (
 
     // --- TITLE PAGE ---
     const tp = project.titlePage;
+    let hasTitlePage = false;
+    
     if (options.includeTitlePage && tp) {
+        hasTitlePage = true;
         doc.setFont(fontName, 'normal');
         let cursorY = 3.5;
         if (tp.title) {
@@ -291,27 +288,9 @@ export const exportToPDF = async (
     onProgress?.(15);
 
     // --- SCRIPT CONTENT with Chunked Processing and Dual Dialogue ---
-    const elements = project.scriptElements || [];
-    const pageMap = calculatePagination(elements);
+    // USE PAGINATION ENGINE (Sources Truth)
+    const paginatedPages = paginateScript(project.scriptElements || []);
     
-    let currentPdfPage = 1;
-    const addPage = (pageNum: number) => {
-        doc.addPage();
-        currentPdfPage = pageNum;
-        renderWatermark();
-        doc.setFontSize(12);
-        doc.text(`${pageNum}.`, pageWidth - PAGE_NUM_RIGHT_IN, PAGE_NUM_TOP_IN, { align: 'right' });
-    };
-
-    renderWatermark();
-    doc.setFontSize(12);
-    doc.text(`${currentPdfPage}.`, pageWidth - PAGE_NUM_RIGHT_IN, PAGE_NUM_TOP_IN, { align: 'right' });
-
-    let cursorY = marginTop;
-    let dualLeftY = 0;  // Track Y position for left dual column
-    let dualRightY = 0; // Track Y position for right dual column
-    let inDualDialogue = false;
-
     // Dual dialogue column dimensions (industry standard)
     const DUAL_LEFT_CHAR_INDENT = 0.5;  // Left character indent
     const DUAL_LEFT_DIALOGUE_INDENT = 0.0;  // Left dialogue starts at left margin
@@ -319,29 +298,40 @@ export const exportToPDF = async (
     const DUAL_RIGHT_DIALOGUE_INDENT = 3.0;  // Right dialogue indent
     const DUAL_COLUMN_WIDTH = 2.8;  // Width for each dual column
 
-    // Process elements in chunks to allow UI updates
-    const CHUNK_SIZE = 50;
-    const totalChunks = Math.ceil(elements.length / CHUNK_SIZE);
+    let currentPdfPage = 0;
 
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-        const start = chunkIndex * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, elements.length);
-        const chunk = elements.slice(start, end);
+    // Process pages one by one
+    for (let pageIdx = 0; pageIdx < paginatedPages.length; pageIdx++) {
+        const page = paginatedPages[pageIdx];
+        currentPdfPage = page.pageNumber;
 
-        for (let localIdx = 0; localIdx < chunk.length; localIdx++) {
-            const i = start + localIdx;
+        // Add page if needed (Title page adds the first page automatically? No, title page adds a page AFTER itself if it exists)
+        // If we have a title page, we did doc.addPage() at the end of it. So we are ready to write on the fresh page.
+        // If NO title page, jsPDF starts with 1 blank page.
+        // So:
+        // If pageIdx > 0, we ALWAYS need a new page.
+        // If pageIdx === 0 and NOT titlePage, we use the existing blank page.
+        // If pageIdx === 0 and YES titlePage, we use the page added by titlePage block.
+        
+        if (pageIdx > 0) {
+            doc.addPage();
+        }
+
+        renderWatermark();
+        doc.setFontSize(12);
+        doc.text(`${currentPdfPage}.`, pageWidth - PAGE_NUM_RIGHT_IN, PAGE_NUM_TOP_IN, { align: 'right' });
+
+        let cursorY = marginTop;
+        let dualLeftY = 0;  // Track Y position for left dual column
+        let dualRightY = 0; // Track Y position for right dual column
+        let inDualDialogue = false;
+
+        const elements = page.elements;
+
+        for (let i = 0; i < elements.length; i++) {
             const el = elements[i];
             const nextEl = elements[i + 1];
-            const elementPage = pageMap[el.id] || 1;
-
-            if (elementPage > currentPdfPage) {
-                addPage(elementPage);
-                cursorY = marginTop;
-                inDualDialogue = false;
-                dualLeftY = 0;
-                dualRightY = 0;
-            }
-
+            
             let xOffset = marginLeft;
             let maxWidth = 6.0;
             let text = el.content;
@@ -457,7 +447,7 @@ export const exportToPDF = async (
                 cursorY += lineCount;
             }
 
-            // Handle MORE indicators
+            // Handle MORE indicators (Use Metadata from Pagination Engine)
             if (el.continuesNext && (el.type === 'dialogue' || el.type === 'character')) {
                 if (inDualDialogue) {
                     const moreY = el.dual ? dualRightY : dualLeftY;
@@ -476,12 +466,12 @@ export const exportToPDF = async (
             }
         }
 
-        // Update progress after each chunk
-        const progress = 15 + Math.round((chunkIndex + 1) / totalChunks * 75);
+        // Update progress after each page
+        const progress = 15 + Math.round(((pageIdx + 1) / paginatedPages.length) * 80);
         onProgress?.(progress);
 
-        // Yield to UI thread between chunks
-        if (chunkIndex < totalChunks - 1) {
+        // Yield to UI thread every 5 pages
+        if (pageIdx % 5 === 0) {
             await new Promise(resolve => setTimeout(resolve, 0));
         }
     }
@@ -539,8 +529,8 @@ export const exportScript = async (
         }
         case 'txt': {
             onProgress?.(50);
-            const text = exportToFountain(project, options);
-            downloadFile(text, `${safeName}.txt`, 'text/plain; charset=utf-8');
+            const txt = exportToFountain(project, options);
+            downloadFile(txt, `${safeName}.txt`, 'text/plain; charset=utf-8');
             onProgress?.(100);
             break;
         }
@@ -550,9 +540,11 @@ export const exportScript = async (
 const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
 };
