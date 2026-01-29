@@ -14,13 +14,23 @@ import { ScriptElement } from '../../../types';
  * 1. Track last occurrence of each character name (cleaned, uppercase)
  * 2. If same character appears within 10 elements AND has intervening dialogue from DIFFERENT characters → mark continued
  * 3. Preserve any `isContinued: true` flags from import (parser detected (CONT'D) in original script)
+ * 4. RESET tracking on Scene Headings (new scene = new conversation context)
  */
 function computeContinuedFlags(elements: ScriptElement[]): ScriptElement[] {
     if (!elements || elements.length === 0) return elements;
     
+    // Track character indices
     const characterLastSeen = new Map<string, number>();
     
     return elements.map((el, i) => {
+        // RESET Logic: If we hit a Scene Heading, clear the tracking map.
+        // In standard screenwriting, (CONT'D) does not typically carry over scene boundaries
+        // unless explicitly marked (which we'd handle via import preservation).
+        if (el.type === 'scene_heading') {
+            characterLastSeen.clear();
+            return el;
+        }
+
         if (el.type !== 'character') return el;
         
         // Clean character name: Remove extensions like (V.O.), (O.S.), (CONT'D), etc.
