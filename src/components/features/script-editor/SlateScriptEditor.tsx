@@ -163,6 +163,67 @@ export const SlateScriptEditor = forwardRef<SlateScriptEditorRef, SlateScriptEdi
         }
     }, [projectId, initialElements, editor]);
 
+    // 🔥 CRITICAL FIX: Sync computed (CONT'D) flags back to Slate editor nodes
+    // This ensures the UI actually SEES the isContinued flags
+    useEffect(() => {
+        if (readOnly) return;
+        
+        // Convert current Slate nodes to ScriptElements (this computes isContinued)
+        const elementsWithFlags = slateToScriptElements(value);
+        
+        // Check if any flags changed
+        let needsUpdate = false;
+        editor.children.forEach((node, i) => {
+            if (SlateElement.isElement(node)) {
+                const element = node as CustomElement;
+                const scriptEl = elementsWithFlags[i];
+                
+                if (scriptEl && element.type === 'character') {
+                    const currentFlag = element.isContinued || false;
+                    const newFlag = scriptEl.isContinued || false;
+                    
+                    if (currentFlag !== newFlag) {
+                        needsUpdate = true;
+                    }
+                }
+            }
+        });
+        
+        if (!needsUpdate) return;
+        
+        // Update Slate nodes with computed flags (non-invasive, preserves content)
+        Editor.withoutNormalizing(editor, () => {
+            elementsWithFlags.forEach((scriptEl, i) => {
+                if (i >= editor.children.length) return;
+                
+                const node = editor.children[i];
+                if (!SlateElement.isElement(node)) return;
+                
+                const element = node as CustomElement;
+                
+                // Only update character elements
+                if (element.type === 'character') {
+                    const newProps: Partial<CustomElement> = {};
+                    
+                    // Update isContinued flag
+                    if (scriptEl.isContinued !== element.isContinued) {
+                        newProps.isContinued = scriptEl.isContinued || undefined;
+                    }
+                    
+                    // Apply update if needed
+                    if (Object.keys(newProps).length > 0) {
+                        Transforms.setNodes(
+                            editor,
+                            newProps,
+                            { at: [i] }
+                        );
+                    }
+                }
+            });
+        });
+        
+    }, [value, editor, readOnly]);
+
     useEffect(() => {
         if (onUndoRedoChange) {
             const { history } = editor;
