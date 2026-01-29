@@ -12,7 +12,7 @@ import { ScriptElement } from '../../../types';
  * 
  * Logic:
  * 1. Track last occurrence of each character name (cleaned, uppercase)
- * 2. If same character appears within 10 elements AND has intervening dialogue from DIFFERENT characters → mark continued
+ * 2. If same character appears within 20 elements AND has NO intervening dialogue from DIFFERENT characters → mark continued
  * 3. Preserve any `isContinued: true` flags from import (parser detected (CONT'D) in original script)
  * 4. RESET tracking on Scene Headings (new scene = new conversation context)
  */
@@ -23,9 +23,11 @@ function computeContinuedFlags(elements: ScriptElement[]): ScriptElement[] {
     const characterLastSeen = new Map<string, number>();
     
     return elements.map((el, i) => {
+        // Safe check for content
+        if (!el || !el.content) return el;
+
         // RESET Logic: If we hit a Scene Heading, clear the tracking map.
         // In standard screenwriting, (CONT'D) does not typically carry over scene boundaries
-        // unless explicitly marked (which we'd handle via import preservation).
         if (el.type === 'scene_heading') {
             characterLastSeen.clear();
             return el;
@@ -34,37 +36,42 @@ function computeContinuedFlags(elements: ScriptElement[]): ScriptElement[] {
         if (el.type !== 'character') return el;
         
         // Clean character name: Remove extensions like (V.O.), (O.S.), (CONT'D), etc.
-        // This ensures "PARKER (V.O.)" matches "PARKER"
         const cleanName = el.content.toUpperCase().replace(/\s*\(.*?\)\s*/g, '').trim();
         
         // Check if we've seen this character before
         const lastIndex = characterLastSeen.get(cleanName);
         
-        // If character already has isContinued from import, preserve it
+        // If character already has isContinued from import/state, preserve it
         if (el.isContinued) {
             characterLastSeen.set(cleanName, i);
             return el;
         }
         
-        // Check if same character spoke recently (within 10 elements, not consecutive)
-        if (lastIndex !== undefined && i - lastIndex < 10 && i - lastIndex > 1) {
-            // Verify there's intervening dialogue from OTHER DIFFERENT characters
-            // This prevents marking as continued if it's just the same character repeating
-            let hasInterveningDialogue = false;
+        // Check if same character spoke recently (within 20 elements)
+        // AND there is at least one intervening element (i - lastIndex > 1)
+        if (lastIndex !== undefined && i - lastIndex < 20 && i - lastIndex > 1) {
+            
+            // CRITICAL FIX: (CONT'D) applies when the character resumes AFTER action/parenthetical
+            // It does NOT apply if another character spoke in between (that's just a reply)
+            
+            let hasInterveningOtherDialogue = false;
+            
             for (let j = lastIndex + 1; j < i; j++) {
-                if (elements[j].type === 'character') {
-                    // Clean the intervening character name
-                    const interveningCleanName = elements[j].content.toUpperCase().replace(/\s*\(.*?\)\s*/g, '').trim();
+                const intermediate = elements[j];
+                // Check if it's a character element
+                if (intermediate.type === 'character') {
+                    const interveningName = intermediate.content?.toUpperCase().replace(/\s*\(.*?\)\s*/g, '').trim();
                     
-                    // Only mark as intervening if it's a DIFFERENT character
-                    if (interveningCleanName !== cleanName) {
-                        hasInterveningDialogue = true;
+                    // If a DIFFERENT character spoke, the chain is broken
+                    if (interveningName && interveningName !== cleanName) {
+                        hasInterveningOtherDialogue = true;
                         break;
                     }
                 }
             }
             
-            if (hasInterveningDialogue) {
+            // ONLY mark continued if NO other character intervened
+            if (!hasInterveningOtherDialogue) {
                 characterLastSeen.set(cleanName, i);
                 return { ...el, isContinued: true };
             }
@@ -92,24 +99,33 @@ export function scriptElementsToSlate(elements: ScriptElement[]): Descendant[] {
         }];
     }
 
-    // CRITICAL: Compute (CONT'D) flags BEFORE converting to Slate
-    // This ensures the editor shows continuation markers in real-time
-    const enriched = computeContinuedFlags(elements);
+    try {
+        // CRITICAL: Compute (CONT'D) flags BEFORE converting to Slate
+        const enriched = computeContinuedFlags(elements);
 
-    return enriched.map(el => {
-        const node: any = {
+        return enriched.map(el => {
+            const node: any = {
+                type: el.type,
+                id: el.id, // Preserve original ID
+                children: [{ text: el.content || '' }]
+            };
+            
+            // Preserve metadata
+            if (el.isContinued) node.isContinued = true;
+            if (el.continuesNext) node.continuesNext = true;
+            if (el.dual) node.dual = el.dual;
+            
+            return node;
+        });
+    } catch (error) {
+        console.error("Error in scriptElementsToSlate:", error);
+        // Fallback to basic conversion if enrichment fails
+        return elements.map(el => ({
             type: el.type,
-            id: el.id, // Preserve original ID
+            id: el.id,
             children: [{ text: el.content || '' }]
-        };
-        
-        // CRITICAL: Preserve continuation metadata (now computed!)
-        if (el.isContinued) node.isContinued = true;
-        if (el.continuesNext) node.continuesNext = true;
-        if (el.dual) node.dual = el.dual;
-        
-        return node;
-    });
+        }));
+    }
 }
 
 /**
@@ -123,37 +139,41 @@ export function slateToScriptElements(nodes: Descendant[]): ScriptElement[] {
         return [];
     }
 
-    // First pass: Convert Slate nodes to ScriptElements
-    const rawElements = nodes.map((node, index) => {
-        // Type guard: ensure node is an element
-        if (!('type' in node) || !('children' in node)) {
-            return null;
-        }
+    try {
+        // First pass: Convert Slate nodes to ScriptElements
+        const rawElements = nodes.map((node, index) => {
+            // Type guard: ensure node is an element
+            if (!('type' in node) || !('children' in node)) {
+                return null;
+            }
 
-        // Extract text content from children
-        const content = node.children
-            .map((child: any) => child.text || '')
-            .join('');
+            // Extract text content from children
+            const content = node.children
+                .map((child: any) => child.text || '')
+                .join('');
 
-        // Preserve ID from Slate node, generate new one if missing
-        const id = (node as any).id || crypto.randomUUID();
+            // Preserve ID from Slate node, generate new one if missing
+            const id = (node as any).id || crypto.randomUUID();
 
-        const element: ScriptElement = {
-            id,
-            type: node.type as ScriptElement['type'],
-            content,
-            sequence: index + 1
-        };
+            const element: ScriptElement = {
+                id,
+                type: node.type as ScriptElement['type'],
+                content,
+                sequence: index + 1
+            };
+            
+            // Preserve dual dialogue metadata
+            const nodeAny = node as any;
+            if (nodeAny.dual) element.dual = nodeAny.dual;
+            if (nodeAny.continuesNext) element.continuesNext = true;
+            
+            return element;
+        }).filter((el): el is ScriptElement => el !== null);
         
-        // Preserve dual dialogue metadata
-        const nodeAny = node as any;
-        if (nodeAny.dual) element.dual = nodeAny.dual;
-        if (nodeAny.continuesNext) element.continuesNext = true;
-        
-        return element;
-    }).filter((el): el is ScriptElement => el !== null);
-    
-    // Second pass: Recompute (CONT'D) flags based on current state
-    // This ensures accuracy even after edits/reordering
-    return computeContinuedFlags(rawElements);
+        // Second pass: Recompute (CONT'D) flags based on current state
+        return computeContinuedFlags(rawElements);
+    } catch (error) {
+        console.error("Error in slateToScriptElements:", error);
+        return [];
+    }
 }
