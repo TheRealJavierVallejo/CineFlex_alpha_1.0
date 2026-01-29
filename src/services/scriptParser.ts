@@ -40,10 +40,12 @@ export interface ParsedScript {
 /**
  * CRITICAL HELPER: Detect and extract (CONT'D) from character names
  * Returns clean character name + continuation flag
+ * FIX: Enhanced regex to catch curly quotes and variations
  */
 function parseCharacterName(rawText: string): { character: string; isContinued: boolean } {
-  // Match various (CONT'D) patterns: (CONT'D), (CONT.), (CONTD), (cont'd), etc.
-  const contdPattern = /\s*\(CONT['']?D?\.?\)\s*$/i;
+  // Match various (CONT'D) patterns: (CONT'D), (CONT.), (CONTD), (cont'd), (CONT’D)
+  // \u2019 is right single quotation mark (smart quote)
+  const contdPattern = /\s*\(CONT['’]?[ED]?\.?\)\s*$/i;
   const match = rawText.match(contdPattern);
   
   if (match) {
@@ -147,8 +149,7 @@ function createValidatedResult(
   return {
     scenes: [],
     elements: finalElements,
-    metadata: { title },
-    titlePage,
+    metadata: { title },\n    titlePage,
     scriptModel,
     validationReport,
     autoFixAvailable,
@@ -220,8 +221,7 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
     const textNodes = p.querySelectorAll('Text');
     
     // Combine text nodes
-    let content = Array.from(textNodes).map(n => n.textContent).join('');
-    if (!content.trim()) return;
+    let content = Array.from(textNodes).map(n => n.textContent).join('');\n    if (!content.trim()) return;
 
     let type: ScriptElement['type'] = 'action';
     const isDual = p.getAttribute('Dual') === 'Yes';
@@ -257,8 +257,7 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
         inDualDialogue = true;
         element.dual = 'left';
         dualDialogueBlock = [element];
-      } else {
-        element.dual = 'left';
+      } else {\n        element.dual = 'left';
         dualDialogueBlock.push(element);
       }
     } else if (inDualDialogue) {
@@ -355,8 +354,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     });
 
     pageLines.forEach(line => {
-      line.items.sort((a, b) => a.x - b.x);
-      line.text = line.items.map(i => i.str).join('');
+      line.items.sort((a, b) => a.x - b.x);\n      line.text = line.items.map(i => i.str).join('');
     });
 
     pageLines.sort((a, b) => b.y - a.y);
@@ -387,7 +385,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
 
   const page1Lines = allLines.filter(l => l.page === 1);
   const hasSceneHeadingOnPage1 = page1Lines.some(l => 
-    /^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(l.text.trim())
+    /^(INT\\.|EXT\\.|INT |EXT |I\\/E)/i.test(l.text.trim())
   );
 
   if (page1Lines.length > 0 && !hasSceneHeadingOnPage1) {
@@ -400,23 +398,21 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
         
         if (lower.includes('written by')) {
             titlePage.credit = 'Written by';
-            if (page1Lines[i+1]) titlePage.authors = [page1Lines[i+1].text.trim()];
-        }
+            if (page1Lines[i+1]) titlePage.authors = [page1Lines[i+1].text.trim()];\n        }
         else if (lower.includes('story by')) {
              if (page1Lines[i+1]) {
                  titlePage.authors = [...(titlePage.authors || []), page1Lines[i+1].text.trim()];
              }
         }
-        else if (lower.includes('draft') || /\d{4}/.test(text)) {
+        else if (lower.includes('draft') || /\\d{4}/.test(text)) {
             titlePage.draftDate = text;
         }
-        else if (lower.includes('contact') || lower.includes('@') || /\d{3}-\d{3}/.test(text)) {
+        else if (lower.includes('contact') || lower.includes('@') || /\\d{3}-\\d{3}/.test(text)) {
             titlePage.contact = text;
         }
     }
     
-    const firstLines = page1Lines.slice(0, 5).map(l => l.text.trim()).filter(t => t.length > 0);
-    if (firstLines.length > 0 && !titlePage.title) {
+    const firstLines = page1Lines.slice(0, 5).map(l => l.text.trim()).filter(t => t.length > 0);\n    if (firstLines.length > 0 && !titlePage.title) {
         if (!/written by|screenplay by/i.test(firstLines[0])) {
             titlePage.title = firstLines[0];
             detectedTitle = firstLines[0];
@@ -468,9 +464,9 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     const offset = x - baseX;
     
     // Filter artifacts
-    if (offset > 200 && /^[\d.]+$/.test(text)) return;
-    if (/^\(MORE\)$/i.test(text)) return;
-    if (/^\(CONT['']?D\)$/i.test(text)) return;
+    if (offset > 200 && /^[\\d.]+$/.test(text)) return;
+    if (/^\\(MORE\\)$/i.test(text)) return;
+    if (/^\\(CONT['']?D\\)$/i.test(text)) return;
     
     let type: ScriptElement['type'] = 'action';
     const upper = text.toUpperCase();
@@ -479,8 +475,7 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     // Determine if this line is part of dual dialogue
     const isDual = dualLineIndices.has(index);
     if (isDual) {
-      const sibling = allLines.find((l, idx) => 
-        idx !== index && 
+      const sibling = allLines.find((l, idx) => \n        idx !== index && 
         Math.abs(l.y - y) < 4 && 
         l.page === page && 
         dualLineIndices.has(idx)
@@ -495,13 +490,12 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
 
     // Classification logic
     if (offset < 36) {
-      if (/^(INT\.|EXT\.|INT |EXT |I\/E)/i.test(text)) {
+      if (/^(INT\\.|EXT\\.|INT |EXT |I\\/E)/i.test(text)) {
         type = 'scene_heading';
       } else if (isUppercase && !text.endsWith('.')) {
         if (text.includes(' - ')) {
           type = 'scene_heading';
-        } else if (text.endsWith('TO:') || text.startsWith('FADE')) {
-          type = 'transition';
+        } else if (text.endsWith('TO:') || text.startsWith('FADE')) {\n          type = 'transition';
         } else {
           type = 'action';
         }
@@ -539,15 +533,14 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     }
 
     // Merge logic
-    const lastElement = elements[elements.length - 1];
-    let merged = false;
+    const lastElement = elements[elements.length - 1];\n    let merged = false;
 
     if (lastElement && lastElement.type === type && page === lastPage && !isDual) {
       const distance = lastY - y;
       const isConsecutive = distance > 0 && distance < 24;
 
       if (isConsecutive && type !== 'scene_heading' && type !== 'character') {
-        const separator = (/[a-zA-Z0-9.,?!"]$/.test(lastElement.content) && /^[a-zA-Z0-9]/.test(text)) ? ' ' : ' ';
+        const separator = (/[a-zA-Z0-9.,?!\"]$/.test(lastElement.content) && /^[a-zA-Z0-9]/.test(text)) ? ' ' : ' ';
         lastElement.content += separator + text;
         merged = true;
       }
