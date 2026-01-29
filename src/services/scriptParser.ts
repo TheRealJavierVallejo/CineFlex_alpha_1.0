@@ -149,7 +149,8 @@ function createValidatedResult(
   return {
     scenes: [],
     elements: finalElements,
-    metadata: { title },\n    titlePage,
+    metadata: { title },
+    titlePage,
     scriptModel,
     validationReport,
     autoFixAvailable,
@@ -221,7 +222,8 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
     const textNodes = p.querySelectorAll('Text');
     
     // Combine text nodes
-    let content = Array.from(textNodes).map(n => n.textContent).join('');\n    if (!content.trim()) return;
+    let content = Array.from(textNodes).map(n => n.textContent).join('');
+    if (!content.trim()) return;
 
     let type: ScriptElement['type'] = 'action';
     const isDual = p.getAttribute('Dual') === 'Yes';
@@ -257,7 +259,8 @@ function parseFDX(xmlText: string, options?: { autoFix?: boolean; strict?: boole
         inDualDialogue = true;
         element.dual = 'left';
         dualDialogueBlock = [element];
-      } else {\n        element.dual = 'left';
+      } else {
+        element.dual = 'left';
         dualDialogueBlock.push(element);
       }
     } else if (inDualDialogue) {
@@ -354,7 +357,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     });
 
     pageLines.forEach(line => {
-      line.items.sort((a, b) => a.x - b.x);\n      line.text = line.items.map(i => i.str).join('');
+      line.items.sort((a, b) => a.x - b.x);
+      line.text = line.items.map(i => i.str).join('');
     });
 
     pageLines.sort((a, b) => b.y - a.y);
@@ -398,7 +402,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
         
         if (lower.includes('written by')) {
             titlePage.credit = 'Written by';
-            if (page1Lines[i+1]) titlePage.authors = [page1Lines[i+1].text.trim()];\n        }
+            if (page1Lines[i+1]) titlePage.authors = [page1Lines[i+1].text.trim()];
+        }
         else if (lower.includes('story by')) {
              if (page1Lines[i+1]) {
                  titlePage.authors = [...(titlePage.authors || []), page1Lines[i+1].text.trim()];
@@ -412,7 +417,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
         }
     }
     
-    const firstLines = page1Lines.slice(0, 5).map(l => l.text.trim()).filter(t => t.length > 0);\n    if (firstLines.length > 0 && !titlePage.title) {
+    const firstLines = page1Lines.slice(0, 5).map(l => l.text.trim()).filter(t => t.length > 0);
+    if (firstLines.length > 0 && !titlePage.title) {
         if (!/written by|screenplay by/i.test(firstLines[0])) {
             titlePage.title = firstLines[0];
             detectedTitle = firstLines[0];
@@ -475,7 +481,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     // Determine if this line is part of dual dialogue
     const isDual = dualLineIndices.has(index);
     if (isDual) {
-      const sibling = allLines.find((l, idx) => \n        idx !== index && 
+      const sibling = allLines.find((l, idx) => 
+        idx !== index && 
         Math.abs(l.y - y) < 4 && 
         l.page === page && 
         dualLineIndices.has(idx)
@@ -495,7 +502,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
       } else if (isUppercase && !text.endsWith('.')) {
         if (text.includes(' - ')) {
           type = 'scene_heading';
-        } else if (text.endsWith('TO:') || text.startsWith('FADE')) {\n          type = 'transition';
+        } else if (text.endsWith('TO:') || text.startsWith('FADE')) {
+          type = 'transition';
         } else {
           type = 'action';
         }
@@ -533,7 +541,8 @@ async function parsePDF(arrayBuffer: ArrayBuffer, options?: { autoFix?: boolean;
     }
 
     // Merge logic
-    const lastElement = elements[elements.length - 1];\n    let merged = false;
+    const lastElement = elements[elements.length - 1];
+    let merged = false;
 
     if (lastElement && lastElement.type === type && page === lastPage && !isDual) {
       const distance = lastY - y;
