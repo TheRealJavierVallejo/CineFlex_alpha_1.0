@@ -94,14 +94,25 @@ export function autoFixElement(element: ScriptElement): AutoFixResult {
     }
   }
 
-  // Fix 7: Remove pagination metadata (will be recalculated)
-  if (fixed.isContinued !== undefined || fixed.continuesNext !== undefined || fixed.keptTogether !== undefined) {
-    delete fixed.isContinued;
+  // Fix 7: Remove ONLY pagination-specific metadata (continuesNext, keptTogether)
+  // PRESERVE isContinued - it's semantic character metadata, not just pagination
+  // 
+  // WHY:
+  // - isContinued = "this character spoke before" (content semantics)
+  // - continuesNext = "this element spans pages" (pagination artifact)
+  // - keptTogether = "keep with next element" (pagination artifact)
+  // 
+  // Industry standard: Final Draft preserves isContinued in .fdx files,
+  // but recalculates continuesNext based on pagination.
+  if (fixed.continuesNext !== undefined || fixed.keptTogether !== undefined) {
     delete fixed.continuesNext;
     delete fixed.keptTogether;
-    changes.push('Removed stale pagination data');
+    changes.push('Removed stale pagination data (continuesNext/keptTogether)');
     changed = true;
   }
+  
+  // NOTE: isContinued is intentionally NOT deleted here
+  // It will be recomputed in slateConversion.ts if missing, but preserved if present
 
   return { fixed, changed, changes };
 }
