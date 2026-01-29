@@ -87,7 +87,8 @@ export function getElementStyles(
                 style: margins
             };
 
-        case 'parenthetical':\n            return {
+        case 'parenthetical':
+            return {
                 className: `${baseClasses} ${colorClasses.parenthetical} italic pt-0`,
                 style: margins
             };
@@ -144,7 +145,8 @@ export function renderScriptElement(
                     style={{
                         marginLeft: '-1.5in', // Pull to left edge of paper container
                         marginRight: '-1in',  // Pull to right edge of paper container
-                        width: '8.5in',       // Explicit width to match paper\n                        height: '1in',        // Reduced height for cleaner look
+                        width: '8.5in',       // Explicit width to match paper
+                        height: '1in',        // Reduced height for cleaner look
                         marginTop: '0',
                         marginBottom: '0',
                         position: 'relative'
@@ -176,7 +178,8 @@ export function renderScriptElement(
                         className="select-none"
                         style={{ 
                             userSelect: 'none',
-                            pointerEvents: 'none',\n                        }}
+                            pointerEvents: 'none',
+                        }}
                     >
                         {' (CONT\'D)'}
                     </span>
