@@ -102,7 +102,7 @@ export function autoFixElement(element: ScriptElement): AutoFixResult {
     changes.push('Removed stale pagination data (continuesNext/keptTogether)');
     changed = true;
   }
-  
+
   return { fixed, changed, changes };
 }
 
@@ -148,9 +148,15 @@ export function autoFixElements(elements: ScriptElement[]): {
     const heuristicChanges: string[] = [];
 
     // HEURISTIC 1: Floating Dialogue -> Action
-    // Dialogue must follow Character or Parenthetical.
+    // Dialogue must follow Character or Parenthetical OR other Dialogue.
+    // (Allowing consecutive dialogue fixes multi-line dialogue blocks being split by import)
     if (current.type === 'dialogue') {
-      const validPredecessor = prev && (prev.type === 'character' || prev.type === 'parenthetical');
+      const validPredecessor = prev && (
+        prev.type === 'character' || 
+        prev.type === 'parenthetical' || 
+        prev.type === 'dialogue'
+      );
+      
       if (!validPredecessor) {
         current.type = 'action';
         heuristicChanges.push('Converted floating dialogue to action');
@@ -158,18 +164,11 @@ export function autoFixElements(elements: ScriptElement[]): {
       }
     }
 
-    // HEURISTIC 2: Short Uppercase Action followed by Dialogue OR Action -> Character
-    // Expanded: If followed by mixed-case action, it's likely Character + Dialogue (misclassified as Action)
+    // HEURISTIC 2: Short Uppercase Action followed by Dialogue -> Character
     if (current.type === 'action') {
       const isUppercase = current.content === current.content.toUpperCase() && /[A-Z]/.test(current.content);
-      const isShort = current.content.split(' ').length < 6; // Characters are usually short
-      
-      const followedByDialogue = next && (
-        next.type === 'dialogue' || 
-        next.type === 'parenthetical' ||
-        // NEW: Also check for Action that looks like dialogue (mixed case)
-        (next.type === 'action' && /[a-z]/.test(next.content))
-      );
+      const isShort = current.content.split(' ').length < 6;
+      const followedByDialogue = next && (next.type === 'dialogue' || next.type === 'parenthetical');
 
       if (isUppercase && isShort && followedByDialogue) {
         current.type = 'character';
@@ -192,26 +191,14 @@ export function autoFixElements(elements: ScriptElement[]): {
     if (current.type === 'action') {
         const trimmed = current.content.trim();
         if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+            // Only if it follows a character or dialogue (or another parenthetical)
+            // Parentheticals shouldn't be standalone
             const validPredecessor = prev && (prev.type === 'character' || prev.type === 'dialogue' || prev.type === 'parenthetical');
             if (validPredecessor) {
                 current.type = 'parenthetical';
                 heuristicChanges.push('Converted parenthesized action to parenthetical');
                 heuristicChanged = true;
             }
-        }
-    }
-
-    // HEURISTIC 5: Action following Character -> Dialogue
-    // If we have Character followed by Action (that isn't uppercase), it's almost certainly Dialogue
-    // This fixes issues where dialogue margins are slightly off in PDF imports
-    if (current.type === 'action') {
-        const followsCharacter = prev && (prev.type === 'character' || prev.type === 'parenthetical');
-        const isMixedCase = /[a-z]/.test(current.content); // Contains lowercase
-        
-        if (followsCharacter && isMixedCase) {
-            current.type = 'dialogue';
-            heuristicChanges.push('Converted action following character to dialogue');
-            heuristicChanged = true;
         }
     }
 
