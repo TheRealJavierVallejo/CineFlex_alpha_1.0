@@ -58,7 +58,8 @@ export function getElementStyles(
         action: 'text-[#D4D4D4]',
         character: 'text-[#E0E0E0]',
         dialogue: 'text-[#D4D4D4]',
-        parenthetical: 'text-[#A3A3A3]',\n        transition: 'text-[#E0E0E0]',
+        parenthetical: 'text-[#A3A3A3]',
+        transition: 'text-[#E0E0E0]',
     };
 
     switch (type) {
@@ -86,8 +87,7 @@ export function getElementStyles(
                 style: margins
             };
 
-        case 'parenthetical':
-            return {
+        case 'parenthetical':\n            return {
                 className: `${baseClasses} ${colorClasses.parenthetical} italic pt-0`,
                 style: margins
             };
@@ -144,8 +144,7 @@ export function renderScriptElement(
                     style={{
                         marginLeft: '-1.5in', // Pull to left edge of paper container
                         marginRight: '-1in',  // Pull to right edge of paper container
-                        width: '8.5in',       // Explicit width to match paper
-                        height: '1in',        // Reduced height for cleaner look
+                        width: '8.5in',       // Explicit width to match paper\n                        height: '1in',        // Reduced height for cleaner look
                         marginTop: '0',
                         marginBottom: '0',
                         position: 'relative'
@@ -177,8 +176,7 @@ export function renderScriptElement(
                         className="select-none"
                         style={{ 
                             userSelect: 'none',
-                            pointerEvents: 'none',
-                        }}
+                            pointerEvents: 'none',\n                        }}
                     >
                         {' (CONT\'D)'}
                     </span>
