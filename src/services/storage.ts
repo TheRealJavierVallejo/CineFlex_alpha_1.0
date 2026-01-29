@@ -100,10 +100,24 @@ const listAllFilesInProjectFolder = async (projectId: string): Promise<string[]>
  * Compares referenced images in a project state against actual storage contents 
  * and deletes orphaned files to save space.
  * 
+ * 🔥 CRITICAL PERFORMANCE FIX:
+ * This function was running on EVERY save, listing ALL files in the Storage bucket.
+ * This exhausted Supabase's Storage API limits (CPU/IO), causing "resource exhaustion" errors.
+ * 
+ * DISABLED until we can move this to:
+ * - A manual "Clean Up Storage" button in Settings
+ * - Or run ONLY on project load (not every save)
+ * 
  * @param projectId - Project ID to cleanup.
  * @param project - The fully hydrated project object.
  */
 const cleanupUnusedProjectImages = async (projectId: string, project: Project): Promise<void> => {
+    // 🔥 DISABLED: This was causing Supabase resource exhaustion
+    // Running file listing on every auto-save (every 2 seconds while typing) is not sustainable.
+    console.log('[STORAGE] Image cleanup disabled to prevent API exhaustion. Will be moved to manual maintenance.');
+    return;
+    
+    /* ORIGINAL CODE - DISABLED
     try {
         const referenced = collectReferencedProjectImagePaths(projectId, project);
         const existing = await listAllFilesInProjectFolder(projectId);
@@ -124,6 +138,7 @@ const cleanupUnusedProjectImages = async (projectId: string, project: Project): 
     } catch (e) {
         console.error('[STORAGE] cleanup failed:', e);
     }
+    */
 };
 
 // --- IMAGES & STORAGE ---
@@ -429,7 +444,6 @@ export const getProjectData = async (projectId: string): Promise<Project | null>
     const scriptElements = (scriptData?.content as ScriptElement[]) || [];
 
     // Helper functions for case transformation
-    // Helper functions for case transformation
     const toCamel = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
 
     /**
@@ -584,7 +598,7 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
             shot_type: shotType,
             description,
             dialogue,
-            camera_movement: (s as unknown as Record<string, unknown>).cameraMovement, // Correcting likely field mismatch
+            camera_movement: (s as unknown as Record<string, unknown>).cameraMovement,
             metadata: rest // Store remaining AI props in metadata
         };
     });
@@ -594,7 +608,7 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
         if (shErr) console.error("Save Shots Failed", shErr);
     }
 
-    // 6. Cleanup Unused Images (Fire & Forget)
+    // 6. Cleanup Unused Images (🔥 DISABLED - was causing resource exhaustion)
     cleanupUnusedProjectImages(projectId, cleanProject);
 };
 
@@ -607,7 +621,6 @@ export const saveProjectData = async (projectId: string, project: Project): Prom
  * @param drafts - The updated drafts array
  */
 export const updateDraftMetadata = async (projectId: string, drafts: any[]): Promise<void> => {
-    // We only update the 'drafts' column and 'last_synced'
     const { error } = await supabase
         .from('projects')
         .update({
@@ -653,6 +666,7 @@ export const subscribeToProjectChanges = (
         supabase.removeChannel(channel);
     };
 };
+
 // ============================================================
 // SAVE QUEUE: Prevents race conditions from concurrent saves
 // ============================================================
@@ -665,35 +679,24 @@ class SaveQueue {
     private queue: Array<() => Promise<void>> = [];
     private isProcessing = false;
 
-    /**
-     * Add a save operation to the queue
-     */
     enqueue(operation: () => Promise<void>) {
         this.queue.push(operation);
         this.processQueue();
     }
 
-    /**
-     * Process queue sequentially (one at a time)
-     */
     private async processQueue() {
-        // If already processing, exit (next save will be picked up)
         if (this.isProcessing) return;
-
-        // If queue is empty, exit
         if (this.queue.length === 0) return;
 
         this.isProcessing = true;
 
         try {
-            // Process all saves in order
             while (this.queue.length > 0) {
                 const operation = this.queue.shift()!;
                 try {
                     await operation();
                 } catch (err) {
                     console.error('[SAVE QUEUE] Operation failed:', err);
-                    // Continue processing next save even if one fails
                 }
             }
         } finally {
@@ -701,22 +704,15 @@ class SaveQueue {
         }
     }
 
-    /**
-     * Check if queue has pending operations
-     */
     hasPending(): boolean {
         return this.queue.length > 0 || this.isProcessing;
     }
 
-    /**
-     * Get number of pending saves
-     */
     getPendingCount(): number {
         return this.queue.length;
     }
 }
 
-// Singleton save queue
 const saveQueue = new SaveQueue();
 
 /**
@@ -728,28 +724,23 @@ const createQueuedDebouncedSave = () => {
     let pendingProject: Project | null = null;
 
     const save = (projectId: string, project: Project) => {
-        // Clear existing timeout
         if (timeoutId) {
             clearTimeout(timeoutId);
         }
 
-        // Store latest state
         pendingProjectId = projectId;
         pendingProject = project;
 
-        // Debounce: wait 2 seconds of inactivity
         timeoutId = setTimeout(() => {
             if (!pendingProjectId || !pendingProject) return;
 
             const finalProjectId = pendingProjectId;
             const finalProject = pendingProject;
 
-            // Clear pending state
             pendingProjectId = null;
             pendingProject = null;
             timeoutId = null;
 
-            // Add to queue (will execute sequentially)
             saveQueue.enqueue(async () => {
                 console.log(`[SAVE QUEUE] Saving project ${finalProjectId}...`);
                 await saveProjectData(finalProjectId, finalProject);
@@ -775,15 +766,8 @@ export const saveProjectDataDebounced = createQueuedDebouncedSave();
 
 // --- ASSETS ---
 
-/**
- * Fetches all characters associated with a specific project.
- * 
- * @param projectId - Unique project ID.
- * @returns Array of Character assets.
- */
 export const getCharacters = async (projectId: string): Promise<Character[]> => {
     const { data } = await supabase.from('characters').select('*').eq('project_id', projectId);
-    // Convert snake_case to camelCase
     return (data || []).map((c: { id: string; name: string; description: string; image_url?: string; reference_photos?: string[] }) => ({
         id: c.id,
         name: c.name,
@@ -793,42 +777,27 @@ export const getCharacters = async (projectId: string): Promise<Character[]> => 
     }));
 };
 
-/**
- * Saves or updates a list of characters for a project. 
- * Handles deletion of characters not present in the provided list.
- * 
- * @param projectId - Unique project ID.
- * @param chars - The complete current list of characters.
- */
 export const saveCharacters = async (projectId: string, chars: Character[]): Promise<void> => {
     const cleanChars = await ensureImagesPersisted(projectId, chars);
     const currentIds = cleanChars.map((c: Character) => c.id);
 
-    // Prune deleted characters
     await supabase
         .from('characters')
         .delete()
         .eq('project_id', projectId)
         .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
 
-    // Upsert current characters
     const rows = cleanChars.map((c: Character) => ({
         id: c.id,
         project_id: projectId,
         name: c.name,
         description: c.description,
         image_url: c.imageUrl,
-        reference_photos: c.referencePhotos // Now properly persisted above
+        reference_photos: c.referencePhotos
     }));
     if (rows.length > 0) await supabase.from('characters').upsert(rows);
 };
 
-/**
- * Fetches all outfits associated with a specific project.
- * 
- * @param projectId - Unique project ID.
- * @returns Array of Outfit assets.
- */
 export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
     const { data } = await supabase.from('outfits').select('*').eq('project_id', projectId);
     return (data || []).map((c: { id: string; character_id: string; name: string; description: string; reference_photos?: string[] }) => ({
@@ -840,29 +809,20 @@ export const getOutfits = async (projectId: string): Promise<Outfit[]> => {
     }));
 };
 
-/**
- * Saves or updates a list of outfits for a project. 
- * Handles deletion of outfits not present in the provided list.
- * 
- * @param projectId - Unique project ID.
- * @param outfits - The complete current list of outfits.
- */
 export const saveOutfits = async (projectId: string, outfits: Outfit[]): Promise<void> => {
     const clean = await ensureImagesPersisted(projectId, outfits);
     const currentIds = clean.map((c: Outfit) => c.id);
 
-    // Prune deleted outfits
     await supabase
         .from('outfits')
         .delete()
         .eq('project_id', projectId)
         .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
 
-    // Upsert current outfits
     const rows = clean.map((c: Outfit) => ({
         id: c.id,
         project_id: projectId,
-        character_id: c.characterId, // Now supported (after migration)
+        character_id: c.characterId,
         name: c.name,
         description: c.description,
         reference_photos: c.referencePhotos
@@ -870,12 +830,6 @@ export const saveOutfits = async (projectId: string, outfits: Outfit[]): Promise
     if (rows.length > 0) await supabase.from('outfits').upsert(rows);
 };
 
-/**
- * Fetches all locations associated with a specific project.
- * 
- * @param projectId - Unique project ID.
- * @returns Array of Location assets.
- */
 export const getLocations = async (projectId: string): Promise<Location[]> => {
     const { data } = await supabase.from('locations').select('*').eq('project_id', projectId);
     return (data || []).map((c: { id: string; name: string; description: string; reference_photos?: string[] }) => ({
@@ -886,25 +840,16 @@ export const getLocations = async (projectId: string): Promise<Location[]> => {
     }));
 };
 
-/**
- * Saves or updates a list of locations for a project. 
- * Handles deletion of locations not present in the provided list.
- * 
- * @param projectId - Unique project ID.
- * @param locs - The complete current list of locations.
- */
 export const saveLocations = async (projectId: string, locs: Location[]): Promise<void> => {
     const clean = await ensureImagesPersisted(projectId, locs);
     const currentIds = clean.map((c: Location) => c.id);
 
-    // Prune deleted locations
     await supabase
         .from('locations')
         .delete()
         .eq('project_id', projectId)
         .not('id', 'in', `(${currentIds.length > 0 ? currentIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
 
-    // Upsert current locations
     const rows = clean.map((c: Location) => ({
         id: c.id,
         project_id: projectId,
@@ -915,14 +860,6 @@ export const saveLocations = async (projectId: string, locs: Location[]): Promis
     if (rows.length > 0) await supabase.from('locations').upsert(rows);
 };
 
-// --- STUBS for other/legacy ---
-// Image Library - could add table later.
-/**
- * Fetches the image library for a project, sorted by most recent first.
- * 
- * @param projectId - Unique project ID.
- * @returns Array of ImageLibraryItems.
- */
 export const getImageLibrary = async (projectId: string): Promise<ImageLibraryItem[]> => {
     const { data, error } = await supabase
         .from('image_library')
@@ -947,22 +884,10 @@ export const getImageLibrary = async (projectId: string): Promise<ImageLibraryIt
     }));
 };
 
-/**
- * Deprecated: Individual images should be added via addToImageLibrary.
- */
 export const saveImageLibrary = async (projectId: string, items: ImageLibraryItem[]): Promise<void> => {
     console.warn('saveImageLibrary is deprecated, use addToImageLibrary', projectId, items.length);
 };
 
-/**
- * Adds a single generated image to the project's permanent image library.
- * 
- * @param projectId - Project to add to.
- * @param url - Public URL or base64 data of the image.
- * @param prompt - The visual prompt used to generate the image.
- * @param metadata - Additional generation parameters (model, ratio, etc).
- * @returns The created image library record.
- */
 export const addToImageLibrary = async (
     projectId: string,
     url: string,
@@ -1001,12 +926,6 @@ export const addToImageLibrary = async (
     };
 };
 
-/**
- * Adds multiple images to the image library in a single transaction.
- * 
- * @param projectId - Project to add to.
- * @param images - Array of image objects to persist.
- */
 export const addBatchToImageLibrary = async (
     projectId: string,
     images: Array<{ url: string, prompt?: string, metadata?: Record<string, unknown> }>
@@ -1031,13 +950,6 @@ export const addBatchToImageLibrary = async (
     }
 };
 
-/**
- * Toggles the favorite status of an image in the library.
- * 
- * @param projectId - Owner project ID.
- * @param imageId - ID of the image to toggle.
- * @param isFavorite - New favorite status.
- */
 export const toggleImageFavorite = async (projectId: string, imageId: string, isFavorite: boolean): Promise<void> => {
     const { error } = await supabase
         .from('image_library')
@@ -1051,7 +963,6 @@ export const toggleImageFavorite = async (projectId: string, imageId: string, is
     }
 };
 
-// Story Dev
 export const getPlotDevelopment = async () => undefined;
 export const savePlotDevelopment = async () => { };
 export const getCharacterDevelopments = async (projectId: string): Promise<CharacterDevelopment[]> => [];
@@ -1060,18 +971,13 @@ export const getStoryBeats = async () => [];
 export const saveStoryBeats = async () => { };
 export const getStoryMetadata = async () => ({ lastUpdated: Date.now() });
 export const saveStoryMetadata = async () => { };
-/**
- * Retrieves all story notes for a project, ordered by their manually defined index.
- * 
- * @param projectId - Unique project ID.
- * @returns The story notes collection.
- */
+
 export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> => {
     const { data, error } = await supabase
         .from('story_notes')
         .select('*')
         .eq('project_id', projectId)
-        .order('order_index', { ascending: true }); // 🔥 Using order_index for sorting
+        .order('order_index', { ascending: true });
 
     if (error) {
         console.error('Error loading story notes:', error);
@@ -1093,14 +999,7 @@ export const getStoryNotes = async (projectId: string): Promise<StoryNotesData> 
     };
 };
 
-/**
- * Spawns a new empty story note at the end of the project's notes list.
- * 
- * @param projectId - Project to add to.
- * @returns The new StoryNote record.
- */
 export const createStoryNote = async (projectId: string): Promise<StoryNote> => {
-    // Get highest order to append
     const { data: latest } = await supabase
         .from('story_notes')
         .select('order_index')
@@ -1142,13 +1041,6 @@ export const createStoryNote = async (projectId: string): Promise<StoryNote> => 
     };
 };
 
-/**
- * Updates an existing story note with the specified partial fields.
- * 
- * @param projectId - Owner project ID.
- * @param noteId - ID of the note to update.
- * @param updates - Partial object containing title, content, or order.
- */
 export const updateStoryNote = async (projectId: string, noteId: string, updates: Partial<StoryNote>): Promise<void> => {
     const dbUpdates: Record<string, unknown> = {
         updated_at: new Date().toISOString()
@@ -1170,12 +1062,6 @@ export const updateStoryNote = async (projectId: string, noteId: string, updates
     }
 };
 
-/**
- * Permanent deletion of a story note.
- * 
- * @param projectId - Owner project ID.
- * @param noteId - ID of the note to erase.
- */
 export const deleteStoryNote = async (projectId: string, noteId: string): Promise<void> => {
     const { error } = await supabase
         .from('story_notes')
@@ -1189,26 +1075,20 @@ export const deleteStoryNote = async (projectId: string, noteId: string): Promis
     }
 };
 
-/** Scheduled cleanup stub */
 export const garbageCollect = async (): Promise<void> => { };
 
-/** Legacy compatibility stub for IndexedDB */
 export const openDB = async (): Promise<never> => {
     throw new Error('IndexedDB operations have been migrated to Supabase. Use sydChatStore for thread management.');
 };
 
-/** Stub for JSON exports */
 export const exportProjectToJSON = async (projectId: string): Promise<string> => {
     console.log(projectId);
     return "{}";
 };
 
-/** Stub for JSON imports */
 export const importProjectFromJSON = async (json: string): Promise<string> => {
     console.log(json);
     return "";
 };
 
-// --- MIGRATION CHECK ---
-// A simple check to alert functionality
 console.log("Supabase Storage Loaded");
